@@ -32,7 +32,7 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
     Some(cwd) => cwd
     None => @os.cwd()
   }
-  let loader = Loader::{ home, cwd, models: [], providers: Map([]) }
+  let loader = Loader::{ home, cwd, models: [], providers: Map([]), }
   loader.load()
   loader
 }

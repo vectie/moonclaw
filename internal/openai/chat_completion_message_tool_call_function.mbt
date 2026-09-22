@@ -27,5 +27,5 @@ impl @json.FromJson for ChatCompletionMessageToolCallFunction with fn from_json(
       raise JsonDecodeError((json_path, "Expected 'arguments' to be a string"))
     None => None
   }
-  { arguments, name }
+  { arguments, name, }
 }

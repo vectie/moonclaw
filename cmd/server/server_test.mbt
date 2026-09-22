@@ -91,7 +91,7 @@ async test "register" (t : @test.Test) {
     )
     assert_eq(r.headers["x-moonclaw-worker-registration-token"], "a".repeat(72))
     let rb = conn.read_all()
-    let res : @server.RegisterResponse = @server.RegisterResponse::{  }
+    let res : @server.RegisterResponse = @server.RegisterResponse::{ }
     conn.send_response(200, "OK", extra_headers={
       "Content-Type": "application/json",
     })

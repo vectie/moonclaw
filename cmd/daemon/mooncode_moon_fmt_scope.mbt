@@ -89,7 +89,7 @@ async fn mooncode_moon_fmt_path_state(
   } else {
     ""
   }
-  { tracked, kind, content, fingerprint }
+  { tracked, kind, content, fingerprint, }
 }
 
 ///|
@@ -117,12 +117,15 @@ async fn mooncode_moon_fmt_snapshot(book_root : String) -> MoonCodeFmtSnapshot {
       if !states.contains(path) {
         states[path] = mooncode_moon_fmt_path_state(book_root, path, entry.1) catch {
           error =>
-            return { error: "could not snapshot \{path}: \{error}", states: {} }
+            return {
+              error: "could not snapshot \{path}: \{error}",
+              states: {},
+            }
         }
       }
     }
   }
-  { error: "", states }
+  { error: "", states, }
 }
 
 ///|
@@ -254,7 +257,7 @@ async fn mooncode_moon_fmt_verify_and_restore(
   let restored_paths : Array[String] = []
   let retained_paths : Array[String] = []
   let restored = if out_of_scope_paths.is_empty() {
-    MoonCodeFmtSnapshot::{ error: "", states: {} }
+    MoonCodeFmtSnapshot::{ error: "", states: {}, }
   } else {
     mooncode_moon_fmt_snapshot(book_root)
   }

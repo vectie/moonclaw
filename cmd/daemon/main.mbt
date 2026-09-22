@@ -45,7 +45,7 @@ impl @json.FromJson for DaemonInfo with fn from_json(
     None =>
       raise JsonDecodeError((json_path, "Missing field 'port' in DaemonInfo"))
   }
-  { version, pid, port }
+  { version, pid, port, }
 }
 
 ///|

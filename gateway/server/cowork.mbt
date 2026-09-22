@@ -430,7 +430,7 @@ async fn Gateway::handle_create_cowork_session(
     Some(title) => {
       let trimmed = title.trim().to_owned()
       if !trimmed.is_blank() {
-        entry = { ..entry, title: Some(trimmed) }
+        entry = { ..entry, title: Some(trimmed), }
         entry = self.append_session_message(
           entry,
           "system",
@@ -589,7 +589,7 @@ fn cowork_agent_error_shape(
   code : String,
   message : String,
 ) -> @protocol.ErrorShape {
-  { code, message, details: None, retryable: None, retry_after_ms: None }
+  { code, message, details: None, retryable: None, retry_after_ms: None, }
 }
 
 ///|
@@ -939,7 +939,7 @@ async fn Gateway::handle_cowork_preview(
     @job.plan_preview_from_proposal(next_state.latest_candidate),
   )
   session = self.append_session_message(
-    { ..session, plan_mode: Some(next_state) },
+    { ..session, plan_mode: Some(next_state), },
     "assistant",
     "plan_preview",
     preview_text,

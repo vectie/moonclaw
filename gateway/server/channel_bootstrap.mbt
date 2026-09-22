@@ -231,7 +231,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
         }
         accounts[account_id] = account
         if channel_enabled {
-          runtimes.push({ account_id, config: account, auto_start: true })
+          runtimes.push({ account_id, config: account, auto_start: true, })
         }
       }
     }
@@ -267,7 +267,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
     accounts,
     global_settings,
   }
-  Some({ channel_id: "feishu", config: channel_config, accounts: runtimes })
+  Some({ channel_id: "feishu", config: channel_config, accounts: runtimes, })
 }
 
 ///|
@@ -345,7 +345,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
         }
         accounts[account_id] = account
         if channel_enabled {
-          runtimes.push({ account_id, config: account, auto_start: true })
+          runtimes.push({ account_id, config: account, auto_start: true, })
         }
       }
     }
@@ -376,7 +376,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
     accounts,
     global_settings,
   }
-  Some({ channel_id: "weixin", config: channel_config, accounts: runtimes })
+  Some({ channel_id: "weixin", config: channel_config, accounts: runtimes, })
 }
 
 ///|

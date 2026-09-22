@@ -54,5 +54,5 @@ pub fn agent_mailbox_config(
   max_size? : Int = 1000,
   timeout_ms? : Int = 30000,
 ) -> AgentMailboxConfig {
-  { max_size, timeout_ms }
+  { max_size, timeout_ms, }
 }

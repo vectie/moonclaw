@@ -37,7 +37,7 @@ pub async fn Server::new(
     reuse_addr~,
   )
   let port = server.addr.port()
-  { server, port }
+  { server, port, }
 }
 
 ///|

@@ -147,7 +147,7 @@ async fn load_plugins_from_config(json : Json) -> Map[String, PluginRecord] {
 
 ///|
 pub async fn PluginRuntime::new(home~ : String, cwd~ : String) -> PluginRuntime {
-  let runtime = PluginRuntime::{ home, cwd, plugins: {} }
+  let runtime = PluginRuntime::{ home, cwd, plugins: {}, }
   runtime.load()
   runtime
 }

@@ -13,7 +13,7 @@ pub fn RunExecutionHooks::new(
   on_info? : async (String) -> Unit = _ => (),
   on_warn? : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
-  { on_started, on_finished, on_info, on_warn }
+  { on_started, on_finished, on_info, on_warn, }
 }
 
 ///|

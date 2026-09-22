@@ -77,7 +77,7 @@ test "due retry recreates exact request and duplicate retry id is non-vacuous" {
   assert_true(evaluating.evaluation_backoff == None)
   assert_true(
     evaluating.active_evaluation ==
-    Some({ id: "eval", run_id: 0, revision: 0, evidence_digest: "d" }),
+    Some({ id: "eval", run_id: 0, revision: 0, evidence_digest: "d", }),
   )
   let second_backoff = reduce_goal(
     evaluating,
@@ -172,7 +172,7 @@ test "starting evaluation clears stale convergence from status and evaluator JSO
 ///|
 test "restored active evaluation from an old run rejects matching failure" {
   let started = started_evaluation_for_backoff_test()
-  let restored = { ..started, run_id: started.run_id + 1 }
+  let restored = { ..started, run_id: started.run_id + 1, }
   let request = match restored.active_evaluation {
     Some(request) => request
     None => abort("expected active evaluation")
@@ -199,7 +199,7 @@ test "restored active evaluation from an old run rejects matching failure" {
 ///|
 test "restored backoff from an old run rejects matching due retry" {
   let backoff = first_backoff_for_test()
-  let restored = { ..backoff, run_id: backoff.run_id + 1 }
+  let restored = { ..backoff, run_id: backoff.run_id + 1, }
   let record = match restored.evaluation_backoff {
     Some(record) => record
     None => abort("expected evaluation backoff")

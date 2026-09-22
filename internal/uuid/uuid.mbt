@@ -49,7 +49,7 @@ pub fn Generator::v4(self : Generator) -> Uuid {
   let lo = self.0.uint64()
   let hi = (hi & 0xFFFF_FFFF_FFFF_0FFF_UL) | 0x0000_0000_0000_4000_UL
   let lo = (lo & 0x0FFF_FFFF_FFFF_FFFF_UL) | 0x8000_0000_0000_0000_UL
-  { hi, lo }
+  { hi, lo, }
 }
 
 ///|
@@ -63,7 +63,7 @@ pub fn[Source : Source] generator(source : Source) -> Generator {
 }
 
 ///|
-pub let nil : Uuid = { hi: 0UL, lo: 0UL }
+pub let nil : Uuid = { hi: 0UL, lo: 0UL, }
 
 ///|
 pub let max : Uuid = {
@@ -90,7 +90,7 @@ pub fn Uuid::of_bytes(bytes : Bytes) -> Uuid {
     (bytes[13].to_uint64() << 16) |
     (bytes[14].to_uint64() << 8) |
     bytes[15].to_uint64()
-  { hi, lo }
+  { hi, lo, }
 }
 
 ///|
@@ -166,7 +166,7 @@ pub fn parse(hex : StringView) -> Uuid raise ParseError {
   parse_dash()
   let lo = parse_hex_octet(6, lo)
   guard view.is_empty() else { raise ExtraContent(view) }
-  { hi, lo }
+  { hi, lo, }
 }
 
 ///|

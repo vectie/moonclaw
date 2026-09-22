@@ -131,5 +131,5 @@ pub fn with_e2e_preprocess_steps(proposal : JobProposal) -> JobProposal {
   if proposal.request_text.trim().to_owned().is_blank() {
     return proposal
   }
-  { ..proposal, steps: [context_preprocess_step(proposal), ..proposal.steps] }
+  { ..proposal, steps: [context_preprocess_step(proposal), ..proposal.steps], }
 }

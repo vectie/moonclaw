@@ -14,7 +14,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             _ => return Err("Missing or invalid method")
           }
           let params = obj.get("params")
-          Ok(Req({ id, rpc_method, params }))
+          Ok(Req({ id, rpc_method, params, }))
         }
         Some(String("res")) => {
           let id = match obj.get("id") {
@@ -45,7 +45,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
               }
             None => None
           }
-          Ok(Res({ id, ok, payload, error }))
+          Ok(Res({ id, ok, payload, error, }))
         }
         Some(String("evt")) => {
           let event = match obj.get("event") {
@@ -53,7 +53,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             _ => return Err("Missing or invalid event")
           }
           let payload = obj.get("payload")
-          Ok(Event({ event, payload, seq: None, state_version: None }))
+          Ok(Event({ event, payload, seq: None, state_version: None, }))
         }
         _ => Err("Invalid frame type")
       }

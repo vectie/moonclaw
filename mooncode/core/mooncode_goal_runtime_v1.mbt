@@ -96,7 +96,7 @@ fn copy_goal_evidence(
   evidence : Array[GoalCriterionEvidence],
 ) -> Array[GoalCriterionEvidence] {
   evidence.map(fn(item) {
-    { criterion: item.criterion, evidence_refs: item.evidence_refs.copy() }
+    { criterion: item.criterion, evidence_refs: item.evidence_refs.copy(), }
   })
 }
 
@@ -277,7 +277,7 @@ pub fn reduce_goal_runtime(
           ids.push(operation.operation_id)
         }
       }
-      { ..next, phase: Running, operation_ids: ids }
+      { ..next, phase: Running, operation_ids: ids, }
     }
     PlannerDecision(_, Achieved(summary, evidence)) =>
       {
@@ -328,7 +328,7 @@ pub fn reduce_goal_runtime(
       if reason.trim().is_empty() {
         state
       } else {
-        { ..next, outcome: Some(CancelledOutcome(reason)) }
+        { ..next, outcome: Some(CancelledOutcome(reason)), }
       }
   }
 }

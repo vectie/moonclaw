@@ -258,7 +258,7 @@ async test "capability invocation is exact durable and idempotent" {
 
     let conflicting = {
       ..invocation,
-      request: { ..invocation.request, request_id: "different-request" },
+      request: { ..invocation.request, request_id: "different-request", },
     }
     try
       execute_installed_capability_v1(
@@ -365,7 +365,7 @@ async test "submitted capability cancels through the same durable attempt" {
         )
       },
       reconcile=Some(_ => {
-        Ok({ status: "running", result: None, error_kind: "" })
+        Ok({ status: "running", result: None, error_kind: "", })
       }),
       cancel=Some(_ => {
         cancellations.val += 1
@@ -474,7 +474,7 @@ async test "expired health and schema drift fail before adapter execution" {
 
     let excessive_claim = {
       ..invocation,
-      request: { ..invocation.request, required_claim: "physical-readiness" },
+      request: { ..invocation.request, required_claim: "physical-readiness", },
     }
     try
       execute_installed_capability_v1(

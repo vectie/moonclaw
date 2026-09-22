@@ -325,7 +325,7 @@ async fn mooncode_runtime_claim_atomic(
       now~,
     )
     if receipts.is_empty() {
-      return NoAppend({ before, receipts, after: before })
+      return NoAppend({ before, receipts, after: before, })
     }
     let receipt = receipts[0]
     let combined = old_receipts.copy()

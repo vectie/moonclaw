@@ -2,7 +2,7 @@
 async test "SessionManager persists and reloads sessions" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
     let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
-    let manager = SessionManager::{ sessions: {}, session_dir }
+    let manager = SessionManager::{ sessions: {}, session_dir, }
     let entry = SessionEntry::{
       session_id: "conversation-1",
       title: None,
@@ -18,7 +18,7 @@ async test "SessionManager persists and reloads sessions" {
     }
     manager.save_entry("feishu:acct:chat", entry)
 
-    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    let reloaded = SessionManager::{ sessions: {}, session_dir, }
     reloaded.load()
 
     let loaded = match reloaded.get("feishu:acct:chat") {
@@ -35,7 +35,7 @@ async test "SessionManager persists and reloads sessions" {
 async test "SessionManager reset_and_save removes persisted sessions" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
     let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
-    let manager = SessionManager::{ sessions: {}, session_dir }
+    let manager = SessionManager::{ sessions: {}, session_dir, }
     manager.save_entry("session-1", {
       session_id: "conversation-1",
       title: None,
@@ -51,7 +51,7 @@ async test "SessionManager reset_and_save removes persisted sessions" {
     })
     inspect(manager.reset_and_save("session-1"), content="true")
 
-    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    let reloaded = SessionManager::{ sessions: {}, session_dir, }
     reloaded.load()
 
     inspect(reloaded.count(), content="0")
@@ -62,7 +62,7 @@ async test "SessionManager reset_and_save removes persisted sessions" {
 async test "SessionManager preserves unrelated persisted sessions across updates and reset" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
     let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
-    let manager = SessionManager::{ sessions: {}, session_dir }
+    let manager = SessionManager::{ sessions: {}, session_dir, }
     manager.save_entry("direct:user:1", {
       session_id: "conversation-1",
       title: None,
@@ -91,7 +91,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
     })
     inspect(manager.reset_and_save("direct:user:1"), content="true")
 
-    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    let reloaded = SessionManager::{ sessions: {}, session_dir, }
     reloaded.load()
 
     inspect(reloaded.count(), content="1")
@@ -110,7 +110,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
 async test "SessionManager persists plan mode state" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
     let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
-    let manager = SessionManager::{ sessions: {}, session_dir }
+    let manager = SessionManager::{ sessions: {}, session_dir, }
     manager.save_entry("channel:feishu:default:chat-1:thread-1", {
       session_id: "conversation-2",
       title: None,
@@ -131,7 +131,7 @@ async test "SessionManager persists plan mode state" {
       linked_proposal_id: None,
       linked_run_id: None,
     })
-    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    let reloaded = SessionManager::{ sessions: {}, session_dir, }
     reloaded.load()
     let preserved = match
       reloaded.get("channel:feishu:default:chat-1:thread-1") {
@@ -153,7 +153,7 @@ async test "SessionManager persists plan mode state" {
 async test "SessionManager persists cowork messages and linked ids" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
     let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
-    let manager = SessionManager::{ sessions: {}, session_dir }
+    let manager = SessionManager::{ sessions: {}, session_dir, }
     manager.save_entry("cowork:session-1", {
       session_id: "conversation-9",
       title: Some("Parcel Planning"),
@@ -176,7 +176,7 @@ async test "SessionManager persists cowork messages and linked ids" {
       linked_proposal_id: Some("proposal-9"),
       linked_run_id: Some("run-9"),
     })
-    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    let reloaded = SessionManager::{ sessions: {}, session_dir, }
     reloaded.load()
     let preserved = match reloaded.get("cowork:session-1") {
       Some(entry) => entry

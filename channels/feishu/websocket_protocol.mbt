@@ -204,7 +204,7 @@ fn decode_header_message(
       _ => return Err("unsupported header wire type")
     }
   }
-  Ok({ key, value })
+  Ok({ key, value, })
 }
 
 ///|

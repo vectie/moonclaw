@@ -666,7 +666,7 @@ async fn collect_auth_status(home : String) -> OnboardingAuthStatus {
     })
   }
 
-  { providers, issues, next_steps }
+  { providers, issues, next_steps, }
 }
 
 ///|

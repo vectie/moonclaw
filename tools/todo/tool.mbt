@@ -216,7 +216,7 @@ pub fn parse_todo_args(args : Json) -> TodoArgs raise TodoArgsError {
     { "notes": String(n), .. } => Some(n)
     _ => None
   }
-  { action, content, task_id, priority, status, notes }
+  { action, content, task_id, priority, status, notes, }
 }
 
 ///|
@@ -233,9 +233,9 @@ async fn Todo::execute_todo(
   }
   // Handle read action
   if todo_args.action is Read {
-    return @tool.ok(Read({ todos: self.todos() }))
+    return @tool.ok(Read({ todos: self.todos(), }))
   }
-  let { action, content, task_id, priority, status, notes } = todo_args
+  let { action, content, task_id, priority, status, notes, } = todo_args
   match action {
     Read => abort("unreachable") // Already handled above
     Create =>

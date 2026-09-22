@@ -14,7 +14,7 @@ pub fn OcrMarkdownOptions::new(
   timeout_ms? : Int? = Some(120_000),
   page_segmentation_mode? : Int? = None,
 ) -> OcrMarkdownOptions {
-  { language, dpi, timeout_ms, page_segmentation_mode }
+  { language, dpi, timeout_ms, page_segmentation_mode, }
 }
 
 ///|
@@ -120,7 +120,7 @@ fn collect_rasterized_pages(
     guard entry.kind is Regular else { continue }
     guard entry.name.has_suffix(".png") else { continue }
     guard parse_page_number(entry.name) is Some(page_number) else { continue }
-    pages.push({ page_number, path: entry.path })
+    pages.push({ page_number, path: entry.path, })
   }
   pages.sort_by(fn(left, right) { left.page_number - right.page_number })
   pages
@@ -339,7 +339,12 @@ fn ocr_command(
     arguments.push("--psm")
     arguments.push(psm.to_string())
   }
-  { command: "tesseract", arguments, cwd: None, timeout_ms: options.timeout_ms }
+  {
+    command: "tesseract",
+    arguments,
+    cwd: None,
+    timeout_ms: options.timeout_ms,
+  }
 }
 
 ///|

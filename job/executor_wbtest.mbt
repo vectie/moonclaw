@@ -19,7 +19,7 @@ async test "execute_run_lifecycle runs workflow and invokes hooks" {
       id: "workflow-1",
       kind: "generic.analysis",
       steps: [
-        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     })
@@ -137,7 +137,7 @@ async test "execution_notification_hooks sends start and finish notifications" {
       state.notification_runtime_state("run-1").last_sent_at.to_string(),
       content="100",
     )
-    let finished = JobRun::{ ..run, status: Succeeded, finished_at: Some(120) }
+    let finished = JobRun::{ ..run, status: Succeeded, finished_at: Some(120), }
     (hooks.on_finished)(definition, finished)
     inspect(sent.length().to_string(), content="2")
     inspect(sent[1].contains("Job completed: job-1"), content="true")
@@ -170,7 +170,7 @@ async test "execute_run_lifecycle does not send stale start notification when re
       id: "workflow-1",
       kind: "generic.analysis",
       steps: [
-        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     })
@@ -252,7 +252,7 @@ async test "execute_run_lifecycle cleans up auto-created worktrees on success" {
       id: "workflow-1",
       kind: "generic.analysis",
       steps: [
-        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     })

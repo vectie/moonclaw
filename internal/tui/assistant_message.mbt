@@ -6,7 +6,7 @@ pub(all) struct AssistantMessage {
 
 ///|
 pub fn AssistantMessage::new(text : String) -> AssistantMessage {
-  { text, is_streaming: false }
+  { text, is_streaming: false, }
 }
 
 ///|

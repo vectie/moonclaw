@@ -9,7 +9,7 @@ pub fn WorkflowExecutionControl::new(
   should_cancel? : () -> Bool = fn() { false },
   should_force_stop? : () -> Bool = fn() { false },
 ) -> WorkflowExecutionControl {
-  { should_cancel, should_force_stop }
+  { should_cancel, should_force_stop, }
 }
 
 ///|
@@ -29,7 +29,7 @@ pub fn WorkflowStepContext::new(
   outputs? : Map[String, Json] = {},
   control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
 ) -> WorkflowStepContext {
-  { run, step, initial_input, outputs, control }
+  { run, step, initial_input, outputs, control, }
 }
 
 ///|
@@ -55,7 +55,7 @@ pub fn WorkflowStepResult::new(
   metrics? : Json = {},
   logs? : Array[String] = [],
 ) -> WorkflowStepResult {
-  { output, summary, metrics, logs }
+  { output, summary, metrics, logs, }
 }
 
 ///|
@@ -69,7 +69,7 @@ pub fn WorkflowStepHandler::new(
   kind~ : String,
   run~ : async (WorkflowStepContext) -> Result[WorkflowStepResult, String],
 ) -> WorkflowStepHandler {
-  { kind, run }
+  { kind, run, }
 }
 
 ///|
@@ -88,7 +88,7 @@ pub struct WorkflowEngine {
 
 ///|
 pub fn WorkflowEngine::new(runtime~ : RuntimeManager) -> WorkflowEngine {
-  { runtime, handlers: {} }
+  { runtime, handlers: {}, }
 }
 
 ///|
@@ -136,7 +136,7 @@ fn WorkflowEngine::handler_for_step(
 fn WorkflowEngine::step_retry_policy(
   step : WorkflowStepDefinition,
 ) -> RetryPolicy {
-  step.retry_policy.unwrap_or({ max_attempts: 1, backoff_ms: None })
+  step.retry_policy.unwrap_or({ max_attempts: 1, backoff_ms: None, })
 }
 
 ///|
@@ -652,7 +652,7 @@ pub async fn WorkflowEngine::execute_run(
                 WaitingForInput,
                 now(),
               )
-              return Ok({ run: waiting_run, workflow, outputs, steps })
+              return Ok({ run: waiting_run, workflow, outputs, steps, })
             }
           }
           let failed_logs = [
@@ -750,5 +750,5 @@ pub async fn WorkflowEngine::execute_run(
     data={ "step_count": steps.length() },
   )
   complete_controller_run(store, completed_run, Succeeded, now())
-  Ok({ run: completed_run, workflow, outputs, steps })
+  Ok({ run: completed_run, workflow, outputs, steps, })
 }

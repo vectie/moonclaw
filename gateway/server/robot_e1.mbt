@@ -158,7 +158,7 @@ fn robot_target_config_from_json(
     _ => None
   }
   let env = json_string_map_field(value, "env", "env").unwrap_or({})
-  Ok({ command, args, cwd, env })
+  Ok({ command, args, cwd, env, })
 }
 
 ///|

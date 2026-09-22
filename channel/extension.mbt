@@ -19,7 +19,7 @@ pub fn LoggerFuncs::new(
   error~ : (String) -> Unit,
   debug~ : (String) -> Unit,
 ) -> LoggerFuncs {
-  { info, warn, error, debug }
+  { info, warn, error, debug, }
 }
 
 ///|
@@ -146,7 +146,7 @@ pub fn ExtensionRequest::new(
   body~ : Bytes,
   query_params? : Map[String, String] = {},
 ) -> ExtensionRequest {
-  { http_method, path, headers, body, query_params }
+  { http_method, path, headers, body, query_params, }
 }
 
 ///|
@@ -218,7 +218,7 @@ pub fn ExtensionResponse::new(
   headers? : Map[String, String] = {},
   body? : Bytes = b"",
 ) -> ExtensionResponse {
-  { status_code, headers, body }
+  { status_code, headers, body, }
 }
 
 ///|
@@ -318,7 +318,7 @@ pub fn WebSocketConnection::new(
   on_message? : (async (Bytes) -> Unit) -> Unit = fn(_) {  },
   on_close? : (() -> Unit) -> Unit = fn(_) {  },
 ) -> WebSocketConnection {
-  { id, send, close, on_message, on_close }
+  { id, send, close, on_message, on_close, }
 }
 
 ///|
@@ -368,7 +368,7 @@ pub fn WebSocketDialRequest::new(
   protocol~ : String,
   metadata? : Json = Json::object({}),
 ) -> WebSocketDialRequest {
-  { client_id, protocol, metadata }
+  { client_id, protocol, metadata, }
 }
 
 ///|
@@ -427,7 +427,7 @@ pub fn WebSocketManagedConnection::new(
     }
   },
 ) -> WebSocketManagedConnection {
-  { connection, wait_until_closed }
+  { connection, wait_until_closed, }
 }
 
 ///|
@@ -500,7 +500,7 @@ pub fn WebSocketClientRegistration::new(
   on_connect~ : (WebSocketConnection) -> Unit,
   logger? : LoggerFuncs? = None,
 ) -> WebSocketClientRegistration {
-  { spec, connect, on_connect, logger }
+  { spec, connect, on_connect, logger, }
 }
 
 ///|
@@ -523,7 +523,7 @@ pub(all) struct WebSocketClientRuntimeManager {
 
 ///|
 pub fn WebSocketClientRuntimeManager::new() -> WebSocketClientRuntimeManager {
-  { commands: Queue(kind=Unbounded) }
+  { commands: Queue(kind=Unbounded), }
 }
 
 ///|
@@ -535,7 +535,7 @@ pub(all) struct WebSocketClientRuntime {
 pub fn WebSocketClientRuntimeManager::controller(
   self : WebSocketClientRuntimeManager,
 ) -> WebSocketClientRuntime {
-  { commands: self.commands }
+  { commands: self.commands, }
 }
 
 ///|
@@ -688,7 +688,7 @@ pub fn ExtensionMeta::new(
   webhook_path~ : String,
   supported_events? : Array[String] = [],
 ) -> ExtensionMeta {
-  { name, version, description, author, webhook_path, supported_events }
+  { name, version, description, author, webhook_path, supported_events, }
 }
 
 ///|

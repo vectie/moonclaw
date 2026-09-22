@@ -22,7 +22,7 @@ fn goal_store_test_budget() -> @mooncode_core.GoalBudget {
 
 ///|
 fn goal_store_test_requirements() -> Array[@mooncode_core.GoalRequirement] {
-  [{ id: "r1", criterion: "done", state: Unproven, evidence_refs: [] }]
+  [{ id: "r1", criterion: "done", state: Unproven, evidence_refs: [], }]
 }
 
 ///|

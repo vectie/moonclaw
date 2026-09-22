@@ -157,7 +157,7 @@ fn event_identity(event : GoalEvent) -> (String, Int64) {
 fn accepted(goal : Goal, id : String, now : Int64) -> Goal {
   let seen = goal.seen_ids.copy()
   seen.push(id.trim().to_owned())
-  { ..goal, seen_ids: seen, revision: goal.revision + 1, updated_at: now }
+  { ..goal, seen_ids: seen, revision: goal.revision + 1, updated_at: now, }
 }
 
 ///|
@@ -207,7 +207,7 @@ fn canonical_blocker(identity : BlockerIdentity) -> BlockerIdentity? {
     required_change.is_empty() {
     None
   } else {
-    Some({ kind, authority, resource, required_change })
+    Some({ kind, authority, resource, required_change, })
   }
 }
 
@@ -331,7 +331,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
           expected_run_id == goal.run_id &&
           expected_ordinal == goal.continuation_count {
           let next = accepted(goal, id, now)
-          { ..next, continuation_count: goal.continuation_count + 1 }
+          { ..next, continuation_count: goal.continuation_count + 1, }
         } else {
           goal
         }
@@ -365,7 +365,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
                   Some(clean) => apply_blocker(advanced, clean, false)
                   None => goal
                 }
-              None => { ..advanced, blocker: None }
+              None => { ..advanced, blocker: None, }
             }
           }
         } else {
@@ -387,7 +387,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
               Some(clean) => {
                 let requirements = goal.requirements.map(fn(item) {
                   if item.id == clean_id {
-                    { ..item, state, evidence_refs: clean }
+                    { ..item, state, evidence_refs: clean, }
                   } else {
                     item
                   }
@@ -405,7 +405,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
           match canonical_refs(refs) {
             Some(clean) => {
               let next = accepted(goal, id, now)
-              { ..next, run_state: AwaitingApproval, approval_refs: clean }
+              { ..next, run_state: AwaitingApproval, approval_refs: clean, }
             }
             None => goal
           }
@@ -419,9 +419,10 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
               if same_refs(clean, goal.approval_refs) {
                 let next = accepted(goal, id, now)
                 match outcome {
-                  Approved => { ..next, run_state: Runnable, approval_refs: [] }
+                  Approved =>
+                    { ..next, run_state: Runnable, approval_refs: [], }
                   Rejected =>
-                    { ..next, run_state: AwaitingInput, approval_refs: [] }
+                    { ..next, run_state: AwaitingInput, approval_refs: [], }
                 }
               } else {
                 goal
@@ -459,7 +460,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
         if goal.run_state == AwaitingBudget &&
           goal_budget_exhausted(goal.budget) {
           let next = accepted(goal, id, now)
-          { ..next, run_state: AwaitingBudget }
+          { ..next, run_state: AwaitingBudget, }
         } else {
           goal
         }
@@ -481,7 +482,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
             goal
           } else {
             let next = accepted(goal, id, now)
-            { ..next, budget, run_state: Runnable }
+            { ..next, budget, run_state: Runnable, }
           }
         } else {
           goal
@@ -521,7 +522,10 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
                   run_state: Runnable,
                   active_evaluation: None,
                   evaluation_backoff: None,
-                  convergence: Some({ report, accepted_revision: next.revision }),
+                  convergence: Some({
+                    report,
+                    accepted_revision: next.revision,
+                  }),
                 }
               } else {
                 goal
@@ -592,7 +596,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
       CompleteRequested(_, _, proof) =>
         if runnable(goal) && projection_ready(goal, proof) {
           let next = accepted(goal, id, now)
-          { ..next, status: Complete }
+          { ..next, status: Complete, }
         } else {
           goal
         }
@@ -600,7 +604,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
       Resume(_, _) =>
         if goal.run_state == AwaitingInput {
           let next = accepted(goal, id, now)
-          { ..next, run_state: Runnable }
+          { ..next, run_state: Runnable, }
         } else {
           goal
         }

@@ -47,7 +47,7 @@ async fn Gateway::handle_agent(
           error: None,
         }
       } else {
-        { id: run_id, ok: false, payload: None, error: entry.error }
+        { id: run_id, ok: false, payload: None, error: entry.error, }
       }
       return self.send_response(w, response)
     }

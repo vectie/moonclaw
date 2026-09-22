@@ -6,7 +6,7 @@ fn carrier_test_genesis(
     "session-你好",
     "goal-1",
     "objective \"quoted\"\nline",
-    [{ id: "criterion-1", criterion: "done ✓" }],
+    [{ id: "criterion-1", criterion: "done ✓", }],
     recorded_at,
   )
 }
@@ -79,7 +79,7 @@ test "carrier event variants roundtrip exact canonical record" {
     operation_id: "op-1",
     kind: "shell",
     input: "你好 max_turns token_budget deadline",
-    policy: { max_output_bytes: 100, timeout_milliseconds: 200 },
+    policy: { max_output_bytes: 100, timeout_milliseconds: 200, },
   }
   let evidence : @mooncode_core.GoalCriterionEvidence = {
     criterion: "criterion-1",

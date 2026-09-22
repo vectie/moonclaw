@@ -62,7 +62,7 @@ pub fn Loader::new(
     Some(home) => home
     None => @os.home()
   }
-  { home, cwd, logger, skills: {} }
+  { home, cwd, logger, skills: {}, }
 }
 
 ///|

@@ -395,7 +395,7 @@ async test "operator configuration change invalidates a pending approval" (
         cwd=mock.cwd.path(),
       )
       ignore(security.approve_token(token, 11))
-      let changed_config = { ..config, workspace_id: "changed" }
+      let changed_config = { ..config, workspace_id: "changed", }
       let changed_tool = @execute_command.new(
         mock.cwd.path(),
         home=mock.cwd.path(),
@@ -442,7 +442,7 @@ async test "wall-clock kill maps to timeout with a durable receipt" (
 async test "strict callers reject a degraded local receipt" (t : @test.Test) {
   @mock.run(t, mock => {
     with_fake_moonfort("exited", async fn(config, _capture) {
-      let strict = { ..config, enforcement_requirement: RequireEnforced }
+      let strict = { ..config, enforcement_requirement: RequireEnforced, }
       let tool = @execute_command.new(
         mock.cwd.path(),
         home=mock.cwd.path(),

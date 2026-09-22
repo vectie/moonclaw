@@ -171,11 +171,11 @@ test "promotion rejects contradictory outcomes and unreviewed uncertainty" {
   let request = moondesk_test_promotion_request()
   let applied = moondesk_test_promotion_response(request)
   let invalid : Array[MoonFortPromotionResponse] = [
-    { ..applied, destination_outcome: "not-applied" },
+    { ..applied, destination_outcome: "not-applied", },
     {
       ..applied,
       completed: false,
-      error: Some({ code: "promotion-refused", message: "wrong code" }),
+      error: Some({ code: "promotion-refused", message: "wrong code", }),
     },
     {
       ..applied,
@@ -194,7 +194,10 @@ test "promotion rejects contradictory outcomes and unreviewed uncertainty" {
       destination_outcome: "recovery-required",
       uncertain_paths: ["other/result.txt"],
       completed: false,
-      error: Some({ code: "promotion-recovery-required", message: "wrong path" }),
+      error: Some({
+        code: "promotion-recovery-required",
+        message: "wrong path",
+      }),
     },
   ]
   for response in invalid {

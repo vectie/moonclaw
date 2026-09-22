@@ -123,5 +123,5 @@ pub fn authorize(
     }) {
     issues.push("evidence path is outside the declared outputs")
   }
-  { allowed: issues.is_empty(), issues }
+  { allowed: issues.is_empty(), issues, }
 }

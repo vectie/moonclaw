@@ -71,7 +71,7 @@ pub fn new(cwd : String) -> @tool.Tool[ExitWorktreeResult] {
         error => return @tool.error("Error removing worktree: \{error}")
       }
       let resolved_repo_root = effective_repo_root(cwd, repo_root)
-      @tool.ok({ path, repo_root: resolved_repo_root, removed: true })
+      @tool.ok({ path, repo_root: resolved_repo_root, removed: true, })
     },
   )
 }

@@ -457,7 +457,7 @@ pub async fn execute_launch_plan_with_fixture_sandbox(
     config.enforcement_requirement is AllowDegraded else {
     return Err("ACP fixture sandbox requires the explicit test deployment")
   }
-  let fixture_plan = { ..plan, env: ({} : Json) }
+  let fixture_plan = { ..plan, env: ({} : Json), }
   execute_launch_plan_with_approved_sandbox(
     config, approved_plan, fixture_plan, request,
   )

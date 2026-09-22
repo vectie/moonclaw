@@ -69,7 +69,7 @@ fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {
   guard !host.trim().is_empty() else {
     raise InvalidUrl(message="URL host must not be blank")
   }
-  { scheme, host, path }
+  { scheme, host, path, }
 }
 
 ///|

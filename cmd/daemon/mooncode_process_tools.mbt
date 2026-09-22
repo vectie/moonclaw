@@ -763,7 +763,7 @@ async fn mooncode_tool_moon_cmd(
   let fmt_scope_before = if command == "fmt" && explicit_paths.length() > 0 {
     mooncode_moon_fmt_snapshot(book_root)
   } else {
-    { error: "", states: {} }
+    { error: "", states: {}, }
   }
   if fmt_scope_before.error != "" {
     return mooncode_tool_error_result(

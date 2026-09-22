@@ -54,7 +54,7 @@ pub fn EventTarget::new(
     None => @uuid.generator(@rand.chacha8())
     Some(uuid) => uuid
   }
-  { uuid, clock, queue: Queue(kind=Unbounded), listeners: [] }
+  { uuid, clock, queue: Queue(kind=Unbounded), listeners: [], }
 }
 
 ///|
@@ -88,7 +88,7 @@ pub fn EventTarget::emit(
   desc : EventDesc,
   id? : @uuid.Uuid = self.uuid.v4(),
 ) -> Unit {
-  let success = self.queue.try_put({ id, created: self.clock.now(), desc }) catch {
+  let success = self.queue.try_put({ id, created: self.clock.now(), desc, }) catch {
     _ => abort("Event queue is closed, cannot emit event")
   }
   guard success else { abort("Event queue is full, cannot emit event") }

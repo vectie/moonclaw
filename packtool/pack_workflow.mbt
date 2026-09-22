@@ -272,7 +272,7 @@ pub fn compile_workflow_job(
       "workflow:\{declaration.id}",
     ],
   }
-  { definition, workflow }
+  { definition, workflow, }
 }
 
 ///|
@@ -322,7 +322,7 @@ pub async fn intake_workflow_run(
   runtime.register_workflow(compilation.workflow)
   runtime.register_definition(definition)
   match runtime.create_run(run_id, definition.id, trigger, now_ms) {
-    Ok(run) => Ok({ definition, workflow: compilation.workflow, run })
+    Ok(run) => Ok({ definition, workflow: compilation.workflow, run, })
     Err(error) => Err(error)
   }
 }

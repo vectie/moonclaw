@@ -303,7 +303,7 @@ pub fn decide_active_job_notifications(
   now_ms : Int,
 ) -> JobNotificationDecision {
   if target.verbosity is Off {
-    return { messages: [], next_state: state }
+    return { messages: [], next_state: state, }
   }
   let messages : Array[String] = []
   let mut next_state = state
@@ -328,7 +328,7 @@ pub fn decide_active_job_notifications(
       }
     }
   }
-  next_state = { ..next_state, last_notified_event_count: events.length() }
+  next_state = { ..next_state, last_notified_event_count: events.length(), }
   let elapsed_ms = match run.started_at {
     Some(started_at) => now_ms - started_at
     None => 0
@@ -339,13 +339,13 @@ pub fn decide_active_job_notifications(
       long_running_warned: true,
       last_sent_at: now_ms,
     }
-    return { messages: [..messages, "Job is still running"], next_state }
+    return { messages: [..messages, "Job is still running"], next_state, }
   }
   if now_ms - next_state.last_sent_at >= target.heartbeat_interval_ms {
-    next_state = { ..next_state, last_sent_at: now_ms }
-    return { messages: [..messages, "Job heartbeat"], next_state }
+    next_state = { ..next_state, last_sent_at: now_ms, }
+    return { messages: [..messages, "Job heartbeat"], next_state, }
   }
-  { messages, next_state }
+  { messages, next_state, }
 }
 
 ///|

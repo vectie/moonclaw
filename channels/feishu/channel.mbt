@@ -427,7 +427,7 @@ async fn FeishuChannel::send_stream_progress(
     Some(message_id) => message_id
     None => message.id
   }
-  Ok({ channel: "feishu", message_id, timestamp: 0, status: "updated" })
+  Ok({ channel: "feishu", message_id, timestamp: 0, status: "updated", })
 }
 
 ///|
@@ -680,7 +680,7 @@ async fn FeishuChannel::handle_feishu_message(
         @channel.ExtensionResponse::ok()
       } else {
         let queue_key = feishu_queue_key(account_id, chat_id, thread_id)
-        self.enqueue_message(queue_key, { account_id, message })
+        self.enqueue_message(queue_key, { account_id, message, })
         if self.is_processing_queue(queue_key) {
           @channel.ExtensionResponse::ok()
         } else {
@@ -946,15 +946,10 @@ impl @channel.ChannelExtension for FeishuChannel with fn handle_websocket(
 }
 
 ///|
-extend FeishuChannel with @channel.Channel::{
-  is_running,
-  send,
-}
+extend FeishuChannel with @channel.Channel::{is_running, send}
 
 ///|
-extend FeishuChannel with @channel.ChannelExtension::{
-  supports_websocket,
-}
+extend FeishuChannel with @channel.ChannelExtension::{supports_websocket}
 
 ///|
 impl @channel.ChannelExtension for FeishuChannel with fn allowed_methods(
@@ -1078,7 +1073,7 @@ async fn FeishuChannel::resolve_websocket_endpoint(
     Some(urls) if !urls.is_empty() => {
       let url = urls[0]
       ignore(urls.remove(0))
-      Ok({ url, client_config: None })
+      Ok({ url, client_config: None, })
     }
     _ =>
       resolve_websocket_endpoint(
@@ -1112,7 +1107,10 @@ fn FeishuChannel::ensure_websocket_runtime_client(
                 )
                 let endpoint = match config.websocket_url {
                   Some(url) if !url.is_blank() =>
-                    Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
+                    Ok(FeishuWebSocketEndpointData::{
+                      url,
+                      client_config: None,
+                    })
                   _ => self.resolve_websocket_endpoint(config)
                 }
                 let endpoint = match endpoint {
@@ -1637,9 +1635,9 @@ fn resolve_merge_forward_sender_name(
   sender_names : Map[String, String],
 ) -> String {
   match item.sender {
-    Some({ id: Some(sender_id), sender_type: Some("user") }) =>
+    Some({ id: Some(sender_id), sender_type: Some("user"), }) =>
       sender_names.get(sender_id).unwrap_or(sender_id)
-    Some({ id: Some(sender_id), sender_type: _ }) => sender_id
+    Some({ id: Some(sender_id), sender_type: _, }) => sender_id
     _ => "unknown"
   }
 }
@@ -1652,7 +1650,7 @@ fn collect_forward_sender_ids(
   let seen : Map[String, Bool] = Map([])
   for item in items {
     match item.sender {
-      Some({ id: Some(sender_id), sender_type: Some("user") }) =>
+      Some({ id: Some(sender_id), sender_type: Some("user"), }) =>
         if !sender_id.is_blank() {
           match seen.get(sender_id) {
             Some(true) => ()
@@ -1922,7 +1920,7 @@ fn FeishuChannel::merge_platform_event_chunks(
   let key = platform_chunk_key(account_id, message_id)
   let chunk_state = match self.state.websocket_chunks.get(key) {
     Some(existing) => existing
-    None => { chunks: {} }
+    None => { chunks: {}, }
   }
   chunk_state.chunks[seq] = payload
   self.state.websocket_chunks[key] = chunk_state
@@ -1961,7 +1959,7 @@ fn ack_event_frame(
   response : @channel.ExtensionResponse,
 ) -> FeishuWebSocketFrame {
   let headers = frame.headers.map(fn(header) { header })
-  headers.push({ key: feishu_ws_header_biz_rt, value: "0" })
+  headers.push({ key: feishu_ws_header_biz_rt, value: "0", })
   {
     seq_id: frame.seq_id,
     log_id: frame.log_id,
@@ -2013,7 +2011,7 @@ async fn FeishuChannel::handle_platform_websocket_frame(
         log_id: frame.log_id,
         service: frame.service,
         method_id: feishu_ws_control_frame,
-        headers: [{ key: feishu_ws_header_type, value: feishu_ws_type_pong }],
+        headers: [{ key: feishu_ws_header_type, value: feishu_ws_type_pong, }],
         payload_encoding: frame.payload_encoding,
         payload_type: frame.payload_type,
         payload: frame.payload,

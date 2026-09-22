@@ -5,7 +5,7 @@ pub(all) struct RenderOutput {
 
 ///|
 pub fn RenderOutput::new() -> RenderOutput {
-  { buffer: Buffer() }
+  { buffer: Buffer(), }
 }
 
 ///|

@@ -38,7 +38,7 @@ pub struct ApplyResult {
 
 ///|
 pub fn ApplyResult::new() -> ApplyResult {
-  { added: [], modified: [], deleted: [] }
+  { added: [], modified: [], deleted: [], }
 }
 
 ///|

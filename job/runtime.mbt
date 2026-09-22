@@ -19,7 +19,7 @@ pub struct CheckpointStore {
 
 ///|
 pub fn CheckpointStore::new(root~ : String) -> CheckpointStore {
-  { root, checkpoints: {} }
+  { root, checkpoints: {}, }
 }
 
 ///|
@@ -234,7 +234,7 @@ pub async fn RuntimeManager::mark_run_started(
     Some(run) => run
     None => return None
   }
-  let updated = JobRun::{ ..run, status: Running, started_at: Some(now_ms) }
+  let updated = JobRun::{ ..run, status: Running, started_at: Some(now_ms), }
   self.store.save_run(updated)
   self.active_runs.set(updated.job_id, updated.id)
   let checkpoint = match self.checkpoints.get(updated.job_id) {

@@ -307,7 +307,7 @@ impl @json.FromJson for ProposalPlanPayload with fn from_json(
           }
       }
   }
-  { title, summary, tags, steps }
+  { title, summary, tags, steps, }
 }
 
 ///|
@@ -495,7 +495,7 @@ fn proposal_with_planner_diagnostic(
       "Planner fallback used: \{reason}. Planner output preview: \{compact_preview(preview, 240)}"
     _ => "Planner fallback used: \{reason}."
   }
-  { ..proposal, summary: diagnostic }
+  { ..proposal, summary: diagnostic, }
 }
 
 ///|
@@ -954,7 +954,7 @@ fn proposal_to_plan_preview(
     title: proposal.title,
     request_text: proposal.request_text,
     summary: proposal.summary,
-    steps: proposal.steps.map(fn(step) { { id: step.id, title: step.title } }),
+    steps: proposal.steps.map(fn(step) { { id: step.id, title: step.title, } }),
     requested_output_format: proposal_requested_output_format(proposal),
     starter_files: proposal_starter_file_labels(proposal),
     source,
@@ -1244,7 +1244,7 @@ pub async fn save_rejected_job_proposal(
   proposal : JobProposal,
   now_ms : Int,
 ) -> Unit {
-  store.save_job_proposal({ ..proposal, status: Rejected, updated_at: now_ms })
+  store.save_job_proposal({ ..proposal, status: Rejected, updated_at: now_ms, })
 }
 
 ///|

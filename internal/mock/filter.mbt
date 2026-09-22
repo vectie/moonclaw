@@ -12,7 +12,7 @@ struct Filter {
 ///|
 /// Creates an empty filter with no registered keywords.
 fn Filter::new() -> Filter {
-  { keywords: [] }
+  { keywords: [], }
 }
 
 ///|

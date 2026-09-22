@@ -431,7 +431,7 @@ pub async fn run(
           }
           let logged = log_dir |> @pathx.join("\{mangled}.jsonl")
           let logger = @pino.logger(mangled, @pino.Transport::file(logged))
-          let clock = Clock::{ timestamp: 0 }
+          let clock = Clock::{ timestamp: 0, }
           let rand = @random.Rand::chacha8(seed=Bytes::make(32, 0))
           let uuid = @uuid.generator(rand)
           // setup filter

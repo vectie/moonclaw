@@ -156,7 +156,7 @@ async fn Gateway::handle_connect_method(
       methods: supported_rpc_methods(),
       events: ["tick", "session_changed", "agent_started", "agent_completed"],
     },
-    snapshot: { presence: None, health: None, state_version: None },
+    snapshot: { presence: None, health: None, state_version: None, },
     policy: {
       max_payload: @protocol.MAX_PAYLOAD_BYTES,
       max_buffered_bytes: @protocol.MAX_BUFFERED_BYTES,
@@ -681,7 +681,7 @@ async fn Gateway::handle_agent_method(
           error: None,
         }
       } else {
-        { id: request.id, ok: false, payload: None, error: entry.error }
+        { id: request.id, ok: false, payload: None, error: entry.error, }
       }
       return self.send_response(w, response)
     }

@@ -18,8 +18,8 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None },
-        { id: "step-b", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None, },
+        { id: "step-b", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     }
@@ -277,7 +277,12 @@ async test "proposal step report artifacts attach under the matching step" {
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        { id: "estimate", kind: "job.analysis", config: {}, retry_policy: None },
+        {
+          id: "estimate",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
       ],
       output_bindings: [],
     })
@@ -345,7 +350,7 @@ async test "job report memories attach under the matching step via source artifa
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        { id: "step_1", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step_1", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     })
@@ -503,7 +508,7 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
       id: "wf-1",
       kind: "analysis",
       steps: [
-        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     }
@@ -947,7 +952,7 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
     id: "workflow-parent",
     kind: "job.proposal",
     steps: [
-      { id: "analyze", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "analyze", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: ["analyze"],
   }
@@ -1023,7 +1028,12 @@ async test "build_job_ui_snapshot uses the proposal and workflow for the selecte
       id: "wf-old",
       kind: "job.proposal",
       steps: [
-        { id: "old-step", kind: "job.analysis", config: {}, retry_policy: None },
+        {
+          id: "old-step",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
       ],
       output_bindings: [],
     }

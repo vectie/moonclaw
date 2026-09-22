@@ -74,7 +74,7 @@ pub impl @json.FromJson for Id with fn from_json(
 ///|
 pub fn Manager::new(cwd~ : String, home? : String) -> Manager {
   ignore(home)
-  { cwd, jobs: {} }
+  { cwd, jobs: {}, }
 }
 
 ///|

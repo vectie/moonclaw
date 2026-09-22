@@ -48,7 +48,7 @@ fn parse_version_build(build_text : String) -> Build raise {
   guard !commit.is_blank() else {
     fail("Invalid version build commit: " + build_text)
   }
-  { number: @string.parse_int(parts[0].to_owned()), commit }
+  { number: @string.parse_int(parts[0].to_owned()), commit, }
 }
 
 ///|
@@ -63,7 +63,7 @@ pub fn Version::parse(string : String) -> Version raise {
   } else {
     None
   }
-  { major, minor, patch, build }
+  { major, minor, patch, build, }
 }
 
 ///|

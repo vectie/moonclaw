@@ -42,7 +42,7 @@ priv struct AcpProcessOutcome {
 
 ///|
 fn acp_run_error_shape(code : String, message : String) -> @protocol.ErrorShape {
-  { code, message, details: None, retryable: None, retry_after_ms: None }
+  { code, message, details: None, retryable: None, retry_after_ms: None, }
 }
 
 ///|
@@ -933,7 +933,7 @@ async fn Gateway::handle_acp_sessions_run_method(
           error: None,
         }
       } else {
-        { id: request.id, ok: false, payload: None, error: entry.error }
+        { id: request.id, ok: false, payload: None, error: entry.error, }
       }
       return self.send_response(w, response)
     }

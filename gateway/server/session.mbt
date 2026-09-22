@@ -36,7 +36,7 @@ pub async fn SessionManager::save(self : SessionManager) -> Unit {
   }
   let sessions : Array[PersistedSession] = []
   for session_key, entry in self.sessions {
-    sessions.push({ session_key, entry })
+    sessions.push({ session_key, entry, })
   }
   let content = sessions.to_json().stringify()
   @fsx.write_to_file(self.store_file(), content)

@@ -47,7 +47,7 @@ pub fn new(manager : @job.Manager) -> @tool.Tool[String] {
       let params : Params = @json.from_json(args) catch {
         error => return @tool.error("Invalid parameters: \{error}")
       }
-      let { job_id, timeout, max_output_lines } = params
+      let { job_id, timeout, max_output_lines, } = params
       guard manager.get(Id(job_id)) is Some(job) else {
         return @tool.error("Job with ID \{job_id} does not exist")
       }

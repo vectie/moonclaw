@@ -3,7 +3,7 @@ struct Epoch {}
 
 ///|
 #warnings("-unnecessary_annotation")
-pub let epoch : Epoch = Epoch::{  }
+pub let epoch : Epoch = Epoch::{ }
 
 ///|
 pub impl Clock for Epoch with fn now(_ : Epoch) -> Timestamp {

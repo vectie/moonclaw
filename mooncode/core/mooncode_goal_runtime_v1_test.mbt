@@ -41,7 +41,7 @@ test "public goal runtime v1 API is constructible" {
     CheckpointAccepted("event-cp", "checkpoint-1"),
   )
   let evidence : Array[@core.GoalCriterionEvidence] = [
-    { criterion: "criterion", evidence_refs: ["proof"] },
+    { criterion: "criterion", evidence_refs: ["proof"], },
   ]
   ignore(
     @core.reduce_goal_runtime(
@@ -55,7 +55,7 @@ test "public goal runtime v1 API is constructible" {
       PlannerDecision(
         "event-blocked",
         Blocked(
-          { code: "external", detail: "waiting" },
+          { code: "external", detail: "waiting", },
           ["attempt"],
           Some("approval"),
         ),

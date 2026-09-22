@@ -123,7 +123,7 @@ async fn Gateway::handle_update_job(
         },
       })
   }
-  let updated = @job.JobDefinition::{ ..definition, id: job_id }
+  let updated = @job.JobDefinition::{ ..definition, id: job_id, }
   self.job_runtime().register_definition(updated)
   let result : Json = {
     "status": "updated".to_json(),

@@ -226,7 +226,7 @@ test "MoonBook outcome validation rejects incompatible evidence and gaps" {
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      information_gap: { ..candidate.information_gap, severity: 1 },
+      information_gap: { ..candidate.information_gap, severity: 1, },
     })
     is Err(_),
   )
@@ -254,7 +254,7 @@ test "MoonBook outcome validation rejects incompatible evidence and gaps" {
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      information_gap: { ..candidate.information_gap, summary: "" },
+      information_gap: { ..candidate.information_gap, summary: "", },
     })
     is Err(_),
   )
@@ -278,35 +278,35 @@ test "MoonBook outcome validation rejects incompatible evidence and gaps" {
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      evidence_refs: [{ ..evidence, reference_version: "" }],
+      evidence_refs: [{ ..evidence, reference_version: "", }],
     })
     is Err(_),
   )
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      evidence_refs: [{ ..evidence, provenance_ref: "" }],
+      evidence_refs: [{ ..evidence, provenance_ref: "", }],
     })
     is Err(_),
   )
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      evidence_refs: [{ ..evidence, digest: "sha256:not-canonical" }],
+      evidence_refs: [{ ..evidence, digest: "sha256:not-canonical", }],
     })
     is Err(_),
   )
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      submission: { ..candidate.submission, record_id: "" },
+      submission: { ..candidate.submission, record_id: "", },
     })
     is Err(_),
   )
   assert_true(
     validate_outcome_evidence({
       ..candidate,
-      submission: { ..candidate.submission, record_version: "" },
+      submission: { ..candidate.submission, record_version: "", },
     })
     is Err(_),
   )
@@ -321,13 +321,15 @@ test "MoonBook outcome validation rejects incompatible evidence and gaps" {
     is Err(_),
   )
   assert_true(
-    validate_outcome_evidence({ ..candidate, capability_id: "" }) is Err(_),
+    validate_outcome_evidence({ ..candidate, capability_id: "", }) is Err(_),
   )
   assert_true(
-    validate_outcome_evidence({ ..candidate, capability_version: "" }) is Err(_),
+    validate_outcome_evidence({ ..candidate, capability_version: "", })
+    is Err(_),
   )
   assert_true(
-    validate_outcome_evidence({ ..candidate, capability_summary: "" }) is Err(_),
+    validate_outcome_evidence({ ..candidate, capability_summary: "", })
+    is Err(_),
   )
   assert_true(
     validate_outcome_evidence({
@@ -347,7 +349,7 @@ test "invalid MoonBook candidate stays omitted and evidence-required" {
   }
   let invalid = {
     ..candidate,
-    information_gap: { ..candidate.information_gap, severity: 1 },
+    information_gap: { ..candidate.information_gap, severity: 1, },
   }
   let result : Json = {
     "summary": "done",

@@ -250,8 +250,8 @@ async test "handcrafted dual authority fails closed on both reads" {
       "goal-runtime",
       "Continue until the criteria are proven",
       [
-        { id: "criterion-1", criterion: "native proof exists" },
-        { id: "criterion-2", criterion: "tests pass" },
+        { id: "criterion-1", criterion: "native proof exists", },
+        { id: "criterion-2", criterion: "tests pass", },
       ],
       2L,
     )
@@ -306,8 +306,8 @@ test "runtime status rejects achieved evidence missing a genesis criterion" {
     "goal-1",
     "objective",
     [
-      { id: "criterion-1", criterion: "first" },
-      { id: "criterion-2", criterion: "second" },
+      { id: "criterion-1", criterion: "first", },
+      { id: "criterion-2", criterion: "second", },
     ],
     1L,
   )
@@ -317,7 +317,7 @@ test "runtime status rejects achieved evidence missing a genesis criterion" {
     PlannerDecision(
       "event-achieved",
       Achieved("done", [
-        { criterion: "criterion-1", evidence_refs: ["proof-1"] },
+        { criterion: "criterion-1", evidence_refs: ["proof-1"], },
       ]),
     ),
     2L,

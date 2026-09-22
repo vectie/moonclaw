@@ -111,7 +111,7 @@ struct EventStreamReader {
 ///
 /// * `r` : The underlying reader to parse SSE events from.
 pub fn EventStreamReader::new(r : &@io.Reader) -> EventStreamReader {
-  { last_event: None, r }
+  { last_event: None, r, }
 }
 
 ///|
@@ -136,7 +136,7 @@ pub struct Event {
 ///
 /// Returns a new `Event` instance with the provided event type and data.
 pub fn Event::new(event? : String, data~ : String) -> Event {
-  { event, data }
+  { event, data, }
 }
 
 ///|
@@ -190,7 +190,7 @@ pub async fn EventStreamReader::read_event(self : EventStreamReader) -> Event? {
       [.. "data: ", .. data] => {
         let event = self.last_event
         self.last_event = None
-        return Some({ event, data: data.to_owned() })
+        return Some({ event, data: data.to_owned(), })
       }
       _ => continue
     }

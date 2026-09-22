@@ -100,7 +100,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
         Some(_) =>
           raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
       }
-      User({ content, name })
+      User({ content, name, })
     }
     "assistant" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -125,7 +125,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
         tool_calls,
         path=json_path.add_key("tool_calls"),
       )
-      Assistant({ content, name, tool_calls })
+      Assistant({ content, name, tool_calls, })
     }
     "system" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -143,7 +143,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
         Some(_) =>
           raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
       }
-      System({ content, name })
+      System({ content, name, })
     }
     "tool" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -158,7 +158,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
       guard tool_call_id is Some(String(tool_call_id)) else {
         raise JsonDecodeError((json_path, "Missing 'tool_call_id' field"))
       }
-      Tool({ content, tool_call_id })
+      Tool({ content, tool_call_id, })
     }
     _ => abort("unreachable")
   }

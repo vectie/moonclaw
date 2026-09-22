@@ -25,7 +25,7 @@ async fn Daemon::start_codex_auth(
   group.spawn_bg(() => self.spawn_codex_callback_server(), no_wait=true)
 
   // Return auth URL to client
-  let response : StartCodexAuthResponse = { auth_url, state }
+  let response : StartCodexAuthResponse = { auth_url, state, }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(@json.to_json(response).stringify())

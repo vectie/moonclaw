@@ -25,7 +25,7 @@ pub fn logger(
   level? : Level = Info,
   transport : Transport,
 ) -> Logger {
-  { properties: { "tag": tag }, level, transport }
+  { properties: { "tag": tag }, level, transport, }
 }
 
 ///|
@@ -164,5 +164,5 @@ pub fn Logger::child(self : Logger, properties : Map[String, Json]) -> Logger {
   for k, v in properties {
     child_properties[k] = v
   }
-  { ..self, properties: child_properties }
+  { ..self, properties: child_properties, }
 }

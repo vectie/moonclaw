@@ -63,7 +63,7 @@ fn parse_adaptive_substep(value : Json) -> AdaptiveSubstepPayload? {
     None => title
   }
   let kind = adaptive_json_string_field(object, "kind")
-  Some({ title, prompt, kind })
+  Some({ title, prompt, kind, })
 }
 
 ///|

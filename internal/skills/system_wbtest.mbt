@@ -15,7 +15,7 @@ async test "system/install-writes-assets" (t : @test.Test) {
           #|Hello.
         ),
       },
-      { path: "demo/scripts/helper.py", content: "print('ok')\n" },
+      { path: "demo/scripts/helper.py", content: "print('ok')\n", },
     ]
     let fingerprint = "test-fingerprint"
     let root = system_skills_root(home)
@@ -60,7 +60,7 @@ async test "system/install-marker-skips" (t : @test.Test) {
     let home = mock.cwd.path()
     let logger = @pino.logger("skills-system", @pino.Transport::console())
     let assets = [
-      @assets.Asset::{ path: "demo/SKILL.md", content: "original\n" },
+      @assets.Asset::{ path: "demo/SKILL.md", content: "original\n", },
     ]
     let fingerprint = "skip-fingerprint"
     let root = system_skills_root(home)

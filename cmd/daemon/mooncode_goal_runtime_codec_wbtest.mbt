@@ -49,7 +49,7 @@ fn codec_test_operation() -> @mooncode_core.GoalRuntimeOperation {
     operation_id: "op-1",
     kind: "shell",
     input: "{}",
-    policy: { max_output_bytes: 1024, timeout_milliseconds: 1000 },
+    policy: { max_output_bytes: 1024, timeout_milliseconds: 1000, },
   }
 }
 
@@ -67,7 +67,7 @@ test "event decoder roundtrips every canonical v1 variant" {
     operation_id: "操作-\"\\",
     kind: "shell-世界",
     input: "输入 \"quoted\" \\ path",
-    policy: { max_output_bytes: 2147483647, timeout_milliseconds: 2147483647 },
+    policy: { max_output_bytes: 2147483647, timeout_milliseconds: 2147483647, },
   }
   let evidence : @mooncode_core.GoalCriterionEvidence = {
     criterion: "标准-\"\\",
@@ -129,7 +129,7 @@ test "event decoder requires exact canonical encoder bytes" {
     operation_id: "op-1",
     kind: "shell",
     input: "path / value",
-    policy: { max_output_bytes: 1, timeout_milliseconds: 1 },
+    policy: { max_output_bytes: 1, timeout_milliseconds: 1, },
   }
   let event = @mooncode_core.PlannerDecision(
     "event-canonical",
@@ -199,7 +199,7 @@ test "event decoder rejects schema constants digest and aggregate-bound injectio
     operation_id: "op-1",
     kind: "shell",
     input: "opaque max_turns token_budget",
-    policy: { max_output_bytes: 1, timeout_milliseconds: 1 },
+    policy: { max_output_bytes: 1, timeout_milliseconds: 1, },
   }
   let continue_encoded = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
@@ -330,7 +330,7 @@ test "construct and encode genesis" {
     "session-1",
     "goal-1",
     "ship codec",
-    [{ id: "criterion-1", criterion: "tests pass" }],
+    [{ id: "criterion-1", criterion: "tests pass", }],
     10L,
   )
   let encoded = encode_mooncode_goal_runtime_genesis(genesis)
@@ -365,9 +365,9 @@ test "encode all phases" {
 test "encode all decisions" {
   let decisions : Array[@mooncode_core.GoalPlannerDecision] = [
     Continue([codec_test_operation()], "progress", "reason"),
-    Achieved("done", [{ criterion: "criterion-1", evidence_refs: ["proof-1"] }]),
+    Achieved("done", [{ criterion: "criterion-1", evidence_refs: ["proof-1"], }]),
     Blocked(
-      { code: "external", detail: "waiting" },
+      { code: "external", detail: "waiting", },
       ["alternative"],
       Some("approval"),
     ),
@@ -421,7 +421,7 @@ test "logical payload contains no aggregate completion names" {
       PlannerDecision(
         "event-1",
         Achieved("done", [
-          { criterion: "criterion-1", evidence_refs: ["proof"] },
+          { criterion: "criterion-1", evidence_refs: ["proof"], },
         ]),
       ),
       1L,
@@ -439,7 +439,7 @@ test "invalid genesis constructors reject padded duplicate and blank identity" {
       " padded ",
       "goal",
       "objective",
-      [{ id: "c", criterion: "ok" }],
+      [{ id: "c", criterion: "ok", }],
       1L,
     )
   catch {
@@ -452,7 +452,7 @@ test "invalid genesis constructors reject padded duplicate and blank identity" {
       "",
       "goal",
       "objective",
-      [{ id: "c", criterion: "ok" }],
+      [{ id: "c", criterion: "ok", }],
       1L,
     )
   catch {
@@ -465,7 +465,7 @@ test "invalid genesis constructors reject padded duplicate and blank identity" {
       "session",
       "goal",
       "objective",
-      [{ id: "c", criterion: "one" }, { id: "c", criterion: "two" }],
+      [{ id: "c", criterion: "one", }, { id: "c", criterion: "two", }],
       1L,
     )
   catch {
@@ -478,7 +478,7 @@ test "invalid genesis constructors reject padded duplicate and blank identity" {
       "session",
       "goal",
       "objective",
-      [{ id: "c1", criterion: "same" }, { id: "c2", criterion: "same" }],
+      [{ id: "c1", criterion: "same", }, { id: "c2", criterion: "same", }],
       1L,
     )
   catch {
@@ -533,7 +533,7 @@ test "session and goal identity may match" {
     "same",
     "same",
     "objective",
-    [{ id: "c", criterion: "done" }],
+    [{ id: "c", criterion: "done", }],
     1L,
   )
   assert_eq(genesis.session_id, genesis.goal_id)
@@ -566,13 +566,13 @@ test "event detail identifiers and cancel reason reject blanks and padding" {
 
 ///|
 test "constructor copies mutable semantic inputs" {
-  let criteria = [{ id: "c", criterion: "before" }]
+  let criteria = [{ id: "c", criterion: "before", }]
   let genesis = new_mooncode_goal_runtime_genesis(
     "s", "g", "objective", criteria, 1L,
   )
   let genesis_encoding = encode_mooncode_goal_runtime_genesis(genesis)
   let genesis_digest = genesis.semantic_digest
-  criteria[0] = { id: "changed", criterion: "after" }
+  criteria[0] = { id: "changed", criterion: "after", }
   assert_eq(encode_mooncode_goal_runtime_genesis(genesis), genesis_encoding)
   assert_eq(genesis.semantic_digest, genesis_digest)
 
@@ -583,7 +583,7 @@ test "constructor copies mutable semantic inputs" {
   )
   let continued_encoding = encode_mooncode_goal_runtime_stored_event(continued)
   let continued_digest = continued.semantic_digest
-  operations[0] = { ..codec_test_operation(), operation_id: "changed" }
+  operations[0] = { ..codec_test_operation(), operation_id: "changed", }
   assert_eq(
     encode_mooncode_goal_runtime_stored_event(continued),
     continued_encoding,
@@ -594,7 +594,7 @@ test "constructor copies mutable semantic inputs" {
   let achieved = codec_test_event(
     PlannerDecision(
       "achieved",
-      Achieved("done", [{ criterion: "c", evidence_refs }]),
+      Achieved("done", [{ criterion: "c", evidence_refs, }]),
     ),
     1L,
   )
@@ -611,7 +611,7 @@ test "constructor copies mutable semantic inputs" {
   let blocked = codec_test_event(
     PlannerDecision(
       "blocked",
-      Blocked({ code: "external", detail: "waiting" }, alternatives, None),
+      Blocked({ code: "external", detail: "waiting", }, alternatives, None),
     ),
     1L,
   )
@@ -642,7 +642,7 @@ test "negative genesis and event recorded_at raise" {
         "session-1",
         "goal-1",
         "ship codec",
-        [{ id: "criterion-1", criterion: "tests pass" }],
+        [{ id: "criterion-1", criterion: "tests pass", }],
         -1L,
       ),
     )
@@ -689,7 +689,7 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
     "session-1",
     "goal-1",
     "objective",
-    [{ id: "criterion-1", criterion: "done" }],
+    [{ id: "criterion-1", criterion: "done", }],
     1L,
   )
   assert_eq(
@@ -697,8 +697,8 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
     genesis_envelope_json(genesis),
   )
   let bad_geneses = [
-    { ..genesis, id: "wrong" },
-    { ..genesis, semantic_digest: "short" },
+    { ..genesis, id: "wrong", },
+    { ..genesis, semantic_digest: "short", },
     {
       ..genesis,
       semantic_digest: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -726,8 +726,8 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
     encode_mooncode_goal_runtime_stored_event(event),
     event_envelope_json(event),
   )
-  codec_assert_event_encode_rejects({ ..event, id: "other" })
-  codec_assert_event_encode_rejects({ ..event, semantic_digest: "short" })
+  codec_assert_event_encode_rejects({ ..event, id: "other", })
+  codec_assert_event_encode_rejects({ ..event, semantic_digest: "short", })
   codec_assert_event_encode_rejects({
     ..event,
     semantic_digest: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -746,7 +746,7 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
     1L,
   )
   let unchanged = encode_mooncode_goal_runtime_stored_event(nested)
-  operations[0] = { ..codec_test_operation(), operation_id: "mutated" }
+  operations[0] = { ..codec_test_operation(), operation_id: "mutated", }
   assert_eq(encode_mooncode_goal_runtime_stored_event(nested), unchanged)
   match nested.event {
     PlannerDecision(_, Continue(stored_operations, _, _)) => {
@@ -778,7 +778,7 @@ fn codec_genesis_fixture() -> String raise {
       "session-1",
       "goal-1",
       "Unicode 雪, quote \" slash / backslash \\",
-      [{ id: "criterion-1", criterion: "accept café / \"quoted\" \\ path" }],
+      [{ id: "criterion-1", criterion: "accept café / \"quoted\" \\ path", }],
       4294967296L,
     ),
   )
@@ -863,7 +863,7 @@ test "genesis decoder requires exact canonical encoder bytes" {
     "session-1",
     "goal-1",
     "ship / codec",
-    [{ id: "criterion-1", criterion: "tests pass" }],
+    [{ id: "criterion-1", criterion: "tests pass", }],
     1L,
   )
   let encoded = encode_mooncode_goal_runtime_genesis(genesis)
@@ -920,7 +920,7 @@ test "genesis decoder accepts encoder-produced Int64 max recorded_at" {
     "session-1",
     "goal-1",
     "ship codec",
-    [{ id: "criterion-1", criterion: "tests pass" }],
+    [{ id: "criterion-1", criterion: "tests pass", }],
     9223372036854775807L,
   )
   let encoded = encode_mooncode_goal_runtime_genesis(genesis)

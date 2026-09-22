@@ -230,7 +230,7 @@ pub async fn SupervisorRuntime::load(self : SupervisorRuntime) -> Unit {
 fn duplicate_receipt(
   receipt : SupervisorCommandReceiptV1,
 ) -> SupervisorCommandReceiptV1 {
-  { ..receipt, duplicate: true }
+  { ..receipt, duplicate: true, }
 }
 
 ///|
@@ -408,7 +408,7 @@ pub async fn SupervisorRuntime::activate_profile(
           id: "delegate",
           kind: "job.delegate",
           config: { "supervisor_id": profile.supervisor_id },
-          retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000) }),
+          retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000), }),
         },
       ],
       output_bindings: ["mailbox"],
@@ -422,7 +422,7 @@ pub async fn SupervisorRuntime::activate_profile(
         "external_profile": profile.to_json(),
       },
       schedule: None,
-      retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000) }),
+      retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000), }),
       workflow_id: Some(workflow_id),
       created_at: runtime_timestamp,
       updated_at: runtime_timestamp,
@@ -1146,7 +1146,7 @@ pub async fn SupervisorRuntime::delegate(
     }
     match self.receipts.get(request.envelope.command_id) {
       Some(receipt) =>
-        return Ok({ receipt: duplicate_receipt(receipt), governed })
+        return Ok({ receipt: duplicate_receipt(receipt), governed, })
       None => ()
     }
     let previous = self.state_for(request.supervisor_id)
@@ -1185,7 +1185,7 @@ pub async fn SupervisorRuntime::delegate(
       worker_run_id=Some(edge.worker_run_id),
       lineage=Some(edge),
     )
-    Ok({ receipt, governed })
+    Ok({ receipt, governed, })
   })
 }
 
@@ -1284,7 +1284,7 @@ pub async fn SupervisorRuntime::delegate_existing(
               "delegation": encode_child_delegation_v1(delegation),
             },
             schedule: None,
-            retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000) }),
+            retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000), }),
             workflow_id: None,
             created_at: runtime_timestamp,
             updated_at: runtime_timestamp,

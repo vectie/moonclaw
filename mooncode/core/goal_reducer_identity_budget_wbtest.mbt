@@ -27,7 +27,7 @@ test "goal reducer budget exhaustion identity and retry" {
   let goal = test_goal()
   let early = reduce_goal(goal, BudgetExhausted("early", goal.updated_at))
   assert_true(early == goal)
-  let limited = { ..goal, budget: { ..goal.budget, token_limit: Some(1) } }
+  let limited = { ..goal, budget: { ..goal.budget, token_limit: Some(1), }, }
   let used = reduce_goal(
     limited,
     BudgetUsageRecorded("usage", limited.updated_at, 1, 0, 0),

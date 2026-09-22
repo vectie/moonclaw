@@ -133,7 +133,7 @@ pub fn parse_pack_workflow_runner_args(
   if policy is JsonStdin && input is Some(JsonStdin) {
     return Err("only one of --policy or --input may use stdin")
   }
-  Ok({ workspace, pack_id, workflow_id, run_id, policy, input })
+  Ok({ workspace, pack_id, workflow_id, run_id, policy, input, })
 }
 
 ///|

@@ -220,7 +220,7 @@ async fn Daemon::mooncode_stream_wait_for_summary(
       summary = mooncode_stream_summary(book_root, session_id, since)
     }
   }
-  { wait_elapsed_ms: elapsed_ms, wait_attempt_count: attempt_count }
+  { wait_elapsed_ms: elapsed_ms, wait_attempt_count: attempt_count, }
 }
 
 ///|

@@ -136,7 +136,7 @@ pub fn ArtifactQuery::new(
   scope? : String? = None,
   status? : ArtifactStatus? = None,
 ) -> ArtifactQuery {
-  { job_id, run_id, artifact_type, logical_key, scope, status }
+  { job_id, run_id, artifact_type, logical_key, scope, status, }
 }
 
 ///|
@@ -197,7 +197,7 @@ pub fn ArtifactRetentionPolicy::new(
   max_age_ms? : Int? = None,
   archive_before_delete? : Bool = true,
 ) -> ArtifactRetentionPolicy {
-  { artifact_type, scope, keep_latest, max_age_ms, archive_before_delete }
+  { artifact_type, scope, keep_latest, max_age_ms, archive_before_delete, }
 }
 
 ///|

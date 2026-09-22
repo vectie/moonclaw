@@ -676,5 +676,5 @@ pub async fn Pruner::calculate_pruning(
     pruned_ids.push(event_id)
     current_tokens -= savings
   }
-  { pruned_ids, origin_token_count, pruned_token_count: current_tokens }
+  { pruned_ids, origin_token_count, pruned_token_count: current_tokens, }
 }

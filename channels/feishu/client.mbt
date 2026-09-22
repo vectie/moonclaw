@@ -652,7 +652,7 @@ pub async fn FeishuClient::add_typing_indicator(
     Ok(state) => state
     Err(error) => return Err(error)
   }
-  Ok({ message_id: state.message_id, reaction_id: state.reaction_id })
+  Ok({ message_id: state.message_id, reaction_id: state.reaction_id, })
 }
 
 ///|
@@ -712,7 +712,7 @@ pub async fn FeishuClient::add_message_reaction(
     Ok(reaction_id) => reaction_id
     Err(error) => return Err(error)
   }
-  Ok({ message_id, reaction_id, emoji_type })
+  Ok({ message_id, reaction_id, emoji_type, })
 }
 
 ///|
@@ -1032,7 +1032,7 @@ pub async fn FeishuClient::update_streaming_card(
       SendMessageFailed(message="Feishu streaming card update failed: \{msg}"),
     )
   }
-  Ok({ ..session, sequence: next_sequence, current_text: text })
+  Ok({ ..session, sequence: next_sequence, current_text: text, })
 }
 
 ///|

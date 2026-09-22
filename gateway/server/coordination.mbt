@@ -44,7 +44,7 @@ pub fn sub_task(
 
 ///|
 pub fn SubTask::start(self : SubTask) -> SubTask {
-  { ..self, status: Running, started_at: Some(current_time_ms()) }
+  { ..self, status: Running, started_at: Some(current_time_ms()), }
 }
 
 ///|
@@ -112,22 +112,22 @@ pub fn coordination_task(
 
 ///|
 pub fn CoordinationTask::start(self : CoordinationTask) -> CoordinationTask {
-  { ..self, status: Running, started_at: Some(current_time_ms()) }
+  { ..self, status: Running, started_at: Some(current_time_ms()), }
 }
 
 ///|
 pub fn CoordinationTask::complete(self : CoordinationTask) -> CoordinationTask {
-  { ..self, status: Completed, completed_at: Some(current_time_ms()) }
+  { ..self, status: Completed, completed_at: Some(current_time_ms()), }
 }
 
 ///|
 pub fn CoordinationTask::fail(self : CoordinationTask) -> CoordinationTask {
-  { ..self, status: Failed, completed_at: Some(current_time_ms()) }
+  { ..self, status: Failed, completed_at: Some(current_time_ms()), }
 }
 
 ///|
 pub fn CoordinationTask::cancel(self : CoordinationTask) -> CoordinationTask {
-  { ..self, status: Cancelled, completed_at: Some(current_time_ms()) }
+  { ..self, status: Cancelled, completed_at: Some(current_time_ms()), }
 }
 
 ///|
@@ -186,7 +186,7 @@ pub fn CoordinationTask::update_subtask(
             None => t
           }
         Cancelled =>
-          { ..t, status: Cancelled, completed_at: Some(current_time_ms()) }
+          { ..t, status: Cancelled, completed_at: Some(current_time_ms()), }
         Pending => t
       }
       updated
@@ -202,7 +202,7 @@ pub fn CoordinationTask::update_subtask(
     }
     None => self.results
   }
-  { ..self, subtasks: new_subtasks, results: new_results }
+  { ..self, subtasks: new_subtasks, results: new_results, }
 }
 
 ///|

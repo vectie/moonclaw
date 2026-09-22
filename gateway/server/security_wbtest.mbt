@@ -1,6 +1,6 @@
 ///|
 test "configured dm policy prefers runtime account config" {
-  let store = ChannelStateStore::{ path: "unused", states: {} }
+  let store = ChannelStateStore::{ path: "unused", states: {}, }
   store.states["feishu"] = {
     channel_id: "feishu",
     config: {
@@ -21,7 +21,7 @@ test "configured dm policy prefers runtime account config" {
 
 ///|
 test "configured dm policy falls back to persisted channel config" {
-  let store = ChannelStateStore::{ path: "unused", states: {} }
+  let store = ChannelStateStore::{ path: "unused", states: {}, }
   store.states["feishu"] = {
     channel_id: "feishu",
     config: {

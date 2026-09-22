@@ -358,7 +358,7 @@ async fn Gateway::handle_waiting_job_reply(
     Some(matched) => matched
     None => return None
   }
-  let resume_input = message_resume_input({ ..message, content: resume_text })
+  let resume_input = message_resume_input({ ..message, content: resume_text, })
   let merged_input = @job.merge_initial_input_for_resume(
     self.definition_initial_input(definition.id),
     resume_input,

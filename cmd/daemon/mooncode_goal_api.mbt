@@ -22,7 +22,7 @@ priv struct MoonCodeGoalApiResponse {
 
 ///|
 fn goal_api_response(status_code : Int, body : Json) -> MoonCodeGoalApiResponse {
-  { status_code, body }
+  { status_code, body, }
 }
 
 ///|
@@ -48,7 +48,7 @@ fn goal_api_status(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
 ///|
 fn goal_api_created(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
   let response = goal_api_status(goal)
-  { status_code: 201, body: response.body }
+  { status_code: 201, body: response.body, }
 }
 
 ///|

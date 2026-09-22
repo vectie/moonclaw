@@ -7,7 +7,7 @@ pub struct WeixinClient {
 
 ///|
 pub fn WeixinClient::new(config : WeixinAccountConfig) -> WeixinClient {
-  { config, test_access_token: None, test_sent_messages: [] }
+  { config, test_access_token: None, test_sent_messages: [], }
 }
 
 ///|

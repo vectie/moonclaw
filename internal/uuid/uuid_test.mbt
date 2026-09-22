@@ -5,7 +5,7 @@ struct TestSource {
 
 ///|
 fn TestSource::new() -> TestSource {
-  { state: { val: 0UL } }
+  { state: { val: 0UL, }, }
 }
 
 ///|

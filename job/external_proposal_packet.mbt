@@ -1109,7 +1109,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
   }
   self.runtime().store().save_job_proposal(profiled)
   if !confirm {
-    return Ok({ proposal: profiled, confirm_result: None })
+    return Ok({ proposal: profiled, confirm_result: None, })
   }
   let confirm_result = match
     self.confirm_proposal_and_execute(
@@ -1126,7 +1126,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
     .store()
     .get_job_proposal(proposal_id)
     .unwrap_or(profiled)
-  Ok({ proposal: saved, confirm_result: Some(confirm_result) })
+  Ok({ proposal: saved, confirm_result: Some(confirm_result), })
 }
 
 ///|

@@ -204,7 +204,7 @@ fn delta(
   left : String,
   right : String,
 ) -> CheckpointDelta {
-  { kind, subject_id: id, left_digest: left, right_digest: right }
+  { kind, subject_id: id, left_digest: left, right_digest: right, }
 }
 
 ///|
@@ -648,7 +648,7 @@ pub fn compare_goal_checkpoint_sequences(
         let report = if previously_accepted && base_report.outcome == Disagreed {
           let deltas = base_report.deltas.copy()
           deltas.push(delta(Regression, key, "converged", "disagreed"))
-          { ..base_report, regression: true, deltas }
+          { ..base_report, regression: true, deltas, }
         } else {
           base_report
         }

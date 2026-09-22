@@ -486,8 +486,8 @@ async test "GatewayJobApp confirms external proposal packet with detached launch
       Ok(imported) => imported
       Err(error) => fail(error)
     }
-    let captured_exec : Ref[String] = { val: "" }
-    let captured_args : Ref[Array[String]] = { val: [] }
+    let captured_exec : Ref[String] = { val: "", }
+    let captured_args : Ref[Array[String]] = { val: [], }
     let confirmed = match
       app.confirm_proposal_and_launch(
         imported.proposal,

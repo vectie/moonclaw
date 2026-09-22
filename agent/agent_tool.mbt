@@ -6,7 +6,7 @@ struct Tool {
 
 ///|
 fn Tool::new(tool : @tool.AgentTool, enabled~ : Bool) -> Tool {
-  { enabled, tool }
+  { enabled, tool, }
 }
 
 ///|

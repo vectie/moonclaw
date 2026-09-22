@@ -9,7 +9,7 @@ pub fn ClientConfig::new(
   url~ : String,
   headers? : Map[String, String] = {},
 ) -> ClientConfig {
-  { url, headers }
+  { url, headers, }
 }
 
 ///|
@@ -26,7 +26,7 @@ pub struct Message {
 
 ///|
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Message {
-  { kind, data }
+  { kind, data, }
 }
 
 ///|
@@ -185,7 +185,7 @@ async fn recv_message(conn : @asyncws.Conn) -> Message {
     Text => Text
     Binary => Binary
   }
-  { kind, data }
+  { kind, data, }
 }
 
 ///|

@@ -889,11 +889,11 @@ async test "provider task analysis runner hydrates context and persists structur
       execution_mode: Some("provider"),
       execution_target: Some("wiki-main"),
     }
-    let captured_prompt : Ref[String] = { val: "" }
-    let captured_system_prompt : Ref[String] = { val: "" }
-    let captured_enable_tools : Ref[Bool] = { val: true }
-    let captured_web_search : Ref[Bool] = { val: false }
-    let captured_todo_enabled : Ref[Bool] = { val: true }
+    let captured_prompt : Ref[String] = { val: "", }
+    let captured_system_prompt : Ref[String] = { val: "", }
+    let captured_enable_tools : Ref[Bool] = { val: true, }
+    let captured_web_search : Ref[Bool] = { val: false, }
+    let captured_todo_enabled : Ref[Bool] = { val: true, }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         captured_prompt.val = inner_request.prompt
@@ -1963,7 +1963,7 @@ async test "provider task analysis runner converts planner-shaped output into ad
       execution_mode: Some("provider"),
       execution_target: Some("wiki-main"),
     }
-    let call_count : Ref[Int] = { val: 0 }
+    let call_count : Ref[Int] = { val: 0, }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         call_count.val = call_count.val + 1
@@ -2329,8 +2329,8 @@ async test "provider task repair loads repo provider-task-repair skill" {
       execution_mode: Some("provider"),
       execution_target: Some("wiki-main"),
     }
-    let call_count : Ref[Int] = { val: 0 }
-    let repair_prompt : Ref[String] = { val: "" }
+    let call_count : Ref[Int] = { val: 0, }
+    let repair_prompt : Ref[String] = { val: "", }
     ignore(
       match
         run_provider_task_analysis_runner(request, fn(inner_request) {
@@ -2412,7 +2412,7 @@ async test "provider task analysis runner normalizes repaired json missing summa
       execution_mode: Some("provider"),
       execution_target: Some("wiki-main"),
     }
-    let call_count : Ref[Int] = { val: 0 }
+    let call_count : Ref[Int] = { val: 0, }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         call_count.val = call_count.val + 1

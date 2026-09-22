@@ -727,7 +727,7 @@ fn mooncode_goal_runtime_copy_decision(
       )
     Blocked(reason, attempted_alternatives, required_event) =>
       Blocked(
-        { code: reason.code, detail: reason.detail },
+        { code: reason.code, detail: reason.detail, },
         attempted_alternatives.copy(),
         required_event,
       )
@@ -780,7 +780,7 @@ fn new_mooncode_goal_runtime_genesis(
 ) -> MoonCodeGoalRuntimeStoredGenesis raise MoonCodeGoalRuntimeCodecError {
   let id = mooncode_goal_runtime_genesis_id_v1
   let normalized_criteria = criteria.map(fn(item) {
-    { id: item.id, criterion: item.criterion }
+    { id: item.id, criterion: item.criterion, }
   })
   mooncode_goal_runtime_require_canonical_strings(
     [id, session_id, goal_id, objective],

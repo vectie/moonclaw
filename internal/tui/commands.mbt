@@ -7,7 +7,7 @@ pub struct SlashCommand {
 
 ///|
 pub fn SlashCommand::new(name : String, description : String) -> SlashCommand {
-  { name, description, handler: None }
+  { name, description, handler: None, }
 }
 
 ///|
@@ -47,7 +47,7 @@ pub(all) struct CommandRegistry {
 
 ///|
 pub fn CommandRegistry::new() -> CommandRegistry {
-  let registry = CommandRegistry::{ commands: {} }
+  let registry = CommandRegistry::{ commands: {}, }
   registry.register_builtin_commands()
   registry
 }

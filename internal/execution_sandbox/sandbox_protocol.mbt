@@ -308,7 +308,7 @@ pub fn moonfort_grant_digest(grant : MoonFortExecutionGrant) -> String {
   let allowed_commands = grant.allowed_commands.copy()
   allowed_egress.sort()
   allowed_commands.sort()
-  let canonical = { ..grant, allowed_egress, allowed_commands }
+  let canonical = { ..grant, allowed_egress, allowed_commands, }
   sha256_text(canonical.to_json().stringify())
 }
 
@@ -518,7 +518,7 @@ pub async fn make_sandbox_plan(
     network: config.network,
     allowed_egress: config.allowed_egress.copy(),
     allowed_commands: ["shell-compat"],
-    limits: { ..config.limits, wall_clock_ms: timeout_ms },
+    limits: { ..config.limits, wall_clock_ms: timeout_ms, },
     working_directory: relative,
     command: Shell(script=command),
     backend_config_id: config.backend_config_id,
@@ -567,7 +567,7 @@ pub async fn make_exec_plan(
     network: config.network,
     allowed_egress: config.allowed_egress.copy(),
     allowed_commands: [tool],
-    limits: { ..config.limits, wall_clock_ms: timeout_ms },
+    limits: { ..config.limits, wall_clock_ms: timeout_ms, },
     working_directory: relative,
     command: Exec(tool~, args=args.copy()),
     backend_config_id: config.backend_config_id,
@@ -630,7 +630,7 @@ pub async fn make_moon_check_plan(
     network: config.network,
     allowed_egress: config.allowed_egress.copy(),
     allowed_commands: ["moon"],
-    limits: { ..config.limits, wall_clock_ms: timeout_ms },
+    limits: { ..config.limits, wall_clock_ms: timeout_ms, },
     working_directory: relative,
     command: Exec(tool="moon", args=moon_check_arguments(target)),
     backend_config_id: config.backend_config_id,
@@ -669,7 +669,7 @@ pub async fn make_moon_diagnostics_plan(
     network: config.network,
     allowed_egress: config.allowed_egress.copy(),
     allowed_commands: ["moon"],
-    limits: { ..config.limits, wall_clock_ms: timeout_ms },
+    limits: { ..config.limits, wall_clock_ms: timeout_ms, },
     working_directory: relative,
     command: Exec(tool="moon", args=moon_diagnostics_arguments(target)),
     backend_config_id: config.backend_config_id,
@@ -1008,7 +1008,7 @@ pub async fn persist_sandbox_audit(
 ) -> String {
   let path = @pathx.join(config.receipt_root, "\{plan.grant.request_id}.json")
   let temporary = path + ".tmp"
-  let audit = SandboxAuditRecord::{ protocol_version: 3, plan, receipt }
+  let audit = SandboxAuditRecord::{ protocol_version: 3, plan, receipt, }
   @fsx.write_to_file(temporary, audit.to_json().stringify())
   @fsx.atomic_rename(temporary, path)
   path
@@ -1038,7 +1038,7 @@ pub async fn run_moon_check(
   validate_moon_check_plan(plan, config, workspace, working_directory, target)
   let receipt = invoke_moonfort(config, plan)
   let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path }
+  { plan, receipt, audit_path, }
 }
 
 ///|
@@ -1059,7 +1059,7 @@ pub async fn run_moon_diagnostics(
   )
   let receipt = invoke_moonfort(config, plan)
   let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path }
+  { plan, receipt, audit_path, }
 }
 
 ///|
@@ -1080,7 +1080,7 @@ pub async fn run_exec(
   validate_exec_plan(plan, config, workspace, working_directory, tool, args)
   let receipt = invoke_moonfort(config, plan)
   let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path }
+  { plan, receipt, audit_path, }
 }
 
 ///|
@@ -1097,7 +1097,7 @@ pub async fn run_approved_shell(
   validate_approved_plan(plan, config, workspace, working_directory, command)
   let receipt = invoke_moonfort(config, plan)
   let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path }
+  { plan, receipt, audit_path, }
 }
 
 ///|
@@ -1113,5 +1113,5 @@ pub async fn run_approved_exec(
   validate_exec_plan(plan, config, workspace, working_directory, tool, args)
   let receipt = invoke_moonfort(config, plan)
   let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path }
+  { plan, receipt, audit_path, }
 }

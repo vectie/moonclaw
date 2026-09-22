@@ -67,8 +67,8 @@ async test "WorkflowEngine executes steps in order and passes outputs" {
       id: "workflow.progression",
       kind: "test",
       steps: [
-        { id: "fetch", kind: "test.fetch", config: {}, retry_policy: None },
-        { id: "parse", kind: "test.parse", config: {}, retry_policy: None },
+        { id: "fetch", kind: "test.fetch", config: {}, retry_policy: None, },
+        { id: "parse", kind: "test.parse", config: {}, retry_policy: None, },
       ],
       output_bindings: ["parse"],
     }
@@ -138,13 +138,13 @@ async test "WorkflowEngine retries a failing step and persists retry count" {
           id: "unstable",
           kind: "test.unstable",
           config: {},
-          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0) }),
+          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0), }),
         },
       ],
       output_bindings: ["unstable"],
     }
     let engine = workflow_test_engine(root, workflow)
-    let attempts : Ref[Int] = { val: 0 }
+    let attempts : Ref[Int] = { val: 0, }
     engine.register_handler(
       WorkflowStepHandler::new(kind="test.unstable", run=fn(_context) {
         attempts.val = attempts.val + 1
@@ -185,7 +185,7 @@ async test "WorkflowEngine fails the run when a step exhausts retries" {
           id: "broken",
           kind: "test.broken",
           config: {},
-          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0) }),
+          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0), }),
         },
       ],
       output_bindings: [],
@@ -917,13 +917,13 @@ async test "WorkflowEngine cancels before the next step when control requests st
       id: "workflow.cancel",
       kind: "test",
       steps: [
-        { id: "first", kind: "test.first", config: {}, retry_policy: None },
-        { id: "second", kind: "test.second", config: {}, retry_policy: None },
+        { id: "first", kind: "test.first", config: {}, retry_policy: None, },
+        { id: "second", kind: "test.second", config: {}, retry_policy: None, },
       ],
       output_bindings: [],
     }
     let engine = workflow_test_engine(root, workflow)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       WorkflowStepHandler::new(kind="test.first", run=fn(_context) {
         calls.val = calls.val + 1

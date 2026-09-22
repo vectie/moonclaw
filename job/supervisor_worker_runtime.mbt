@@ -373,7 +373,7 @@ pub async fn SupervisorRuntime::delegate_intent(
           },
         },
         schedule: None,
-        retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000) }),
+        retry_policy: Some({ max_attempts: 3, backoff_ms: Some(1000), }),
         workflow_id: None,
         created_at: runtime_timestamp,
         updated_at: runtime_timestamp,
@@ -517,7 +517,11 @@ async fn SupervisorRuntime::commit_worker_derived(
     authority: {},
   }
   let previous = self.state_for(source.supervisor_id)
-  let state = { ..previous, cursor: previous.cursor + 1, updated_at: timestamp }
+  let state = {
+    ..previous,
+    cursor: previous.cursor + 1,
+    updated_at: timestamp,
+  }
   self.commit_unlocked(
     envelope,
     state,

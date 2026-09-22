@@ -146,7 +146,7 @@ pub async fn Moonclaw::new(
     command_approval_scope?,
     sandbox_config?,
   )
-  { logger, agent }
+  { logger, agent, }
 }
 
 ///|
@@ -228,5 +228,5 @@ pub async fn Moonclaw::resume_(
     command_approval_scope?,
     sandbox_config?,
   )
-  { logger, agent }
+  { logger, agent, }
 }

@@ -30,5 +30,5 @@ impl @json.FromJson for ChatCompletionChunkChoiceDeltaToolCall with fn from_json
     function,
     path=json_path.add_key("function"),
   )
-  { index: index.to_int(), id, function }
+  { index: index.to_int(), id, function, }
 }

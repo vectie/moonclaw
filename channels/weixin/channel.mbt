@@ -493,7 +493,6 @@ impl @channel.ChannelExtension for WeixinChannel with fn handle_webhook(
 ///|
 extend WeixinChannel with @channel.Channel::{send}
 
-
 ///|
 impl @channel.ChannelExtension for WeixinChannel with fn supports_websocket(
   _self : WeixinChannel,

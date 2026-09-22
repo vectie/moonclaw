@@ -127,7 +127,7 @@ async fn load_workspace_files(root : String) -> Array[WorkspaceFile] {
   for name in managed_workspace_file_names() {
     let path = workspace_file_path(root, name)
     let content = @fsx.read_file(path) catch { _ => "" }
-    files.push({ name, path, content })
+    files.push({ name, path, content, })
   }
   files
 }
@@ -250,7 +250,7 @@ pub async fn WorkspaceRuntime::new(
   let runtime = WorkspaceRuntime::{
     home,
     cwd,
-    snapshot: { root, configured_from, files: [], prompt_context: "" },
+    snapshot: { root, configured_from, files: [], prompt_context: "", },
   }
   runtime.load()
   runtime

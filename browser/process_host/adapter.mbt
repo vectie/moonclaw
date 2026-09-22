@@ -4,7 +4,7 @@ pub struct ProcessBrowserHost {}
 ///|
 #warnings("-unnecessary_annotation")
 pub fn ProcessBrowserHost::new() -> ProcessBrowserHost {
-  ProcessBrowserHost::{  }
+  ProcessBrowserHost::{ }
 }
 
 ///|

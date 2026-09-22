@@ -107,7 +107,7 @@ pub struct MailboxManager {
 pub fn mailbox_manager(
   config? : AgentMailboxConfig = agent_mailbox_config(),
 ) -> MailboxManager {
-  { mailboxes: Map([]), config }
+  { mailboxes: Map([]), config, }
 }
 
 ///|

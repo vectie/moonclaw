@@ -15,7 +15,7 @@ priv struct MoonCodeJournalEnvelope {
 
 ///|
 fn MoonCodeJournalSequence::zero() -> MoonCodeJournalSequence {
-  { text: "0" }
+  { text: "0", }
 }
 
 ///|
@@ -74,7 +74,7 @@ fn MoonCodeJournalSequence::next(
   self : MoonCodeJournalSequence,
 ) -> MoonCodeJournalSequence {
   if self.text == "0" {
-    return { text: "1" }
+    return { text: "1", }
   }
   let digits = self.text.to_array()
   let mut index = digits.length() - 1
@@ -88,14 +88,14 @@ fn MoonCodeJournalSequence::next(
     for digit in digits {
       out.write_char(digit)
     }
-    { text: out.to_string() }
+    { text: out.to_string(), }
   } else {
     digits[index] = (digits[index].to_int() + 1).unsafe_to_char()
     let out = StringBuilder()
     for digit in digits {
       out.write_char(digit)
     }
-    { text: out.to_string() }
+    { text: out.to_string(), }
   }
 }
 
@@ -217,7 +217,7 @@ fn mooncode_journal_validate_envelope(
         )
     }
   }
-  { fields, contract_id, sequence }
+  { fields, contract_id, sequence, }
 }
 
 ///|

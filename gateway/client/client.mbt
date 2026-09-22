@@ -198,7 +198,7 @@ pub async fn Client::connect(
       platform: None,
       mode: Cli,
     },
-    auth: { token: self.token, password: None },
+    auth: { token: self.token, password: None, },
     role: Operator,
     scopes: Some(["operator.admin"]),
   }
@@ -1053,7 +1053,7 @@ async fn Client::send_rpc(
       Some(e)
     }
   }
-  Ok({ id: request.id, ok, payload, error })
+  Ok({ id: request.id, ok, payload, error, })
 }
 
 ///|

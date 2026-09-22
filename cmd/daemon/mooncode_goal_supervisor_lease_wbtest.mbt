@@ -158,7 +158,7 @@ test "mooncode_goal_supervisor_lease: replay duplicate identity and fence orderi
 test "mooncode_goal_supervisor_lease: single-active lineage replay" {
   let genesis = goal_store_replay_genesis()
   let goal_from_genesis = mooncode_replay_goal_records([genesis], "session").unwrap()
-  let final_goal = { ..goal_from_genesis, run_id: 1 }
+  let final_goal = { ..goal_from_genesis, run_id: 1, }
   let run_0 = supervisor_lease_test_envelope(
     "lease-run-0",
     mooncode_goal_supervisor_lease_v1(

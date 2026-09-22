@@ -25,7 +25,7 @@ impl @json.FromJson for RefreshResponse with fn from_json(
     Some(String(s)) => Some(s)
     _ => None
   }
-  { id_token, access_token, refresh_token }
+  { id_token, access_token, refresh_token, }
 }
 
 ///|
@@ -59,7 +59,7 @@ pub async fn refresh_and_save_credentials() -> Credentials raise Error {
   }
   let final_credentials = if refreshed.id_token is Some(new_id_token) {
     let claims = extract_token_claims(new_id_token)
-    { ..updated, accountId: claims.chatgptAccountId }
+    { ..updated, accountId: claims.chatgptAccountId, }
   } else {
     updated
   }

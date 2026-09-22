@@ -107,6 +107,6 @@ async fn Running::sync_queued_messages(task : Running) -> Unit {
   }
   for m in queued_messages {
     guard m is { "id": String(id), "message": message, .. } else { continue }
-    task.queued_messages.push({ id, message })
+    task.queued_messages.push({ id, message, })
   }
 }

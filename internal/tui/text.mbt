@@ -29,32 +29,32 @@ pub fn TextStyle::default() -> TextStyle {
 
 ///|
 pub fn TextStyle::with_fg(style : TextStyle, color : Color) -> TextStyle {
-  { ..style, fg: Some(color) }
+  { ..style, fg: Some(color), }
 }
 
 ///|
 pub fn TextStyle::with_bg(style : TextStyle, color : Color) -> TextStyle {
-  { ..style, bg: Some(color) }
+  { ..style, bg: Some(color), }
 }
 
 ///|
 pub fn TextStyle::bold(style : TextStyle) -> TextStyle {
-  { ..style, bold: true }
+  { ..style, bold: true, }
 }
 
 ///|
 pub fn TextStyle::dim(style : TextStyle) -> TextStyle {
-  { ..style, dim: true }
+  { ..style, dim: true, }
 }
 
 ///|
 pub fn TextStyle::italic(style : TextStyle) -> TextStyle {
-  { ..style, italic: true }
+  { ..style, italic: true, }
 }
 
 ///|
 pub fn TextStyle::underline(style : TextStyle) -> TextStyle {
-  { ..style, underline: true }
+  { ..style, underline: true, }
 }
 
 ///|

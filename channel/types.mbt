@@ -125,7 +125,7 @@ pub(all) struct ChannelConfig {
 
 ///|
 pub fn default_config() -> ChannelConfig {
-  { enabled: false, accounts: {}, global_settings: {} }
+  { enabled: false, accounts: {}, global_settings: {}, }
 }
 
 ///|

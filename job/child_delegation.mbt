@@ -637,7 +637,7 @@ pub fn bind_child_run_execution_request_v1(
       consumption,
       evaluated_at,
     ) {
-    Ok(authorization) => Ok({ request, delegation, authorization })
+    Ok(authorization) => Ok({ request, delegation, authorization, })
     Err(reason) => Err(reason)
   }
 }

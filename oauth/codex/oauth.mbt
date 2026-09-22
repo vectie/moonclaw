@@ -25,7 +25,7 @@ impl @json.FromJson for TokenResponse with fn from_json(
     Some(String(s)) => s
     _ => raise JsonDecodeError((path, "TokenResponse: missing 'refresh_token'"))
   }
-  { id_token, access_token, refresh_token }
+  { id_token, access_token, refresh_token, }
 }
 
 ///|

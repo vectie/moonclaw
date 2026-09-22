@@ -22,7 +22,7 @@ pub impl @json.FromJson for CostConfig with fn from_json(
     guard obj.get("cacheWrite") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("cacheWrite")))
   }
-  { input, output, cacheRead, cacheWrite }
+  { input, output, cacheRead, cacheWrite, }
 }
 
 ///|
@@ -67,7 +67,7 @@ pub impl @json.FromJson for ModelConfig with fn from_json(
     guard obj.get("maxTokens") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("maxTokens")))
   }
-  { id, name, reasoning, input, cost, contextWindow, maxTokens }
+  { id, name, reasoning, input, cost, contextWindow, maxTokens, }
 }
 
 ///|
@@ -100,7 +100,7 @@ pub impl @json.FromJson for ProviderConfig with fn from_json(
     guard obj.get("apiKey") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("apiKey")))
   }
-  { baseUrl, api, models, apiKey }
+  { baseUrl, api, models, apiKey, }
 }
 
 ///|

@@ -49,7 +49,7 @@ pub async fn Gateway::new(
           Some(new_token)
         }
       }
-      { token, _password: None }
+      { token, _password: None, }
     }
   }
   let channel_manager = ChannelManager::new(
@@ -77,8 +77,8 @@ pub async fn Gateway::new(
     port: actual_port,
     events: @broadcast.Broadcast::new(),
     auth,
-    sessions: { sessions: {}, session_dir },
-    dedupe: { entries: {}, ttl_ms: 60000 },
+    sessions: { sessions: {}, session_dir, },
+    dedupe: { entries: {}, ttl_ms: 60000, },
     logger: @pino.logger("gateway", @pino.Transport::console()),
     home,
     cwd,
@@ -97,7 +97,7 @@ pub async fn Gateway::new(
     mailbox_manager: mailbox_manager(),
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
-    channel_state: { path: channel_state_file, states: {} },
+    channel_state: { path: channel_state_file, states: {}, },
     job_app,
     active_job_tasks: {},
     security_runtime,

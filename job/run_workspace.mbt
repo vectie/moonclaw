@@ -478,7 +478,7 @@ pub async fn prepare_run_workspace(
   mount_source_workspace_entries(source_workspace, workspace_dir)
   write_run_workspace_metadata(definition, run, workspace_dir, source_workspace)
   initialize_workspace_repo(workspace_dir)
-  let updated = JobRun::{ ..run, workspace_dir: Some(workspace_dir) }
+  let updated = JobRun::{ ..run, workspace_dir: Some(workspace_dir), }
   store.save_run(updated)
   ignore(
     checkpoint_run_workspace(

@@ -10,7 +10,7 @@ fn sample_definition() -> JobDefinition {
       interval_minutes: Some(360),
       timezone: Some("Asia/Shanghai"),
     }),
-    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000) }),
+    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000), }),
     workflow_id: Some("job.sample.workflow"),
     created_at: 1,
     updated_at: 2,
@@ -28,9 +28,9 @@ fn sample_workflow() -> WorkflowDefinition {
         id: "fetch",
         kind: "job.analysis",
         config: { "source": "arxiv" },
-        retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000) }),
+        retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000), }),
       },
-      { id: "parse", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "parse", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: ["papers", "chunks"],
   }
@@ -51,7 +51,7 @@ fn sample_delegate_workflow() -> WorkflowDefinition {
     id: "job.sample.delegate.workflow",
     kind: "job",
     steps: [
-      { id: "delegate", kind: "job.delegate", config: {}, retry_policy: None },
+      { id: "delegate", kind: "job.delegate", config: {}, retry_policy: None, },
     ],
     output_bindings: [],
   }
@@ -706,7 +706,7 @@ async test "SystemStore merges run index across concurrent store instances" {
     let root = @pathx.join(dir, "jobs")
     let store_a = SystemStore::new(root~)
     let store_b = SystemStore::new(root~)
-    let run_a = JobRun::{ ..sample_run(), id: "run-a", job_id: "job-a" }
+    let run_a = JobRun::{ ..sample_run(), id: "run-a", job_id: "job-a", }
     let run_b = JobRun::{
       ..sample_run(),
       id: "run-b",
@@ -825,7 +825,7 @@ async test "SystemStore prefers per-run metadata over a stale but valid runs ind
       summary: Some("crashed"),
       error: Some("disk truth"),
     }
-    let stale_step = JobStepRun::{ ..sample_step_run(), status: Running }
+    let stale_step = JobStepRun::{ ..sample_step_run(), status: Running, }
     let authoritative_step = JobStepRun::{
       ..sample_step_run(),
       status: Succeeded,
@@ -836,7 +836,7 @@ async test "SystemStore prefers per-run metadata over a stale but valid runs ind
     store.save_step_run(authoritative_step)
     @fsx.write_to_file(
       root |> @pathx.join("index") |> @pathx.join("runs.json"),
-      RunsIndexFile::{ runs: [stale_run], steps: [stale_step] }
+      RunsIndexFile::{ runs: [stale_run], steps: [stale_step], }
       .to_json()
       .stringify(),
     )

@@ -25,7 +25,7 @@ priv struct Reader[T] {
 ///|
 /// Creates an empty broadcast with no buffered events or listeners.
 pub fn[T] Broadcast::new() -> Broadcast[T] {
-  { values: [], read: Cond(), readers: [] }
+  { values: [], read: Cond(), readers: [], }
 }
 
 ///|
@@ -73,7 +73,7 @@ pub fn[T] Broadcast::add_listener(
   f : async (T) -> Unit,
 ) -> Unit {
   let initial = if include_history { 0 } else { self.values.length() }
-  self.readers.push({ index: initial, f })
+  self.readers.push({ index: initial, f, })
 }
 
 ///|
@@ -121,7 +121,7 @@ priv struct Barrier {
 
 ///|
 fn Barrier::new(target : Int) -> Barrier {
-  { count: 0, target, cond: Cond() }
+  { count: 0, target, cond: Cond(), }
 }
 
 ///|
@@ -156,7 +156,7 @@ pub async fn[T, G] Broadcast::spawn_in(
   self : Broadcast[T],
   group : @async.TaskGroup[G],
 ) -> Session {
-  let session = Session::{ stop: Cond(), read: self.read, stopped: false }
+  let session = Session::{ stop: Cond(), read: self.read, stopped: false, }
   // Works even if there are no readers. Consider:
   // 1. There is no reader, which means self.readers.length() == 0
   // 2. There will be no calls to Barrier::arrive, so the count will remain 0

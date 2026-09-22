@@ -23,7 +23,7 @@ pub impl Show for ReadFileToolResult with fn output(
   match self {
     // ReadDirectoryResult({ path, display, .. }) =>
     //   logger.write_string("Directory: \{path}\nEntries:\n\{display}")
-    { path, content, start_line, end_line } => {
+    { path, content, start_line, end_line, } => {
       // `content` is always the selected range. Keeping the full file in the
       // result would also serialize it into the model-facing tool payload and
       // defeat the range/token boundary.
@@ -72,7 +72,7 @@ async fn execute_read_file_tool(
   args : Json,
 ) -> @tool.ToolResult[ReadFileToolResult] noraise {
   // Parse required path parameter
-  let { path, start_line, end_line } : ReadFileInput = @json.from_json(args) catch {
+  let { path, start_line, end_line, } : ReadFileInput = @json.from_json(args) catch {
     error =>
       return @tool.error(
         "Error: Invalid arguments provided to read_file tool: \{error}",
@@ -163,7 +163,7 @@ async fn execute_read_file_tool(
       }
       return @tool.error(error_message)
     }
-    return @tool.ok({ path, content: selected_content, start_line, end_line })
+    return @tool.ok({ path, content: selected_content, start_line, end_line, })
   } catch {
     error => @tool.error("Error reading file: \{error}", error~)
   }

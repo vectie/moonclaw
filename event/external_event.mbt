@@ -31,7 +31,7 @@ struct ExternalEventQueue {
 ///
 /// A new `ExternalEventQueue` instance ready to receive events.
 pub fn ExternalEventQueue::new() -> ExternalEventQueue raise {
-  { uuid: @uuid.generator(@rand.chacha8()), queue: Queue(kind=Unbounded) }
+  { uuid: @uuid.generator(@rand.chacha8()), queue: Queue(kind=Unbounded), }
 }
 
 ///|
@@ -67,7 +67,7 @@ pub fn ExternalEventQueue::send(
   desc : EventDesc,
 ) -> Unit {
   let created = @clock.epoch.now()
-  let _ = self.queue.try_put({ id: self.uuid.v4(), created, desc }) catch {
+  let _ = self.queue.try_put({ id: self.uuid.v4(), created, desc, }) catch {
     _ => false
   }
 }

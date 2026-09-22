@@ -109,7 +109,7 @@ fn mooncode_goal_supervisor_terminal_boundary_matches(
           claims.contains(key) {
           invalid = true
         } else {
-          claims[key] = { resolved: false }
+          claims[key] = { resolved: false, }
         }
       } else {
         let terminal = (

@@ -7,7 +7,7 @@ struct Loader {
 
 ///|
 pub fn Loader::new(cwd : String, logger~ : @pino.Logger) -> Loader {
-  return { cwd, logger, rules: {} }
+  return { cwd, logger, rules: {}, }
 }
 
 ///|
@@ -105,7 +105,7 @@ fn Rule::parse(content : String, source~ : Source) -> Rule raise {
     Some(False) => false
     _ => false
   }
-  { description, globs, always_apply, content: doc.text, source }
+  { description, globs, always_apply, content: doc.text, source, }
 }
 
 ///|

@@ -20,7 +20,7 @@ fn Item::new(
 ) -> Item {
   let now = created_at
   let id = id
-  { content, created_at: now, id, notes, priority, status, updated_at: now }
+  { content, created_at: now, id, notes, priority, status, updated_at: now, }
 }
 
 ///|
@@ -60,7 +60,7 @@ pub fn new(
   cwd~ : StringView,
 ) -> Todo {
   {
-    config: { uuid, clock, cwd: cwd.to_owned() },
+    config: { uuid, clock, cwd: cwd.to_owned(), },
     items: {
       todos: [],
       created_at: clock.now_str(),
@@ -250,7 +250,7 @@ fn Items::parse(
   config~ : Config,
 ) -> Items {
   let now = config.now()
-  let items = Items::{ todos: [], created_at: now, updated_at: now }
+  let items = Items::{ todos: [], created_at: now, updated_at: now, }
   // First, try to parse <task> tags
   let task_matches = extract_task_tags(content)
   if task_matches.length() > 0 {

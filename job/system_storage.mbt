@@ -320,7 +320,7 @@ async fn SystemStore::runs_index_from_disk(self : SystemStore) -> RunsIndexFile 
   let steps : Array[JobStepRun] = []
   let runs_root = self.root |> @pathx.join("runs")
   if !@fsx.exists(runs_root) {
-    return { runs, steps }
+    return { runs, steps, }
   }
   for entry in @fsx.list_directory(runs_root) {
     match entry.kind {
@@ -352,7 +352,7 @@ async fn SystemStore::runs_index_from_disk(self : SystemStore) -> RunsIndexFile 
       }
     }
   }
-  { runs, steps }
+  { runs, steps, }
 }
 
 ///|
@@ -1110,7 +1110,7 @@ async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
 ///|
 async fn SystemStore::save_memories(self : SystemStore) -> Unit {
   self.with_store_lock(async fn() {
-    let file = MemoriesFile::{ memories: self.memories.values().to_array() }
+    let file = MemoriesFile::{ memories: self.memories.values().to_array(), }
     @fsx.write_to_file(self.memories_file(), file.to_json().stringify())
   })
 }

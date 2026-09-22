@@ -12,7 +12,7 @@ pub fn PromptTokensDetails::new(
   cache_write_tokens? : Int,
   audio_tokens? : Int,
 ) -> PromptTokensDetails {
-  { cached_tokens, cache_write_tokens, audio_tokens }
+  { cached_tokens, cache_write_tokens, audio_tokens, }
 }
 
 ///|
@@ -50,5 +50,5 @@ impl @json.FromJson for PromptTokensDetails with fn from_json(
       )
     None => None
   }
-  { cached_tokens, cache_write_tokens, audio_tokens }
+  { cached_tokens, cache_write_tokens, audio_tokens, }
 }

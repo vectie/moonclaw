@@ -8,7 +8,7 @@ fn audit_continue(event_id : String, operation_id : String) -> GoalRuntimeEvent 
           operation_id,
           kind: "test",
           input: "",
-          policy: { max_output_bytes: 8, timeout_milliseconds: 8 },
+          policy: { max_output_bytes: 8, timeout_milliseconds: 8, },
         },
       ],
       "progress",
@@ -31,42 +31,42 @@ test "audit rejects noncanonical achieved and blocked payload strings" {
   let bad = [
     PlannerDecision(
       "a1",
-      Achieved(" done", [{ criterion: "criterion", evidence_refs: ["proof"] }]),
+      Achieved(" done", [{ criterion: "criterion", evidence_refs: ["proof"], }]),
     ),
     PlannerDecision(
       "a2",
-      Achieved("done", [{ criterion: " criterion", evidence_refs: ["proof"] }]),
+      Achieved("done", [{ criterion: " criterion", evidence_refs: ["proof"], }]),
     ),
     PlannerDecision(
       "a3",
-      Achieved("done", [{ criterion: "criterion", evidence_refs: [" proof"] }]),
+      Achieved("done", [{ criterion: "criterion", evidence_refs: [" proof"], }]),
     ),
     PlannerDecision(
       "a4",
       Achieved("done", [
-        { criterion: "criterion", evidence_refs: ["proof", "proof"] },
+        { criterion: "criterion", evidence_refs: ["proof", "proof"], },
       ]),
     ),
     PlannerDecision(
       "b1",
-      Blocked({ code: "", detail: "detail" }, ["alternative"], None),
+      Blocked({ code: "", detail: "detail", }, ["alternative"], None),
     ),
     PlannerDecision(
       "b2",
-      Blocked({ code: " code", detail: "detail" }, ["alternative"], None),
+      Blocked({ code: " code", detail: "detail", }, ["alternative"], None),
     ),
     PlannerDecision(
       "b3",
-      Blocked({ code: "code", detail: " detail" }, ["alternative"], None),
+      Blocked({ code: "code", detail: " detail", }, ["alternative"], None),
     ),
     PlannerDecision(
       "b4",
-      Blocked({ code: "code", detail: "detail" }, [" alternative"], None),
+      Blocked({ code: "code", detail: "detail", }, [" alternative"], None),
     ),
     PlannerDecision(
       "b5",
       Blocked(
-        { code: "code", detail: "detail" },
+        { code: "code", detail: "detail", },
         ["alternative", "alternative"],
         None,
       ),
@@ -85,7 +85,7 @@ test "invalid planner event is no-op and its id remains reusable" {
   )
   let invalid = PlannerDecision(
     "reusable",
-    Achieved(" ", [{ criterion: "criterion", evidence_refs: ["proof"] }]),
+    Achieved(" ", [{ criterion: "criterion", evidence_refs: ["proof"], }]),
   )
   assert_noop(populated, invalid)
   let valid = reduce_goal_runtime(
@@ -109,14 +109,14 @@ fn terminal_roots() -> Array[GoalRuntimeState] {
       new_goal_runtime_state(),
       PlannerDecision(
         "achieve",
-        Achieved("done", [{ criterion: "criterion", evidence_refs: ["proof"] }]),
+        Achieved("done", [{ criterion: "criterion", evidence_refs: ["proof"], }]),
       ),
     ),
     reduce_goal_runtime(
       new_goal_runtime_state(),
       PlannerDecision(
         "block",
-        Blocked({ code: "blocked", detail: "detail" }, ["alternative"], None),
+        Blocked({ code: "blocked", detail: "detail", }, ["alternative"], None),
       ),
     ),
     reduce_goal_runtime(new_goal_runtime_state(), Cancelled("cancel", "reason")),
@@ -129,11 +129,11 @@ test "all seven event categories are absorbed by every terminal root" {
     audit_continue("continue", "op"),
     PlannerDecision(
       "achieved",
-      Achieved("done", [{ criterion: "criterion", evidence_refs: ["proof"] }]),
+      Achieved("done", [{ criterion: "criterion", evidence_refs: ["proof"], }]),
     ),
     PlannerDecision(
       "blocked",
-      Blocked({ code: "blocked", detail: "detail" }, ["alternative"], None),
+      Blocked({ code: "blocked", detail: "detail", }, ["alternative"], None),
     ),
     OperationAccepted("operation", "op"),
     CheckpointAccepted("checkpoint", "cp"),
@@ -162,7 +162,7 @@ test "canonical ids kinds checkpoint idempotency and cross variant collision" {
             operation_id: "op",
             kind: " padded",
             input: "",
-            policy: { max_output_bytes: 8, timeout_milliseconds: 8 },
+            policy: { max_output_bytes: 8, timeout_milliseconds: 8, },
           },
         ],
         "progress",
@@ -190,13 +190,13 @@ test "canonical ids kinds checkpoint idempotency and cross variant collision" {
 ///|
 test "terminal payloads are deeply copied in and out" {
   let refs = ["proof"]
-  let evidence = [{ criterion: "criterion", evidence_refs: refs }]
+  let evidence = [{ criterion: "criterion", evidence_refs: refs, }]
   let achieved = reduce_goal_runtime(
     new_goal_runtime_state(),
     PlannerDecision("achieve-copy", Achieved("done", evidence)),
   )
   refs[0] = "mutated-in"
-  evidence[0] = { criterion: "mutated", evidence_refs: ["mutated"] }
+  evidence[0] = { criterion: "mutated", evidence_refs: ["mutated"], }
   match goal_runtime_outcome(achieved) {
     Some(AchievedOutcome(_, first)) => {
       assert_eq(first[0].criterion, "criterion")
@@ -215,7 +215,7 @@ test "terminal payloads are deeply copied in and out" {
     new_goal_runtime_state(),
     PlannerDecision(
       "block-copy",
-      Blocked({ code: "blocked", detail: "detail" }, alternatives, None),
+      Blocked({ code: "blocked", detail: "detail", }, alternatives, None),
     ),
   )
   alternatives[0] = "mutated-in"

@@ -315,5 +315,5 @@ fn normalize_provider_task_spec_from_metadata(
       task.target_pages
     }
   }
-  { ..task, kind, title, priority, requires_review, target_pages }
+  { ..task, kind, title, priority, requires_review, target_pages, }
 }

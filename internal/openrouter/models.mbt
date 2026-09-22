@@ -248,7 +248,7 @@ pub impl @json.FromJson for Architecture with fn from_json(
       )
     None => None
   }
-  { input_modalities, output_modalities, tokenizer, instruct_type }
+  { input_modalities, output_modalities, tokenizer, instruct_type, }
 }
 
 ///|
@@ -408,7 +408,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
     }
     @json.from_json(is_moderated_json, path=path.add_key("is_moderated"))
   }
-  { context_length, max_completion_tokens, is_moderated }
+  { context_length, max_completion_tokens, is_moderated, }
 }
 
 ///|

@@ -49,7 +49,7 @@ fn workflow_declaration() -> PackWorkflowDeclaration {
         id: "acquire",
         tool_id: "fixture.acquire",
         config: { "mode": "licensed" },
-        retry_policy: Some({ max_attempts: 2, backoff_ms: Some(1000) }),
+        retry_policy: Some({ max_attempts: 2, backoff_ms: Some(1000), }),
       },
       {
         id: "evaluate",
@@ -139,7 +139,7 @@ test "pack workflow compiler fails closed on undeclared tools" {
 
 ///|
 test "pack workflow compiler rejects a declaration from another pack" {
-  let declaration = { ..workflow_declaration(), pack_id: "other" }
+  let declaration = { ..workflow_declaration(), pack_id: "other", }
   try compile_workflow_job(workflow_projection(), declaration, 100) catch {
     error =>
       assert_true(

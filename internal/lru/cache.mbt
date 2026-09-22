@@ -18,7 +18,7 @@ struct Cache[K, V] {
 
 ///|
 pub fn[K : Eq + Hash, V] cache(max_size? : Int = 100) -> Cache[K, V] {
-  { timestamp: 0, cache: {}, max_size }
+  { timestamp: 0, cache: {}, max_size, }
 }
 
 ///|
@@ -47,7 +47,7 @@ pub fn[K : Eq + Hash, V] Cache::op_set(
   if self.cache.length() >= self.max_size {
     self.evict()
   }
-  self.cache[key] = { accessed: self.timestamp, value }
+  self.cache[key] = { accessed: self.timestamp, value, }
   self.timestamp += 1
 }
 

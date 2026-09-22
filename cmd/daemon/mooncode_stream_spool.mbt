@@ -126,7 +126,7 @@ async fn mooncode_stream_create_spool(
     }
   }
   writer.close()
-  { directory, path, summary }
+  { directory, path, summary, }
 }
 
 ///|

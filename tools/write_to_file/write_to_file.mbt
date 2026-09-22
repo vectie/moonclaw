@@ -28,7 +28,7 @@ priv struct Params {
 
 ///|
 fn params(content~ : String, path~ : String, separator? : String) -> Params {
-  { content, path, separator }
+  { content, path, separator, }
 }
 
 ///|
@@ -112,7 +112,7 @@ pub fn new(cwd : String) -> @tool.Tool[Result] {
     name="write_to_file",
     schema~,
     args => {
-      let { path, separator, content } : Params = @json.from_json(args) catch {
+      let { path, separator, content, } : Params = @json.from_json(args) catch {
         error => return @tool.error("Invalid arguments: \{error}")
       }
       let path = match resolve_tool_path(cwd, path) {

@@ -776,7 +776,7 @@ async fn do_codex_stream_request(
       body="Responses stream ended without a completed response",
     )
   }
-  { response_id, text_chunks, output_items, usage }
+  { response_id, text_chunks, output_items, usage, }
 }
 
 ///|
@@ -899,7 +899,7 @@ async fn do_openai_responses_stream_request(
       body="Responses stream ended without a completed response",
     )
   }
-  { response_id, text_chunks, output_items, usage }
+  { response_id, text_chunks, output_items, usage, }
 }
 
 ///|
@@ -1418,17 +1418,17 @@ fn convert_to_anthropic_request(
       }
       User(user_msg) => {
         let content = extract_text_content(user_msg.content)
-        anthropic_messages.push({ role: "user", content: Text(content) })
+        anthropic_messages.push({ role: "user", content: Text(content), })
       }
       Assistant(assistant_msg) => {
         let content = extract_text_content(assistant_msg.content)
-        anthropic_messages.push({ role: "assistant", content: Text(content) })
+        anthropic_messages.push({ role: "assistant", content: Text(content), })
       }
       Tool(tool_msg) => {
         let content = extract_text_content(tool_msg.content)
         anthropic_messages.push({
           role: "user",
-          content: Blocks([{ type_: "tool_result", text: Some(content) }]),
+          content: Blocks([{ type_: "tool_result", text: Some(content), }]),
         })
       }
     }

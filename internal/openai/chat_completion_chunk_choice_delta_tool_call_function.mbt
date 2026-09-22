@@ -25,5 +25,5 @@ impl @json.FromJson for ChatCompletionChunkChoiceDeltaToolCallFunction with fn f
     Some(_) =>
       raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
   }
-  { arguments, name }
+  { arguments, name, }
 }

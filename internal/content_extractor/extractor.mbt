@@ -171,7 +171,7 @@ impl @json.FromJson for Range with fn from_json(
     end_line,
     path=json_path.add_key("end_line"),
   )
-  { start_line, end_line }
+  { start_line, end_line, }
 }
 
 ///|

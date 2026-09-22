@@ -5,7 +5,7 @@ pub struct ChannelManager {
 
 ///|
 pub fn ChannelManager::new(_logger : @pino.Logger) -> ChannelManager {
-  { registry: @channel.ChannelRegistry::new() }
+  { registry: @channel.ChannelRegistry::new(), }
 }
 
 ///|

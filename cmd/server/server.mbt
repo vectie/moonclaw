@@ -288,7 +288,7 @@ pub(all) enum ServerStreamEvent {
 pub impl @httpx.FromEvent for ServerStreamEvent with fn from_event(
   event : @httpx.Event,
 ) -> ServerStreamEvent raise {
-  let { event, data } = event
+  let { event, data, } = event
   let data = @json.parse(data)
   match event {
     Some("moonclaw.queued_messages.synchronized") =>

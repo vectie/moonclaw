@@ -83,7 +83,7 @@ fn parse_authority(
   source : StringView,
   uri : Uri,
 ) -> StringView raise ParseError {
-  let authority = Authority::{ userinfo: None, host: "", port: None }
+  let authority = Authority::{ userinfo: None, host: "", port: None, }
   uri.authority = Some(authority)
   fn parse_port(source : StringView) -> StringView raise ParseError {
     if source is [] {

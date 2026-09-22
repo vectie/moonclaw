@@ -315,7 +315,7 @@ async test "mooncode resume spool is idempotent across disconnect and reconnect"
       initial,
       first.summary,
       5,
-      { wait_elapsed_ms: 0, wait_attempt_count: 0 },
+      { wait_elapsed_ms: 0, wait_attempt_count: 0, },
     )
     let meta_cursor = mooncode_json_string(meta, "resume_cursor", default="")
     let decoded_meta = mooncode_stream_resume_cursor_parse(

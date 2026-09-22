@@ -54,7 +54,7 @@ fn enriched_missing_inputs_envelope(
 ) -> AdaptiveAnalysisEnvelope {
   let explicit = normalize_missing_inputs_list(envelope.missing_inputs)
   if !explicit.is_empty() {
-    return { ..envelope, missing_inputs: Some(explicit) }
+    return { ..envelope, missing_inputs: Some(explicit), }
   }
   let heuristic = heuristic_missing_inputs_from_text(execution.content)
   if !heuristic.is_empty() {

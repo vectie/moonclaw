@@ -10,7 +10,7 @@ pub fn ChatCompletionContentPartParam::new(
   text~ : String,
   cache_control? : CacheControl,
 ) -> ChatCompletionContentPartParam {
-  Text({ text, cache_control })
+  Text({ text, cache_control, })
 }
 
 ///|
@@ -61,7 +61,7 @@ impl @json.FromJson for ChatCompletionContentPartParam with fn from_json(
           Some(cache_control)
         }
       }
-      Text({ text, cache_control })
+      Text({ text, cache_control, })
     }
     "image_url" => {
       guard json.get("image_url") is Some(Object(image_url)) else {
@@ -78,7 +78,7 @@ impl @json.FromJson for ChatCompletionContentPartParam with fn from_json(
             (json_path, "Expected 'image_url.detail' to be a string"),
           )
       }
-      ImageUrl({ url, detail })
+      ImageUrl({ url, detail, })
     }
     _ =>
       raise JsonDecodeError((json_path, "Unknown content part type: \{type_}"))

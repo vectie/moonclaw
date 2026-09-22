@@ -11,7 +11,7 @@ pub fn AnalysisPolicy::new(
   max_total_tokens? : Int? = None,
   skip_if_artifact_exists? : Bool = false,
 ) -> AnalysisPolicy {
-  { timeout_ms, max_total_tokens, skip_if_artifact_exists }
+  { timeout_ms, max_total_tokens, skip_if_artifact_exists, }
 }
 
 ///|

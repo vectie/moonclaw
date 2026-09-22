@@ -11,7 +11,7 @@ struct ResponseWriter {
 
 ///|
 fn ResponseWriter::new(conn : @http.ServerConnection) -> ResponseWriter {
-  { sent: false, header: Header({}), conn }
+  { sent: false, header: Header({}), conn, }
 }
 
 ///|

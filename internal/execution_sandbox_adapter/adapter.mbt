@@ -107,7 +107,7 @@ async fn Client::run(
     cwd=self.receipt_root,
     env={ "MOONFORT_EXECUTOR_CONFIG": self.executor_config_path },
   )
-  { status: process.status, stdout: process.stdout }
+  { status: process.status, stdout: process.stdout, }
 }
 
 ///|
@@ -176,5 +176,5 @@ pub async fn PromotionClient::promote_retention(
     env={ "MOONFORT_EXECUTOR_CONFIG": self.executor_config_path },
     stdout_limit=65_536,
   )
-  { status: process.status, stdout: process.stdout }
+  { status: process.status, stdout: process.stdout, }
 }

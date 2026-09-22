@@ -27,7 +27,7 @@ fn parse_user(
   let name : String = object.required("name", path~)
   let age : Int = object.required("age", path~)
   let nickname : String? = object.optional("nickname", path~)
-  User::{ name, age, nickname }
+  User::{ name, age, nickname, }
 }
 ```
 

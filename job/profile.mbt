@@ -214,7 +214,16 @@ fn payload_from_raw_profile(raw : Json) -> JobProfileConfigPayload? {
         Some(value) => Some(value)
         None => None
       }
-      Some({ family, label, role, priority, tags, match_rules, steps, metadata })
+      Some({
+        family,
+        label,
+        role,
+        priority,
+        tags,
+        match_rules,
+        steps,
+        metadata,
+      })
     }
     _ => None
   }

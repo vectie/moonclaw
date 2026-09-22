@@ -7,7 +7,7 @@ struct RecordingHandler {
 
 ///|
 fn RecordingHandler::new() -> RecordingHandler {
-  { handled_message_ids: [], attachment_counts: [], event_types: [] }
+  { handled_message_ids: [], attachment_counts: [], event_types: [], }
 }
 
 ///|
@@ -688,8 +688,8 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: None,
       msg_type: Some("merge_forward"),
-      body: Some({ content: Some("{}") }),
-      sender: Some({ id: Some("ou_root"), sender_type: Some("user") }),
+      body: Some({ content: Some("{}"), }),
+      sender: Some({ id: Some("ou_root"), sender_type: Some("user"), }),
     },
     {
       message_id: "text-1",
@@ -702,7 +702,7 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       body: Some({
         content: Some(Json::object({ "text": "first" }).stringify()),
       }),
-      sender: Some({ id: Some("ou_first"), sender_type: Some("user") }),
+      sender: Some({ id: Some("ou_first"), sender_type: Some("user"), }),
     },
     {
       message_id: "nested-root",
@@ -712,8 +712,8 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: None,
       msg_type: Some("merge_forward"),
-      body: Some({ content: Some("{}") }),
-      sender: Some({ id: Some("ou_nested"), sender_type: Some("user") }),
+      body: Some({ content: Some("{}"), }),
+      sender: Some({ id: Some("ou_nested"), sender_type: Some("user"), }),
     },
     {
       message_id: "text-2",
@@ -726,7 +726,7 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       body: Some({
         content: Some(Json::object({ "text": "nested" }).stringify()),
       }),
-      sender: Some({ id: Some("ou_child"), sender_type: Some("user") }),
+      sender: Some({ id: Some("ou_child"), sender_type: Some("user"), }),
     },
   ])
 
@@ -748,8 +748,8 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
         thread_id: None,
         upper_message_id: None,
         msg_type: Some("merge_forward"),
-        body: Some({ content: Some("{}") }),
-        sender: Some({ id: Some("ou_root"), sender_type: Some("user") }),
+        body: Some({ content: Some("{}"), }),
+        sender: Some({ id: Some("ou_root"), sender_type: Some("user"), }),
       },
       {
         message_id: "text-1",
@@ -762,7 +762,7 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
         body: Some({
           content: Some(Json::object({ "text": "hello" }).stringify()),
         }),
-        sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
+        sender: Some({ id: Some("ou_sender"), sender_type: Some("user"), }),
       },
     ],
     sender_names={ "ou_sender": "Alice" },
@@ -785,7 +785,7 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
+      sender: Some({ id: Some("ou_sender"), sender_type: Some("user"), }),
     },
     {
       message_id: "b",
@@ -796,7 +796,7 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
+      sender: Some({ id: Some("ou_sender"), sender_type: Some("user"), }),
     },
     {
       message_id: "c",
@@ -807,7 +807,7 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some({ id: Some("bot-id"), sender_type: Some("app") }),
+      sender: Some({ id: Some("bot-id"), sender_type: Some("app"), }),
     },
   ])
 
@@ -1057,14 +1057,14 @@ async test "Feishu websocket runtime starts websocket accounts through extension
             service: 3,
             method_id: feishu_ws_data_frame,
             headers: [
-              { key: feishu_ws_header_type, value: feishu_ws_type_event },
+              { key: feishu_ws_header_type, value: feishu_ws_type_event, },
               {
                 key: feishu_ws_header_message_id,
                 value: "runtime-monitor-message",
               },
-              { key: feishu_ws_header_sum, value: "1" },
-              { key: feishu_ws_header_seq, value: "0" },
-              { key: feishu_ws_header_trace_id, value: "trace-1" },
+              { key: feishu_ws_header_sum, value: "1", },
+              { key: feishu_ws_header_seq, value: "0", },
+              { key: feishu_ws_header_trace_id, value: "trace-1", },
             ],
             payload_encoding: None,
             payload_type: None,
@@ -1265,6 +1265,7 @@ async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
     group.return_immediately(())
   })
 }
+
 ///|
 extend FeishuChannel with @channel.Channel::{configure, start}
 

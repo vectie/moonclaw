@@ -22,5 +22,5 @@ pub impl @json.FromJson for OpenRouterErrorResponse with fn from_json(
   guard json.get("metadata") is Some(metadata) else {
     raise JsonDecodeError((json_path, "Missing 'metadata' field"))
   }
-  { code: code.to_int(), message, metadata }
+  { code: code.to_int(), message, metadata, }
 }

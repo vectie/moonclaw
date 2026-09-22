@@ -84,7 +84,7 @@ pub fn Request::compact_for_overload(self : Request, tier : Int) -> Request {
           }
         }
         compacted_messages.push(
-          Tool({ content, tool_call_id: param.tool_call_id }),
+          Tool({ content, tool_call_id: param.tool_call_id, }),
         )
       }
       _ => compacted_messages.push(message)

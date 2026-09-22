@@ -35,5 +35,5 @@ impl @json.FromJson for ChatCompletionChunkChoice with fn from_json(
     }
     None => None
   }
-  { index: index.to_int(), delta, finish_reason }
+  { index: index.to_int(), delta, finish_reason, }
 }

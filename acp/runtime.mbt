@@ -221,7 +221,7 @@ async fn save_persisted_sessions(
   ensure_acp_state_parent(home)
   @fsx.write_to_file(
     acp_state_path(home),
-    PersistedAcpState::{ sessions, runs: Some(runs) }.to_json().stringify(),
+    PersistedAcpState::{ sessions, runs: Some(runs), }.to_json().stringify(),
   ) catch {
     _ => ()
   }
@@ -234,7 +234,7 @@ fn session_identity_key(target_id : String, session_key : String) -> String {
 
 ///|
 pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> AcpRuntime {
-  let runtime = AcpRuntime::{ home, cwd, targets: {}, sessions: {}, runs: {} }
+  let runtime = AcpRuntime::{ home, cwd, targets: {}, sessions: {}, runs: {}, }
   runtime.load()
   runtime
 }

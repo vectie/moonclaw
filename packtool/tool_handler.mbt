@@ -95,7 +95,7 @@ pub fn PackToolExecutor::new(
     String,
   ])? = None,
 ) -> PackToolExecutor {
-  { estimate_cost_micros, run, reconcile, cancel }
+  { estimate_cost_micros, run, reconcile, cancel, }
 }
 
 ///|

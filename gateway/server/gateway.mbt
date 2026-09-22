@@ -461,11 +461,11 @@ fn append_handoff(
   let step_id = linkage_step_id(linkage)
   for i = 0; i < handoffs.length(); i = i + 1 {
     if handoffs[i].node_id == node_id && handoffs[i].step_id == step_id {
-      handoffs[i] = { ..handoffs[i], remote: handoffs[i].remote + [link] }
+      handoffs[i] = { ..handoffs[i], remote: handoffs[i].remote + [link], }
       return
     }
   }
-  handoffs.push({ node_id, step_id, remote: [link] })
+  handoffs.push({ node_id, step_id, remote: [link], })
 }
 
 ///|
@@ -475,7 +475,7 @@ fn Gateway::resolve_remote_ui_for_job_run(
 ) -> RemoteUiResolution {
   let job_run = match self.job_runtime().store().get_run(run_id) {
     Some(run) => run
-    None => return { links: [], handoffs: [] }
+    None => return { links: [], handoffs: [], }
   }
   let links : Array[@job.JobUiRemoteLink] = []
   let handoffs : Array[@job.JobUiHandoff] = []
@@ -532,5 +532,5 @@ fn Gateway::resolve_remote_ui_for_job_run(
       append_handoff(handoffs, link)
     }
   }
-  { links, handoffs }
+  { links, handoffs, }
 }

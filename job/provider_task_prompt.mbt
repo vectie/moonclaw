@@ -67,7 +67,7 @@ fn provider_task_preferred_skills(
 fn provider_task_tool_contract(
   request : AnalysisRequest,
 ) -> AnalysisToolContract {
-  { ..request.tool_contract, todo: false }
+  { ..request.tool_contract, todo: false, }
 }
 
 ///|

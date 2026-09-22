@@ -30,7 +30,7 @@ async fn @file.Manager::execute_replace_in_file(
   self : @file.Manager,
   args : Json,
 ) -> @tool.ToolResult[WriteResult] noraise {
-  let { path, replace, search } : Input = @json.from_json(args) catch {
+  let { path, replace, search, } : Input = @json.from_json(args) catch {
     error =>
       return @tool.error(
         "Error: Invalid arguments provided to replace_in_file tool: \{error}",

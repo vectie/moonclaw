@@ -10,7 +10,7 @@ fn ChatCompletionMessageToolCallBuilder::new(
   id~ : String,
   name~ : String,
 ) -> ChatCompletionMessageToolCallBuilder {
-  { id, name, arguments: StringBuilder::new() }
+  { id, name, arguments: StringBuilder::new(), }
 }
 
 ///|
@@ -39,7 +39,7 @@ priv struct ChatCompletionMessageBuilder {
 
 ///|
 fn ChatCompletionMessageBuilder::new() -> ChatCompletionMessageBuilder {
-  { content: None, refusal: None, tool_calls: [] }
+  { content: None, refusal: None, tool_calls: [], }
 }
 
 ///|
@@ -111,7 +111,7 @@ priv struct ChatCompletionChoiceBuilder {
 
 ///|
 fn ChatCompletionChoiceBuilder::new(index : Int) -> ChatCompletionChoiceBuilder {
-  { finish_reason: None, index, message: ChatCompletionMessageBuilder::new() }
+  { finish_reason: None, index, message: ChatCompletionMessageBuilder::new(), }
 }
 
 ///|

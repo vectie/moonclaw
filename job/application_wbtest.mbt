@@ -112,7 +112,7 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
       recipient=Some("oc_chat_123"),
     )
     app.runtime().store().save_job_proposal(proposal)
-    let captured_input : Ref[Json?] = { val: None }
+    let captured_input : Ref[Json?] = { val: None, }
     let result = app.confirm_proposal(proposal, "proposal-2", async fn(
       job_id,
       initial_input,
@@ -289,7 +289,7 @@ async test "GatewayJobApp::confirm_proposal passes proposal intake into launch c
         },
       },
     }
-    let seen_input : Ref[String] = { val: "" }
+    let seen_input : Ref[String] = { val: "", }
     let result = app.confirm_proposal(proposal, "proposal-intake", async fn(
       job_id,
       initial_input,

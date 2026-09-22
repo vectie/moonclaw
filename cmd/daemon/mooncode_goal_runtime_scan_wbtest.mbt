@@ -6,7 +6,7 @@ fn scan_test_genesis(
     "session-你好",
     "goal-1",
     "objective",
-    [{ id: "criterion-1", criterion: "done ✓" }],
+    [{ id: "criterion-1", criterion: "done ✓", }],
     recorded_at,
   )
 }

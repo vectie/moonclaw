@@ -204,5 +204,5 @@ pub fn build_acp_ui_snapshot(runtime : AcpRuntime) -> AcpUiSnapshot {
     timeline.push(run_timeline_entry(run))
   }
   timeline.sort_by(fn(left, right) { right.timestamp.compare(left.timestamp) })
-  { targets, sessions, runs, nodes, timeline }
+  { targets, sessions, runs, nodes, timeline, }
 }

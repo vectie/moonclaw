@@ -292,5 +292,5 @@ pub async fn ArtifactStore::apply_retention(
     }
     index += 1
   }
-  { archived_ids, deleted_ids }
+  { archived_ids, deleted_ids, }
 }

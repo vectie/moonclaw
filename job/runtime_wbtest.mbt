@@ -12,7 +12,7 @@ fn runtime_definition(
     enabled: true,
     config: { "query": "agents" },
     schedule,
-    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(100) }),
+    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(100), }),
     workflow_id: None,
     created_at: 1,
     updated_at: 1,

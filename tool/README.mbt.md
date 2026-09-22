@@ -154,7 +154,7 @@ let weather_tool : @tool.Tool[WeatherOutput] = @tool.new(
     }
 
     // Simulate weather API call
-    @tool.ok({ temperature: 72.5, conditions: "Sunny" })
+    @tool.ok({ temperature: 72.5, conditions: "Sunny", })
   }),
 )
 

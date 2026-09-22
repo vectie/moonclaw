@@ -57,5 +57,5 @@ impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
     }
     None => None
   }
-  { content, refusal, role, tool_calls }
+  { content, refusal, role, tool_calls, }
 }

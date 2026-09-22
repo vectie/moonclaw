@@ -45,7 +45,7 @@ pub fn pipeline_stage(
 
 ///|
 pub fn PipelineStage::start(self : PipelineStage) -> PipelineStage {
-  { ..self, status: Running, started_at: Some(current_time_ms()) }
+  { ..self, status: Running, started_at: Some(current_time_ms()), }
 }
 
 ///|
@@ -163,17 +163,17 @@ pub fn Pipeline::start(self : Pipeline) -> Pipeline {
 
 ///|
 pub fn Pipeline::complete(self : Pipeline) -> Pipeline {
-  { ..self, status: Completed, completed_at: Some(current_time_ms()) }
+  { ..self, status: Completed, completed_at: Some(current_time_ms()), }
 }
 
 ///|
 pub fn Pipeline::fail(self : Pipeline) -> Pipeline {
-  { ..self, status: Failed, completed_at: Some(current_time_ms()) }
+  { ..self, status: Failed, completed_at: Some(current_time_ms()), }
 }
 
 ///|
 pub fn Pipeline::cancel(self : Pipeline) -> Pipeline {
-  { ..self, status: Cancelled, completed_at: Some(current_time_ms()) }
+  { ..self, status: Cancelled, completed_at: Some(current_time_ms()), }
 }
 
 ///|

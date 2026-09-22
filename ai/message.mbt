@@ -48,7 +48,7 @@ pub struct ToolCall {
 
 ///|
 pub fn tool_call(id~ : String, name~ : String, arguments? : String) -> ToolCall {
-  { id, name, arguments }
+  { id, name, arguments, }
 }
 
 ///|
@@ -66,5 +66,5 @@ pub fn usage(
   total_tokens? : Int = input_tokens + output_tokens,
   cache_read_tokens? : Int,
 ) -> Usage {
-  { input_tokens, output_tokens, total_tokens, cache_read_tokens }
+  { input_tokens, output_tokens, total_tokens, cache_read_tokens, }
 }

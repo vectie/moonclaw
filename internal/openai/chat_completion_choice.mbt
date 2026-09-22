@@ -12,7 +12,7 @@ pub fn ChatCompletionChoice::new(
   index~ : Int,
   message~ : ChatCompletionMessage,
 ) -> ChatCompletionChoice {
-  { finish_reason, index, message }
+  { finish_reason, index, message, }
 }
 
 ///|
@@ -60,5 +60,5 @@ impl @json.FromJson for ChatCompletionChoice with fn from_json(
     message,
     path=json_path.add_key("message"),
   )
-  { finish_reason, index, message }
+  { finish_reason, index, message, }
 }

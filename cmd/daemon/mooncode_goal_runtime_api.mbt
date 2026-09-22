@@ -17,7 +17,7 @@ fn mooncode_goal_runtime_api_response(
   status_code : Int,
   body : Json,
 ) -> MoonCodeGoalRuntimeApiResponse {
-  { status_code, body }
+  { status_code, body, }
 }
 
 ///|
@@ -86,9 +86,9 @@ fn mooncode_goal_runtime_parse_put_request(
     }
     ids.push(id)
     texts.push(text)
-    criteria.push({ id, criterion: text })
+    criteria.push({ id, criterion: text, })
   }
-  { session_id, goal_id, objective, criteria }
+  { session_id, goal_id, objective, criteria, }
 }
 
 ///|

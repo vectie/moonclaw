@@ -644,7 +644,7 @@ pub async fn inspect_installed_capability_v1(
     return None
   }
   require_same_capability_attempt(receipt, installed, invocation)
-  Some({ receipt_ref, receipt, replayed: true })
+  Some({ receipt_ref, receipt, replayed: true, })
 }
 
 ///|
@@ -746,7 +746,7 @@ async fn finalize_capability_result(
 ) -> CapabilityInvocationReceiptV1 {
   let issues = output_artifact_issues(installed, result.output_artifacts)
   if !issues.is_empty() {
-    let sanitized = { ..result, output_artifacts: [] }
+    let sanitized = { ..result, output_artifacts: [], }
     return receipt_for_status(
       catalog_id,
       installed,
@@ -992,7 +992,7 @@ pub async fn execute_installed_capability_v1(
       if receipt.status == "succeeded" ||
         receipt.status == "failed" ||
         receipt.status == "cancelled" {
-        return { receipt_ref, receipt, replayed: true }
+        return { receipt_ref, receipt, replayed: true, }
       }
       let reconciled = reconcile_capability_attempt(
         workspace,
@@ -1003,7 +1003,7 @@ pub async fn execute_installed_capability_v1(
         execution_request,
         executor,
       )
-      return { receipt_ref, receipt: reconciled, replayed: true }
+      return { receipt_ref, receipt: reconciled, replayed: true, }
     }
     None => ()
   }
@@ -1036,7 +1036,7 @@ pub async fn execute_installed_capability_v1(
       )
   }
   write_capability_receipt(receipt_path, receipt)
-  { receipt_ref, receipt, replayed: false }
+  { receipt_ref, receipt, replayed: false, }
 }
 
 ///|
@@ -1101,7 +1101,7 @@ pub async fn cancel_installed_capability_v1(
   if existing.status == "succeeded" ||
     existing.status == "failed" ||
     existing.status == "cancelled" {
-    return { receipt_ref, receipt: existing, replayed: true }
+    return { receipt_ref, receipt: existing, replayed: true, }
   }
   let request = capability_execution_request(
     installed, invocation, estimated_cost_micros,
@@ -1117,5 +1117,5 @@ pub async fn cancel_installed_capability_v1(
     reconciliation,
   )
   write_capability_receipt(receipt_path, receipt)
-  { receipt_ref, receipt, replayed: false }
+  { receipt_ref, receipt, replayed: false, }
 }

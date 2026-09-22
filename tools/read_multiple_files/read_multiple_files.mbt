@@ -43,7 +43,7 @@ impl Show for ReadFileToolResult with fn output(
   match self {
     ReadDirectoryResult({ path, display, .. }) =>
       logger.write_string("Directory: \{path}\nEntries:\n\{display}")
-    ReadFileResult({ path, content, start_line, end_line }) => {
+    ReadFileResult({ path, content, start_line, end_line, }) => {
       let lines = content.split("\n").to_array()
       let selected_lines = lines[start_line - 1:end_line]
       let selected_content = selected_lines.join("\n")
@@ -92,7 +92,7 @@ async fn execute_read_file_tool(
         }
       })
       let display = entries.join("\n")
-      return @tool.ok(ReadDirectoryResult({ path, entries, display }))
+      return @tool.ok(ReadDirectoryResult({ path, entries, display, }))
     }
 
     // Open and read the file
@@ -127,7 +127,7 @@ async fn execute_read_file_tool(
       }
       None => lines.length()
     }
-    return @tool.ok(ReadFileResult({ path, content, start_line, end_line }))
+    return @tool.ok(ReadFileResult({ path, content, start_line, end_line, }))
   } catch {
     error => @tool.error("Error reading file: \{error}", error~)
   }

@@ -321,7 +321,7 @@ fn parse_bing_rss_result(
     )
     remaining = item_tail[end + 7:].to_owned()
   }
-  { query, search_url, answer: None, results: items, source: "bing-rss" }
+  { query, search_url, answer: None, results: items, source: "bing-rss", }
 }
 
 ///|
@@ -364,9 +364,9 @@ fn limit_bing_results_for_query(
     if limited.length() >= max_results {
       break
     }
-    limited.push({ ..item, rank: limited.length() + 1 })
+    limited.push({ ..item, rank: limited.length() + 1, })
   }
-  { ..result, results: limited }
+  { ..result, results: limited, }
 }
 
 ///|

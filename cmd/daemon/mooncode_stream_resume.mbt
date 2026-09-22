@@ -161,7 +161,7 @@ fn mooncode_stream_resume_cursor_parse(
       "resume cursor checksum mismatch",
     )
   }
-  { sequence, epoch, token: value, initial: false }
+  { sequence, epoch, token: value, initial: false, }
 }
 
 ///|
@@ -647,7 +647,7 @@ async fn mooncode_stream_resume_create_spool(
     }
   }
   writer.close()
-  { directory, path, summary }
+  { directory, path, summary, }
 }
 
 ///|

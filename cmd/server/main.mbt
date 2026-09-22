@@ -136,7 +136,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
       guard instance_id == id && token.length() == 72 else {
         fail("worker registration capability is unavailable")
       }
-      Some({ host, port, id, instance_id, token })
+      Some({ host, port, id, instance_id, token, })
     }
     (None, None, None) => None
     _ =>

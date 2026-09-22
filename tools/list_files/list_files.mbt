@@ -99,7 +99,7 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ListFilesResult] {
     name="list_files",
     schema~,
     async fn(args) -> @tool.ToolResult[ListFilesResult] noraise {
-      let { path } : InputPath = @json.from_json(args) catch {
+      let { path, } : InputPath = @json.from_json(args) catch {
         // TODO(upstream): weird error when missing `_ => `
         _ => return @tool.error("Error: 'path' parameter is required")
       }

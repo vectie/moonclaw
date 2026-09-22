@@ -50,7 +50,7 @@ pub fn Event::new(
   created? : @clock.Timestamp = @clock.epoch.now(),
   desc : EventDesc,
 ) -> Event {
-  { id, created, desc }
+  { id, created, desc, }
 }
 
 ///|
@@ -534,7 +534,7 @@ pub impl @json.FromJson for Event with fn from_json(
     .optional("created", path=json_path)
     .unwrap_or_else(() => @clock.Timestamp::from_ms(0))
   let desc : EventDesc = object.required("desc", path=json_path)
-  { id, created, desc }
+  { id, created, desc, }
 }
 
 ///|

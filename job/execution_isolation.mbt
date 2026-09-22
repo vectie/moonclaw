@@ -47,7 +47,7 @@ pub fn ExecutionIsolationResolution::new(
   cwd~ : String,
   metadata? : Json? = None,
 ) -> ExecutionIsolationResolution {
-  { cwd, metadata }
+  { cwd, metadata, }
 }
 
 ///|

@@ -9,7 +9,7 @@ pub fn PkceCodes::new(
   code_verifier~ : String,
   code_challenge~ : String,
 ) -> PkceCodes {
-  { code_verifier, code_challenge }
+  { code_verifier, code_challenge, }
 }
 
 ///|
@@ -51,7 +51,7 @@ pub fn generate_pkce() -> PkceCodes {
       url_safe=true,
     ),
   )
-  { code_verifier, code_challenge }
+  { code_verifier, code_challenge, }
 }
 
 ///|

@@ -22,7 +22,7 @@ pub fn tool_desc(
   name~ : String,
   schema~ : JsonSchema,
 ) -> ToolDesc {
-  { description, name, schema }
+  { description, name, schema, }
 }
 
 ///|
@@ -88,7 +88,7 @@ pub fn[Output] Tool::new(
   schema~ : JsonSchema,
   f : ToolFn[Output],
 ) -> Tool[Output] {
-  { desc: { description, name, schema }, f }
+  { desc: { description, name, schema, }, f, }
 }
 
 ///|

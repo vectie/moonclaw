@@ -82,7 +82,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "generic", definition, workflow, bindings: [] }
+      { family: "generic", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -210,7 +210,7 @@ async test "controller delegate step records iteration state and child lineage" 
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "generic", definition, workflow, bindings: [] }
+      { family: "generic", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -365,14 +365,14 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
       draft_job_proposal("proposal-child-profile-1", request_text, 100)
     })
-    let captured_family : Ref[String] = { val: "" }
-    let captured_profile_id : Ref[String] = { val: "" }
-    let captured_step_count : Ref[Int] = { val: 0 }
-    let captured_step_title : Ref[String] = { val: "" }
-    let captured_skill_present : Ref[Bool] = { val: false }
-    let captured_execution_mode : Ref[String] = { val: "" }
-    let captured_execution_target : Ref[String] = { val: "" }
-    let captured_step_metadata : Ref[String] = { val: "" }
+    let captured_family : Ref[String] = { val: "", }
+    let captured_profile_id : Ref[String] = { val: "", }
+    let captured_step_count : Ref[Int] = { val: 0, }
+    let captured_step_title : Ref[String] = { val: "", }
+    let captured_skill_present : Ref[Bool] = { val: false, }
+    let captured_execution_mode : Ref[String] = { val: "", }
+    let captured_execution_target : Ref[String] = { val: "", }
+    let captured_step_metadata : Ref[String] = { val: "", }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
       captured_family.val = proposal.suggested_family.unwrap_or("")
       captured_profile_id.val = proposal.profile_id.unwrap_or("")
@@ -572,8 +572,8 @@ async test "subjob_step_handler propagates missing-input policy into child propo
     let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
       draft_job_proposal("proposal-child-policy-1", request_text, 100)
     })
-    let captured_profile_metadata : Ref[String] = { val: "" }
-    let captured_step_metadata : Ref[String] = { val: "" }
+    let captured_profile_metadata : Ref[String] = { val: "", }
+    let captured_step_metadata : Ref[String] = { val: "", }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
       captured_profile_metadata.val = proposal.profile_metadata.stringify()
       captured_step_metadata.val = proposal.steps[0].metadata.stringify()
@@ -602,7 +602,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "wiki_gather_worker", definition, workflow, bindings: [] }
+      { family: "wiki_gather_worker", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -757,7 +757,7 @@ async test "subjob_step_handler fails when child run waits for input" {
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "wiki_gather_worker", definition, workflow, bindings: [] }
+      { family: "wiki_gather_worker", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)

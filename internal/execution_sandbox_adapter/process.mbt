@@ -53,6 +53,6 @@ async fn run_adapter_process(
         cancel_handler=@process.graceful_cancel(timeout=1000),
       )
     })
-    { status, stdout: stdout_task.wait() }
+    { status, stdout: stdout_task.wait(), }
   })
 }

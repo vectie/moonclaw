@@ -8,7 +8,7 @@ fn runtime_continue(id : String, operation_id : String) -> GoalRuntimeEvent {
           operation_id,
           kind: "test",
           input: "",
-          policy: { max_output_bytes: 1024, timeout_milliseconds: 10 },
+          policy: { max_output_bytes: 1024, timeout_milliseconds: 10, },
         },
       ],
       "one quantum of progress",
@@ -42,7 +42,7 @@ test "more than 32 and more than 20 continuation quanta remain unbounded" {
     state,
     PlannerDecision(
       "settle",
-      Achieved("done", [{ criterion: "all work", evidence_refs: ["proof-1"] }]),
+      Achieved("done", [{ criterion: "all work", evidence_refs: ["proof-1"], }]),
     ),
   )
   assert_true(state.outcome is Some(AchievedOutcome(_, _)))
@@ -55,7 +55,7 @@ test "blocked and cancelled are explicit terminal decisions" {
     PlannerDecision(
       "blocked",
       Blocked(
-        { code: "approval", detail: "owner unavailable" },
+        { code: "approval", detail: "owner unavailable", },
         ["requested owner approval"],
         Some("owner approves"),
       ),
@@ -88,7 +88,7 @@ test "settlement is absorbing and cannot be replaced" {
     new_goal_runtime_state(),
     PlannerDecision(
       "achieve",
-      Achieved("done", [{ criterion: "complete", evidence_refs: ["proof"] }]),
+      Achieved("done", [{ criterion: "complete", evidence_refs: ["proof"], }]),
     ),
   )
   assert_true(goal_runtime_is_terminal(achieved))
@@ -97,7 +97,7 @@ test "settlement is absorbing and cannot be replaced" {
     PlannerDecision(
       "block-after-achieve",
       Blocked(
-        { code: "late", detail: "late" },
+        { code: "late", detail: "late", },
         ["valid alternative"],
         Some("valid event"),
       ),
@@ -113,35 +113,38 @@ test "invalid achieved and blocked decisions are exact no-ops" {
     PlannerDecision("a1", Achieved("done", [])),
     PlannerDecision(
       "a2",
-      Achieved("done", [{ criterion: " ", evidence_refs: ["proof"] }]),
+      Achieved("done", [{ criterion: " ", evidence_refs: ["proof"], }]),
     ),
     PlannerDecision(
       "a3",
-      Achieved("done", [{ criterion: "criterion", evidence_refs: [] }]),
+      Achieved("done", [{ criterion: "criterion", evidence_refs: [], }]),
     ),
     PlannerDecision(
       "a4",
-      Achieved("done", [{ criterion: "criterion", evidence_refs: [" "] }]),
+      Achieved("done", [{ criterion: "criterion", evidence_refs: [" "], }]),
     ),
     PlannerDecision(
       "a5",
       Achieved("done", [
-        { criterion: "duplicate", evidence_refs: ["proof-1"] },
-        { criterion: "duplicate", evidence_refs: ["proof-2"] },
+        { criterion: "duplicate", evidence_refs: ["proof-1"], },
+        { criterion: "duplicate", evidence_refs: ["proof-2"], },
       ]),
     ),
     PlannerDecision(
       "b1",
-      Blocked({ code: "code", detail: " " }, ["alternative"], None),
+      Blocked({ code: "code", detail: " ", }, ["alternative"], None),
     ),
-    PlannerDecision("b2", Blocked({ code: "code", detail: "detail" }, [], None)),
+    PlannerDecision(
+      "b2",
+      Blocked({ code: "code", detail: "detail", }, [], None),
+    ),
     PlannerDecision(
       "b3",
-      Blocked({ code: "code", detail: "detail" }, [" "], None),
+      Blocked({ code: "code", detail: "detail", }, [" "], None),
     ),
     PlannerDecision(
       "b4",
-      Blocked({ code: "code", detail: "detail" }, ["alternative"], Some(" ")),
+      Blocked({ code: "code", detail: "detail", }, ["alternative"], Some(" ")),
     ),
   ]
   for event in invalid {
@@ -188,7 +191,7 @@ test "continue validation rejects missing intent and invalid or duplicate operat
     operation_id: "op",
     kind: "test",
     input: "",
-    policy: { max_output_bytes: 1, timeout_milliseconds: 1 },
+    policy: { max_output_bytes: 1, timeout_milliseconds: 1, },
   }
   assert_true(!validate_goal_planner_decision(Continue([], "progress", "why")))
   assert_true(!validate_goal_planner_decision(Continue([valid], " ", "why")))
@@ -206,7 +209,7 @@ test "continue validation rejects missing intent and invalid or duplicate operat
             operation_id: " ",
             kind: "test",
             input: "",
-            policy: { max_output_bytes: 1, timeout_milliseconds: 1 },
+            policy: { max_output_bytes: 1, timeout_milliseconds: 1, },
           },
         ],
         "progress",
@@ -222,7 +225,7 @@ test "continue validation rejects missing intent and invalid or duplicate operat
             operation_id: "op",
             kind: "test",
             input: "",
-            policy: { max_output_bytes: 0, timeout_milliseconds: 1 },
+            policy: { max_output_bytes: 0, timeout_milliseconds: 1, },
           },
         ],
         "progress",
@@ -238,7 +241,7 @@ test "continue validation rejects missing intent and invalid or duplicate operat
             operation_id: "op",
             kind: "test",
             input: "",
-            policy: { max_output_bytes: 1, timeout_milliseconds: 0 },
+            policy: { max_output_bytes: 1, timeout_milliseconds: 0, },
           },
         ],
         "progress",
@@ -330,7 +333,7 @@ test "padded identities and blank operation kinds are exact no-ops" {
             operation_id: "operation",
             kind: " ",
             input: "",
-            policy: { max_output_bytes: 1, timeout_milliseconds: 1 },
+            policy: { max_output_bytes: 1, timeout_milliseconds: 1, },
           },
         ],
         "progress",
@@ -344,13 +347,13 @@ test "padded identities and blank operation kinds are exact no-ops" {
 ///|
 test "terminal arrays are isolated from caller mutation" {
   let refs = ["proof-1"]
-  let evidence = [{ criterion: "criterion", evidence_refs: refs }]
+  let evidence = [{ criterion: "criterion", evidence_refs: refs, }]
   let achieved = reduce_goal_runtime(
     new_goal_runtime_state(),
     PlannerDecision("event-a", Achieved("done", evidence)),
   )
   refs.push("caller-mutation")
-  evidence.push({ criterion: "other", evidence_refs: ["proof-2"] })
+  evidence.push({ criterion: "other", evidence_refs: ["proof-2"], })
   match goal_runtime_outcome(achieved) {
     Some(AchievedOutcome(_, stored)) =>
       assert_eq(stored[0].evidence_refs.length(), 1)
@@ -362,7 +365,7 @@ test "terminal arrays are isolated from caller mutation" {
     PlannerDecision(
       "event-b",
       Blocked(
-        { code: "external", detail: "waiting" },
+        { code: "external", detail: "waiting", },
         alternatives,
         Some("approval"),
       ),

@@ -6,7 +6,7 @@ pub struct Manager {
 
 ///|
 pub fn manager(cwd~ : String) -> Manager {
-  { cwd: @pathx.normalize(cwd), access: {} }
+  { cwd: @pathx.normalize(cwd), access: {}, }
 }
 
 ///|

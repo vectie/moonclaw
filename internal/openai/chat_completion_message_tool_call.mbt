@@ -28,5 +28,5 @@ pub impl @json.FromJson for ChatCompletionMessageToolCall with fn from_json(
     function,
     path=json_path.add_key("function"),
   )
-  { id, function }
+  { id, function, }
 }

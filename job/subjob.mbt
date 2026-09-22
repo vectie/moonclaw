@@ -77,7 +77,7 @@ fn proposal_with_execution_override(
     "execution",
     Json::object(merged_execution_metadata),
   )
-  { ..proposal, profile_metadata: Json::object(merged_profile_metadata) }
+  { ..proposal, profile_metadata: Json::object(merged_profile_metadata), }
 }
 
 ///|
@@ -137,10 +137,10 @@ fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
           }
         _ => ()
       }
-      { ..step, metadata: Json::object(merged_step_metadata) }
+      { ..step, metadata: Json::object(merged_step_metadata), }
     }
   })
-  { ..proposal, steps: updated_steps }
+  { ..proposal, steps: updated_steps, }
 }
 
 ///|
@@ -360,7 +360,7 @@ async fn execute_child_run_locally(
     )
     return Err("Subjob \{child_run.id} is waiting for input: \{summary}")
   }
-  Ok({ outputs: child_result.outputs })
+  Ok({ outputs: child_result.outputs, })
 }
 
 ///|

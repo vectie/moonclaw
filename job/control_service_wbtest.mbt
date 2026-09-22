@@ -17,8 +17,8 @@ async test "render_job_status_command_reply resolves run targets" {
     id: "workflow-1",
     kind: "job.proposal",
     steps: [
-      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
-      { id: "step-2", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
+      { id: "step-2", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: [],
   }
@@ -80,7 +80,7 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
     id: "workflow-1",
     kind: "job.proposal",
     steps: [
-      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: [],
   }
@@ -163,7 +163,7 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
     id: "workflow-2",
     kind: "job.proposal",
     steps: [
-      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: [],
   }
@@ -230,7 +230,7 @@ async test "render_job_status_command_reply avoids generic missing-input placeho
     id: "workflow-3",
     kind: "job.proposal",
     steps: [
-      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None, },
     ],
     output_bindings: [],
   }

@@ -64,7 +64,7 @@ pub struct ContentPart {
 
 ///|
 pub fn ContentPart::new(type_~ : ContentType, text~ : String) -> ContentPart {
-  { type_, text }
+  { type_, text, }
 }
 
 ///|
@@ -90,7 +90,7 @@ pub impl @json.FromJson for ContentPart with fn from_json(
       raise JsonDecodeError((path, "ContentPart: 'text' must be string"))
     None => raise JsonDecodeError((path, "ContentPart: missing 'text'"))
   }
-  { type_, text }
+  { type_, text, }
 }
 
 ///|

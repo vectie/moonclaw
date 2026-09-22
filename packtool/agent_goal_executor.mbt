@@ -13,7 +13,7 @@ pub fn AgentGoalRuntimeTransport::new(
   reconcile~ : async (Json) -> Result[Json, String],
   cancel~ : async (Json) -> Result[Json, String],
 ) -> AgentGoalRuntimeTransport {
-  { submit, reconcile, cancel }
+  { submit, reconcile, cancel, }
 }
 
 ///|
@@ -504,7 +504,7 @@ pub fn moonclaw_agent_goal_executor(
       match (transport.reconcile)(action) {
         Ok(observation) => {
           let result = agent_goal_execution_result(action, observation)
-          Ok({ status: result.status, result: Some(result), error_kind: "" })
+          Ok({ status: result.status, result: Some(result), error_kind: "", })
         }
         Err(error) => Err(error)
       }
@@ -514,7 +514,7 @@ pub fn moonclaw_agent_goal_executor(
       match (transport.cancel)(action) {
         Ok(observation) => {
           let result = agent_goal_execution_result(action, observation)
-          Ok({ status: result.status, result: Some(result), error_kind: "" })
+          Ok({ status: result.status, result: Some(result), error_kind: "", })
         }
         Err(error) => Err(error)
       }

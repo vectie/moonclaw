@@ -17,7 +17,7 @@ pub fn new_run_request(
   idempotency_key? : String,
   metadata? : Json,
 ) -> AcpRunRequest {
-  { message, run_id, model, cwd, idempotency_key, metadata }
+  { message, run_id, model, cwd, idempotency_key, metadata, }
 }
 
 ///|

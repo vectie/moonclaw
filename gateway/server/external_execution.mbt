@@ -23,7 +23,7 @@ fn ExternalExecutionBackend::new(
     String,
   ],
 ) -> ExternalExecutionBackend {
-  { id, run_analysis, run_child }
+  { id, run_analysis, run_child, }
 }
 
 ///|

@@ -23,7 +23,7 @@ pub fn GatewayJobApp::new(
   next_id~ : () -> String,
   now~ : () -> Int,
 ) -> GatewayJobApp {
-  { state: GatewayJobState::new(root~), cwd, home, workspace, next_id, now }
+  { state: GatewayJobState::new(root~), cwd, home, workspace, next_id, now, }
 }
 
 ///|
@@ -467,7 +467,7 @@ pub async fn GatewayJobApp::confirm_proposal_in_workspace(
     run.id,
     self.now(),
   )
-  Ok({ compilation, run })
+  Ok({ compilation, run, })
 }
 
 ///|

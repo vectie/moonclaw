@@ -474,7 +474,7 @@ test "prompt injection and credential boundary fail closed before dispatch" {
     is Rejected(
       {
         outcome: Blocked("prompt-injection-boundary-requires-user-control"),
-        ..,
+        ..
       }
     ),
   )
@@ -646,7 +646,7 @@ test "mutating replay cannot reuse authority nonce or idempotency lineage" {
         outcome: Blocked(
           "mutating-replay-requires-fresh-authority-and-idempotency"
         ),
-        ..,
+        ..
       }
     ),
   )

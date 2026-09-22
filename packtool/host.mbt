@@ -155,7 +155,7 @@ pub async fn intake_installed_workflow(
       )
   }
   match intake {
-    Ok(intake) => { installed, intake }
+    Ok(intake) => { installed, intake, }
     Err(error) => fail(error)
   }
 }

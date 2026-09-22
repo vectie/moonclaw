@@ -85,7 +85,12 @@ fn persisted_state_path(home : String) -> String {
 
 ///|
 fn default_command_policy() -> CommandPolicy {
-  { native: "auto", native_skills: "auto", restart: true, owner_display: "raw" }
+  {
+    native: "auto",
+    native_skills: "auto",
+    restart: true,
+    owner_display: "raw",
+  }
 }
 
 ///|

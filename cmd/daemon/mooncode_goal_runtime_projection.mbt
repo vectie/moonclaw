@@ -167,7 +167,7 @@ async fn mooncode_goal_runtime_apply_projected_event(
   }
   match value.event {
     PlannerDecision(_, Continue(operations, _, _)) => {
-      next = { ..next, phase: Running }
+      next = { ..next, phase: Running, }
       for operation in operations {
         if mooncode_goal_identity_check_and_add(
             ledger_root,
@@ -176,7 +176,7 @@ async fn mooncode_goal_runtime_apply_projected_event(
             "",
           )
           is IdentityNew {
-          next = { ..next, operation_count: next.operation_count.next() }
+          next = { ..next, operation_count: next.operation_count.next(), }
         }
       }
     }
@@ -193,26 +193,26 @@ async fn mooncode_goal_runtime_apply_projected_event(
           )
         }
       }
-      next = { ..next, terminal: true, outcome: "achieved" }
+      next = { ..next, terminal: true, outcome: "achieved", }
     }
     PlannerDecision(_, Blocked(_, _, _)) =>
-      next = { ..next, terminal: true, outcome: "blocked" }
+      next = { ..next, terminal: true, outcome: "blocked", }
     OperationAccepted(_, operation_id) =>
       if mooncode_goal_identity_check_and_add(
           ledger_root, "operation", operation_id, "",
         )
         is IdentityNew {
-        next = { ..next, operation_count: next.operation_count.next() }
+        next = { ..next, operation_count: next.operation_count.next(), }
       }
     CheckpointAccepted(_, checkpoint_id) =>
       if mooncode_goal_identity_check_and_add(
           ledger_root, "checkpoint", checkpoint_id, "",
         )
         is IdentityNew {
-        next = { ..next, checkpoint_count: next.checkpoint_count.next() }
+        next = { ..next, checkpoint_count: next.checkpoint_count.next(), }
       }
     PhaseChanged(_, phase) => next = { ..next, phase, }
-    Cancelled(_, _) => next = { ..next, terminal: true, outcome: "cancelled" }
+    Cancelled(_, _) => next = { ..next, terminal: true, outcome: "cancelled", }
   }
   next
 }
@@ -277,7 +277,7 @@ async fn mooncode_goal_authority_project_file(
               if runtime.genesis is Some(_) {
                 mooncode_goal_runtime_store_corrupt("second genesis")
               }
-              runtime = { ..runtime, genesis: Some(entry) }
+              runtime = { ..runtime, genesis: Some(entry), }
               genesis_record = Some(record)
             }
             Event(value) => {
@@ -296,7 +296,7 @@ async fn mooncode_goal_authority_project_file(
         }
       }
     })
-    { legacy, runtime }
+    { legacy, runtime, }
   })
 }
 
@@ -308,7 +308,7 @@ async fn mooncode_goal_authority_project_locked(
 ) -> MoonCodeGoalAuthorityProjection {
   let path = mooncode_session_journal_path(book_root, session_id)
   if !(@fsx.exists(path) catch { _ => false }) {
-    return { legacy: None, runtime: mooncode_goal_runtime_empty_projection() }
+    return { legacy: None, runtime: mooncode_goal_runtime_empty_projection(), }
   }
   let file = @fs.open(path, mode=ReadWrite, append=false)
   defer file.close()

@@ -12,7 +12,7 @@ pub struct ChannelRegistry {
 
 ///|
 pub fn ChannelRegistry::new() -> ChannelRegistry {
-  { channels: {} }
+  { channels: {}, }
 }
 
 ///|

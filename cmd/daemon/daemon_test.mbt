@@ -6,7 +6,7 @@ priv enum DaemonEvent {
 
 ///|
 impl @httpx.FromEvent for DaemonEvent with fn from_event(event : @httpx.Event) -> DaemonEvent raise {
-  let { event, data } = event
+  let { event, data, } = event
   let data = @json.parse(data)
   match event {
     Some("daemon.task.changed") => {

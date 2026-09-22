@@ -169,7 +169,7 @@ async fn resolve_provider_task_command(
         "Extension task target \{provider.name} is missing metadata.workspace_root",
       )
   }
-  Ok({ provider, command, args, cwd: command_cwd, workspace_root })
+  Ok({ provider, command, args, cwd: command_cwd, workspace_root, })
 }
 
 ///|

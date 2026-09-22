@@ -20,7 +20,7 @@ pub fn ChatCompletion::new(
   system_fingerprint? : String,
   service_tier? : ChatCompletionServiceTier,
 ) -> ChatCompletion {
-  { id, choices, created, model, usage, system_fingerprint, service_tier }
+  { id, choices, created, model, usage, system_fingerprint, service_tier, }
 }
 
 ///|
@@ -100,5 +100,5 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
     }
     None => None
   }
-  { id, choices, created, model, usage, system_fingerprint, service_tier }
+  { id, choices, created, model, usage, system_fingerprint, service_tier, }
 }

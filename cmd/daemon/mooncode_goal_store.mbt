@@ -62,11 +62,11 @@ fn mooncode_goal_genesis(
   if created_at < 0L {
     raise InvalidGoalGenesis("invalid timestamp: must be nonnegative")
   }
-  let budget = { ..budget, tokens_used: 0, turns_used: 0, wall_time_used: 0 }
+  let budget = { ..budget, tokens_used: 0, turns_used: 0, wall_time_used: 0, }
   let requirements = requirements.map(fn(r) raise {
     mooncode_goal_require_canonical_identity("requirement id", r.id)
     mooncode_goal_require_canonical_identity("criterion", r.criterion)
-    { ..r, state: Unproven, evidence_refs: [] }
+    { ..r, state: Unproven, evidence_refs: [], }
   })
   let goal = @mooncode_core.new_goal(
     goal_id, session_id, objective, created_at, budget, requirements,
@@ -326,7 +326,7 @@ fn mooncode_replay_goal_records_detailed(
         raise InvalidGoalGenesis("invalid goal event transition")
       }
       state.events[event_id] = event
-      replay = Some({ ..state, current: next })
+      replay = Some({ ..state, current: next, })
       continue
     }
     mooncode_goal_require_canonical_identity(
@@ -437,7 +437,7 @@ fn mooncode_replay_goal_records_detailed(
     ) catch {
       _ => raise InvalidGoalGenesis("invalid durable goal genesis")
     }
-    replay = Some({ genesis: goal, current: goal, events: {} })
+    replay = Some({ genesis: goal, current: goal, events: {}, })
   }
   match replay {
     Some(state) => {

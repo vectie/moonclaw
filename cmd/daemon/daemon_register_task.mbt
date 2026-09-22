@@ -57,7 +57,7 @@ async fn Daemon::register_task(
   logger.info("Registered authenticated task on port \{register.port}")
   pending.queue.put(register)
   w.write_header(200)
-  let res : @server.RegisterResponse = @server.RegisterResponse::{  }
+  let res : @server.RegisterResponse = @server.RegisterResponse::{ }
   w.write(res.to_json())
 }
 

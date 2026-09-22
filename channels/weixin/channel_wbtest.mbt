@@ -5,7 +5,7 @@ struct RecordingWeixinHandler {
 
 ///|
 fn RecordingWeixinHandler::new() -> RecordingWeixinHandler {
-  { handled_message_ids: [] }
+  { handled_message_ids: [], }
 }
 
 ///|
@@ -182,6 +182,7 @@ async test "weixin webhook POST handles plaintext text message and sends respons
     content="true",
   )
 }
+
 ///|
 extend WeixinChannel with @channel.Channel::{configure, start}
 

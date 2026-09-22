@@ -83,7 +83,7 @@ async test "analysis_step_handler prefers run workspace over config cwd" {
       config,
       workspace_dir=Some(run_workspace),
     )
-    let captured : Ref[String] = { val: "" }
+    let captured : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -123,7 +123,7 @@ async test "analysis_step_handler persists report and result artifacts" {
       policy=AnalysisPolicy::new(max_total_tokens=Some(200)),
     )
     let engine = analysis_test_engine(root, config)
-    let requests : Ref[Int] = { val: 0 }
+    let requests : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -248,9 +248,9 @@ async test "analysis_step_handler stamps running step with session journal befor
       metadata={ "timeout_ms": 1234 },
     )
     let engine = analysis_test_engine(root, config)
-    let observed_logs : Ref[String] = { val: "" }
-    let observed_journal_path : Ref[String] = { val: "" }
-    let observed_journal_exists : Ref[Bool] = { val: false }
+    let observed_logs : Ref[String] = { val: "", }
+    let observed_journal_path : Ref[String] = { val: "", }
+    let observed_journal_exists : Ref[Bool] = { val: false, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -751,8 +751,8 @@ async test "analysis_step_handler passes execution routing hints into executor" 
       execution_target=Some("codex-main"),
     )
     let engine = analysis_test_engine(root, config)
-    let captured_mode : Ref[String] = { val: "" }
-    let captured_target : Ref[String] = { val: "" }
+    let captured_mode : Ref[String] = { val: "", }
+    let captured_target : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -897,7 +897,7 @@ async test "analysis_step_handler can trigger adaptive input verdict from follow
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -949,8 +949,8 @@ async test "analysis_step_handler treats blocker-style prose as non-complete in 
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
-    let followup_prompt : Ref[String] = { val: "" }
+    let calls : Ref[Int] = { val: 0, }
+    let followup_prompt : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1031,8 +1031,8 @@ async test "analysis_step_handler loads analysis-adaptation skill into followup 
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
-    let followup_prompt : Ref[String] = { val: "" }
+    let calls : Ref[Int] = { val: 0, }
+    let followup_prompt : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1084,7 +1084,7 @@ async test "analysis_step_handler degrades empty needs_subplan verdict into wait
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1133,7 +1133,7 @@ async test "analysis_step_handler preserves first-pass result on empty needs_sub
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1187,7 +1187,7 @@ async test "analysis_step_handler asks AI to fill explicit missing inputs for wa
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1242,8 +1242,8 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       web_search=true,
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
-    let captured_child_proposal : Ref[JobProposal?] = { val: None }
+    let calls : Ref[Int] = { val: 0, }
+    let captured_child_proposal : Ref[JobProposal?] = { val: None, }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
       captured_child_proposal.val = Some(proposal)
       let workflow = WorkflowDefinition::{
@@ -1271,7 +1271,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "generic", definition, workflow, bindings: [] }
+      { family: "generic", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let child_engine = WorkflowEngine::new(runtime=engine.runtime)
@@ -1390,7 +1390,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output 
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1434,7 +1434,7 @@ async test "analysis_step_handler does not adaptive-subplan persisted provider c
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1503,8 +1503,8 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       },
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
-    let captured_child_proposal : Ref[JobProposal?] = { val: None }
+    let calls : Ref[Int] = { val: 0, }
+    let captured_child_proposal : Ref[JobProposal?] = { val: None, }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
       captured_child_proposal.val = Some(proposal)
       let workflow = WorkflowDefinition::{
@@ -1532,7 +1532,7 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
         updated_at: now_ms,
         tags: ["child"],
       }
-      { family: "generic", definition, workflow, bindings: [] }
+      { family: "generic", definition, workflow, bindings: [], }
     })
     let child_engine_factory = fn() {
       let child_engine = WorkflowEngine::new(runtime=engine.runtime)
@@ -1675,7 +1675,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1719,7 +1719,7 @@ async test "analysis_step_handler repairs invalid followup judge output" {
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1788,7 +1788,7 @@ async test "build_analysis_request turns resume guess instruction into explicit 
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let captured_prompt : Ref[String] = { val: "" }
+    let captured_prompt : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1841,7 +1841,7 @@ async test "build_analysis_request renders starter attachment artifacts" {
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let captured_prompt : Ref[String] = { val: "" }
+    let captured_prompt : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -1959,7 +1959,7 @@ async test "analysis_step_handler keeps guessed deliverable completed after resu
       cwd=Some(dir),
     )
     let engine = analysis_test_engine(root, config)
-    let calls : Ref[Int] = { val: 0 }
+    let calls : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -2181,7 +2181,7 @@ async test "build_analysis_request can isolate execution in a git worktree" {
       },
     )
     let engine = analysis_test_engine(root, config, workspace_dir=Some(dir))
-    let captured : Ref[String] = { val: "" }
+    let captured : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -2231,7 +2231,7 @@ async test "analysis_step_handler persists execution isolation metadata" {
       },
     )
     let engine = analysis_test_engine(root, config, workspace_dir=Some(dir))
-    let captured_cwd : Ref[String] = { val: "" }
+    let captured_cwd : Ref[String] = { val: "", }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -2372,7 +2372,7 @@ async test "analysis_step_handler skips when matching artifact already exists" {
         100,
       ),
     )
-    let requests : Ref[Int] = { val: 0 }
+    let requests : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,
@@ -2483,7 +2483,7 @@ async test "analysis_step_handler bounds adaptive followup after persisted execu
         policy=AnalysisPolicy::new(timeout_ms=Some(10)),
       ),
     )
-    let requests : Ref[Int] = { val: 0 }
+    let requests : Ref[Int] = { val: 0, }
     engine.register_handler(
       analysis_step_handler(
         runtime=engine.runtime,

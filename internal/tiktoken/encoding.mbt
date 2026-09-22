@@ -35,7 +35,7 @@ pub fn Encoding::new(
     special_encoder[token] = rank
     special_decoder[rank] = @encoding/utf8.encode(token)
   }
-  { encoder, decoder, special_encoder, special_decoder, pattern }
+  { encoder, decoder, special_encoder, special_decoder, pattern, }
 }
 
 ///|

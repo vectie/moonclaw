@@ -41,7 +41,7 @@ impl @json.FromJson for DeviceCodeResponse with fn from_json(
     Some(Number(n, ..)) => n.to_int()
     _ => 5
   }
-  { device_code, user_code, verification_uri, expires_in, interval }
+  { device_code, user_code, verification_uri, expires_in, interval, }
 }
 
 ///|
@@ -66,7 +66,7 @@ impl @json.FromJson for AccessTokenResponse with fn from_json(
     Some(String(s)) => Some(s)
     _ => None
   }
-  { access_token, error }
+  { access_token, error, }
 }
 
 ///|
@@ -94,7 +94,7 @@ impl @json.FromJson for CopilotTokenResponse with fn from_json(
         (path, "CopilotTokenResponse: missing 'expires_at'"),
       )
   }
-  { token, expires_at }
+  { token, expires_at, }
 }
 
 ///|

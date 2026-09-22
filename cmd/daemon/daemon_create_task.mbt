@@ -80,7 +80,7 @@ impl @json.FromJson for CreateTaskRequest with fn from_json(
         (json_path.add_key("workspace_trust"), "Invalid workspace trust state"),
       )
   }
-  { name, model, message, cwd, web_search, source_kind, workspace_trust }
+  { name, model, message, cwd, web_search, source_kind, workspace_trust, }
 }
 
 ///|
@@ -181,7 +181,7 @@ async fn Daemon::create_task(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(201, reason="Created")
-  let response = CreateTaskResponse::{ task, message }
+  let response = CreateTaskResponse::{ task, message, }
   w.write(@json.to_json(response).stringify(indent=2))
 }
 

@@ -11,7 +11,7 @@ pub fn CreateMessageRequest::new(
   message~ : @ai.Message,
   web_search? : Bool,
 ) -> CreateMessageRequest {
-  { message, web_search }
+  { message, web_search, }
 }
 
 ///|
@@ -42,7 +42,7 @@ impl @json.FromJson for CreateMessageRequest with fn from_json(
     { "web_search": ws, .. } => Some(@json.from_json(ws))
     _ => None
   }
-  { message: @ai.Message::from_openai(message), web_search }
+  { message: @ai.Message::from_openai(message), web_search, }
 }
 
 ///|
@@ -67,7 +67,7 @@ pub fn CreateMessageResponse::new(
   id~ : @uuid.Uuid,
   queued~ : Bool,
 ) -> CreateMessageResponse {
-  { id, queued }
+  { id, queued, }
 }
 
 ///|
@@ -89,7 +89,7 @@ pub impl @json.FromJson for CreateMessageResponse with fn from_json(
   }
   let id : @uuid.Uuid = @json.from_json(id)
   let queued : Bool = @json.from_json(queued)
-  { id, queued }
+  { id, queued, }
 }
 
 ///|
@@ -116,6 +116,6 @@ async fn Server::create_message(
     self.message_queue.put((request, idq))
     idq.get()
   }
-  let response : CreateMessageResponse = { id, queued }
+  let response : CreateMessageResponse = { id, queued, }
   w.send_json(code=200, response.to_json())
 }

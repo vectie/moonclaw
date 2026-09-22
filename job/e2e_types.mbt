@@ -15,7 +15,7 @@ pub fn E2EStarterAttachment::new(
   filename? : String? = None,
   size? : Int? = None,
 ) -> E2EStarterAttachment {
-  { id, mime_type, url, filename, size }
+  { id, mime_type, url, filename, size, }
 }
 
 ///|

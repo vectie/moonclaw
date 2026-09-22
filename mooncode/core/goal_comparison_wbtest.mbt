@@ -5,8 +5,8 @@ fn goal_comparison_fixture(
   artifact_digest? : String = "artifact",
   verification_passed? : Bool = true,
   requirements? : Array[GoalRunRequirementResult] = [
-    { id: "r1", passed: true },
-    { id: "r2", passed: false },
+    { id: "r1", passed: true, },
+    { id: "r2", passed: false, },
   ],
 ) -> GoalRunResult {
   {
@@ -24,8 +24,8 @@ fn goal_comparison_fixture(
 test "equivalent ignores ASCII case punctuation and requirement order" {
   let reference = goal_comparison_fixture(summary="Ship, ALPHA! beta.")
   let candidate = goal_comparison_fixture(summary="ship alpha beta", requirements=[
-    { id: "r2", passed: false },
-    { id: "r1", passed: true },
+    { id: "r2", passed: false, },
+    { id: "r1", passed: true, },
   ])
   let comparison = goal_comparison_compare(reference, candidate, 7000)
   assert_true(comparison.verdict == Equivalent)
@@ -85,8 +85,8 @@ test "duplicate requirement ID makes candidate invalid" {
   let comparison = goal_comparison_compare(
     goal_comparison_fixture(),
     goal_comparison_fixture(requirements=[
-      { id: "r1", passed: true },
-      { id: "r1", passed: false },
+      { id: "r1", passed: true, },
+      { id: "r1", passed: false, },
     ]),
     7000,
   )

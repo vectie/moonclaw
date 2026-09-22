@@ -368,7 +368,7 @@ async fn mooncode_journal_scan_for_append(
       inherited_client_turn_id = current_client_turn_id
     }
   })
-  { cursor, duplicate_found, inherited_client_turn_id }
+  { cursor, duplicate_found, inherited_client_turn_id, }
 }
 
 ///|

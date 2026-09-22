@@ -616,7 +616,7 @@ async test "plan_job_proposal accepts draft_plan as steps alias" {
 
 ///|
 async test "plan_job_proposal retries under-decomposed analytical plan" {
-  let calls : Ref[Int] = { val: 0 }
+  let calls : Ref[Int] = { val: 0, }
   let proposal = plan_job_proposal(
     "proposal-repair-1",
     "Land acquisition estimation",
@@ -645,7 +645,7 @@ async test "plan_job_proposal retries under-decomposed analytical plan" {
 
 ///|
 async test "plan_job_proposal reports under-decomposed plan after repair" {
-  let calls : Ref[Int] = { val: 0 }
+  let calls : Ref[Int] = { val: 0, }
   let proposal = plan_job_proposal(
     "proposal-repair-fail-1",
     "Land acquisition estimation",
@@ -928,8 +928,8 @@ test "render_job_plan_preview_for_chat stays transient and points to next action
     request_text: "Analyze attached files",
     summary: "Break the work into a few investigation steps before execution.",
     steps: [
-      { id: "step_1", title: "Inspect files" },
-      { id: "step_2", title: "Draft approach" },
+      { id: "step_1", title: "Inspect files", },
+      { id: "step_2", title: "Draft approach", },
     ],
     requested_output_format: Some("Board memo"),
     starter_files: ["parcel-brief.pdf"],

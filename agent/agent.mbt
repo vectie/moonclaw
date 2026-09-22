@@ -27,7 +27,7 @@ pub impl @json.FromJson for QueuedMessage with fn from_json(
   )
   let message = @ai.Message::from_openai(message)
   let web_search : Bool = object.optional("web_search", path~).unwrap_or(false)
-  { id, message, web_search }
+  { id, message, web_search, }
 }
 
 ///|
@@ -80,7 +80,7 @@ pub fn Agent::queue_message(
   web_search? : Bool = agent.web_search,
 ) -> @uuid.Uuid {
   let id = agent.uuid.v4()
-  agent.pending_queue.push_back({ id, message, web_search })
+  agent.pending_queue.push_back({ id, message, web_search, })
   agent.emit(MessageQueued(id~))
   id
 }

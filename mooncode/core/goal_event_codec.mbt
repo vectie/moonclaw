@@ -304,7 +304,7 @@ pub fn goal_event_from_json(json : Json) -> GoalEvent raise {
         projection, "mutations_have_later_passing_checks",
       ),
     }
-    let proof = CompletionProof::{ projection: validated_projection }
+    let proof = CompletionProof::{ projection: validated_projection, }
     return CompleteRequested(event_id, recorded_at, proof)
   } else if kind == "mooncode.goal.evaluated.v1" {
     let payload = goal_event_codec_exact_object(

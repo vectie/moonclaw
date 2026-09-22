@@ -96,7 +96,7 @@ test "completion rejects empty evidence" {
   let goal = evaluated_goal(Converged)
   let empty = {
     ..goal,
-    requirements: [{ ..goal.requirements[0], evidence_refs: [] }],
+    requirements: [{ ..goal.requirements[0], evidence_refs: [], }],
   }
   assert_true(
     reduce_goal(
@@ -210,7 +210,7 @@ test "constructor starts at exact budget limit awaiting budget" {
       turns_used: 0,
       wall_time_used: 0,
     },
-    [{ id: "r1", criterion: "done", state: Unproven, evidence_refs: [] }],
+    [{ id: "r1", criterion: "done", state: Unproven, evidence_refs: [], }],
   )
   assert_true(goal.run_state == AwaitingBudget)
 }
@@ -231,7 +231,7 @@ test "constructor rejects empty criterion" {
         turns_used: 0,
         wall_time_used: 0,
       },
-      [{ id: "r1", criterion: " ", state: Unproven, evidence_refs: [] }],
+      [{ id: "r1", criterion: " ", state: Unproven, evidence_refs: [], }],
     )
   catch {
     _ => ()
@@ -257,8 +257,8 @@ test "constructor rejects duplicate requirement ids" {
         wall_time_used: 0,
       },
       [
-        { id: "r", criterion: "one", state: Unproven, evidence_refs: [] },
-        { id: "r", criterion: "two", state: Unproven, evidence_refs: [] },
+        { id: "r", criterion: "one", state: Unproven, evidence_refs: [], },
+        { id: "r", criterion: "two", state: Unproven, evidence_refs: [], },
       ],
     )
   catch {
@@ -284,7 +284,7 @@ test "constructor rejects negative and over-limit budget" {
         turns_used: 0,
         wall_time_used: 0,
       },
-      [{ id: "r", criterion: "done", state: Unproven, evidence_refs: [] }],
+      [{ id: "r", criterion: "done", state: Unproven, evidence_refs: [], }],
     )
   catch {
     _ => ()
@@ -305,7 +305,7 @@ test "constructor rejects negative and over-limit budget" {
         turns_used: 0,
         wall_time_used: 0,
       },
-      [{ id: "r", criterion: "done", state: Unproven, evidence_refs: [] }],
+      [{ id: "r", criterion: "done", state: Unproven, evidence_refs: [], }],
     )
   catch {
     _ => ()
@@ -316,7 +316,7 @@ test "constructor rejects negative and over-limit budget" {
 
 ///|
 fn blocker(label : String) -> BlockerIdentity {
-  { kind: "tool", authority: label, resource: label, required_change: label }
+  { kind: "tool", authority: label, resource: label, required_change: label, }
 }
 
 ///|

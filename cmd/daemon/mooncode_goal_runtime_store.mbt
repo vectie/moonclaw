@@ -257,7 +257,7 @@ fn mooncode_goal_runtime_scan_records(
         }
     }
   }
-  { cursor, genesis, events, id_index }
+  { cursor, genesis, events, id_index, }
 }
 
 ///|
