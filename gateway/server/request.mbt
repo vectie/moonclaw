@@ -7,6 +7,15 @@ pub async fn Gateway::handle_request(
   let paths = r.path.split("/").collect()
   self.logger.info("Received request: \{r.method_} \{r.path}")
   try {
+    if r.method_ != Options &&
+      !gateway_http_authorized(r.path, r.headers, self.auth.token) {
+      raise json_error(401, "Unauthorized", {
+        "error": {
+          "code": "unauthorized",
+          "message": "Gateway bearer token required",
+        },
+      })
+    }
     match (r.method_, paths) {
       (Options, _) => w.write_header(204)
       (Get, ["", ""]) => self.handle_index(r, w)

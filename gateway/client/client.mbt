@@ -1022,6 +1022,9 @@ async fn Client::send_rpc(
   let extra_headers : Map[String, String] = {
     "Content-Type": "application/json",
   }
+  if self.token is Some(token) {
+    extra_headers["Authorization"] = "Bearer " + token
+  }
   let _ = self.http.post(
     "/v1/rpc",
     @encoding/utf8.encode(frame.stringify()),

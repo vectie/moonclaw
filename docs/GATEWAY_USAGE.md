@@ -539,6 +539,7 @@ Operational consequence:
 - removing an account from channel config prunes its persisted runtime entry
 - restore runs in the background, so a stuck channel restore should not prevent `/health`, `/v1/channels`, or RPC probes from answering
 - gateway startup uses the configured `gateway.auth.token` when present, so CLI probes and the running service share the same token source
+- When configured, that token is required as `Authorization: Bearer ...` on every `/v1/*` HTTP request (including RPC connect/wait and SSE), not only inside the connect frame. The bundled client sends it automatically. Public health/static resources and independently authenticated channel webhooks retain their existing behavior.
 - startup logs report that auth is configured, but do not print the token; Feishu websocket logs also avoid printing endpoint URLs because they may contain short-lived credentials
 
 ## Runtime Artifact Hygiene
