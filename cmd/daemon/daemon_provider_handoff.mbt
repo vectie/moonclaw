@@ -326,10 +326,12 @@ async fn Daemon::provider_handoff(
   let redemption = match
     install_lunanexa_provider_handoff(self.home, issuer, request) {
     Ok(value) => value
-    Err(error) =>
+    Err(error) => {
+      println("LunaNexa provider handoff failed: \{error}")
       raise json_error(502, "Bad Gateway", {
         "error": { "code": "handoff_failed", "message": error },
       })
+    }
   }
   w.header().set("Content-Type", "application/json")
   w.header().set("Cache-Control", "no-store")
