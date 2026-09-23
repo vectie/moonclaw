@@ -9,6 +9,14 @@ test "LunaNexa issuer validation rejects SSRF and credential-bearing URLs" {
     Some("http://127.0.0.1:18443"),
   )
   assert_eq(
+    lunanexa_url_origin("https://management.example:8443/user", true),
+    Some("https://management.example:8443/user"),
+  )
+  assert_eq(
+    lunanexa_url_origin("https://management.example:8443/user/", true),
+    Some("https://management.example:8443/user"),
+  )
+  assert_eq(
     lunanexa_url_origin(
       "http://106.39.18.146:5002",
       true,
@@ -71,6 +79,22 @@ test "provider handoff validates code and returns no reusable secret" {
       10_000L,
     ),
   )
+  assert_true(
+    valid_lunanexa_redemption(
+      { ..redemption, api_base_url: "https://management.example:8443/user/v1", },
+      request,
+      "https://management.example:8443/user",
+      10_000L,
+    ),
+  )
+  assert_false(
+    valid_lunanexa_redemption(
+      { ..redemption, api_base_url: "https://management.example:8443/v1", },
+      request,
+      "https://management.example:8443/user",
+      10_000L,
+    ),
+  )
   let public = lunanexa_provider_handoff_success(redemption).stringify()
   assert_false(public.contains("api_secret"))
   assert_false(public.contains("lnx_"))
@@ -104,7 +128,7 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
   )
   let calls : Array[String] = []
   let lunanexa_router = @httpx.Router::new()
-  lunanexa_router.add_handler(Post, "/v1/client-handoffs:redeem", (r, w) => {
+  lunanexa_router.add_handler(Post, "/user/v1/client-handoffs:redeem", (r, w) => {
     let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
     let body : Json = reader.read()
     guard body is Object(fields) else { fail("expected redemption request") }
@@ -120,7 +144,7 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
         {
           "client_id": "desktop-workspace",
           "api_secret": "lnx_" + "a".repeat(64),
-          "api_base_url": "http://localhost:\{lunanexa.port()}/v1",
+          "api_base_url": "http://localhost:\{lunanexa.port()}/user/v1",
           "allowed_models": ["text.default"],
           "expires_unix_ms": (@async.now() + 60_000L).to_json(),
           "maximum_requests": 1_000L.to_json(),
@@ -146,7 +170,7 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
     assert_eq(fields["apiFormat"], Json::string("openai_chat"))
     assert_eq(
       fields["baseUrl"],
-      Json::string("http://localhost:\{lunanexa.port()}/v1"),
+      Json::string("http://localhost:\{lunanexa.port()}/user/v1"),
     )
     assert_eq(fields["apiKey"], Json::string("lnx_" + "a".repeat(64)))
     calls.push("provider")
@@ -183,7 +207,7 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
     }
     guard install_lunanexa_provider_handoff(
         root,
-        "http://localhost:\{lunanexa.port()}",
+        "http://localhost:\{lunanexa.port()}/user",
         request,
       )
       is Ok(redemption) else {

@@ -91,11 +91,22 @@ fn lunanexa_url_origin(
       (character >= '0' && character <= '9') ||
       ['-', '.', ':', '[', ']'].contains(character)
     }) ||
-    (origin_only && path != "" && path != "/") ||
+    (
+      origin_only &&
+      path != "" &&
+      path != "/" &&
+      path != "/user" &&
+      path != "/user/"
+    ) ||
     (!secure && !allow_public_http && !lunanexa_loopback_authority(authority)) {
     return None
   }
-  Some(scheme + authority)
+  let prefix = if origin_only && (path == "/user" || path == "/user/") {
+    "/user"
+  } else {
+    ""
+  }
+  Some(scheme + authority + prefix)
 }
 
 ///|
@@ -126,13 +137,14 @@ fn valid_lunanexa_redemption(
   value.allowed_models.all(model => lunanexa_identifier(model, 128)) &&
   value.expires_unix_ms > now_unix_ms &&
   value.maximum_requests > 0L &&
+  lunanexa_url_origin(issuer, false, allow_public_http=true) is Some(origin) &&
   lunanexa_url_origin(
     value.api_base_url,
     false,
     allow_public_http=issuer.has_prefix("http://") &&
-      !lunanexa_loopback_authority(issuer[7:].to_owned()),
+      !lunanexa_loopback_authority(origin[7:].to_owned()),
   ) ==
-  Some(issuer) &&
+  Some(origin) &&
   value.api_base_url == issuer + "/v1"
 }
 
@@ -224,7 +236,12 @@ async fn redeem_lunanexa_provider_handoff(
   issuer : String,
   request : LunaProviderHandoffRequest,
 ) -> Result[LunaProviderHandoffRedemption, String] {
-  let client = @http.Client(issuer, headers={
+  guard lunanexa_url_origin(issuer, false, allow_public_http=true)
+    is Some(origin) else {
+    return Err("LunaNexa issuer is unavailable")
+  }
+  let prefix = issuer[origin.length():].to_owned()
+  let client = @http.Client(origin, headers={
     "Accept": "application/json",
     "Content-Type": "application/json",
   }) catch {
@@ -232,7 +249,7 @@ async fn redeem_lunanexa_provider_handoff(
   }
   defer client.close()
   let response = client.post(
-    "/v1/client-handoffs:redeem",
+    prefix + "/v1/client-handoffs:redeem",
     (
       { "client_id": request.client_id, "handoff_code": request.handoff_code } :
       Json),

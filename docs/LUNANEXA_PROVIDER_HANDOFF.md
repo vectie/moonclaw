@@ -32,13 +32,15 @@ Set these values in the MoonDesk application launch environment or managed
 desktop policy:
 
 ```sh
-MOONDESK_LUNANEXA_ISSUER=https://management.example
+MOONDESK_LUNANEXA_ISSUER=https://management.example/user
 MOONGATE_CONTROL_TOKEN=<the local MoonGate control token>
 ```
 
 MoonDesk forwards only these two allowlisted values into its clean managed
 MoonClaw environment. Never put the lease-scoped `lnx_...` secret in desktop
 configuration; it is obtained once by MoonClaw and sent directly to MoonGate.
+The issuer may be the bare HTTPS origin or the exact `/user` base path; the
+redeemed API URL must match that base plus `/v1` exactly.
 
 The ordinary MoonCode path uses MoonGate chat completions and needs no optional
 Responses feature flag. If an operator explicitly enables MoonCode's Responses
