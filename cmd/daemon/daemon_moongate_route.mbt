@@ -6,6 +6,7 @@ fn moonclaw_moongate_route_status_json(
   base_url : String,
   model_ids : Array[String],
   error : String,
+  catalog? : Array[@moongate.MoonGateModel] = [],
 ) -> Json {
   let models : Array[Json] = []
   let names : Array[String] = []
@@ -14,7 +15,20 @@ fn moonclaw_moongate_route_status_json(
     let name = "moongate/" + id
     if id != "" && !names.contains(name) {
       names.push(name)
-      models.push({ "name": name, "default": models.is_empty() })
+      let mut input_modalities : Array[String] = []
+      for entry in catalog {
+        if entry.id() == id {
+          input_modalities = entry.input_modalities()
+          break
+        }
+      }
+      models.push({
+        "name": name,
+        "default": models.is_empty(),
+        "input_modalities": Json::array(
+          input_modalities.map(value => value.to_json()),
+        ),
+      })
     }
   }
   let ready = error == "" && !models.is_empty()
@@ -50,7 +64,7 @@ async fn Daemon::moongate_route(
     Some(value) => value
     None => {
       w.header().set("Content-Type", "application/json")
-      w.write_header(200)
+      w.write_header(if hosted_model_alias() is Some(_) { 503 } else { 200 })
       w.write(
         moonclaw_moongate_route_status_json(
           "",
@@ -67,11 +81,41 @@ async fn Daemon::moongate_route(
         client.base_url(),
         catalog.map(model => model.id()),
         "",
+        catalog~,
       )
     Err(error) =>
       moonclaw_moongate_route_status_json(client.base_url(), [], error)
   }
   w.header().set("Content-Type", "application/json")
-  w.write_header(200)
+  w.write_header(
+    if hosted_model_alias() is Some(_) && status is { "ready": False, .. } {
+      503
+    } else {
+      200
+    },
+  )
   w.write(status.stringify())
+}
+
+///|
+/// Kubernetes probes this loopback-only route without the private MoonDesk
+/// control credential. It reports ready only after the configured hosted model
+/// appears in this workspace's own MoonGate catalog.
+async fn Daemon::hosted_ready(self : Daemon, w : @httpx.ResponseWriter) -> Unit {
+  let expected = hosted_model_alias()
+  let client = @moongate.discover_from_suite_status_for_workspace_root(
+    self.home,
+  )
+  let ready = match (expected, client) {
+    (Some(model), Some(client)) =>
+      match client.model_catalog() {
+        Ok(models) => models.any(entry => entry.id() == model)
+        Err(_) => false
+      }
+    _ => false
+  }
+  w.header().set("Content-Type", "application/json")
+  w.header().set("Cache-Control", "no-store")
+  w.write_header(if ready { 200 } else { 503 })
+  w.write({ "ready": ready }.to_json().stringify())
 }

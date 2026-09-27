@@ -167,6 +167,22 @@ test "moongate client parses typed models" {
 }
 
 ///|
+test "moongate catalog preserves declared input modalities" {
+  guard MoonGateModel::from_json({
+      "id": "vision",
+      "modalities": { "input": ["text", "image"] },
+    })
+    is Ok(model) else {
+    fail("expected vision model")
+  }
+  assert_true(model.input_modalities().contains("image"))
+  guard MoonGateModel::from_json({ "id": "unknown" }) is Ok(unknown) else {
+    fail("expected model with missing modality metadata")
+  }
+  assert_false(unknown.input_modalities().contains("image"))
+}
+
+///|
 test "moongate client parses typed usage summary" {
   let summary = {
     "totalRequests": Json::number(3.0),

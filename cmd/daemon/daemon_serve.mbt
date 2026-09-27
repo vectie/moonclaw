@@ -50,6 +50,7 @@
 pub async fn Daemon::serve(self : Daemon) -> Unit {
   @async.with_task_group(group => {
     group.spawn_bg(() => self.process.start())
+    group.spawn_bg(() => self.bootstrap_hosted_model(), no_wait=true)
     // Recovery can spawn provider processes that register through this daemon's
     // own HTTP endpoint. Run it concurrently with `serve` so startup never
     // waits for a registration request before the listener can accept it.
@@ -85,6 +86,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               w.write(index_html)
             }
             (Get, ["", "v1", "health"]) => self.health(w)
+            (Get, ["", "v1", "hosted-ready"]) => self.hosted_ready(w)
             (Get, ["", "v1", "events"]) => self.get_events(w)
             (Get, ["", "v1", "models"]) => self.list_models(w)
             (Get, ["", "v1", "moongate-route"]) => self.moongate_route(w)
@@ -143,14 +145,38 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.get_task_events(id~, w)
             (Get, ["", "v1", "code", "capabilities"]) =>
               self.mooncode_capabilities(w)
+            (Get, ["", "v1", "code", "skills"]) =>
+              self.mooncode_list_skills(r, w)
             (Post, ["", "v1", "execution-sandbox", "moon-diagnostics"]) =>
               self.moondesk_moon_diagnostics(r, w)
+            (Post, ["", "v1", "execution-sandbox", "moon-ide"]) =>
+              self.moondesk_moon_ide(r, w)
             (Post, ["", "v1", "execution-sandbox", "promote"]) =>
               self.moondesk_promote_retention(r, w)
             (Get, ["", "v1", "code", "sessions"]) =>
               self.mooncode_list_sessions(r, w)
             (Get, ["", "v1", "code", "sessions", session_id]) =>
               self.mooncode_get_session(session_id~, r, w)
+            (
+              Get,
+              [
+                "",
+                "v1",
+                "code",
+                "sessions",
+                session_id,
+                "media",
+                command_id,
+                index,
+              ],
+            ) =>
+              self.mooncode_get_command_media(
+                session_id~,
+                command_id~,
+                index~,
+                r,
+                w,
+              )
             (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "turns"]) =>
@@ -175,6 +201,8 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_runtime_loop(session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-service"]) =>
               self.mooncode_runtime_service_state(session_id~, r, w)
+            (Get, ["", "v1", "code", "sessions", session_id, "job-history"]) =>
+              self.mooncode_runtime_service_job_history(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "runtime-service"]
             ) => self.mooncode_runtime_service(group~, session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>

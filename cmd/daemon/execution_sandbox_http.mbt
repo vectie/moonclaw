@@ -18,6 +18,54 @@ priv struct MoonDeskMoonDiagnosticsRequest {
 } derive(@json.FromJson)
 
 ///|
+priv struct MoonDeskMoonIdeRequest {
+  protocol_version : Int
+  instance_id : String
+  request_id : String
+  workspace_id : String
+  module_directory : String
+  module_path : String
+  action : String
+  symbol : String
+  line : Int
+  column : Int
+} derive(@json.FromJson)
+
+///|
+fn moondesk_sandbox_symbol_valid(value : String) -> Bool {
+  value != "" &&
+  value.length() <= 160 &&
+  value.all(character => {
+    character.is_ascii_alphabetic() ||
+    character.is_ascii_digit() ||
+    character == '_'
+  })
+}
+
+///|
+fn moondesk_sandbox_parse_ide_request(
+  json : Json,
+) -> MoonDeskMoonIdeRequest raise {
+  let request : MoonDeskMoonIdeRequest = @json.from_json(json) catch {
+    _ => fail("invalid typed Moon IDE request")
+  }
+  guard request.protocol_version == 1 &&
+    moondesk_sandbox_safe_request_id(request.request_id) &&
+    moondesk_sandbox_safe_relative_directory(request.module_directory) &&
+    moondesk_sandbox_safe_relative_directory(request.module_path) &&
+    request.module_path.has_suffix(".mbt") &&
+    moondesk_sandbox_symbol_valid(request.symbol) &&
+    ["definition", "references"].contains(request.action) &&
+    request.line >= 1 &&
+    request.line <= 100000 &&
+    request.column >= 1 &&
+    request.column <= 100000 else {
+    fail("invalid typed Moon IDE request")
+  }
+  request
+}
+
+///|
 fn moondesk_sandbox_safe_request_id(value : String) -> Bool {
   value.length() >= 16 &&
   value.length() <= 128 &&
@@ -190,6 +238,163 @@ async fn execute_moondesk_moon_diagnostics(
       "cleanup_verified": receipt.cleanup_verified,
     },
   }
+}
+
+///|
+async fn execute_moondesk_moon_ide(
+  executor_config : @execution_sandbox.SandboxExecutorConfig,
+  route_config : @moondesk_sandbox_config.Config,
+  request : MoonDeskMoonIdeRequest,
+) -> Json {
+  guard request.instance_id == route_config.instance_id &&
+    request.workspace_id == route_config.workspace_id &&
+    executor_config.workspace_id == route_config.workspace_id else {
+    fail("Moon IDE request binding does not match the configured instance")
+  }
+  let working_directory = moondesk_sandbox_directory(
+    route_config,
+    request.module_directory,
+  )
+  let source = @pathx.join(working_directory, request.module_path)
+  guard @fsx.resolve(source) == source &&
+    @fsx.exists(source) &&
+    source.has_prefix(working_directory + "/") else {
+    fail("Moon IDE source is outside the selected module")
+  }
+  let verb = if request.action == "definition" {
+    "peek-def"
+  } else {
+    "find-references"
+  }
+  let args = [
+    "ide",
+    verb,
+    request.symbol,
+    "--loc",
+    request.module_path +
+    ":" +
+    request.line.to_string() +
+    ":" +
+    request.column.to_string(),
+    "--json",
+  ]
+  let execution = @execution_sandbox.run_exec(
+    executor_config,
+    route_config.workspace_root,
+    working_directory,
+    "moon",
+    args,
+    MoonDeskSandboxTimeoutMs,
+  )
+  let receipt = execution.receipt
+  guard receipt.status is Exited &&
+    receipt.exit_code is Some(exit_code) &&
+    receipt.enforcement is Enforced &&
+    receipt.cleanup_verified else {
+    fail("MoonFort did not return a verified terminal Moon IDE receipt")
+  }
+  let (output, transport_truncated) = moondesk_sandbox_bounded_output(
+    receipt.output,
+  )
+  {
+    "protocol_version": 1,
+    "instance_id": route_config.instance_id,
+    "request_id": request.request_id,
+    "workspace_id": route_config.workspace_id,
+    "operation": "moon_ide",
+    "action": request.action,
+    "exit_code": exit_code,
+    "output": output,
+    "output_truncated": receipt.output_truncated || transport_truncated,
+    "receipt": {
+      "run_id": receipt.run_id,
+      "approval_id": receipt.approval_id,
+      "approval_digest": receipt.approval_digest,
+      "command_digest": receipt.command_digest,
+      "profile_digest": receipt.profile_digest,
+      "backend": receipt.backend,
+      "enforcement": receipt.enforcement,
+      "cleanup_verified": receipt.cleanup_verified,
+    },
+  }
+}
+
+///|
+async fn Daemon::moondesk_moon_ide(
+  self : Daemon,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  ignore(self)
+  let route_config = @moondesk_sandbox_config.load() catch {
+    _ =>
+      raise json_error(503, "ServiceUnavailable", {
+        "error": {
+          "code": "sandbox_unavailable",
+          "message": "execution sandbox route is unavailable",
+        },
+      })
+  }
+  guard route_config is Some(route_config) else {
+    raise json_error(503, "ServiceUnavailable", {
+      "error": {
+        "code": "sandbox_unavailable",
+        "message": "execution sandbox route is unavailable",
+      },
+    })
+  }
+  let provided_token = r.headers.get("x-moonclaw-execution-token").unwrap_or("")
+  guard moondesk_sandbox_constant_time_equal(
+    provided_token,
+    route_config.auth_token,
+  ) else {
+    raise json_error(401, "Unauthorized", {
+      "error": {
+        "code": "unauthorized",
+        "message": "sandbox route authentication failed",
+      },
+    })
+  }
+  let request = moondesk_sandbox_parse_ide_request(
+    moondesk_sandbox_read_request(r),
+  ) catch {
+    _ =>
+      raise json_error(422, "UnprocessableContent", {
+        "error": {
+          "code": "invalid_request",
+          "message": "typed Moon IDE request was rejected",
+        },
+      })
+  }
+  let executor_config = @moonfort_config.load_sandbox_executor_config() catch {
+    _ =>
+      raise json_error(503, "ServiceUnavailable", {
+        "error": {
+          "code": "sandbox_unavailable",
+          "message": "MoonFort configuration failed closed",
+        },
+      })
+  }
+  guard executor_config is Some(executor_config) else {
+    raise json_error(503, "ServiceUnavailable", {
+      "error": {
+        "code": "sandbox_unavailable",
+        "message": "MoonFort configuration is unavailable",
+      },
+    })
+  }
+  let result = execute_moondesk_moon_ide(executor_config, route_config, request) catch {
+    _ =>
+      raise json_error(503, "ServiceUnavailable", {
+        "error": {
+          "code": "sandbox_refused",
+          "message": "MoonFort Moon IDE execution failed closed",
+        },
+      })
+  }
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(result.stringify())
 }
 
 ///|

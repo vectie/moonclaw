@@ -30,6 +30,7 @@ test "mooncode planner metrics separate cached and fresh prompt tokens" {
     "moonclaw.planner.metrics.v1",
   )
   assert_eq(mooncode_json_int(metrics, "prompt_tokens", default=0), 1000)
+  assert_true(mooncode_json_bool(metrics, "usage_observed", default=false))
   assert_eq(mooncode_json_int(metrics, "cache_read_tokens", default=0), 750)
   assert_eq(mooncode_json_int(metrics, "fresh_input_tokens", default=0), 250)
   assert_eq(
@@ -43,6 +44,13 @@ test "mooncode planner metrics separate cached and fresh prompt tokens" {
   ])
   assert_true(mooncode_json_int(metrics, "system_prompt_chars", default=0) > 0)
   assert_false(mooncode_json_bool(metrics, "request_compacted", default=true))
+}
+
+///|
+test "planner metrics do not present absent provider usage as measured zero" {
+  let request : Json = { "messages": [], "tools": [] }
+  let metrics = mooncode_runtime_turn_planner_metrics(request, {}, [], [])
+  assert_false(mooncode_json_bool(metrics, "usage_observed", default=true))
 }
 
 ///|

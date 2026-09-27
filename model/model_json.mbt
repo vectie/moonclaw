@@ -100,6 +100,10 @@ pub impl @json.FromJson for Model with fn from_json(
       path=json_path.add_key("supports_apply_patch"),
     )
   }
+  let input_modalities : Array[String] = {
+    guard json.get("input_modalities") is Some(value) else { ["text"] }
+    @json.from_json(value, path=json_path.add_key("input_modalities"))
+  }
   let access_token : String? = {
     guard json.get("access_token") is Some(access_token) else { None }
     Some(@json.from_json(access_token, path=json_path.add_key("access_token")))
@@ -128,6 +132,7 @@ pub impl @json.FromJson for Model with fn from_json(
     safe_zone_tokens,
     supports_anthropic_prompt_caching,
     supports_apply_patch,
+    input_modalities,
     access_token,
     account_id,
     refresh_token,

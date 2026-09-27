@@ -178,6 +178,17 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
     w.write_header(200)
     w.write("true")
   })
+  moongate_router.add_handler(Post, "/providers/switch", (r, w) => {
+    let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
+    let body : Json = reader.read()
+    guard body is Object(fields) else { fail("expected switch request") }
+    assert_eq(fields["appType"], Json::string("openclaw"))
+    assert_eq(fields["id"], Json::string("lunanexa-lease"))
+    calls.push("switch")
+    w.header().set("Content-Type", "application/json")
+    w.write_header(200)
+    w.write("true")
+  })
   moongate_router.add_handler(Post, "/bindings", (r, w) => {
     let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
     let body : Json = reader.read()
@@ -214,7 +225,7 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
       fail("expected provider handoff installation")
     }
     assert_eq(redemption.allowed_models, ["text.default"])
-    assert_eq(calls, ["redeem", "list", "provider", "binding"])
+    assert_eq(calls, ["redeem", "list", "provider", "switch", "binding"])
   })
   @os.unsetenv("MOONGATE_CONTROL_TOKEN")
   @fs.rmdir(root, recursive=true)

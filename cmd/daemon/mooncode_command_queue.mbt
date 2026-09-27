@@ -48,6 +48,13 @@ async fn Daemon::mooncode_queue_command_response(
   queue_source~ : String,
 ) -> Json {
   let book_root = mooncode_book_root(body)
+  let requires_image = match mooncode_command_media_validation(body) {
+    Ok(value) => value
+    Err(error) =>
+      raise json_error(400, "Bad Request", {
+        "error": { "code": -1, "message": error },
+      })
+  }
   if mooncode_session_suspension_requested(book_root, session_id) {
     raise json_error(409, "Conflict", {
       "error": {
@@ -107,17 +114,56 @@ async fn Daemon::mooncode_queue_command_response(
         },
       })
   }
-  if self.models.get_model(name=selector) is None {
+  let selected_model = match self.models.get_model(name=selector) {
+    Some(value) => value
+    None =>
+      raise json_error(400, "Bad Request", {
+        "error": {
+          "code": -1,
+          "message": "MoonCode model is not available",
+          "metadata": { "requested_model": requested_model },
+        },
+      })
+  }
+  if requires_image && !selected_model.supports_image_input() {
     raise json_error(400, "Bad Request", {
       "error": {
         "code": -1,
-        "message": "MoonCode model is not available",
+        "message": "The selected MoonCode model does not declare image input support",
         "metadata": { "requested_model": requested_model },
       },
     })
   }
   let command_id = mooncode_command_id(body)
   let action = mooncode_json_string(body, "command", default="prompt")
+  // The journal is the acceptance boundary. A retry must not increment the
+  // binding or publish a second queued event for the same command identity.
+  let appended = self.mooncode_persist_command(body, binding)
+  if !appended {
+    if !mooncode_command_retry_is_exact(book_root, session_id, command_id, body) {
+      raise json_error(409, "Conflict", {
+        "error": {
+          "code": -1,
+          "message": "MoonCode command ID is already used for a different command",
+          "metadata": { "session_id": session_id, "command_id": command_id },
+        },
+      })
+    }
+    return {
+      "accepted": true,
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "queued": true,
+      "duplicate": true,
+      "control": mooncode_command_control(action),
+      "message": "MoonClaw already accepted this native runtime command",
+      "queue_source": queue_source,
+      "runtime_turn_endpoint": "/v1/code/sessions/\{session_id}/runtime-turn?book_root=<path>",
+      "binding": binding.to_json(),
+      "events": Json::array([]),
+    }
+  }
   binding.command_count += 1
   binding.remember_workspace(body)
   binding.remember_model(body)
@@ -135,7 +181,8 @@ async fn Daemon::mooncode_queue_command_response(
     now~,
   )
   binding.events.put(event)
-  self.mooncode_persist_command(body, binding, [event])
+  self.mooncode_persist_event(binding, event)
+  self.mooncode_persist_session(binding)
   {
     "accepted": true,
     "protocol": mooncode_protocol_version(),
@@ -149,6 +196,26 @@ async fn Daemon::mooncode_queue_command_response(
     "binding": binding.to_json(),
     "events": Json::array([event]),
   }
+}
+
+///|
+async fn mooncode_command_retry_is_exact(
+  book_root : String,
+  session_id : String,
+  command_id : String,
+  body : Json,
+) -> Bool {
+  let commands = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_command(),
+  )
+  for entry in commands {
+    if mooncode_json_string(entry, "command_id", default="") == command_id {
+      return mooncode_json_object_field_or_empty(entry, "command").stringify() ==
+        body.stringify()
+    }
+  }
+  false
 }
 
 ///|
@@ -171,15 +238,24 @@ fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
     missing.push("command_id".to_json())
   }
   let unsupported = mooncode_unsupported_command_fields(body)
+  let media_error = match mooncode_command_media_validation(body) {
+    Ok(_) => ""
+    Err(error) => error
+  }
   {
-    "ok": missing.length() == 0 && unsupported.length() == 0,
+    "ok": missing.length() == 0 &&
+    unsupported.length() == 0 &&
+    media_error == "",
     "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "command_id": command_id,
     "missing": Json::array(missing),
     "unsupported": Json::array(unsupported),
+    "media_error": media_error,
     "message": if unsupported.length() > 0 {
       "MoonCode command uses unsupported fields: \{unsupported.map(item => item.stringify()).join(", ")}"
+    } else if media_error != "" {
+      media_error
     } else if missing.length() == 0 {
       "MoonCode command is valid"
     } else {
@@ -199,6 +275,12 @@ fn mooncode_unsupported_command_fields(body : Json) -> Array[Json] {
         }
       }
     _ => ()
+  }
+  let payload = mooncode_json_object_field_or_empty(body, "payload")
+  for name in ["content", "content_parts", "images", "attachments"] {
+    if payload is Object(fields) && fields.get(name) is Some(_) {
+      unsupported.push(("payload." + name).to_json())
+    }
   }
   unsupported
 }

@@ -383,6 +383,7 @@ async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
           model_name=model_config.id,
           model_type~,
           safe_zone_tokens~,
+          input_modalities=model_config.input.unwrap_or(["text"]),
         )
         return Some(model)
       }
@@ -423,6 +424,7 @@ async fn Loader::load_first_provider_model(self : Loader) -> Model? {
         model_name=model_config.id,
         model_type~,
         safe_zone_tokens~,
+        input_modalities=model_config.input.unwrap_or(["text"]),
       )
       return Some(model)
     }
@@ -444,6 +446,7 @@ fn model_from_moongate_catalog(
     model_type=SaaS(OpenAI),
     safe_zone_tokens=catalog_model.context_window().unwrap_or(128_000),
     description="Routed through the active MoonGate service",
+    input_modalities=catalog_model.input_modalities(),
   )
 }
 

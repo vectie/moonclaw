@@ -205,6 +205,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("steer_deferred"))
   assert_true(payload.contains("\"runtime_loop_options\""))
   assert_true(payload.contains("\"runtime_service_endpoint\""))
+  assert_true(payload.contains("\"job_history_endpoint\""))
   assert_true(payload.contains("\"runtime_service_options\""))
   assert_true(
     payload.contains("GET/POST /v1/code/sessions/<id>/runtime-service"),

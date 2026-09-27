@@ -344,6 +344,15 @@ Found:
 }
 ```
 
+### `GET /v1/code/skills`
+
+Lists the skills discovered by MoonClaw's loader for `book_root=<path>`.
+The response contains names, descriptions, resolved locations, and whether
+each skill comes from the MoonBook or an installed source. It excludes skill
+contents; a skill governs a turn only after the planner loads it through
+`read_skill`. A missing or invalid book root returns 400, and discovery
+failure returns 503.
+
 ### `GET /v1/code/sessions`
 
 Lists MoonCode sessions for a selected MoonBook root. Pass

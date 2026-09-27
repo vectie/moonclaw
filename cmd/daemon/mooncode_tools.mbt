@@ -701,7 +701,20 @@ async fn mooncode_tool_patch_replace(
     []
   }
   if diff_text != "" {
-    if patch_files.length() > 1 {
+    let single_file_deletion = patch_files.length() == 1 &&
+      (
+        (
+          mooncode_json_string(patch_files[0], "new_path", default="") ==
+          "/dev/null" &&
+          !reverse
+        ) ||
+        (
+          mooncode_json_string(patch_files[0], "old_path", default="") ==
+          "/dev/null" &&
+          reverse
+        )
+      )
+    if patch_files.length() > 1 || single_file_deletion {
       return mooncode_tool_apply_unified_patchset(
         tool,
         book_root,
@@ -1274,6 +1287,17 @@ async fn mooncode_tool_apply_unified_patchset(
     let new_path = mooncode_json_string(file, "new_path", default="")
     let delete_file = (new_path == "/dev/null" && !reverse) ||
       (old_path == "/dev/null" && reverse)
+    if delete_file && (!existed || patched != "") {
+      return mooncode_tool_error_result(
+        tool,
+        message=if !existed {
+          "deletion patch targets a file that does not exist: \{relative}"
+        } else {
+          "deletion patch leaves content in \{relative}; refusing to delete the whole file"
+        },
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+    }
     let file_changed = content != patched || (delete_file && existed)
     total_hunks += applied_count
     changed = changed || file_changed

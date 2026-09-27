@@ -11,6 +11,7 @@ priv struct MoonCodeConversationTurnDraft {
   mut status : String
   mut started_at : String
   mut updated_at : String
+  mut usage : Json
 }
 
 ///|
@@ -245,6 +246,10 @@ fn mooncode_conversation_apply_receipt(
     return
   }
   let turn = turns[index]
+  let usage = mooncode_conversation_receipt_usage(receipt)
+  if usage.stringify() != "{}" {
+    turn.usage = usage
+  }
   if mooncode_conversation_message_content(turn.assistant) == "" {
     let answer = mooncode_conversation_receipt_answer(receipt)
     if answer != "" {
@@ -301,6 +306,7 @@ fn mooncode_conversation_turn_draft(
     status: "queued",
     started_at: created_at,
     updated_at: created_at,
+    usage: Json::object({}),
   }
 }
 
@@ -351,6 +357,51 @@ fn mooncode_conversation_turn_json(
     "user": turn.user,
     "work": mooncode_conversation_work_json(turn, assistant),
     "assistant": assistant,
+    "usage": turn.usage,
+  }
+}
+
+///|
+fn mooncode_conversation_receipt_usage(receipt : Json) -> Json {
+  let mut responses = 0
+  let mut input = 0
+  let mut output = 0
+  let mut cached = 0
+  for step in mooncode_json_array_items(receipt, "planner_steps") {
+    let metrics = mooncode_json_object_field_or_empty(step, "planner_metrics")
+    if !mooncode_json_bool(metrics, "usage_observed", default=false) {
+      continue
+    }
+    let prompt = mooncode_json_int(metrics, "prompt_tokens", default=-1)
+    let completion = mooncode_json_int(metrics, "completion_tokens", default=-1)
+    let cache = mooncode_json_int(metrics, "cache_read_tokens", default=-1)
+    if prompt < 0 ||
+      completion < 0 ||
+      cache < 0 ||
+      cache > prompt ||
+      prompt > 100_000_000 ||
+      completion > 100_000_000 ||
+      input > 1_000_000_000 - prompt ||
+      output > 1_000_000_000 - completion ||
+      cached > 1_000_000_000 - cache {
+      return Json::object({})
+    }
+    responses += 1
+    input += prompt
+    output += completion
+    cached += cache
+  }
+  if responses == 0 {
+    Json::object({})
+  } else {
+    {
+      "contract": "mooncode.turn_usage.v1",
+      "measured": true,
+      "response_count": responses,
+      "input_tokens": input,
+      "output_tokens": output,
+      "cached_input_tokens": cached,
+    }
   }
 }
 
@@ -436,10 +487,11 @@ fn mooncode_conversation_user_message(
     command, command_id,
   )
   let content = mooncode_conversation_command_message(command, packet)
-  if content == "" {
+  let content_parts = mooncode_conversation_public_content_parts(command)
+  if content == "" && content_parts.is_empty() {
     return Json::object({})
   }
-  {
+  let message : Json = {
     "role": "user",
     "item_id": mooncode_conversation_slot_id(command_id, "user"),
     "content": content,
@@ -458,6 +510,35 @@ fn mooncode_conversation_user_message(
       "action": mooncode_conversation_command_action(command, packet),
     },
   }
+  if content_parts.is_empty() {
+    message
+  } else {
+    mooncode_json_object_with_field(
+      message,
+      "content_parts",
+      Json::array(content_parts),
+    )
+  }
+}
+
+///|
+/// Canonical conversation is a bounded projection. Image bytes stay in the
+/// durable command journal and are fetched by reference only when displayed.
+fn mooncode_conversation_public_content_parts(command : Json) -> Array[Json] {
+  let projected : Array[Json] = []
+  for index, part in mooncode_json_array_items(command, "content_parts") {
+    if mooncode_json_string(part, "type", default="") == "image" {
+      projected.push({
+        "type": "image",
+        "media_type": mooncode_json_string(part, "media_type", default=""),
+        "name": mooncode_json_string(part, "name", default=""),
+        "image_index": index,
+      })
+    } else {
+      projected.push(part)
+    }
+  }
+  projected
 }
 
 ///|
@@ -770,11 +851,47 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
     kind != "test" &&
     kind != "artifact" &&
     kind != "tool" &&
+    kind != "skill" &&
     kind != "approval" {
     return Json::object({})
   }
   let tool_result = mooncode_json_object_field_or_empty(event, "tool_result")
   let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
+  if kind == "skill" {
+    let name = mooncode_json_string(metadata, "name", default="")
+    let resource = mooncode_json_string(metadata, "path", default="")
+    let digest = mooncode_json_string(
+      metadata,
+      "content_sha256_base64",
+      default="",
+    )
+    let loaded = mooncode_json_bool(tool_result, "ok", default=false)
+    return {
+      "kind": "skill",
+      "state": mooncode_conversation_evidence_state(event, kind, lane),
+      "path": if name == "" {
+        "Installed skill"
+      } else {
+        name + "/" + resource
+      },
+      "diff": "",
+      "command": "",
+      "output": if !loaded {
+        "Installed skill could not be loaded"
+      } else if digest == "" {
+        "Loaded from the installed skill catalog"
+      } else {
+        "Loaded from the installed skill catalog · SHA-256 (base64): " + digest
+      },
+      "exit_code": -1,
+      "truncated": false,
+      "approval_id": "",
+      "target_command_id": "",
+      "tool_call_id": mooncode_json_string(event, "tool_call_id", default=""),
+      "arguments": "",
+      "sandbox_evidence": Json::object({}),
+    }
+  }
   let path = mooncode_conversation_first_text(
     mooncode_json_string(event, "path", default=""),
     mooncode_json_string(metadata, "path", default=""),
@@ -995,6 +1112,8 @@ fn mooncode_conversation_work_step_kind(event : Json) -> String {
     "thought"
   } else if tool == "read" || tool == "grep" || tool == "glob" {
     "context"
+  } else if tool == "read_skill" {
+    "skill"
   } else if lane == "diff" {
     "edit"
   } else if lane == "test" {
@@ -1408,7 +1527,9 @@ fn mooncode_conversation_final_status(
   turn : MoonCodeConversationTurnDraft,
   assistant : Json,
 ) -> String {
-  if mooncode_conversation_message_content(assistant) != "" &&
+  if turn.status == "failed" || turn.status == "cancelled" {
+    turn.status
+  } else if mooncode_conversation_message_content(assistant) != "" &&
     mooncode_json_string(assistant, "status", default="") == "done" {
     "done"
   } else {

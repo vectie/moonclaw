@@ -1245,6 +1245,9 @@ fn mooncode_runtime_turn_kimi_messages(
       "user.task_contract",
     ),
   ]
+  for media in mooncode_runtime_turn_user_media_messages(command) {
+    messages.push(media)
+  }
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
   }
@@ -1256,7 +1259,7 @@ fn mooncode_runtime_turn_model_initial_messages(
   command : Json,
   skill_catalog? : String = "",
 ) -> Array[Json] {
-  [
+  let messages : Array[Json] = [
     mooncode_runtime_context_message(
       {
         "role": "system",
@@ -1282,6 +1285,49 @@ fn mooncode_runtime_turn_model_initial_messages(
       mooncode_runtime_turn_model_prompt(command),
       UserContext,
       "user.task_contract",
+    ),
+  ]
+  for media in mooncode_runtime_turn_user_media_messages(command) {
+    messages.push(media)
+  }
+  messages
+}
+
+///|
+/// The command journal owns the bounded image bytes. Model checkpoints keep
+/// only a receipt; each resumed request reconstructs the ordered user input.
+fn mooncode_runtime_turn_user_media_messages(command : Json) -> Array[Json] {
+  let parts = mooncode_json_array_items(command, "content_parts")
+  if parts.is_empty() {
+    return []
+  }
+  let content : Array[Json] = []
+  for part in parts {
+    match mooncode_json_string(part, "type", default="") {
+      "text" =>
+        content.push({
+          "type": "text",
+          "text": mooncode_json_string(part, "text", default=""),
+        })
+      "image" => {
+        let media_type = mooncode_json_string(part, "media_type", default="")
+        let data = mooncode_json_string(part, "data_base64", default="")
+        content.push({
+          "type": "image_url",
+          "image_url": {
+            "url": "data:\{media_type};base64,\{data}",
+            "detail": "high",
+          },
+        })
+      }
+      _ => ()
+    }
+  }
+  [
+    mooncode_runtime_context_message(
+      { "role": "user", "content": Json::array(content) },
+      UserContext,
+      "user.content_parts",
     ),
   ]
 }
@@ -1324,6 +1370,11 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     // not accumulate across long runs and survive transcript compaction.
     for message in compacted {
       let content = mooncode_json_string(message, "content", default="")
+      let provenance = mooncode_runtime_context_provenance(message)
+      if mooncode_json_string(provenance, "source", default="") ==
+        "user.content_parts" {
+        continue
+      }
       if content.has_prefix("Dynamic skill gate:") {
         messages.push(
           mooncode_json_object_with_field(
@@ -1335,6 +1386,9 @@ fn mooncode_runtime_turn_model_followup_base_messages(
       } else if !content.has_prefix("Loaded-skill receipt:") {
         messages.push(message)
       }
+    }
+    for media in mooncode_runtime_turn_user_media_messages(command) {
+      messages.push(media)
     }
     for
       receipt in mooncode_runtime_turn_loaded_skill_receipt_messages(
@@ -1594,9 +1648,18 @@ fn mooncode_runtime_turn_durable_model_message(message : Json) -> Json {
   if removed_image_count == 0 {
     return mooncode_runtime_context_normalize_message(message)
   }
+  let source = mooncode_json_string(
+    mooncode_runtime_context_provenance(message),
+    "source",
+    default="",
+  )
   durable_parts.push({
     "type": "text",
-    "text": "MoonCode delivered \{removed_image_count} image evidence item(s) to the model for pixel inspection. Binary data URLs are intentionally omitted from durable checkpoints; the adjacent text and tool-result metadata retain their MoonBook paths.",
+    "text": if source == "user.content_parts" {
+      "MoonCode delivered \{removed_image_count} user image(s). The ordered image bytes remain in the durable command journal and are reconstructed for each provider request."
+    } else {
+      "MoonCode delivered \{removed_image_count} image evidence item(s) to the model for pixel inspection. Binary data URLs are intentionally omitted from durable checkpoints; the adjacent text and tool-result metadata retain their MoonBook paths."
+    },
   })
   mooncode_runtime_context_normalize_message(
     mooncode_json_object_with_field(

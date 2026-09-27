@@ -24,7 +24,7 @@ fn moondesk_control_route_requires_auth(
     (Post, ["", "v1", "auth", "copilot", "logout"]) => true
     (Post, ["", "v1", "shutdown"]) => true
     (Post, ["", "v1", "moonbit", "publish"]) => true
-    // Health, static assets, OAuth callbacks, and the two execution-sandbox
+    // Health, static assets, OAuth callbacks, and the execution-sandbox
     // routes are not classified here. The sandbox routes retain their typed
     // request-bound authentication in their owning handlers.
     _ => false

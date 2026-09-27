@@ -53,6 +53,7 @@ pub struct MoonGateModel {
   id : String
   owner : String?
   context_window : Int?
+  input_modalities : Array[String]
 }
 
 ///|
@@ -68,6 +69,11 @@ pub fn MoonGateModel::owner(self : MoonGateModel) -> String? {
 ///|
 pub fn MoonGateModel::context_window(self : MoonGateModel) -> Int? {
   self.context_window
+}
+
+///|
+pub fn MoonGateModel::input_modalities(self : MoonGateModel) -> Array[String] {
+  self.input_modalities
 }
 
 ///|
@@ -145,7 +151,7 @@ fn moongate_default_models_from_status(status : Json) -> Array[MoonGateModel] {
     id != "" else {
     return []
   }
-  [{ id, owner: None, context_window: Some(128_000), }]
+  [{ id, owner: None, context_window: Some(128_000), input_modalities: [], }]
 }
 
 ///|
@@ -369,6 +375,11 @@ pub async fn Client::configure_workspace_provider(
     Ok(_) => ()
   }
   match
+    self.post("/providers/switch", { "appType": "openclaw", "id": provider_id }) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
     self.post("/bindings", { "appType": "moonclaw", "providerId": provider_id }) {
     Ok(_) => Ok(())
     Err(error) => Err(error)
@@ -453,6 +464,35 @@ pub fn MoonGateModel::from_json(json : Json) -> Result[MoonGateModel, String] {
     id,
     owner: moongate_json_string_field(obj, "owned_by"),
     context_window: moongate_json_int_field(obj, "context_window"),
+    input_modalities: {
+      let values : Array[String] = []
+      let input = match obj.get("input_modalities") {
+        Some(Array(parts)) => Some(parts)
+        _ =>
+          match obj.get("input") {
+            Some(Array(parts)) => Some(parts)
+            _ =>
+              match obj.get("modalities") {
+                Some(Object(modalities)) =>
+                  match modalities.get("input") {
+                    Some(Array(parts)) => Some(parts)
+                    _ => None
+                  }
+                _ => None
+              }
+          }
+      }
+      match input {
+        Some(parts) =>
+          for part in parts {
+            if part is String(value) {
+              values.push(value)
+            }
+          }
+        None => ()
+      }
+      values
+    },
   })
 }
 

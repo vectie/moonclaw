@@ -19,6 +19,47 @@ test "MoonDesk diagnostics request is typed and traversal-free" {
 }
 
 ///|
+test "MoonDesk Moon IDE request rejects traversal and unsupported actions" {
+  let valid : Json = {
+    "protocol_version": 1,
+    "instance_id": "0123456789abcdef0123456789abcdef",
+    "request_id": "desk-0123456789abcdef0123456789abcdef",
+    "workspace_id": "book",
+    "module_directory": "packages/app",
+    "module_path": "src/main.mbt",
+    "action": "definition",
+    "symbol": "Widget",
+    "line": 8,
+    "column": 13,
+  }
+  let parsed = moondesk_sandbox_parse_ide_request(valid)
+  assert_eq(parsed.module_path, "src/main.mbt")
+  assert_eq(parsed.symbol, "Widget")
+  for
+    bad in [
+      mooncode_json_object_with_field(
+        valid,
+        "module_path",
+        "../secret.mbt".to_json(),
+      ),
+      mooncode_json_object_with_field(
+        valid,
+        "module_path",
+        "/tmp/secret.mbt".to_json(),
+      ),
+      mooncode_json_object_with_field(valid, "action", "shell".to_json()),
+      mooncode_json_object_with_field(valid, "symbol", "Widget;rm".to_json()),
+      mooncode_json_object_with_field(valid, "line", (0).to_json()),
+    ] {
+    try moondesk_sandbox_parse_ide_request(bad) catch {
+      _ => continue
+    } noraise {
+      _ => fail("expected invalid Moon IDE request to be rejected")
+    }
+  }
+}
+
+///|
 async test "MoonDesk diagnostics directory is bound below registered workspace" {
   @fsx.with_temporary_directory("moondesk-route-workspace-XXXXXX", async fn(
     root,
@@ -85,6 +126,52 @@ async test "MoonDesk diagnostics reaches MoonFort with an enforced receipt" {
       assert_true(command.contains("output-json"))
       assert_true(command.contains("diagnostic-limit"))
       assert_false(command.contains("shell"))
+    })
+  })
+}
+
+///|
+async test "MoonDesk Moon IDE reaches MoonFort as one typed moon command" {
+  @fsx.with_temporary_directory("moondesk-ide-positive-XXXXXX", async fn(root) {
+    mooncode_with_fake_moonfort(async fn(base_config, capture_path) {
+      let module_root = @pathx.join(root, "packages/app")
+      @fsx.make_directory(@pathx.join(module_root, "src"), recursive=true)
+      @fsx.write_to_file(
+        @pathx.join(module_root, "src/main.mbt"),
+        "pub fn Widget() {}\n",
+      )
+      let route_config = @moondesk_sandbox_config.Config::{
+        protocol_version: 1,
+        instance_id: "0123456789abcdef0123456789abcdef",
+        auth_token: "a".repeat(64),
+        workspace_id: "book",
+        workspace_root: @fsx.resolve(root),
+      }
+      let request = moondesk_sandbox_parse_ide_request({
+        "protocol_version": 1,
+        "instance_id": route_config.instance_id,
+        "request_id": "desk-0123456789abcdef0123456789abcdef",
+        "workspace_id": route_config.workspace_id,
+        "module_directory": "packages/app",
+        "module_path": "src/main.mbt",
+        "action": "definition",
+        "symbol": "Widget",
+        "line": 1,
+        "column": 8,
+      })
+      let response = execute_moondesk_moon_ide(
+        { ..base_config, enforcement_requirement: RequireEnforced, },
+        route_config,
+        request,
+      )
+      assert_eq(
+        mooncode_json_string(response, "operation", default=""),
+        "moon_ide",
+      )
+      let capture = @json.parse(@fsx.read_file(capture_path)).stringify()
+      assert_true(capture.contains("peek-def"))
+      assert_true(capture.contains("src/main.mbt:1:8"))
+      assert_false(capture.contains("shell"))
     })
   })
 }

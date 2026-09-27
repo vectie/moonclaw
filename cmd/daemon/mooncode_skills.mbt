@@ -9,6 +9,85 @@ async fn mooncode_skill_loader(book_root : String) -> @skills.Loader {
 }
 
 ///|
+fn mooncode_skill_catalog_row(
+  name : String,
+  description : String,
+  location : String,
+  book_root : String,
+) -> Json {
+  let book_local = location.has_prefix(book_root + "/")
+  {
+    "name": name,
+    "description": description,
+    "source": if book_local {
+      "moonbook"
+    } else {
+      "installed"
+    },
+    "location": location,
+    "authority": "moonclaw",
+  }
+}
+
+///|
+async fn mooncode_skill_catalog_json(
+  book_root : String,
+) -> Result[Json, String] {
+  let loader = mooncode_skill_loader(book_root) catch {
+    error => return Err("Skill discovery failed: \{error}")
+  }
+  let names = loader.skills().keys().collect()
+  names.sort()
+  let rows : Array[Json] = []
+  for name in names {
+    match loader.skills().get(name) {
+      Some(skill) =>
+        rows.push(
+          mooncode_skill_catalog_row(
+            skill.name,
+            skill.description,
+            skill.location,
+            book_root,
+          ),
+        )
+      None => ()
+    }
+  }
+  Ok({
+    "kind": "mooncode-skill-catalog",
+    "owner": "moonclaw",
+    "book_root": book_root,
+    "skills": Json::array(rows),
+    "skill_count": rows.length(),
+    "content_included": false,
+  })
+}
+
+///|
+async fn Daemon::mooncode_list_skills(
+  self : Daemon,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let book_root = mooncode_request_book_root(r)
+  if book_root == "" || !@fsx.exists(book_root) {
+    raise json_error(400, "Bad Request", {
+      "error": { "code": -1, "message": "A valid MoonBook root is required" },
+    })
+  }
+  let catalog = match mooncode_skill_catalog_json(book_root) {
+    Ok(value) => value
+    Err(error) =>
+      raise json_error(503, "Service Unavailable", {
+        "error": { "code": -1, "message": error },
+      })
+  }
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(catalog.stringify(indent=2))
+}
+
+///|
 async fn mooncode_runtime_turn_skill_catalog(book_root : String) -> String {
   let loader = mooncode_skill_loader(book_root) catch {
     error => return "\n\nSkill discovery is unavailable for this turn: \{error}"

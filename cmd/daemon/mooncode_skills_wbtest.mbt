@@ -123,3 +123,21 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
   assert_true(receipt.contains("Do not select read, shell, glob, grep"))
   assert_false(receipt.contains(long_body))
 }
+
+///|
+test "skill catalog classifies source and MoonClaw authority" {
+  let local = mooncode_skill_catalog_row(
+    "review", "Review a MoonBook change", "/tmp/book/skills/review/SKILL.md", "/tmp/book",
+  )
+  assert_eq(mooncode_json_string(local, "source", default=""), "moonbook")
+  assert_eq(mooncode_json_string(local, "authority", default=""), "moonclaw")
+  assert_eq(
+    mooncode_json_string(local, "description", default=""),
+    "Review a MoonBook change",
+  )
+  let installed = mooncode_skill_catalog_row(
+    "moonbit-agent-guide", "MoonBit guide", "/home/user/.codex/skills/moonbit-agent-guide/SKILL.md",
+    "/tmp/book",
+  )
+  assert_eq(mooncode_json_string(installed, "source", default=""), "installed")
+}

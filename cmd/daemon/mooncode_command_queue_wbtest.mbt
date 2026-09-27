@@ -46,6 +46,22 @@ test "mooncode validation rejects unsupported command fields" {
 }
 
 ///|
+test "mooncode refuses media payloads until the native turn retains them" {
+  let body : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-demo",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Inspect this image",
+    "payload": { "images": [{ "path": "wiki/image.png" }] },
+    "packet": { "command_id": "cmd-media" },
+  }
+  let report = mooncode_validate_command_body("session-demo", body)
+  assert_false(mooncode_json_bool(report, "ok", default=true))
+  assert_true(report.stringify().contains("payload.images"))
+}
+
+///|
 test "mooncode native controls classify prompt steer and cancel" {
   assert_eq(mooncode_command_control("prompt"), "prompt")
   assert_eq(mooncode_command_control("run_tests"), "prompt")
@@ -167,17 +183,18 @@ async test "mooncode command persists durable native queue entry without task" (
     pending_codex_auth: {},
     mooncode_sessions: {},
   }
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "run_tests",
+    "model": "codex/gpt-5.6-sol",
+    "web_search": true,
+    "packet": { "command_id": "cmd-native-queue" },
+  }
   let response = daemon.mooncode_queue_command_response(
     session_id~,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "book_root": book_root,
-      "command": "run_tests",
-      "model": "codex/gpt-5.6-sol",
-      "web_search": true,
-      "packet": { "command_id": "cmd-native-queue" },
-    },
+    command,
     queue_source="test-native-queue",
   )
   assert_true(mooncode_json_bool(response, "accepted", default=false))
@@ -192,6 +209,42 @@ async test "mooncode command persists durable native queue entry without task" (
     mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(events_log.contains("\"command.queued_for_runtime_turn\""))
+  let retry = daemon.mooncode_queue_command_response(
+    session_id~,
+    command,
+    queue_source="test-native-queue-retry",
+  )
+  assert_true(mooncode_json_bool(retry, "duplicate", default=false))
+  assert_eq(daemon.mooncode_binding_for_session(session_id).command_count, 1)
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  assert_eq(
+    mooncode_journal_record_count(journal, mooncode_journal_command()),
+    1,
+  )
+  assert_eq(mooncode_journal_record_count(journal, mooncode_journal_event()), 1)
+  let conflict : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "run_tests",
+    "model": "codex/gpt-5.6-sol",
+    "text": "A different request cannot reuse the command ID",
+    "packet": { "command_id": "cmd-native-queue" },
+  }
+  let rejected = try {
+    ignore(
+      daemon.mooncode_queue_command_response(
+        session_id~,
+        conflict,
+        queue_source="test-native-queue-conflict",
+      ),
+    )
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
+  assert_eq(daemon.mooncode_binding_for_session(session_id).command_count, 1)
 }
 
 ///|
@@ -324,6 +377,19 @@ async test "MoonCode persists and reloads the provider model selector" (
     pending_codex_auth: {},
     mooncode_sessions: {},
   }
+  let replay = restarted.mooncode_queue_command_response(
+    session_id~,
+    persisted,
+    queue_source="test-model-restart-retry",
+  )
+  assert_true(mooncode_json_bool(replay, "duplicate", default=false))
+  assert_eq(
+    mooncode_journal_record_count(
+      mooncode_read_session_journal(book_root, session_id),
+      mooncode_journal_command(),
+    ),
+    4,
+  )
   ignore(
     restarted.mooncode_queue_command_response(
       session_id~,

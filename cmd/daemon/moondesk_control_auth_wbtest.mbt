@@ -78,6 +78,11 @@ test "MoonDesk control route policy protects runtime state but leaves public cal
   )
   assert_false(
     moondesk_control_route_requires_auth(Post, [
+      "", "v1", "execution-sandbox", "moon-ide",
+    ]),
+  )
+  assert_false(
+    moondesk_control_route_requires_auth(Post, [
       "", "v1", "execution-sandbox", "promote",
     ]),
   )

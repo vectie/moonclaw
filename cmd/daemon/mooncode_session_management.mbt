@@ -338,7 +338,9 @@ async fn mooncode_session_record_matches(
     safe_session_id,
     archived~,
   )
-  mooncode_json_string(snapshot, "session_id", default="") == session_id
+  mooncode_json_string(snapshot, "load_status", default="") == "" &&
+  mooncode_json_string(snapshot, "session_id", default="") == session_id &&
+  mooncode_json_string(snapshot, "book_root", default="") == book_root
 }
 
 ///|

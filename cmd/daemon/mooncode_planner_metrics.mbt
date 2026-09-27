@@ -49,6 +49,9 @@ fn mooncode_runtime_turn_planner_metrics(
   )
   let tools = mooncode_json_array_items(configured_request, "tools")
   let usage = mooncode_json_object_field_or_empty(response, "usage")
+  let usage_observed = usage is Object(fields) &&
+    fields.get("prompt_tokens") is Some(Number(_)) &&
+    fields.get("completion_tokens") is Some(Number(_))
   let prompt_details = mooncode_json_object_field_or_empty(
     usage, "prompt_tokens_details",
   )
@@ -96,6 +99,7 @@ fn mooncode_runtime_turn_planner_metrics(
   let tool_names = mooncode_runtime_turn_planner_tool_names(configured_request)
   {
     "contract": "moonclaw.planner.metrics.v1",
+    "usage_observed": usage_observed,
     "model_transport": model_transport,
     "configured_request_chars": configured_request_chars,
     "effective_request_chars": effective_request_chars,

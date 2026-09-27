@@ -19,6 +19,15 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       "# Resolver\n",
     )
     @fsx.write_to_file(
+      workspace_root |> @pathx.join("job.json"),
+      "{\"objective\":\"compare\"}\n",
+    )
+    @fsx.make_directory(workspace_root |> @pathx.join("input"), recursive=true)
+    @fsx.write_to_file(
+      workspace_root |> @pathx.join("input") |> @pathx.join("notes.md"),
+      "# Notes\n",
+    )
+    @fsx.write_to_file(
       workspace_root
       |> @pathx.join("skills")
       |> @pathx.join("wiki-ingest")
@@ -155,6 +164,16 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
     inspect(
       @fsx.read_file(workspace_dir |> @pathx.join("RESOLVER.md")),
       content="# Resolver\n",
+    )
+    inspect(
+      @fsx.read_file(workspace_dir |> @pathx.join("job.json")),
+      content="{\"objective\":\"compare\"}\n",
+    )
+    inspect(
+      @fsx.read_file(
+        workspace_dir |> @pathx.join("input") |> @pathx.join("notes.md"),
+      ),
+      content="# Notes\n",
     )
     inspect(
       @fsx.read_file(

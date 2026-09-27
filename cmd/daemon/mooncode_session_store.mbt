@@ -868,6 +868,20 @@ async fn mooncode_session_state_locked(
       "MoonCode session `\{session_id}` exists in both active and archived storage",
     )
   }
+  // MoonCode session files live in one suite product home even when a turn is
+  // bound to a child MoonBook. Never let a suite-root or sibling-book lookup
+  // relabel that session as its own, including after daemon restart.
+  if active || archived {
+    let snapshot = mooncode_load_session_snapshot_from_store(
+      book_root,
+      safe_session_id,
+      archived~,
+    )
+    let recorded_root = mooncode_json_string(snapshot, "book_root", default="")
+    if recorded_root != book_root {
+      return "foreign"
+    }
+  }
   match stored_state {
     "" => if archived { "archived" } else if active { "active" } else { "new" }
     "archiving" =>

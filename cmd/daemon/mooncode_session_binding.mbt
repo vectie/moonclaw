@@ -203,9 +203,7 @@ fn mooncode_listing_root_matches(
   requested_root : String,
   book_root : String,
 ) -> Bool {
-  requested_root == "" ||
-  requested_root == book_root ||
-  mooncode_sessions_root(requested_root) == mooncode_sessions_root(book_root)
+  requested_root == "" || requested_root == book_root
 }
 
 ///|

@@ -27,6 +27,7 @@ async test "Loader" (t : @test.Test) {
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
+        "input_modalities": ["text"],
       },
     ])
     let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
@@ -40,6 +41,7 @@ async test "Loader" (t : @test.Test) {
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
+        "input_modalities": ["text"],
       },
     ])
   })
@@ -113,6 +115,7 @@ async test "load" (t : @test.Test) {
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
+        "input_modalities": ["text"],
       },
     ])
     json_inspect(
@@ -129,6 +132,7 @@ async test "load" (t : @test.Test) {
           "safe_zone_tokens": 200000,
           "supports_anthropic_prompt_caching": false,
           "supports_apply_patch": false,
+          "input_modalities": ["text"],
         },
       ],
     )
@@ -164,6 +168,7 @@ async test "removes-old-models" (t : @test.Test) {
         "safe_zone_tokens": 100000,
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
+        "input_modalities": ["text"],
       },
     ])
     let new_model = @model.new(
@@ -185,6 +190,7 @@ async test "removes-old-models" (t : @test.Test) {
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
+        "input_modalities": ["text"],
       },
     ])
   })

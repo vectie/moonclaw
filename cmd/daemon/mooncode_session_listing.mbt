@@ -12,7 +12,15 @@ async fn Daemon::mooncode_list_sessions(
     None => ()
   }
   let archived = scope == "archived"
-  let records = if archived {
+  let include_books = mooncode_request_string(
+      r,
+      "include_books",
+      default="false",
+    ) ==
+    "true"
+  let records = if include_books && format == "listing" && book_root != "" {
+    self.mooncode_suite_session_listing_records(book_root, archived~)
+  } else if archived {
     self.mooncode_archived_session_listing_records(
       book_root,
       include_log_counts=format != "json",
@@ -65,6 +73,52 @@ async fn Daemon::mooncode_list_sessions(
         "sessions": Json::array(records),
       } : Json).stringify(indent=2),
   )
+}
+
+///|
+/// A desktop suite lists its root-scoped chats and the direct MoonBooks in
+/// one native request. Individual session reads remain bound to a book root.
+async fn Daemon::mooncode_suite_session_listing_records(
+  self : Daemon,
+  suite_root : String,
+  archived~ : Bool,
+) -> Array[Json] {
+  let records = if archived {
+    self.mooncode_archived_session_listing_records(
+      suite_root,
+      include_log_counts=false,
+    )
+  } else {
+    self.mooncode_session_listing_records(suite_root, include_log_counts=false)
+  }
+  for book_root in mooncode_suite_book_roots(suite_root) {
+    let child = if archived {
+      self.mooncode_archived_session_listing_records(
+        book_root,
+        include_log_counts=false,
+      )
+    } else {
+      self.mooncode_session_listing_records(book_root, include_log_counts=false)
+    }
+    records.append(child)
+  }
+  records
+}
+
+///|
+async fn mooncode_suite_book_roots(suite_root : String) -> Array[String] {
+  let roots : Array[String] = []
+  let books_root = @pathx.join(suite_root, "books")
+  let entries = @fsx.list_directory(books_root) catch { _ => return roots }
+  for entry in entries {
+    if entry.kind is Directory &&
+      entry.name != "." &&
+      entry.name != ".." &&
+      !entry.name.has_prefix(".") {
+      roots.push(@pathx.join(books_root, entry.name))
+    }
+  }
+  roots
 }
 
 ///|

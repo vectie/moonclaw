@@ -9,6 +9,7 @@ pub struct Model {
   safe_zone_tokens : Int
   supports_anthropic_prompt_caching : Bool
   supports_apply_patch : Bool
+  input_modalities : Array[String]
   // OAuth credentials for CodexOAuth provider
   access_token : String?
   account_id : String?
@@ -75,6 +76,7 @@ pub fn Model::new(
   model_type? : Type = SaaS(OpenAI),
   description? : String,
   supports_anthropic_prompt_caching? : Bool = false,
+  input_modalities? : Array[String] = ["text"],
   access_token? : String,
   account_id? : String,
   refresh_token? : String,
@@ -98,11 +100,17 @@ pub fn Model::new(
     model_type,
     supports_anthropic_prompt_caching,
     supports_apply_patch,
+    input_modalities,
     access_token,
     account_id,
     refresh_token,
     id_token,
   }
+}
+
+///|
+pub fn Model::supports_image_input(self : Model) -> Bool {
+  self.input_modalities.contains("image")
 }
 
 ///|

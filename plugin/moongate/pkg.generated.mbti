@@ -45,10 +45,12 @@ pub struct MoonGateModel {
   id : String
   owner : String?
   context_window : Int?
+  input_modalities : Array[String]
 }
 pub fn MoonGateModel::context_window(Self) -> Int?
 pub fn MoonGateModel::from_json(Json) -> Result[Self, String]
 pub fn MoonGateModel::id(Self) -> String
+pub fn MoonGateModel::input_modalities(Self) -> Array[String]
 pub fn MoonGateModel::owner(Self) -> String?
 
 pub struct MoonGateUsageSummary {
