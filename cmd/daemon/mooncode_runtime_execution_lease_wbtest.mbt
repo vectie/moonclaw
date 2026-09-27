@@ -232,6 +232,17 @@ async test "runtime entry points do not resurrect an archived session" {
   ) {
     let session_id = "session-runtime-archive"
     let daemon = mooncode_execution_lease_test_daemon(root)
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    binding.book_root = root
+    @fsx.make_directory(
+      mooncode_session_dir(root, session_id),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      mooncode_session_snapshot_path(root, session_id),
+      mooncode_session_snapshot(binding).stringify(),
+    )
     ignore(
       mooncode_append_session_journal(
         root,

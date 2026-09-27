@@ -17,11 +17,26 @@ pub let sep : Char = '/'
 /// 
 /// edge cases: when path is relative path without directory component, return "."
 pub fn dirname(path : StringView) -> StringView {
-  let dir = @xpath.Path::dirname(path.to_owned()).to_string()
-  if dir.is_empty() {
-    "."
-  } else {
-    dir
+  if path.is_empty() {
+    return "."
+  }
+  if !path_has_non_slash(path) {
+    return path
+  }
+  let without_trailing_slashes = path_without_nonroot_trailing_slashes(path)
+  if without_trailing_slashes.length() != path.length() {
+    return without_trailing_slashes
+  }
+  match path.rev_find("/") {
+    None => "."
+    Some(index) => {
+      let prefix = path.view(end_offset=index)
+      if path_has_non_slash(prefix) {
+        path_without_nonroot_trailing_slashes(prefix)
+      } else {
+        path.view(end_offset=index + 1)
+      }
+    }
   }
 }
 
@@ -187,14 +202,50 @@ pub fn split(view : StringView) -> Iter[StringView] {
 ///|
 /// Normalize path by resolving `.` and `..` and eliminating redundant slashes.
 pub fn normalize(view : StringView) -> String {
-  Path::normalize(view.to_owned()).0
+  let normalized = Path::normalize(view.to_owned()).0
+  let trimmed = path_without_nonroot_trailing_slashes(normalized.view()).to_owned()
+  if trimmed == "." {
+    return ""
+  }
+  if view.has_prefix("//") &&
+    !view.has_prefix("///") &&
+    trimmed.has_prefix("/") &&
+    !trimmed.has_prefix("//") {
+    "/" + trimmed
+  } else {
+    trimmed
+  }
+}
+
+///|
+fn path_has_non_slash(view : StringView) -> Bool {
+  match view {
+    [] => false
+    ['/', .. rest] => path_has_non_slash(rest)
+    _ => true
+  }
+}
+
+///|
+fn path_without_nonroot_trailing_slashes(view : StringView) -> StringView {
+  match view {
+    [.. rest, '/'] if path_has_non_slash(rest) =>
+      path_without_nonroot_trailing_slashes(rest)
+    _ => view
+  }
 }
 
 ///|
 /// 1. normalize path.
 /// 2. if rhs is absolute path, return rhs.
 pub fn join(p : StringView, q : StringView) -> String {
-  Path::join(p.to_owned(), q.to_owned()).normalize().0
+  if p.is_empty() && q.is_empty() {
+    return ""
+  }
+  if Path::is_absolute(q.to_owned()) {
+    return normalize(q)
+  }
+  normalize(Path::join(p.to_owned(), q.to_owned()).0)
 }
 
 ///|
