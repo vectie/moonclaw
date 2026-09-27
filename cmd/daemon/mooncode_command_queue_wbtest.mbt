@@ -80,7 +80,7 @@ async test "MoonCode rejects missing and stale models before explicit tools can 
   let session_id = "session-model-reject"
   let daemon = Daemon::{
     clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    models: mooncode_test_model_loader(book_root),
     uuid: @uuid.generator(@rand.chacha8()),
     process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
@@ -165,7 +165,7 @@ async test "mooncode command persists durable native queue entry without task" (
   let session_id = "session-native-queue"
   let daemon = Daemon::{
     clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    models: mooncode_test_model_loader(book_root),
     uuid: @uuid.generator(@rand.chacha8()),
     process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
@@ -188,7 +188,7 @@ async test "mooncode command persists durable native queue entry without task" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "run_tests",
-    "model": "codex/gpt-5.6-sol",
+    "model": "fixture/mooncode",
     "web_search": true,
     "packet": { "command_id": "cmd-native-queue" },
   }
@@ -227,7 +227,7 @@ async test "mooncode command persists durable native queue entry without task" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "run_tests",
-    "model": "codex/gpt-5.6-sol",
+    "model": "fixture/mooncode",
     "text": "A different request cannot reuse the command ID",
     "packet": { "command_id": "cmd-native-queue" },
   }
@@ -258,7 +258,7 @@ async test "MoonCode persists and reloads the provider model selector" (
   let session_id = "session-model-persist"
   let daemon = Daemon::{
     clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    models: mooncode_test_model_loader(book_root),
     uuid: @uuid.generator(@rand.chacha8()),
     process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
@@ -285,10 +285,10 @@ async test "MoonCode persists and reloads the provider model selector" (
         "book_root": book_root,
         "command": "prompt",
         "text": "Inspect the project structure",
-        "model": "codex/gpt-5.6-sol",
+        "model": "fixture/mooncode",
         "payload": {
-          "model": "codex/gpt-5.6-sol",
-          "planner_model": "codex/gpt-5.6-sol",
+          "model": "fixture/mooncode",
+          "planner_model": "fixture/mooncode",
         },
         "packet": { "command_id": "cmd-model-persist" },
       },
@@ -301,26 +301,26 @@ async test "MoonCode persists and reloads the provider model selector" (
   let persisted = mooncode_json_object_field_or_empty(commands[0], "command")
   assert_eq(
     mooncode_runtime_turn_requested_model(persisted),
-    "codex/gpt-5.6-sol",
+    "fixture/mooncode",
   )
   let persisted_payload = mooncode_json_object_field_or_empty(
     persisted, "payload",
   )
   assert_eq(
     mooncode_json_string(persisted_payload, "planner_model", default=""),
-    "codex/gpt-5.6-sol",
+    "fixture/mooncode",
   )
   let snapshot = mooncode_load_session_snapshot(book_root, session_id)
   assert_eq(
     mooncode_json_string(snapshot, "model", default=""),
-    "codex/gpt-5.6-sol",
+    "fixture/mooncode",
   )
   guard daemon.mooncode_session_record(session_id, book_root) is Some(record) else {
     fail("expected reloaded MoonCode session")
   }
   assert_eq(
     mooncode_json_string(record, "model", default=""),
-    "codex/gpt-5.6-sol",
+    "fixture/mooncode",
   )
   let follow_ups : Array[Json] = [
     { "action": "prompt", "command_id": "cmd-model-follow-up" },
@@ -354,12 +354,12 @@ async test "MoonCode persists and reloads the provider model selector" (
     let command = mooncode_json_object_field_or_empty(entry, "command")
     assert_eq(
       mooncode_runtime_turn_requested_model(command),
-      "codex/gpt-5.6-sol",
+      "fixture/mooncode",
     )
   }
   let restarted = Daemon::{
     clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    models: mooncode_test_model_loader(book_root),
     uuid: @uuid.generator(@rand.chacha8()),
     process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
@@ -413,7 +413,7 @@ async test "MoonCode persists and reloads the provider model selector" (
     mooncode_runtime_turn_requested_model(
       mooncode_json_object_field_or_empty(restarted_commands[4], "command"),
     ),
-    "codex/gpt-5.6-sol",
+    "fixture/mooncode",
   )
   ignore(
     restarted.mooncode_queue_command_response(
