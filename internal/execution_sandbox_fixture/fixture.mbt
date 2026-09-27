@@ -175,9 +175,9 @@ pub async fn[T] with_fixture_moonfort(
         #|
       ),
     )
-    let python = "/usr/bin/python3"
+    let python = @fsx.resolve("/usr/bin/python3")
     guard @fsx.exists_as_file(python) else {
-      fail("fixture MoonFort requires /usr/bin/python3")
+      fail("fixture MoonFort requires a canonical Python executable")
     }
     let allowed_commands = capabilities.keys().to_array()
     allowed_commands.sort()
