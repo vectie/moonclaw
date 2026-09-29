@@ -18,13 +18,13 @@ test "LunaNexa issuer validation rejects SSRF and credential-bearing URLs" {
   )
   assert_eq(
     lunanexa_url_origin(
-      "http://106.39.18.146:5002",
+      "http://198.51.100.10:5002",
       true,
       allow_public_http=true,
     ),
-    Some("http://106.39.18.146:5002"),
+    Some("http://198.51.100.10:5002"),
   )
-  assert_true(lunanexa_url_origin("http://106.39.18.146:5002", true) is None)
+  assert_true(lunanexa_url_origin("http://198.51.100.10:5002", true) is None)
   for
     malicious in [
       "http://management.example", "http://127.0.0.1.attacker.invalid", "http://localhost:not-a-port",
@@ -65,9 +65,9 @@ test "provider handoff validates code and returns no reusable secret" {
   )
   assert_true(
     valid_lunanexa_redemption(
-      { ..redemption, api_base_url: "http://106.39.18.146:5002/v1", },
+      { ..redemption, api_base_url: "http://198.51.100.10:5002/v1", },
       request,
-      "http://106.39.18.146:5002",
+      "http://198.51.100.10:5002",
       10_000L,
     ),
   )
