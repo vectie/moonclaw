@@ -79,8 +79,8 @@ async test "MoonCode rehydrates a persisted model from its MoonBook root" {
     @fsx.with_temporary_directory("moonclaw-mooncode-daemon-root-XXXXXX", daemon_root => {
       let model = @model.Model::new(
         api_key="test",
-        base_url="http://127.0.0.1:15721/v1",
-        name="moongate/kimi-k3",
+        base_url="https://configured-provider.invalid/v1",
+        name="custom-provider/kimi-k3",
         model_name="kimi-k3",
         safe_zone_tokens=131072,
       )
@@ -100,15 +100,44 @@ async test "MoonCode rehydrates a persisted model from its MoonBook root" {
         {
           "book_root": book_root,
           "command": "prompt",
-          "model": "moongate/kimi-k3",
+          "model": "custom-provider/kimi-k3",
         },
-        "moongate/kimi-k3",
+        "custom-provider/kimi-k3",
       )
       guard resolved is Some(resolved_model) else {
         fail("expected persisted MoonBook model to rehydrate")
       }
-      assert_eq(resolved_model.name, "moongate/kimi-k3")
+      assert_eq(resolved_model.name, "custom-provider/kimi-k3")
       assert_eq(resolved_model.model_name, "kimi-k3")
+      // A static model with the reserved name must not masquerade as a live
+      // MoonGate route, even when rehydrating from the correct owning Book.
+      @fsx.write_to_file(
+        models_path,
+        [
+          @model.Model::new(
+            api_key="dummy",
+            base_url="https://other.invalid",
+            name="moongate/kimi-k3",
+            model_name="kimi-k3",
+            safe_zone_tokens=131072,
+          ),
+        ]
+        .to_json()
+        .stringify(),
+      )
+      assert_true(
+        mooncode_runtime_turn_resolve_model(
+          primary,
+          daemon_root,
+          {
+            "book_root": book_root,
+            "command": "prompt",
+            "model": "moongate/kimi-k3",
+          },
+          "moongate/kimi-k3",
+        )
+        is None,
+      )
     })
   })
 }

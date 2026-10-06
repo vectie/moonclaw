@@ -6,14 +6,18 @@ fn moonclaw_moongate_route_status_json(
   base_url : String,
   model_ids : Array[String],
   error : String,
+  configured_default? : String,
   catalog? : Array[@moongate.MoonGateModel] = [],
 ) -> Json {
   let models : Array[Json] = []
   let names : Array[String] = []
   for model_id in model_ids {
-    let id = model_id.trim().to_owned()
+    let id = model_id
     let name = "moongate/" + id
-    if id != "" && !names.contains(name) {
+    if error == "" &&
+      id != "" &&
+      id == id.trim().to_owned() &&
+      !names.contains(name) {
       names.push(name)
       let mut input_modalities : Array[String] = []
       for entry in catalog {
@@ -24,17 +28,36 @@ fn moonclaw_moongate_route_status_json(
       }
       models.push({
         "name": name,
-        "default": models.is_empty(),
+        "default": configured_default == Some(id),
         "input_modalities": Json::array(
           input_modalities.map(value => value.to_json()),
         ),
       })
     }
   }
-  let ready = error == "" && !models.is_empty()
+  let catalog_ready = error == "" && !models.is_empty()
+  let default_model = match configured_default {
+    Some(id) if catalog_ready && names.contains("moongate/" + id) =>
+      "moongate/" + id
+    _ => ""
+  }
+  let ready = default_model != ""
+  let route_error = if error != "" {
+    error
+  } else if !catalog_ready {
+    "MoonGate live model catalog is empty"
+  } else if configured_default is None || configured_default == Some("") {
+    "MoonGate default model is not configured"
+  } else if !ready {
+    "MoonGate configured default model is unavailable in the live catalog"
+  } else {
+    ""
+  }
   {
     "contract": MOONCLAW_MOONGATE_ROUTE_CONTRACT,
     "ready": ready,
+    "catalog_ready": catalog_ready,
+    "default_ready": ready,
     "status": if ready {
       "ready"
     } else {
@@ -44,13 +67,9 @@ fn moonclaw_moongate_route_status_json(
     "traffic_path": ["moondesk", "moonclaw", "moongate"],
     "model_prefix": "moongate/",
     "base_url": base_url,
-    "default_model": if names.is_empty() {
-      ""
-    } else {
-      names[0]
-    },
+    "default_model": default_model,
     "models": Json::array(models),
-    "error": error,
+    "error": route_error,
   }
 }
 
@@ -75,12 +94,18 @@ async fn Daemon::moongate_route(
       return
     }
   }
+  let configured_default = @moongate.configured_models_from_suite_status_for_workspace_root(
+      self.home,
+    )
+    .get(0)
+    .map(model => model.id())
   let status = match client.model_catalog() {
     Ok(catalog) =>
       moonclaw_moongate_route_status_json(
         client.base_url(),
         catalog.map(model => model.id()),
         "",
+        configured_default?,
         catalog~,
       )
     Err(error) =>

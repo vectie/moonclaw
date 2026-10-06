@@ -1,4 +1,5 @@
 import {
+  "vectie/moonclaw/internal/book_learning",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/semaphore",

@@ -133,6 +133,7 @@ async fn Daemon::mooncode_start_runtime_service(
   }
   let book_root = binding.book_root
   if binding.runtime_service_running {
+    binding.runtime_service_wake_pending = true
     return {
       "kind": "mooncode-runtime-service",
       "protocol": mooncode_protocol_version(),
@@ -250,6 +251,7 @@ async fn Daemon::mooncode_start_runtime_service(
   }
 
   if binding.runtime_service_running {
+    binding.runtime_service_wake_pending = true
     @async.protect_from_cancel(
       () => {
         mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
@@ -571,6 +573,10 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   payload : Json,
 ) -> Json {
   let loop_payload = mooncode_runtime_service_loop_payload(session_id, payload)
+  let (has_goal_at_entry, goal_was_terminal) = mooncode_runtime_service_goal_scope(
+    book_root, session_id,
+  )
+  let mut owns_goal_runtime = has_goal_at_entry && !goal_was_terminal
   let mut result = self.mooncode_runtime_loop_execute_with_gate_state(
     group?,
     session_id,
@@ -578,47 +584,220 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
     loop_payload,
     runtime_gates_held=true,
   )
-  while mooncode_runtime_service_continues_goal_runtime(
-          result, book_root, session_id,
-        ) {
-    if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
-      @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
+  let binding = self.mooncode_binding_for_session(session_id)
+  // Explicit manual service limits retain their existing total-turn bound.
+  // Automatic /turns submissions omit max_turns and drain their accepted queue.
+  let drains_queue = mooncode_runtime_service_auto_drains_queue(payload)
+  let mut rearm_count = 0
+  while true {
+    // Clear before the fresh queue read. A /turns submission that finds this
+    // service running rearms it if it arrives during final journal I/O.
+    binding.runtime_service_wake_pending = false
+    if drains_queue &&
+      !@async.is_being_cancelled() &&
+      mooncode_runtime_service_queue_drain_allowed(result) {
+      owns_goal_runtime = mooncode_runtime_service_refresh_goal_ownership(
+        owns_goal_runtime, goal_was_terminal, book_root, session_id,
+      )
     }
-    result = self.mooncode_runtime_loop_execute_with_gate_state(
-      group?,
-      session_id,
-      book_root,
-      loop_payload,
-      runtime_gates_held=true,
+    let claim_state = if drains_queue &&
+      !owns_goal_runtime &&
+      mooncode_runtime_service_queue_drain_allowed(result) {
+      self.mooncode_runtime_claim_state_payload(session_id, book_root)
+    } else {
+      Json::object({})
+    }
+    if (
+        drains_queue &&
+        !owns_goal_runtime &&
+        mooncode_runtime_service_continues_queued_work(result, claim_state)
+      ) ||
+      mooncode_runtime_service_continues_goal_runtime(
+        result, book_root, session_id,
+      ) {
+      if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
+        @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
+      }
+      result = self.mooncode_runtime_loop_execute_with_gate_state(
+        group?,
+        session_id,
+        book_root,
+        loop_payload,
+        runtime_gates_held=true,
+      )
+      continue
+    }
+    let finished = mooncode_runtime_service_rearm_event(
+      self.mooncode_runtime_service_finished_event(
+        session_id, book_root, payload, result,
+      ),
+      rearm_count,
     )
-  }
-  let finished = self.mooncode_runtime_service_finished_event(
-    session_id, book_root, payload, result,
-  )
-  @async.protect_from_cancel(
-    () => {
-      ignore(
-        mooncode_append_session_journal(
-          book_root,
-          session_id,
-          mooncode_journal_event(),
-          finished,
+    @async.protect_from_cancel(
+      () => {
+        ignore(
+          mooncode_append_session_journal(
+            book_root,
+            session_id,
+            mooncode_journal_event(),
+            finished,
+          ),
+        )
+      },
+      resume_on_cancel=true,
+    )
+    if drains_queue &&
+      !@async.is_being_cancelled() &&
+      mooncode_runtime_service_rearm_requested(
+        result,
+        binding.runtime_service_wake_pending,
+      ) {
+      owns_goal_runtime = mooncode_runtime_service_refresh_goal_ownership(
+        owns_goal_runtime, goal_was_terminal, book_root, session_id,
+      )
+    }
+    if drains_queue &&
+      !owns_goal_runtime &&
+      !@async.is_being_cancelled() &&
+      mooncode_runtime_service_rearm_requested(
+        result,
+        binding.runtime_service_wake_pending,
+      ) {
+      // The finish was already durable when a new prompt woke the service.
+      // Record the next run before continuing under the same execution lease.
+      rearm_count += 1
+      mooncode_append_session_journal(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        mooncode_runtime_service_rearm_event(
+          self.mooncode_runtime_service_started_event(
+            session_id, book_root, payload,
+          ),
+          rearm_count,
         ),
       )
-    },
-    resume_on_cancel=true,
-  )
-  {
-    "kind": "mooncode-runtime-service-result",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "accepted": mooncode_json_bool(result, "accepted", default=false),
-    "session_id": session_id,
-    "book_root": book_root,
-    "service_id": mooncode_runtime_service_id(session_id, payload),
-    "status": mooncode_json_string(finished, "status", default="done"),
-    "runtime_loop": result,
-    "finished_event": finished,
+      result = self.mooncode_runtime_loop_execute_with_gate_state(
+        group?,
+        session_id,
+        book_root,
+        loop_payload,
+        runtime_gates_held=true,
+      )
+      continue
+    }
+    return {
+      "kind": "mooncode-runtime-service-result",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": mooncode_json_bool(result, "accepted", default=false),
+      "session_id": session_id,
+      "book_root": book_root,
+      "service_id": mooncode_runtime_service_id(session_id, payload),
+      "status": mooncode_json_string(finished, "status", default="done"),
+      "runtime_loop": result,
+      "finished_event": finished,
+    }
+  }
+  abort("unreachable runtime service drain loop")
+}
+
+///|
+async fn mooncode_runtime_service_goal_scope(
+  book_root : String,
+  session_id : String,
+) -> (Bool, Bool) {
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Shared)
+  defer session_lock.unlock()
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id)
+  if mooncode_goal_authority_projection_is_dual(authority) {
+    mooncode_goal_runtime_store_corrupt("dual goal authority")
+  }
+  (authority.runtime.genesis is Some(_), authority.runtime.terminal)
+}
+
+///|
+async fn mooncode_runtime_service_refresh_goal_ownership(
+  owns_goal_runtime : Bool,
+  goal_was_terminal : Bool,
+  book_root : String,
+  session_id : String,
+) -> Bool {
+  // A goal belongs to this run even after it settles. A later service may
+  // process ordinary work when the immutable goal was terminal at entry.
+  if owns_goal_runtime || goal_was_terminal {
+    return owns_goal_runtime
+  }
+  // Goal PUT can add genesis during a service. Observe its presence even if
+  // settlement also happened before this check, and retain ownership.
+  let (has_goal, _) = mooncode_runtime_service_goal_scope(book_root, session_id)
+  has_goal
+}
+
+///|
+fn mooncode_runtime_service_auto_drains_queue(payload : Json) -> Bool {
+  match payload {
+    Object(fields) => !fields.contains("max_turns")
+    _ => true
+  }
+}
+
+///|
+fn mooncode_runtime_service_queue_drain_allowed(result : Json) -> Bool {
+  let stopped_by = mooncode_json_string(result, "stopped_by", default="")
+  if (stopped_by != "max_turns" && stopped_by != "idle") ||
+    mooncode_json_int(result, "failed_turn_count", default=0) > 0 {
+    return false
+  }
+  let turns = mooncode_json_array_items(result, "turns")
+  if turns.length() > 0 {
+    let execution = mooncode_json_object_field_or_empty(
+      turns[turns.length() - 1],
+      "execution",
+    )
+    if mooncode_json_bool(execution, "paused", default=false) ||
+      mooncode_json_bool(execution, "waiting_approval", default=false) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn mooncode_runtime_service_continues_queued_work(
+  result : Json,
+  claim_state : Json,
+) -> Bool {
+  mooncode_runtime_service_queue_drain_allowed(result) &&
+  mooncode_json_bool(claim_state, "claim_ready", default=false) &&
+  mooncode_json_int(claim_state, "claimed_command_count", default=0) == 0
+}
+
+///|
+fn mooncode_runtime_service_rearm_requested(
+  result : Json,
+  wake_pending : Bool,
+) -> Bool {
+  wake_pending && mooncode_runtime_service_queue_drain_allowed(result)
+}
+
+///|
+fn mooncode_runtime_service_rearm_event(
+  event : Json,
+  rearm_count : Int,
+) -> Json {
+  if rearm_count == 0 {
+    event
+  } else {
+    mooncode_json_object_with_field(
+      event,
+      "id",
+      (mooncode_json_string(event, "id", default="") +
+      "-rearm-" +
+      rearm_count.to_string()).to_json(),
+    )
   }
 }
 

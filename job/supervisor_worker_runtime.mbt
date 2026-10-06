@@ -138,6 +138,7 @@ pub async fn SupervisorRuntime::verify_delegate_intent(
 ) -> Result[SupervisorDelegateIntentPreparedV1?, String] {
   self.with_lock(async fn() {
     self.reload_unlocked()
+    self.runtime.store().reload_supervisor_worker_store()
     match
       self.validate_envelope(
         request.envelope,
@@ -187,6 +188,7 @@ pub async fn SupervisorRuntime::delegate_intent(
 ) -> Result[SupervisorDelegateIntentPreparedV1, String] {
   self.with_lock(async fn() {
     self.reload_unlocked()
+    self.runtime.store().reload_supervisor_worker_store()
     match
       self.validate_envelope(
         request.envelope,
@@ -345,7 +347,27 @@ pub async fn SupervisorRuntime::delegate_intent(
       "issued_at_ms": request.envelope.issued_at,
       "runtime_timestamp": runtime_timestamp,
     }
-    if self.runtime.store().get_definition(worker_job_id) is None {
+    let existing_definition = self.runtime
+      .store()
+      .reload_worker_definition(worker_job_id)
+    let book_learning_input = match existing_definition {
+      Some(definition) => {
+        guard definition.config is { "provider_task_id": String(id), .. } &&
+          id == worker_run_id else {
+          return Err("durable worker provider identity changed")
+        }
+        match supervisor_learning_from_definition(definition, request, None) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+      }
+      None =>
+        @book_learning.capture(
+          supervisor_learning_binding(request),
+          runtime_timestamp,
+        )
+    }
+    if existing_definition is None {
       self.runtime.register_definition({
         id: worker_job_id,
         kind: "job.supervisor-worker",
@@ -363,6 +385,8 @@ pub async fn SupervisorRuntime::delegate_intent(
           "authorization": authorization_evidence,
           "accounting_mode": accounting_mode,
           "timestamp_correlation": timestamp_correlation,
+          "book_learning_input_contract": "moonclaw.book-learning-input.v1",
+          "book_learning_input": book_learning_input,
           "provider_metering": {
             "accounting_mode": accounting_mode,
             "cost_micro_usd": "zero_billable_cost",
@@ -434,6 +458,7 @@ pub async fn SupervisorRuntime::delegate_intent(
         "authorization": authorization_evidence,
         "accounting_mode": accounting_mode,
         "timestamp_correlation": timestamp_correlation,
+        "book_learning_input": @book_learning.summary(book_learning_input),
       },
       payload={
         "intent": supervisor_delegate_intent_payload_v1(
@@ -447,6 +472,7 @@ pub async fn SupervisorRuntime::delegate_intent(
         "accounting_mode": accounting_mode,
         "scheduler": "job.delegate",
         "timestamp_correlation": timestamp_correlation,
+        "book_learning_input": @book_learning.summary(book_learning_input),
       },
       conversation_id=Some(request.task.conversation_id),
       task_id=Some(request.task.task_id),

@@ -21,17 +21,21 @@ pub fn workspace_trust_valid(String) -> Bool
 type Conversation
 pub fn Conversation::add_event(Self, @event.Event) -> Unit
 pub fn Conversation::add_events(Self, ArrayView[@event.Event]) -> Unit
+pub fn Conversation::capture_optional_input_context(Self, @uuid.Uuid, Json) -> Unit raise
 pub fn Conversation::created(Self) -> @clock.Timestamp
 pub fn Conversation::cwd(Self) -> String
 pub fn Conversation::display(Self, show_messages? : Bool) -> Array[String]
 pub fn Conversation::events(Self) -> ArrayView[@event.Event]
 pub fn Conversation::export_to_markdown(Self) -> String
 pub fn Conversation::id(Self) -> @uuid.Uuid
-pub fn Conversation::messages(Self, include_system? : Bool) -> Array[@ai.Message]
+pub fn Conversation::messages(Self, include_system? : Bool, user_message_overrides? : Map[@uuid.Uuid, String]) -> Array[@ai.Message]
 pub fn Conversation::name(Self) -> String
+pub fn Conversation::optional_input_contexts(Self) -> Map[String, Json]
+pub fn Conversation::set_optional_input_context_status(Self, @uuid.Uuid, String) -> Unit raise
 pub fn Conversation::source_kind(Self) -> String
 pub fn Conversation::system_prompt(Self) -> String?
 pub fn Conversation::updated(Self) -> @clock.Timestamp
+pub fn Conversation::user_message_is_visible(Self, @uuid.Uuid) -> Bool
 pub fn Conversation::web_search(Self) -> Bool
 pub fn Conversation::workspace_trust(Self) -> String
 pub impl ToJson for Conversation

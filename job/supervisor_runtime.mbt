@@ -53,6 +53,9 @@ fn SupervisorRuntime::lock_file(self : SupervisorRuntime) -> String {
 }
 
 ///|
+let supervisor_process_locks : Map[String, @semaphore.Semaphore] = Map([])
+
+///|
 async fn[T] SupervisorRuntime::with_lock(
   self : SupervisorRuntime,
   f : async () -> T,
@@ -60,6 +63,11 @@ async fn[T] SupervisorRuntime::with_lock(
   @fsx.make_directory(self.root(), recursive=true, exists_ok=true) catch {
     _ => ()
   }
+  let mutex = supervisor_process_locks.get_or_init(@fs.realpath(self.root()), () => {
+    @semaphore.Semaphore::new(1)
+  })
+  mutex.acquire()
+  defer mutex.release()
   let file = @fs.open(
     self.lock_file(),
     mode=WriteOnly,

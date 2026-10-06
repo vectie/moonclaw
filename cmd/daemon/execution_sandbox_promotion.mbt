@@ -5,7 +5,7 @@ const MoonDeskPromotionRequestBytes : Int = 65_536
 priv struct MoonDeskPromotionItem {
   source_relative : String
   destination_relative : String
-} derive(ToJson, @json.FromJson)
+} derive(Eq, ToJson, @json.FromJson)
 
 ///|
 #warnings("-unused_value")
@@ -18,13 +18,13 @@ priv struct MoonDeskPromotionRequest {
   approval_digest : String
   command_digest : String
   items : Array[MoonDeskPromotionItem]
-} derive(ToJson, @json.FromJson)
+} derive(Eq, ToJson, @json.FromJson)
 
 ///|
 priv struct MoonFortPromotionError {
   code : String
   message : String
-} derive(Debug, Eq, @json.FromJson)
+} derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
 #warnings("-unused_value")
@@ -39,7 +39,7 @@ priv struct MoonFortPromotionResponse {
   uncertain_paths : Array[String]
   completed : Bool
   error : MoonFortPromotionError?
-} derive(Debug, Eq, @json.FromJson)
+} derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
 fn moondesk_promotion_safe_digest(value : String) -> Bool {
@@ -230,22 +230,20 @@ async fn execute_moondesk_promotion(
   guard launcher is Some(launcher) else {
     fail("MoonFort promotion adapter is unavailable")
   }
-  let client = @execution_sandbox_adapter.PromotionClient::new(
-    launcher.promotion_path,
-    launcher.promotion_args,
-    launcher.executor_config_path,
-    launcher.receipt_root,
-  )
-  let body = moondesk_promotion_moonfort_request(request).stringify()
-  let process = client.promote_retention(body)
-  guard process.status == 0 else { fail("MoonFort promotion process failed") }
-  let response : MoonFortPromotionResponse = @json.from_json(
-    @json.parse(process.stdout.trim().to_owned()),
-  ) catch {
-    _ => fail("MoonFort promotion response is invalid")
-  }
-  let response = moondesk_promotion_validate_response(request, response)
-  moondesk_promotion_public_response(request, response)
+  moondesk_promotion_with_receipt(request, launcher.receipt_root, async fn() {
+    let client = @execution_sandbox_adapter.PromotionClient::new(
+      launcher.promotion_path,
+      launcher.promotion_args,
+      launcher.executor_config_path,
+      launcher.receipt_root,
+    )
+    let body = moondesk_promotion_moonfort_request(request).stringify()
+    let process = client.promote_retention(body)
+    guard process.status == 0 else { fail("MoonFort promotion process failed") }
+    @json.from_json(@json.parse(process.stdout.trim().to_owned())) catch {
+      _ => fail("MoonFort promotion response is invalid")
+    }
+  })
 }
 
 ///|
@@ -253,6 +251,7 @@ async fn Daemon::moondesk_promote_retention(
   self : Daemon,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
+  read_receipt? : Bool = false,
 ) -> Unit {
   ignore(self)
   let route_config = @moondesk_sandbox_config.load() catch {
@@ -295,12 +294,26 @@ async fn Daemon::moondesk_promote_retention(
         },
       })
   }
-  let result = execute_moondesk_promotion(request, route_config) catch {
+  let result = try {
+    if read_receipt {
+      read_moondesk_promotion_receipt(request, route_config)
+    } else {
+      execute_moondesk_promotion(request, route_config)
+    }
+  } catch {
     _ =>
       raise json_error(503, "ServiceUnavailable", {
         "error": {
-          "code": "promotion_refused",
-          "message": "MoonFort promotion failed closed",
+          "code": if read_receipt {
+            "promotion_receipt_unavailable"
+          } else {
+            "promotion_refused"
+          },
+          "message": if read_receipt {
+            "No matching saved return receipt is available; the destination outcome remains unresolved. No promotion was retried."
+          } else {
+            "MoonFort promotion outcome could not be confirmed; recover its receipt before considering another return."
+          },
         },
       })
   }

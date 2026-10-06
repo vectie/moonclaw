@@ -514,17 +514,10 @@ async fn Gateway::handle_update_cowork_config(
     }
     None => session.cwd
   }
-  let model_override = match params.model {
-    Some(value) => {
-      let trimmed = value.trim().to_owned()
-      if trimmed.is_blank() {
-        None
-      } else {
-        Some(trimmed)
-      }
-    }
-    None => session.model_override
-  }
+  let model_override = cowork_config_model_override(
+    session.model_override,
+    params.model,
+  )
   let provider_override = match params.provider {
     Some(value) => {
       let trimmed = value.trim().to_owned()

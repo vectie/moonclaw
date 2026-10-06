@@ -249,6 +249,11 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "book_root": book_root,
     "status": status,
     "model": mooncode_json_string(record, "model", default=""),
+    "model_workspace": mooncode_json_string(
+      record,
+      "model_workspace",
+      default="",
+    ),
     "last_message": mooncode_session_listing_last_message(record),
     "last_command_id": last_command_id,
     "command_count": command_count,

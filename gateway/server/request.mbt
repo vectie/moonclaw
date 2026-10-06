@@ -29,6 +29,8 @@ pub async fn Gateway::handle_request(
           ["assets", ..rest.map(fn(part) { part.to_owned() })],
         )
       (Get, ["", "health"]) => self.handle_health(r, w)
+      (Post, ["", "v1", "cowork", "model-route"]) =>
+        self.handle_cowork_model_route(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
       (Get, ["", "v1", "runs", _run_id]) => self.handle_get_run(r, w)

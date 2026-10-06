@@ -2,6 +2,7 @@
 package "vectie/moonclaw-rabbita-job/main"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -40,6 +41,8 @@ type CompanyLaneEntry
 
 type CompanyLaneStats
 
+type CoworkComposerDraft
+
 type CoworkContextChip derive(Show)
 
 type CoworkLocalUpload derive(Show, @json.FromJson)
@@ -47,6 +50,8 @@ type CoworkLocalUpload derive(Show, @json.FromJson)
 type CoworkMessage derive(Show, @json.FromJson)
 
 type CoworkPanel derive(Compare, Eq, Show)
+
+type CoworkPendingRequest
 
 type CoworkProposalRef derive(Show, @json.FromJson)
 
@@ -70,11 +75,13 @@ type Msg
 
 type NodeEventStats
 
+type OperatorNextStep derive(Eq, @debug.Debug)
+
 type QueuedCoworkDraft derive(Show)
 
 type RightPanel derive(Compare, Eq, Show)
 
-type Route
+type Route derive(Eq)
 
 type RunSort derive(Compare, Eq, Show)
 
@@ -117,4 +124,3 @@ type UiWorkspaceSnapshotPayload derive(Show, @json.FromJson)
 // Type aliases
 
 // Traits
-

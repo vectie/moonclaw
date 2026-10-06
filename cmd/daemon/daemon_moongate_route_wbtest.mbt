@@ -4,6 +4,7 @@ test "MoonGate route status exposes only qualified routed models" {
     "http://127.0.0.1:15721",
     ["kimi-k3", "", "kimi-k3", "deepseek-v4"],
     "",
+    configured_default="deepseek-v4",
   )
   assert_eq(
     mooncode_json_string(status, "contract", default=""),
@@ -12,10 +13,14 @@ test "MoonGate route status exposes only qualified routed models" {
   assert_true(mooncode_json_bool(status, "ready", default=false))
   assert_eq(
     mooncode_json_string(status, "default_model", default=""),
-    "moongate/kimi-k3",
+    "moongate/deepseek-v4",
   )
   let models = mooncode_json_array_items(status, "models")
   assert_eq(models.length(), 2)
+  assert_false(mooncode_json_bool(models[0], "default", default=true))
+  assert_true(mooncode_json_bool(models[1], "default", default=false))
+  assert_true(mooncode_json_bool(status, "catalog_ready", default=false))
+  assert_true(mooncode_json_bool(status, "default_ready", default=false))
   assert_eq(
     mooncode_json_string(models[1], "name", default=""),
     "moongate/deepseek-v4",

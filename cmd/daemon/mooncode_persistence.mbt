@@ -7,26 +7,21 @@ async fn Daemon::mooncode_persist_command(
   if binding.book_root == "" {
     return false
   }
-  mooncode_append_session_journal_once(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": binding.session_id,
-      "command_id": mooncode_command_id(body),
-      "created_at": self.clock.now(),
-      "web_search": mooncode_command_web_search(body),
-      "planner_mode": if mooncode_runtime_turn_explicit_tool_calls(body).length() >
-        0 {
-        "explicit-tool-calls"
-      } else {
-        ""
-      },
-      "command": body,
+  mooncode_persist_bound_command(binding.book_root, binding.session_id, body, {
+    "kind": "mooncode-command",
+    "protocol": mooncode_protocol_version(),
+    "session_id": binding.session_id,
+    "command_id": mooncode_command_id(body),
+    "created_at": self.clock.now(),
+    "web_search": mooncode_command_web_search(body),
+    "planner_mode": if mooncode_runtime_turn_explicit_tool_calls(body).length() >
+      0 {
+      "explicit-tool-calls"
+    } else {
+      ""
     },
-  )
+    "command": body,
+  })
 }
 
 ///|

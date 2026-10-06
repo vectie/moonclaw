@@ -763,123 +763,42 @@ async fn Daemon::mooncode_submit_cancel_control(
 ) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
   ignore(binding.bind_book_root(book_root))
-  let claim_state = self.mooncode_runtime_claim_state_payload(
-    session_id, book_root,
-  )
-  let claimed = mooncode_json_array_items(claim_state, "claimed_commands")
-  let mut target_command_id = ""
-  let mut claimed_item = Json::object({})
-  if claimed.length() > 0 {
-    claimed_item = claimed[0]
-    target_command_id = mooncode_json_string(
-      claimed_item,
-      "command_id",
-      default="",
-    )
-  }
-  let requested_target = mooncode_runtime_control_field(
-    command, "target_command_id",
-  )
-  if requested_target != "" && requested_target != target_command_id {
-    raise json_error(409, "Conflict", {
-      "error": {
-        "code": -1,
-        "message": "MoonCode cancellation does not target the active request",
-        "metadata": {
-          "session_id": session_id,
-          "requested_target_command_id": requested_target,
-          "active_target_command_id": target_command_id,
-        },
-      },
-    })
-  }
-  let was_running = binding.runtime_service_running
-  if was_running {
-    match binding.runtime_service_task {
-      Some(task) => {
-        task.cancel()
-        let _ = task.wait() catch { _ => () }
-      }
-      None => ()
-    }
-  }
-  let mut cancelled_event = Json::object({})
-  if target_command_id != "" {
-    let item = claimed_item
-    let now = self.clock.now()
-    cancelled_event = {
-      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{target_command_id}-cancelled-\{mooncode_command_id(command)}",
-      "protocol": mooncode_protocol_version(),
-      "contract_id": @moonlib_conversation.control_contract_id(),
-      "control_kind": "turn-cancellation",
-      "control_id": mooncode_command_id(command),
-      "session_id": session_id,
-      "command_id": target_command_id,
-      "target_command_id": target_command_id,
-      "control_command_id": mooncode_command_id(command),
-      "lane": "runtime",
-      "kind": @moonlib_conversation.cancellation_event_kind(),
-      "event": @moonlib_conversation.cancellation_event_kind(),
-      "title": "Request cancelled",
-      "status": "cancelled",
-      "state": "cancelled",
-      "detail": "MoonClaw stopped the active work for this request.",
-      "created_at": now,
-      "source": "moonclaw-native-runtime-control",
-    }
-    binding.events.put(cancelled_event)
-    self.mooncode_persist_event(binding, cancelled_event)
-    mooncode_goal_runtime_reconcile_supervisor_events(
-      book_root,
-      session_id,
-      now.truncate_to_s(),
-    )
-    ignore(
-      mooncode_append_session_journal(
-        book_root,
-        session_id,
-        mooncode_journal_runtime_receipt(),
-        mooncode_runtime_cancelled_receipt(session_id, book_root, item, now~),
-      ),
-    )
-  }
-  let receipt = mooncode_runtime_control_receipt(
+  let selection = mooncode_runtime_cancel_pending_atomic(
     session_id,
     book_root,
     command,
-    action="cancel",
-    message=if target_command_id == "" {
-      "MoonClaw found no active MoonCode request to cancel."
-    } else {
-      "MoonClaw cancelled request `\{target_command_id}`."
-    },
     now=self.clock.now(),
   )
-  ignore(
-    mooncode_append_session_journal(
-      book_root,
-      session_id,
-      mooncode_journal_runtime_receipt(),
-      receipt,
-    ),
-  )
-  binding.active_command_id = ""
-  self.mooncode_persist_session(binding)
-  {
-    "kind": "mooncode-cancel-control",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "accepted": true,
-    "session_id": session_id,
-    "book_root": book_root,
-    "interrupted_runtime": was_running,
-    "target_command_id": target_command_id,
-    "status": if target_command_id == "" {
-      "idle"
-    } else {
-      "cancelled"
-    },
-    "cancelled_event": cancelled_event,
-    "control_receipt": receipt,
+  let task = match selection {
+    Active(item) if binding.runtime_service_running &&
+      binding.active_command_id ==
+      mooncode_json_string(item, "command_id", default="") =>
+      binding.runtime_service_task
+    _ => None
   }
+  let response = mooncode_runtime_cancel_settle_selection(
+    session_id,
+    book_root,
+    command,
+    selection,
+    task,
+    () => self.clock.now(),
+  )
+  let cancelled_event = mooncode_json_object_field_or_empty(
+    response, "cancelled_event",
+  )
+  if mooncode_json_string(cancelled_event, "id", default="") != "" {
+    binding.events.put(cancelled_event)
+  }
+  let target_command_id = mooncode_json_string(
+    response,
+    "target_command_id",
+    default="",
+  )
+  if mooncode_json_string(response, "status", default="") != "busy" &&
+    binding.active_command_id == target_command_id {
+    binding.active_command_id = ""
+  }
+  self.mooncode_persist_session(binding)
+  response
 }

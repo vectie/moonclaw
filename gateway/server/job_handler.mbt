@@ -32,7 +32,7 @@ async fn Gateway::handle_list_jobs(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let jobs = self.job_runtime().store().list_definitions()
-  let result : Json = { "jobs": jobs.map(job => job.to_json()) }
+  let result : Json = { "jobs": jobs.map(job => job.public_json()) }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(result.stringify())
@@ -57,7 +57,7 @@ async fn Gateway::handle_get_job(
   }
   match self.job_runtime().store().get_definition(job_id) {
     Some(job) => {
-      let result : Json = { "job": job.to_json() }
+      let result : Json = { "job": job.public_json() }
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       w.write(result.stringify())
@@ -88,10 +88,17 @@ async fn Gateway::handle_create_job(
         },
       })
   }
-  self.job_runtime().register_definition(definition)
+  let definition = match
+    self.job_runtime().store().save_public_definition(definition) {
+    Ok(value) => value
+    Err(error) =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "immutable_worker_input", "message": error },
+      })
+  }
   let result : Json = {
     "status": "created".to_json(),
-    "job": definition.to_json(),
+    "job": definition.public_json(),
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
@@ -124,10 +131,17 @@ async fn Gateway::handle_update_job(
       })
   }
   let updated = @job.JobDefinition::{ ..definition, id: job_id, }
-  self.job_runtime().register_definition(updated)
+  let updated = match
+    self.job_runtime().store().save_public_definition(updated) {
+    Ok(value) => value
+    Err(error) =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "immutable_worker_input", "message": error },
+      })
+  }
   let result : Json = {
     "status": "updated".to_json(),
-    "job": updated.to_json(),
+    "job": updated.public_json(),
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)

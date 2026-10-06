@@ -38,6 +38,7 @@ async fn html_read_file(path : String) -> String {
 /// CLI entry point. Parses flags, loads the requested model, and boots the
 /// HTTP server with optional daemon registration.
 pub async fn start(args : ArrayView[String]) -> Unit {
+  let (model_workspace, args) = server_model_workspace_arguments(args)
   let mut model = None
   let mut port = 0
   let mut serve = @os.cwd()
@@ -49,7 +50,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let mut name = None
   let mut source_kind = "user"
   let mut workspace_trust = "trusted"
-  let mut remaining = args
+  let mut remaining = args[:]
   while true {
     match remaining {
       ["--name", n, .. rest] =>
@@ -148,6 +149,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   Server::new(
     name?,
     model?,
+    model_workspace?,
     register?,
     serve~,
     port~,

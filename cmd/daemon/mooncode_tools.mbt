@@ -1886,9 +1886,12 @@ fn mooncode_json_object_with_field(
 ///|
 fn mooncode_tool_finish(arguments : Json) -> Json {
   let answer = mooncode_json_string(arguments, "answer", default="")
-  mooncode_tool_ok_result("finish", message="finished", output=answer, metadata={
-    "answer": answer,
-  })
+  mooncode_tool_ok_result(
+    "finish",
+    message="finished",
+    output=answer,
+    metadata=mooncode_nochange_copy_proposal({ "answer": answer }, arguments),
+  )
 }
 
 ///|
@@ -1963,10 +1966,15 @@ async fn mooncode_tool_finish_for_session(
     Continue(_, _, _) => abort("continue rejected above")
   }
   let answer = mooncode_json_string(arguments, "answer", default="")
-  mooncode_tool_ok_result("finish", message="finished", output=answer, metadata={
-    "answer": answer,
-    "goal_runtime": decision_json,
-  })
+  mooncode_tool_ok_result(
+    "finish",
+    message="finished",
+    output=answer,
+    metadata=mooncode_nochange_copy_proposal(
+      { "answer": answer, "goal_runtime": decision_json },
+      arguments,
+    ),
+  )
 }
 
 ///|

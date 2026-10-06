@@ -1,4 +1,6 @@
 import {
+  "vectie/moonclaw/agent",
+  "vectie/moonclaw/internal/book_learning",
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/io",

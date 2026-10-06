@@ -1,0 +1,62 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/book_learning"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn capture(Binding, Int) -> Snapshot
+
+pub fn digest(Bytes) -> String
+
+pub fn empty(Binding, String, Int) -> Snapshot
+
+pub fn render(Snapshot) -> String
+
+pub fn review_status(String) -> String
+
+pub fn summary(Snapshot) -> Json
+
+pub fn validate(Snapshot, Binding) -> Result[Unit, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct Binding {
+  workspace_id : String
+  book_id : String
+  source_root : String
+  request_digest : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Record {
+  path : String
+  category : String
+  format : String
+  size_bytes : Int
+  sha256 : String
+  content_utf8 : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Snapshot {
+  contract : String
+  reader_contract : String
+  status : String
+  source_binding : Binding
+  installation_lineage : Json
+  records : Array[Record]
+  observed_entries : Int
+  admitted_records : Int
+  excluded_records : Int
+  reasons : Array[String]
+  limits : Json
+  captured_at : Int
+  content_digest : String
+  binding_digest : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

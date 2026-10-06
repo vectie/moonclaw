@@ -11,6 +11,9 @@ pub impl ToJson for Conversation with fn to_json(self : Conversation) -> Json {
   object["web_search"] = self.web_search.to_json()
   object["source_kind"] = self.source_kind.to_json()
   object["workspace_trust"] = self.workspace_trust.to_json()
+  if !self.optional_input_contexts.is_empty() {
+    object["optional_input_contexts"] = self.optional_input_contexts.to_json()
+  }
   object.to_json()
 }
 
@@ -74,6 +77,12 @@ pub impl @json.FromJson for Conversation with fn from_json(
     Some(String(value)) if workspace_trust_valid(value) => value
     _ => "trusted"
   }
+  let optional_input_contexts : Map[String, Json] = match
+    json.get("optional_input_contexts") {
+    None | Some(Null) => {}
+    Some(value) =>
+      @json.from_json(value, path=json_path.add_key("optional_input_contexts"))
+  }
   {
     clock: @clock.epoch,
     name,
@@ -86,6 +95,7 @@ pub impl @json.FromJson for Conversation with fn from_json(
     web_search,
     source_kind,
     workspace_trust,
+    optional_input_contexts,
   }
 }
 

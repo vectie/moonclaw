@@ -3,15 +3,20 @@ pub struct QueuedMessage {
   id : @uuid.Uuid
   message : @ai.Message
   web_search : Bool
+  optional_context : OptionalInputContext?
 }
 
 ///|
 pub impl ToJson for QueuedMessage with fn to_json(self : QueuedMessage) -> Json {
-  {
+  let object : Map[String, Json] = {
     "id": self.id.to_string(),
     "message": self.message.to_openai().to_json(),
     "web_search": self.web_search,
   }
+  if self.optional_context is Some(context) {
+    object["optional_context"] = context.to_json()
+  }
+  Json::object(object)
 }
 
 ///|
@@ -27,7 +32,11 @@ pub impl @json.FromJson for QueuedMessage with fn from_json(
   )
   let message = @ai.Message::from_openai(message)
   let web_search : Bool = object.optional("web_search", path~).unwrap_or(false)
-  { id, message, web_search, }
+  let optional_context : OptionalInputContext? = object.optional(
+    "optional_context",
+    path~,
+  )
+  { id, message, web_search, optional_context, }
 }
 
 ///|
@@ -54,6 +63,8 @@ pub(all) struct Agent {
   priv token_counter : @token_counter.Counter
   /// Pruner for managing context size within token budgets.
   priv context_pruner : @context_pruner.Pruner
+  priv optional_contexts : Array[OptionalContextProjection]
+  priv chat_transport : @openai.ChatTransport?
   priv session_manager : @conversation.Manager
   priv rules : @rules.Loader
   priv skills : @skills.Loader
@@ -78,9 +89,10 @@ pub fn Agent::queue_message(
   agent : Agent,
   message : @ai.Message,
   web_search? : Bool = agent.web_search,
+  optional_context? : OptionalInputContext,
 ) -> @uuid.Uuid {
   let id = agent.uuid.v4()
-  agent.pending_queue.push_back({ id, message, web_search, })
+  agent.pending_queue.push_back({ id, message, web_search, optional_context, })
   agent.emit(MessageQueued(id~))
   id
 }
@@ -133,7 +145,7 @@ async fn Agent::prepare_messages_for_request(
   agent.rules.apply(messages)
   let openai_messages = messages.map(fn(msg) { msg.to_openai() })
 
-  let compiled = agent.context_pruner.compile_messages(
+  let compiled = agent.compile_optional_contexts(
     openai_messages,
     tools=tools_openai,
   )
@@ -238,7 +250,12 @@ pub async fn Agent::start(agent : Agent) -> Unit {
           agent.input_queue.push(msg.message)
           web_search = msg.web_search
           agent.emit(MessageUnqueued(id=msg.id))
-          agent.emit(UserMessage(msg.message.content()))
+          if msg.optional_context is Some(context) {
+            agent.emit(UserMessage(msg.message.content()), id=msg.id)
+            agent.register_optional_context(msg.id, msg.message, context)
+          } else {
+            agent.emit(UserMessage(msg.message.content()))
+          }
         }
       }
       if agent.input_queue.is_empty() {
@@ -281,6 +298,7 @@ pub async fn Agent::start(agent : Agent) -> Unit {
           }
         },
         timeout_ms=agent.request_timeout_ms,
+        transport?=agent.chat_transport,
       )
       // Extract the message from the response, raise error if no choices returned
       guard response is { choices: [{ message, .. }, ..], usage, .. } else {
@@ -397,6 +415,7 @@ pub async fn new(
   request_timeout_ms? : Int? = None,
   source_kind? : String = "user",
   workspace_trust? : String = "trusted",
+  chat_transport? : @openai.ChatTransport,
 ) -> Agent {
   let home = match home {
     Some(home) => home.to_owned()
@@ -457,6 +476,8 @@ pub async fn new(
       safe_zone_tokens=model.safe_zone_tokens,
       logger~,
     ),
+    optional_contexts: [],
+    chat_transport,
     session_manager,
     rules,
     skills,
@@ -464,6 +485,7 @@ pub async fn new(
     request_timeout_ms,
     external_events,
   }
+  agent.restore_optional_contexts()
   if workspace_trust == "trusted" {
     rules.load()
     skills.load()
@@ -515,6 +537,7 @@ pub async fn load(
   web_search? : Bool = false,
   external_events? : @event.ExternalEventQueue,
   request_timeout_ms? : Int? = None,
+  chat_transport? : @openai.ChatTransport,
 ) -> Agent {
   new(
     model,
@@ -527,6 +550,7 @@ pub async fn load(
     history~,
     external_events?,
     request_timeout_ms~,
+    chat_transport?,
     source_kind=history.source_kind(),
     workspace_trust=history.workspace_trust(),
   )

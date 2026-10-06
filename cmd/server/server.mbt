@@ -43,6 +43,7 @@ pub fn Server::port(self : Server) -> Int {
 pub async fn Server::new(
   name? : String,
   model? : String,
+  model_workspace? : String,
   register? : RegisterInfo,
   serve~ : String,
   port~ : Int,
@@ -59,7 +60,12 @@ pub async fn Server::new(
   }
   let broadcast = @broadcast.Broadcast::new()
   let uuid = @uuid.generator(@rand.chacha8())
-  guard @model.load(home~, name?=model) is Some(model) else {
+  guard server_resolve_model(home, model, model_workspace, resolve=(
+      home,
+      workspace,
+      name,
+    ) => @model.load(home~, cwd?=workspace.map(root => root[:]), name?))
+    is Some(model) else {
     fail("Failed to load model '\{Repr(model)}' from cwd '\{Repr(cwd)}'")
   }
   let moonclaw = if resume_id is Some(resume_id) {
@@ -129,6 +135,7 @@ async fn Server::serve_http(self : Server) -> Unit {
             w.send_json(code=200, {
               "status": self.status(),
               "web_search": self.moonclaw.agent.web_search,
+              "optional_context": self.moonclaw.agent.optional_context_statuses(),
             })
           (Post, "/v1/cancel") => self.cancel_moonclaw(w)
           (Get, "/v1/queued-messages") => self.get_queued_messages(w)
@@ -190,18 +197,12 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
   while true {
     @async.with_task_group(group => {
       let (msg, idq) = self.message_queue.get()
-      let id = self.moonclaw.agent.queue_message(
-        msg.message,
-        web_search?=msg.web_search,
-      )
+      let id = msg.queue_on(self.moonclaw.agent)
       group.spawn_bg(
         () => {
           while true {
             let (msg, idq) = self.message_queue.get()
-            let id = self.moonclaw.agent.queue_message(
-              msg.message,
-              web_search?=msg.web_search,
-            )
+            let id = msg.queue_on(self.moonclaw.agent)
             idq.put((id, true))
           }
         },

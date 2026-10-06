@@ -63,6 +63,7 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  artifact_recovery_issues : Array[String]
   memories : Map[String, MemoryRecord]
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
@@ -82,6 +83,7 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     runs: {},
     steps: {},
     artifacts: {},
+    artifact_recovery_issues: [],
     memories: {},
     chat_bindings: {},
     notification_preferences: {},
@@ -286,11 +288,19 @@ async fn[T : @json.FromJson] load_json_file(
 }
 
 ///|
+let system_store_process_locks : Map[String, @semaphore.Semaphore] = Map([])
+
+///|
 async fn[T] SystemStore::with_store_lock(
   self : SystemStore,
   f : async () -> T,
 ) -> T {
   self.ensure_directories()
+  let mutex = system_store_process_locks.get_or_init(@fs.realpath(self.root), () => {
+    @semaphore.Semaphore::new(1)
+  })
+  mutex.acquire()
+  defer mutex.release()
   let lock_file = @fs.open(
     self.store_lock_file(),
     mode=WriteOnly,
@@ -959,14 +969,12 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       self.steps.set("\{step.run_id}:\{step.step_id}", step)
     }
 
-    if @fsx.exists(self.artifacts_index_file()) {
-      let file : ArtifactsIndexFile = load_json_file(
-        self.artifacts_index_file(),
-        "Failed to load job artifacts index",
-      )
-      for artifact in file.artifacts {
-        self.artifacts.set(artifact.id, artifact)
-      }
+    self.reload_artifacts_unlocked()
+    self.save_artifacts_index_unlocked() catch {
+      error =>
+        self.artifact_recovery_issues.push(
+          "Artifact index repair is pending: \{error}",
+        )
     }
 
     if @fsx.exists(self.memories_file()) {
@@ -1066,11 +1074,6 @@ async fn SystemStore::save_definitions_index_unlocked(
 }
 
 ///|
-async fn SystemStore::save_definitions_index(self : SystemStore) -> Unit {
-  self.with_store_lock(async fn() { self.save_definitions_index_unlocked() })
-}
-
-///|
 async fn SystemStore::save_runs_index_unlocked(self : SystemStore) -> Unit {
   let merged_runs : Map[String, JobRun] = Map([])
   let merged_steps : Map[String, JobStepRun] = Map([])
@@ -1099,12 +1102,10 @@ async fn SystemStore::save_artifacts_index_unlocked(self : SystemStore) -> Unit 
   let file = ArtifactsIndexFile::{
     artifacts: self.artifacts.values().to_array(),
   }
-  @fsx.write_to_file(self.artifacts_index_file(), file.to_json().stringify())
-}
-
-///|
-async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
-  self.with_store_lock(async fn() { self.save_artifacts_index_unlocked() })
+  write_artifact_checkpoint(
+    self.artifacts_index_file(),
+    @encoding/utf8.encode(file.to_json().stringify()),
+  )
 }
 
 ///|
@@ -1205,8 +1206,11 @@ pub async fn SystemStore::save_definition(
   self : SystemStore,
   definition : JobDefinition,
 ) -> Unit {
-  self.definitions.set(definition.id, definition)
-  self.save_definitions_index()
+  self.with_store_lock(async fn() {
+    self.reload_definitions_unlocked()
+    self.definitions.set(definition.id, definition)
+    self.save_definitions_index_unlocked()
+  })
 }
 
 ///|
@@ -1214,8 +1218,11 @@ pub async fn SystemStore::save_workflow(
   self : SystemStore,
   workflow : WorkflowDefinition,
 ) -> Unit {
-  self.workflows.set(workflow.id, workflow)
-  self.save_definitions_index()
+  self.with_store_lock(async fn() {
+    self.reload_definitions_unlocked()
+    self.workflows.set(workflow.id, workflow)
+    self.save_definitions_index_unlocked()
+  })
 }
 
 ///|
@@ -1256,17 +1263,9 @@ pub async fn SystemStore::save_artifact(
   self : SystemStore,
   artifact : ArtifactRecord,
 ) -> Unit {
-  self.artifacts.set(artifact.id, artifact)
   self.with_store_lock(async fn() {
-    let artifact_dir = self.artifact_dir(artifact.id)
-    @fsx.make_directory(artifact_dir, recursive=true) catch {
-      _ => ()
-    }
-    @fsx.write_to_file(
-      self.artifact_record_file(artifact.id),
-      artifact.to_json().stringify(),
-    )
-    self.save_artifacts_index_unlocked()
+    self.reload_artifacts_unlocked()
+    self.save_artifact_unlocked(artifact)
   })
 }
 
@@ -1347,24 +1346,28 @@ pub async fn SystemStore::delete_artifact(
   self : SystemStore,
   artifact_id : String,
 ) -> Bool {
-  let artifact = match self.artifacts.get(artifact_id) {
-    Some(artifact) => artifact
-    None => return false
-  }
-  self.artifacts.remove(artifact_id) |> ignore()
-  if @fsx.exists(self.artifact_record_file(artifact_id)) {
-    @fsx.remove(self.artifact_record_file(artifact_id))
-  }
-  if @fsx.exists(artifact.path) {
-    @fsx.remove(artifact.path)
-  }
-  if @fsx.exists(self.artifact_dir(artifact_id)) {
-    @fsx.remove(self.artifact_dir(artifact_id)) catch {
-      _ => ()
+  self.with_store_lock(async fn() {
+    self.reload_artifacts_unlocked()
+    let artifact = match self.artifacts.get(artifact_id) {
+      Some(artifact) => artifact
+      None => return false
     }
-  }
-  self.save_artifacts_index()
-  true
+    @fsx.make_directory(
+      self.root |> @pathx.join("index") |> @pathx.join("deleted-artifacts"),
+      recursive=true,
+      exists_ok=true,
+    )
+    write_artifact_checkpoint(self.artifact_deleted_file(artifact_id), b"{}")
+    self.artifacts.remove(artifact_id) |> ignore()
+    if @fsx.exists(self.artifact_record_file(artifact_id)) {
+      @fsx.remove(self.artifact_record_file(artifact_id))
+    }
+    if @fsx.exists(artifact.path) {
+      @fsx.remove(artifact.path)
+    }
+    self.save_artifacts_index_unlocked()
+    true
+  })
 }
 
 ///|

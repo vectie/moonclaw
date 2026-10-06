@@ -5,9 +5,10 @@ fn mooncode_runtime_turn_finished_event(
   accepted~ : Bool,
   tool_count~ : Int,
   completion_reason? : String = "",
+  completion_verdict? : Json = Json::null(),
   now~ : @clock.Timestamp,
 ) -> Json {
-  mooncode_event(
+  let event = mooncode_event(
     session_id~,
     command_id~,
     lane="runtime",
@@ -25,6 +26,14 @@ fn mooncode_runtime_turn_finished_event(
     },
     now~,
   )
+  if mooncode_json_string(completion_verdict, "completion_outcome", default="") ==
+    "no_change" {
+    mooncode_json_object_with_field(
+      event, "completion_verdict", completion_verdict,
+    )
+  } else {
+    event
+  }
 }
 
 ///|

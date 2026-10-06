@@ -173,6 +173,22 @@ async test "wait workers uses durable any and all terminal evidence" {
         4L,
       ),
     )
+    mooncode_worker_test_append(
+      child_one_root,
+      child_one,
+      mooncode_journal_runtime_receipt(),
+      mooncode_runtime_turn_receipt(
+        child_one,
+        child_one_root,
+        {
+          "command_id": "child-command-one",
+          "receipt": { "claim_id": "claim-one" },
+        },
+        { "accepted": true },
+        consumer_id="worker-test",
+        now=@clock.Timestamp::from_ms(3L),
+      ),
+    )
     let any = mooncode_wait_workers_projection(parent, root, { "mode": "any" })
     let all_running = mooncode_wait_workers_projection(parent, root, {
       "mode": "all",
@@ -200,6 +216,22 @@ async test "wait workers uses durable any and all terminal evidence" {
         5L,
       ),
     )
+    mooncode_worker_test_append(
+      child_two_root,
+      child_two,
+      mooncode_journal_runtime_receipt(),
+      mooncode_runtime_turn_receipt(
+        child_two,
+        child_two_root,
+        {
+          "command_id": "child-command-two",
+          "receipt": { "claim_id": "claim-two" },
+        },
+        { "accepted": true },
+        consumer_id="worker-test",
+        now=@clock.Timestamp::from_ms(5L),
+      ),
+    )
     let all_done = mooncode_wait_workers_projection(parent, root, {
       "mode": "all",
     })
@@ -213,7 +245,7 @@ async test "wait workers uses durable any and all terminal evidence" {
         "kind",
         default="",
       ),
-      "runtime.service_finished",
+      mooncode_kind_runtime_receipt(),
     )
   })
 }

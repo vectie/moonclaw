@@ -8,6 +8,8 @@ import {
 // Values
 pub fn current_process_id() -> Int
 
+pub fn daemon_child_model_arguments(String?, String?) -> Array[String] raise TrustedHostProcessError
+
 pub async fn open_browser_url(String, timeout_ms? : Int) -> Bool raise TrustedHostProcessError
 
 pub async fn run_git(String, GitOperation, timeout_ms? : Int) -> GitResult
@@ -36,7 +38,7 @@ pub struct DaemonChildManager {
   // private fields
 }
 pub fn DaemonChildManager::new(cwd~ : String, executable? : String, home? : String) -> Self
-pub async fn DaemonChildManager::spawn_server(Self, cwd~ : String, name? : String, model_selector? : String, web_search? : Bool, resume_id? : String, register_id~ : String, register_port~ : Int, register_token~ : String, source_kind? : String, workspace_trust? : String) -> DaemonChildProcess
+pub async fn DaemonChildManager::spawn_server(Self, cwd~ : String, name? : String, model_selector? : String, model_workspace? : String, web_search? : Bool, resume_id? : String, register_id~ : String, register_port~ : Int, register_token~ : String, source_kind? : String, workspace_trust? : String) -> DaemonChildProcess
 pub async fn DaemonChildManager::start(Self) -> Unit
 
 pub struct DaemonChildProcess {

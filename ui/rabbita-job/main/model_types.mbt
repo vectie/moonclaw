@@ -6,7 +6,7 @@ enum Route {
   RunCanvas(String)
   Cowork
   Acp
-}
+} derive(Eq)
 
 ///|
 enum RightPanel {
@@ -202,6 +202,24 @@ struct CoworkContextChip {
 } derive(Show)
 
 ///|
+struct CoworkComposerDraft {
+  session_key : String?
+  revision : Int
+  content : String
+  uploads : Array[CoworkLocalUpload]
+  context : Array[CoworkContextChip]
+  reply : String?
+}
+
+///|
+struct CoworkPendingRequest {
+  generation : Int
+  session_key : String
+  draft_revision : Int
+  consumes_draft : Bool
+}
+
+///|
 struct CoworkSessionsPayload {
   sessions : Array[CoworkSessionSummary]
 } derive(FromJson, Show)
@@ -377,6 +395,8 @@ struct Model {
   timeline_scope_branch_only : Bool
   detail_loading : Bool
   detail_error : String?
+  artifact_request_generation : Int
+  artifact_pending_id : String?
   artifact_modal_loading : Bool
   artifact_modal_error : String?
   artifact_modal : LoadedArtifact?
@@ -417,6 +437,12 @@ struct Model {
   cowork_notice : String?
   cowork_action_loading : Bool
   cowork_action_error : String?
+  cowork_request_generation : Int
+  cowork_create_pending : Bool
+  cowork_draft_revision : Int
+  cowork_detail_generation : Int
+  cowork_saved_drafts : Array[CoworkComposerDraft]
+  cowork_pending_requests : Array[CoworkPendingRequest]
   acp_snapshot : AcpUiSnapshot?
   acp_timeline : Array[AcpUiTimelineEntry]
   acp_loading : Bool
@@ -440,16 +466,16 @@ enum Msg {
   SnapshotLoaded(String, Result[UiSnapshot, String])
   EventsLoaded(String, Result[Array[UiTimelineEntry], String])
   OpenArtifact(String)
-  ArtifactLoaded(String, Result[LoadedArtifact, String])
+  ArtifactLoaded(String, Int, Result[LoadedArtifact, String])
   SetArtifactEditorDraft(String)
   CloseArtifactModal
   LoadCoworkSessions
   CoworkSessionsLoaded(Result[Array[CoworkSessionSummary], String])
   CreateCoworkSession
-  CoworkSessionCreated(Result[CoworkSessionDetail, String])
+  CoworkSessionCreated(Int, Result[CoworkSessionDetail, String])
   SelectCoworkSession(String)
   LoadCoworkSession(String)
-  CoworkSessionLoaded(String, Result[CoworkSessionDetail, String])
+  CoworkSessionLoaded(String, Int, Result[CoworkSessionDetail, String])
   CoworkLinkedSnapshotLoaded(String, Result[UiSnapshot, String])
   CoworkWorkspaceLoaded(Result[UiWorkspaceSnapshot, String])
   SetCoworkComposer(String)
@@ -489,7 +515,13 @@ enum Msg {
   RemoveCoworkContext(String)
   RecallPreviousCoworkInput
   RecallNextCoworkInput
-  CoworkActionFinished(Result[CoworkSessionDetail, String])
+  CoworkActionFinished(
+    Int,
+    String,
+    Int,
+    Bool,
+    Result[CoworkSessionDetail, String]
+  )
   SelectCoworkPanel(CoworkPanel)
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
   LoadAcp
@@ -711,6 +743,8 @@ fn init_model() -> Model {
     timeline_scope_branch_only: false,
     detail_loading: false,
     detail_error: None,
+    artifact_request_generation: 0,
+    artifact_pending_id: None,
     artifact_modal_loading: false,
     artifact_modal_error: None,
     artifact_modal: None,
@@ -751,6 +785,12 @@ fn init_model() -> Model {
     cowork_notice: None,
     cowork_action_loading: false,
     cowork_action_error: None,
+    cowork_request_generation: 0,
+    cowork_create_pending: false,
+    cowork_draft_revision: 0,
+    cowork_detail_generation: 0,
+    cowork_saved_drafts: [],
+    cowork_pending_requests: [],
     acp_snapshot: None,
     acp_timeline: [],
     acp_loading: true,

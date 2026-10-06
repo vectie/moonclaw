@@ -20,12 +20,60 @@ fn supervisor_worker_task_name(
 }
 
 ///|
+/// Durable intent owns the route for both a fresh worker and recovery.
+fn supervisor_worker_model_selector(
+  policy_model : String?,
+  running_model? : String,
+) -> String raise {
+  let selector = match policy_model {
+    Some(value) if !value.trim().is_empty() =>
+      supervisor_runtime_model_selector(value)
+    _ => raise supervisor_http_failure("worker provider model is required")
+  }
+  // Legacy workers register provider-specific display names; reserved Gate
+  // workers register their qualified selector and must preserve it exactly.
+  if selector.has_prefix("moongate/") &&
+    running_model is Some(actual) &&
+    actual != selector {
+    raise supervisor_http_failure("durable worker provider model changed")
+  }
+  selector
+}
+
+///|
+fn supervisor_model_workspace(
+  selector : String,
+  owner_root : String,
+) -> String? {
+  if selector.has_prefix("moongate/") {
+    Some(owner_root)
+  } else {
+    None
+  }
+}
+
+///|
+async fn resolve_supervisor_worker_model(
+  policy_model : String?,
+  resolve~ : async (String) -> @model.Model?,
+) -> @model.Model {
+  let selector = supervisor_worker_model_selector(policy_model)
+  match resolve(selector) {
+    Some(model) if !selector.has_prefix("moongate/") ||
+      model.selector() == selector => model
+    _ => raise supervisor_http_failure("worker provider model not found")
+  }
+}
+
+///|
 async fn Daemon::ensure_supervisor_worker_task(
   self : Daemon,
   group~ : @async.TaskGroup[Unit],
   request : @job.SupervisorDelegateIntentRequestV1,
   expected_id? : String,
 ) -> Running {
+  let selector = supervisor_worker_model_selector(request.task.model)
+  let model_workspace = supervisor_model_workspace(selector, request.task.cwd)
   let name = supervisor_worker_task_name(
     request.supervisor_id,
     request.envelope.request_digest,
@@ -38,6 +86,12 @@ async fn Daemon::ensure_supervisor_worker_task(
             "durable worker provider identity changed",
           )
         }
+        ignore(
+          supervisor_worker_model_selector(
+            request.task.model,
+            running_model=running.model,
+          ),
+        )
         return running
       }
       Stopped(stopped) if stopped.name == Some(name) => {
@@ -59,6 +113,12 @@ async fn Daemon::ensure_supervisor_worker_task(
         match task_list.running {
           Some(other) =>
             if other.id == stopped.id {
+              ignore(
+                supervisor_worker_model_selector(
+                  request.task.model,
+                  running_model=other.model,
+                ),
+              )
               return other
             } else {
               raise supervisor_http_failure(
@@ -66,12 +126,28 @@ async fn Daemon::ensure_supervisor_worker_task(
               )
             }
           None => {
+            let model = resolve_supervisor_worker_model(request.task.model, resolve=selector => {
+              match model_workspace {
+                Some(root) =>
+                  @model.load(home=self.home, cwd=root, name=selector)
+                None => self.models.get_model(name=selector)
+              }
+            })
             let resumed = self.spawn_task(
               group~,
+              model~,
+              model_workspace?,
+              web_search=request.task.web_search,
               name?=stopped.name,
               cwd=stopped.cwd,
               resume_id=stopped.id,
               broadcast=stopped.broadcast,
+            )
+            ignore(
+              supervisor_worker_model_selector(
+                request.task.model,
+                running_model=resumed.model,
+              ),
             )
             task_list.running = Some(resumed)
             return resumed
@@ -99,15 +175,12 @@ async fn Daemon::ensure_supervisor_worker_task(
         "worker provider cwd is occupied by another task",
       )
     None => {
-      let model_selector = match request.task.model {
-        Some(policy_model) => supervisor_runtime_model_selector(policy_model)
-        None =>
-          raise supervisor_http_failure("worker provider model is required")
-      }
-      let model = match self.models.get_model(name=model_selector) {
-        Some(value) => value
-        None => raise supervisor_http_failure("worker provider model not found")
-      }
+      let model = resolve_supervisor_worker_model(request.task.model, resolve=selector => {
+        match model_workspace {
+          Some(root) => @model.load(home=self.home, cwd=root, name=selector)
+          None => self.models.get_model(name=selector)
+        }
+      })
       let resume_id = expected_id.map(id => {
         @uuid.parse(id) catch {
           _ =>
@@ -120,9 +193,16 @@ async fn Daemon::ensure_supervisor_worker_task(
         group~,
         name~,
         model~,
+        model_workspace?,
         web_search=request.task.web_search,
         resume_id?,
         cwd=worker_cwd,
+      )
+      ignore(
+        supervisor_worker_model_selector(
+          request.task.model,
+          running_model=task.model,
+        ),
       )
       guard expected_id is None || expected_id == Some(task.id.to_string()) else {
         raise supervisor_http_failure(
@@ -140,10 +220,17 @@ fn supervisor_worker_prompt(
   request : @job.SupervisorDelegateIntentRequestV1,
   worker_run_id : String,
   retry_reason? : String,
+  book_learning? : @book_learning.Snapshot,
 ) -> String {
   let retry = match retry_reason {
     Some(value) => "Recovery reason: \{value}\n"
     None => ""
+  }
+  let learning = match book_learning {
+    Some(snapshot) if snapshot.status != "not_applicable" &&
+      snapshot.status != "legacy_not_captured" =>
+      @book_learning.render(snapshot) + "\n\n"
+    _ => ""
   }
   (
     $|You are MoonClaw worker \{worker_run_id}, delegated by supervisor \{request.supervisor_id}.
@@ -159,7 +246,24 @@ fn supervisor_worker_prompt(
     $|Task metadata:
     $|\{request.task.metadata.stringify(indent=2)}
     $|
-    $|Return one JSON object with summary and artifact_evidence. artifact_evidence must be an explicit array (empty when no artifacts); every item must contain artifact_ref and sha256 digest. If the verified artifacts contain every required field for an exact moonbook.bookkeeper.product_outcome_submission.v1 projection, you may also include it as outcome_evidence_candidate. Evidence reference IDs must be globally unique; every reference needs a nonblank version and provenance plus a canonical lowercase sha256 digest matching artifact_evidence. Each gap needs a nonblank summary and unique in-submission evidence IDs; present gaps use severity 1..5 and absent gaps use exactly 0. Submission identity and capability ID, version, digest, and summary must be complete. MoonBook observed_at/recorded_at are JSON integers. Omit the candidate when any field is incomplete. Do not claim review, acceptance, publication, or closure.
+    $|\{learning}Return one JSON object with summary and artifact_evidence. artifact_evidence must be an explicit array (empty when no artifacts); every item must contain artifact_ref and sha256 digest. If the verified artifacts contain every required field for an exact moonbook.bookkeeper.product_outcome_submission.v1 projection, you may also include it as outcome_evidence_candidate. Evidence reference IDs must be globally unique; every reference needs a nonblank version and provenance plus a canonical lowercase sha256 digest matching artifact_evidence. Each gap needs a nonblank summary and unique in-submission evidence IDs; present gaps use severity 1..5 and absent gaps use exactly 0. Submission identity and capability ID, version, digest, and summary must be complete. MoonBook observed_at/recorded_at are JSON integers. Omit the candidate when any field is incomplete. Do not claim review, acceptance, publication, or closure.
+  )
+}
+
+///|
+fn supervisor_worker_optional_context(
+  snapshot : @book_learning.Snapshot,
+) -> @agent.OptionalInputContext? {
+  if snapshot.status != "ready" {
+    return None
+  }
+  Some(
+    @agent.OptionalInputContext::new(
+      block=@book_learning.render(snapshot),
+      omission="Selected Book learning status: over_budget (model request token budget). Entire optional learned block omitted; no partial records included. Captured content digest: " +
+        snapshot.content_digest,
+      digest=snapshot.content_digest,
+    ),
   )
 }
 
@@ -268,7 +372,14 @@ async fn Daemon::supervisor_delegate_intent(
     Ok(value) => value
     Err(error) => raise supervisor_http_failure(error)
   }
-  let expected_worker_id = prior.map(value => value.worker_run_id)
+  let expected_worker_id = match prior {
+    Some(value) => Some(value.worker_run_id)
+    None =>
+      match supervisors.worker_definition_provider_id(request) {
+        Ok(value) => value
+        Err(error) => raise supervisor_http_failure(error)
+      }
+  }
   let task = self.ensure_supervisor_worker_task(
     group~,
     request,
@@ -276,6 +387,14 @@ async fn Daemon::supervisor_delegate_intent(
   )
   let prepared = match
     supervisors.delegate_intent(request, task.id.to_string(), accounting_mode) {
+    Ok(value) => value
+    Err(error) => raise supervisor_http_failure(error)
+  }
+  let book_learning = match
+    supervisors.worker_learning_input(
+      request.supervisor_id,
+      prepared.worker_run_id,
+    ) {
     Ok(value) => value
     Err(error) => raise supervisor_http_failure(error)
   }
@@ -294,9 +413,14 @@ async fn Daemon::supervisor_delegate_intent(
         let response = task.create_message(
           @server.CreateMessageRequest::new(
             message=@ai.user_message(
-              content=supervisor_worker_prompt(request, prepared.worker_run_id),
+              content=supervisor_worker_prompt(
+                request,
+                prepared.worker_run_id,
+                book_learning~,
+              ),
             ),
             web_search=request.task.web_search,
+            optional_context?=supervisor_worker_optional_context(book_learning),
           ),
         )
         {
@@ -475,6 +599,14 @@ async fn Daemon::supervisor_worker_command(
               Ok(value) => value
               Err(error) => raise supervisor_http_failure(error)
             }
+            let book_learning = match
+              supervisors.worker_learning_input(
+                request.supervisor_id,
+                request.worker_run_id,
+              ) {
+              Ok(value) => value
+              Err(error) => raise supervisor_http_failure(error)
+            }
             let task = self.ensure_supervisor_worker_task(
               group~,
               intent,
@@ -495,9 +627,13 @@ async fn Daemon::supervisor_worker_command(
                       intent,
                       request.worker_run_id,
                       retry_reason=request.reason,
+                      book_learning~,
                     ),
                   ),
                   web_search=intent.task.web_search,
+                  optional_context?=supervisor_worker_optional_context(
+                    book_learning,
+                  ),
                 ),
               )
               {
@@ -583,6 +719,19 @@ async fn Daemon::restore_supervisor_workers(
           continue
         }
       }
+      let book_learning = match
+        supervisors.worker_learning_input(
+          supervisor.state.supervisor_id,
+          worker.worker_run_id,
+        ) {
+        Ok(value) => value
+        Err(error) => {
+          logger.error(
+            "Failed to restore captured worker input \{worker.worker_run_id}: \{error}",
+          )
+          continue
+        }
+      }
       let task = self.ensure_supervisor_worker_task(
         group~,
         intent,
@@ -616,9 +765,11 @@ async fn Daemon::restore_supervisor_workers(
               intent,
               worker.worker_run_id,
               retry_reason="daemon restart recovery",
+              book_learning~,
             ),
           ),
           web_search=intent.task.web_search,
+          optional_context?=supervisor_worker_optional_context(book_learning),
         ),
       ) catch {
         error => {

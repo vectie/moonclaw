@@ -201,26 +201,32 @@ fn mooncode_runtime_turn_requested_model_label(command : Json) -> String {
 }
 
 ///|
-/// Resolve against the daemon cache first, then rehydrate from the command's
-/// persisted MoonBook root. A daemon may serve its own package directory while
-/// resumed MoonCode commands depend on the workspace-local MoonGate catalog.
+/// Resolve an explicit persisted owner exclusively. Omitted owner retains the
+/// daemon-first, then execution-root fallback used by legacy commands.
 async fn mooncode_runtime_turn_resolve_model(
   models : @model.Loader,
   home : StringView,
   command : Json,
   selector : String,
+  legacy_source_fallback? : Bool = true,
 ) -> @model.Model? {
-  match models.get_model(name=selector) {
-    Some(model) => Some(model)
-    None => {
-      let book_root = mooncode_book_root(command)
-      if book_root == "" {
+  mooncode_resolve_model_workspace(
+    command,
+    selector,
+    legacy_source_fallback~,
+    owner_lookup=async fn(root, selector) {
+      if !mooncode_model_workspace_is_canonical(root) {
         return None
       }
-      let book_models = @model.Loader::new(home~, cwd=book_root)
-      book_models.get_model(name=selector)
-    }
-  }
+      let owner_models = @model.Loader::new(home=root, cwd=root)
+      owner_models.get_model(name=selector)
+    },
+    daemon_lookup=selector => models.get_model(name=selector),
+    source_lookup=async fn(root, selector) {
+      let source_models = @model.Loader::new(home~, cwd=root)
+      source_models.get_model(name=selector)
+    },
+  )
 }
 
 ///|
@@ -511,6 +517,7 @@ fn mooncode_runtime_turn_model_tools_for_command(
     command, "goal_runtime",
   )
   let tools = mooncode_runtime_turn_model_tools(
+    no_change=mooncode_nochange_enabled(command),
     active_goal_runtime=mooncode_json_string(
         goal_runtime,
         "goal_id",
@@ -552,6 +559,11 @@ fn mooncode_runtime_turn_model_tools_for_command(
     }
     return tools
   }
+  if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
+    return mooncode_runtime_turn_select_model_tools(tools, [
+      "read", "view_image", "moon_ide", "finish", "read_skill",
+    ])
+  }
   if path != "" && mooncode_runtime_turn_read_needs_model(request) {
     return mooncode_runtime_turn_select_model_tools(tools, [
       "read", "finish", "read_skill",
@@ -572,76 +584,6 @@ fn mooncode_runtime_turn_select_model_tools(
     )
     names.contains(mooncode_json_string(function, "name", default=""))
   })
-}
-
-///|
-fn mooncode_runtime_turn_task_intent(command : Json) -> String? {
-  let payload = mooncode_json_object_field_or_empty(command, "payload")
-  match mooncode_json_string(payload, "task_intent", default="") {
-    "workspace_change" => Some("workspace_change")
-    "read_only" => Some("read_only")
-    _ => None
-  }
-}
-
-///|
-fn mooncode_runtime_turn_model_needs_coding_tools(
-  command : Json,
-  request : String,
-) -> Bool {
-  match mooncode_runtime_turn_task_intent(command) {
-    Some("workspace_change") => return true
-    Some("read_only") => return false
-    _ => ()
-  }
-  let action = mooncode_json_string(command, "command", default="prompt")
-  if mooncode_runtime_turn_model_has_mutation_intent(action, request) {
-    return true
-  }
-  if mooncode_runtime_turn_model_is_read_only_request(request) {
-    return false
-  }
-  mooncode_runtime_turn_request_has_word(request, "code") ||
-  mooncode_runtime_turn_request_has_word(request, "script") ||
-  mooncode_runtime_turn_request_has_word(request, "tool") ||
-  mooncode_runtime_turn_request_has_word(request, "app") ||
-  mooncode_runtime_turn_request_has_word(request, "miniapp") ||
-  mooncode_runtime_turn_request_has_word(request, "site")
-}
-
-///|
-fn mooncode_runtime_turn_model_has_mutation_intent(
-  action : String,
-  request : String,
-) -> Bool {
-  action == "package" ||
-  request.contains("implement") ||
-  request.contains("fix ") ||
-  request.contains("debug") ||
-  request.contains("refactor") ||
-  request.contains("edit ") ||
-  request.contains("write ") ||
-  request.contains("create ") ||
-  request.contains("build ") ||
-  mooncode_runtime_turn_requests_tests(request)
-}
-
-///|
-fn mooncode_runtime_turn_model_is_read_only_request(request : String) -> Bool {
-  request.contains("explain") ||
-  request.contains("summarize") ||
-  request.contains("summarise") ||
-  request.contains("describe") ||
-  request.contains("analyze") ||
-  request.contains("analyse") ||
-  request.contains("review") ||
-  request.contains("compare") ||
-  request.contains("evaluate") ||
-  request.has_prefix("read ") ||
-  request.has_prefix("open ") ||
-  request.has_prefix("inspect ") ||
-  request.has_prefix("what ") ||
-  request.has_prefix("tell ")
 }
 
 ///|
@@ -708,29 +650,33 @@ fn mooncode_runtime_turn_requires_verification(command : Json) -> Bool {
   if action != "prompt" && action != "steer" {
     return false
   }
-  let request = mooncode_runtime_turn_prompt_text(command)
+  let source_request = mooncode_runtime_turn_prompt_text(command)
     .to_lower()
     .to_string()
-  let source_change = request.contains(".mbt") ||
-    request.contains(".js") ||
-    request.contains(".ts") ||
-    request.contains(".sh") ||
+  let request = mooncode_runtime_turn_affirmative_request(source_request)
+  let source_change = source_request.contains(".mbt") ||
+    source_request.contains(".js") ||
+    source_request.contains(".ts") ||
+    source_request.contains(".sh") ||
     mooncode_runtime_turn_request_has_word(request, "code") ||
     mooncode_runtime_turn_request_has_word(request, "script") ||
     mooncode_runtime_turn_request_has_word(request, "app") ||
     mooncode_runtime_turn_request_has_word(request, "site")
-  request.contains("implement") ||
-  request.contains("fix ") ||
-  request.contains("debug") ||
-  request.contains("refactor") ||
-  request.contains("build ") ||
+  mooncode_runtime_turn_request_has_word(request, "implement") ||
+  mooncode_runtime_turn_request_has_word(request, "fix") ||
+  mooncode_runtime_turn_request_has_word(request, "debug") ||
+  mooncode_runtime_turn_request_has_word(request, "refactor") ||
+  mooncode_runtime_turn_request_has_word(request, "build") ||
   mooncode_runtime_turn_requests_tests(request) ||
   (
     source_change &&
     (
-      request.contains("edit ") ||
-      request.contains("write ") ||
-      request.contains("create ")
+      mooncode_runtime_turn_request_has_word(request, "edit") ||
+      mooncode_runtime_turn_request_has_word(request, "modify") ||
+      mooncode_runtime_turn_request_has_word(request, "change") ||
+      mooncode_runtime_turn_request_has_word(request, "update") ||
+      mooncode_runtime_turn_request_has_word(request, "write") ||
+      mooncode_runtime_turn_request_has_word(request, "create")
     )
   )
 }
@@ -993,6 +939,32 @@ fn mooncode_runtime_turn_completion_verdict(
     return {
       accepted: false,
       reason: "the final MoonCode tool result is not an accepted finish",
+    }
+  }
+  let proposal = mooncode_json_object_field_or_empty(final_result, "arguments")
+  let proposed_outcome = mooncode_json_string(
+    proposal,
+    "completion_outcome",
+    default="",
+  )
+  if proposed_outcome == "no_change" {
+    return mooncode_nochange_finish_verdict(command, results)
+  }
+  let proposal_error = mooncode_nochange_proposal_error(
+    command, proposal, results,
+  )
+  if proposal_error != "" {
+    return { accepted: false, reason: proposal_error, }
+  }
+  if mooncode_json_string(
+      mooncode_runtime_horizon_latest_checkpoint(command, results),
+      "completion_outcome",
+      default="",
+    ) ==
+    "no_change" {
+    return {
+      accepted: false,
+      reason: "finish outcome conflicts with the accepted no_change checkpoint",
     }
   }
   if require_horizon &&
@@ -1835,6 +1807,7 @@ fn mooncode_runtime_turn_model_finish_parameters(
 ///|
 fn mooncode_runtime_turn_model_tools(
   active_goal_runtime? : Bool = false,
+  no_change? : Bool = false,
 ) -> Array[@openai.ChatCompletionToolParam] {
   let finish_description = if active_goal_runtime {
     "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. The active long-running goal may be settled only when all criteria are achieved or a genuine external blocker prevents progress."
@@ -2058,7 +2031,10 @@ fn mooncode_runtime_turn_model_tools(
     mooncode_runtime_turn_model_tool(
       "finish",
       finish_description,
-      mooncode_runtime_turn_model_finish_parameters(active_goal_runtime),
+      mooncode_nochange_parameter_schema(
+        mooncode_runtime_turn_model_finish_parameters(active_goal_runtime),
+        enabled=no_change,
+      ),
     ),
     mooncode_runtime_turn_model_tool(
       "apply_patch",
@@ -2077,44 +2053,47 @@ fn mooncode_runtime_turn_model_tools(
     mooncode_runtime_turn_model_tool(
       "checkpoint",
       "Record durable milestone state. A done milestone is accepted only when matching runtime evidence already exists.",
-      {
-        "type": "object",
-        "properties": {
-          "horizon_id": { "type": "string" },
-          "milestones": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": { "type": "string" },
-                "title": { "type": "string" },
-                "status": {
-                  "type": "string",
-                  "enum": ["pending", "active", "done"],
+      mooncode_nochange_parameter_schema(
+        {
+          "type": "object",
+          "properties": {
+            "horizon_id": { "type": "string" },
+            "milestones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "title": { "type": "string" },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "active", "done"],
+                  },
+                  "evidence_kind": {
+                    "type": "string",
+                    "enum": [
+                      "scope", "mutation", "path_changed", "check", "test", "build",
+                    ],
+                  },
+                  "path": { "type": "string" },
+                  "context_paths": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                  },
                 },
-                "evidence_kind": {
-                  "type": "string",
-                  "enum": [
-                    "scope", "mutation", "path_changed", "check", "test", "build",
-                  ],
-                },
-                "path": { "type": "string" },
-                "context_paths": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                },
+                "required": [
+                  "id", "title", "status", "evidence_kind", "path", "context_paths",
+                ],
+                "additionalProperties": false,
               },
-              "required": [
-                "id", "title", "status", "evidence_kind", "path", "context_paths",
-              ],
-              "additionalProperties": false,
             },
+            "next_action": { "type": "string" },
           },
-          "next_action": { "type": "string" },
+          "required": ["horizon_id", "milestones", "next_action"],
+          "additionalProperties": false,
         },
-        "required": ["horizon_id", "milestones", "next_action"],
-        "additionalProperties": false,
-      },
+        enabled=no_change,
+      ),
     ),
     mooncode_runtime_turn_model_tool(
       "read_skill",

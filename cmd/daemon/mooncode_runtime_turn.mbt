@@ -116,29 +116,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
     "consumer_id",
     default="moonclaw-native-runtime-turn",
   )
-  let before = self.mooncode_runtime_claim_state_payload(session_id, book_root)
-  let claim_receipts = if mooncode_json_array_items(before, "claimed_commands").length() ==
-    0 {
-    mooncode_runtime_claim_receipts(
-      session_id,
-      book_root,
-      before,
-      payload,
-      now=self.clock.now(),
-    )
-  } else {
-    []
-  }
-  for receipt in claim_receipts {
-    ignore(
-      mooncode_append_session_journal(
-        book_root,
-        session_id,
-        mooncode_journal_runtime_receipt(),
-        receipt,
-      ),
-    )
-  }
+  // Claim selection shares the journal lock with pending cancellation, so a
+  // withdrawn command cannot be resurrected by a stale pre-claim snapshot.
+  let claim = mooncode_runtime_claim_atomic(
+    book_root,
+    session_id,
+    payload,
+    self.clock.now(),
+  )
+  let before = claim.before
+  let claim_receipts = claim.receipts
   let claimed_state = self.mooncode_runtime_claim_state_payload(
     session_id, book_root,
   )
@@ -1326,6 +1313,9 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           accepted~,
           tool_count=tool_results.length(),
           completion_reason=completion_verdict.reason,
+          completion_verdict=mooncode_nochange_verdict_projection(
+            completion_verdict, command, tool_results,
+          ),
           now=self.clock.now(),
         )
         self.mooncode_runtime_turn_record_event(
@@ -1385,8 +1375,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           ),
           "planner_step_count": planner_steps.length(),
           "model_step_limit": max_model_steps,
-          "completion_verdict": mooncode_runtime_turn_completion_verdict_json(
-            completion_verdict,
+          "completion_verdict": mooncode_nochange_verdict_projection(
+            completion_verdict, command, tool_results,
           ),
           "tool_results": Json::array(tool_results),
           "test_results": Json::array(test_results),

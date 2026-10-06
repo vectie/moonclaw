@@ -453,7 +453,9 @@ fn model_from_moongate_catalog(
 ///|
 async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
   guard name.strip_prefix("moongate/") is Some(requested) else { return None }
-  let requested_model = requested.to_owned()
+  guard !requested.is_empty() && requested == requested.trim() else {
+    return None
+  }
   let discovered = @moongate.discover_from_suite_status_for_workspace_root(
     self.cwd.to_owned(),
   )
@@ -472,16 +474,30 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
       []
     }
   }
+  let model = select_moongate_catalog_model(name, client.base_url(), catalog)
+  if model is Some(value) {
+    logger.info(
+      "Loaded model '\{value.model_name}' from active MoonGate catalog",
+    )
+  }
+  model
+}
+
+///|
+fn select_moongate_catalog_model(
+  selector : String,
+  base_url : String,
+  catalog : Array[@moongate.MoonGateModel],
+) -> Model? {
+  guard selector.strip_prefix("moongate/") is Some(requested) &&
+    !requested.is_empty() &&
+    requested == requested.trim() else {
+    return None
+  }
   for catalog_model in catalog {
-    if catalog_model.id() == requested_model {
-      logger.info(
-        "Loaded model '\{requested_model}' from active MoonGate catalog",
-      )
+    if catalog_model.id() == requested.to_owned() {
       return Some(
-        model_from_moongate_catalog(
-          client.base_url() + "/openclaw/v1",
-          catalog_model,
-        ),
+        model_from_moongate_catalog(base_url + "/openclaw/v1", catalog_model),
       )
     }
   }
@@ -489,18 +505,34 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
 }
 
 ///|
-/// Retrieve a model from the loader's cache, optionally overriding
-/// selected fields.
-///
-/// Parameters:
-/// - name: Model name to look up. When omitted, the first cached model
-///   is returned (if any).
-/// - api_key: Optional API key override for the returned model.
-/// - base_url: Optional base URL override for the returned model.
-///
-/// Returns the matching model with overrides applied, or `None` when no
-/// model is available.
+/// Reserved selectors never reach provider manifests, cached models or fallback.
+/// The resolver boundary permits deterministic tests without service startup.
+async fn resolve_model_route(
+  name : String?,
+  moongate~ : async (String) -> Model?,
+  legacy~ : async (String?) -> Model?,
+) -> Model? {
+  if name is Some(selector) && selector.trim().has_prefix("moongate/") {
+    return moongate(selector)
+  }
+  legacy(name)
+}
+
+///|
+/// Resolve `moongate/<catalog-id>` exclusively through the active MoonGate
+/// live catalog. Other selectors retain configured/provider lookup and legacy
+/// fallback; omitting the selector retains existing automatic selection.
+/// Returns `None` when the requested route is unavailable.
 pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
+  resolve_model_route(
+    name,
+    moongate=selector => self.load_moongate_model(selector),
+    legacy=selector => self.get_legacy_model(name?=selector),
+  )
+}
+
+///|
+async fn Loader::get_legacy_model(self : Loader, name? : String) -> Model? {
   self.load()
   if name is Some(model_name) {
     let trimmed = model_name.trim()
@@ -541,9 +573,6 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
     return self.load_kimi_coding_model(model_name)
   }
   if name is Some(model_name) {
-    if self.load_moongate_model(model_name) is Some(model) {
-      return Some(model)
-    }
     return self.load_openrouter_model(Some(model_name))
   }
   logger.info("No model specified, auto-detecting...")

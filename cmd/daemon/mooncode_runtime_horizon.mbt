@@ -57,7 +57,16 @@ fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
     mooncode_json_array_items(nested, "scope").length() > 0 {
     nested
   } else {
-    mooncode_json_object_field_or_empty(command, "task_contract")
+    let direct = mooncode_json_object_field_or_empty(command, "task_contract")
+    let policy = mooncode_nochange_field(nested, "completion_policy")
+    if policy == Json::null() {
+      direct
+    } else if direct is Object(fields) && !fields.is_empty() {
+      // A policy-only extension must not discard original direct milestones.
+      mooncode_json_object_with_field(direct, "completion_policy", policy)
+    } else {
+      nested
+    }
   }
 }
 
@@ -209,7 +218,7 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
     "objective",
     default=mooncode_runtime_horizon_compact_request(command),
   )
-  {
+  let contract : Json = {
     "kind": "mooncode-long-horizon-task.v1",
     "horizon_id": mooncode_runtime_horizon_id(command),
     "objective": objective,
@@ -227,6 +236,12 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
       mooncode_runtime_horizon_required_milestones(command),
     ),
   }
+  let policy = mooncode_nochange_policy(command)
+  if policy == Json::null() {
+    contract
+  } else {
+    mooncode_json_object_with_field(contract, "completion_policy", policy)
+  }
 }
 
 ///|
@@ -239,11 +254,17 @@ fn mooncode_runtime_horizon_contract_prompt(command : Json) -> String {
 
 ///|
 fn mooncode_runtime_horizon_checkpoint_contract(command : Json) -> Json {
-  {
+  let contract : Json = {
     "horizon_id": mooncode_runtime_horizon_id(command),
     "milestones": Json::array(
       mooncode_runtime_horizon_required_milestones(command),
     ),
+  }
+  let policy = mooncode_nochange_policy(command)
+  if policy == Json::null() {
+    contract
+  } else {
+    mooncode_json_object_with_field(contract, "completion_policy", policy)
   }
 }
 
@@ -602,6 +623,12 @@ fn mooncode_runtime_horizon_checkpoint_error(
   if mooncode_json_string(arguments, "horizon_id", default="") != expected_id {
     return "checkpoint horizon_id does not match the active task"
   }
+  let proposal_error = mooncode_nochange_proposal_error(
+    command, arguments, results,
+  )
+  if proposal_error != "" {
+    return proposal_error
+  }
   let supplied = mooncode_json_array_items(arguments, "milestones")
   if supplied.length() == 0 {
     return "checkpoint milestones must be non-empty"
@@ -655,7 +682,22 @@ fn mooncode_runtime_horizon_checkpoint_error(
       previous, required_id,
     )
     let matched_status = mooncode_json_string(matched, "status", default="")
+    let alternative = mooncode_nochange_alternative(command, arguments, matched)
+    let resolution = mooncode_json_string(matched, "resolution", default="")
+    if resolution != "" && (!alternative || matched_status != "done") {
+      return "checkpoint alternative resolution is not permitted for milestone `\{required_id}`"
+    }
+    if matched_status == "done" &&
+      mooncode_json_string(arguments, "completion_outcome", default="") ==
+      "no_change" &&
+      ["mutation", "path_changed"].contains(
+        mooncode_json_string(required, "evidence_kind", default=""),
+      ) &&
+      !alternative {
+      return "no_change cannot waive the original mutation requirement for milestone `\{required_id}`"
+    }
     if previous_status == "done" &&
+      !alternative &&
       mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
       previously_done_mutations += 1
     }
@@ -663,6 +705,7 @@ fn mooncode_runtime_horizon_checkpoint_error(
       return "checkpoint cannot reopen completed milestone `\{required_id}`"
     }
     if matched_status == "done" &&
+      !alternative &&
       !mooncode_runtime_horizon_milestone_proven(command, required, results) {
       if mooncode_runtime_turn_requires_verification(command) &&
         mooncode_json_string(required, "evidence_kind", default="") ==
@@ -674,6 +717,7 @@ fn mooncode_runtime_horizon_checkpoint_error(
       return "checkpoint milestone `\{required_id}` has no matching runtime evidence"
     }
     if matched_status == "done" &&
+      !alternative &&
       previous_status != "done" &&
       mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
       newly_done_mutations += 1
@@ -730,13 +774,16 @@ fn mooncode_runtime_horizon_checkpoint_execution(
   let error = mooncode_runtime_horizon_checkpoint_error(
     command, arguments, prior_results,
   )
-  let checkpoint : Json = {
-    "horizon_id": mooncode_runtime_horizon_id(command),
-    "milestones": Json::array(
-      mooncode_json_array_items(arguments, "milestones"),
-    ),
-    "next_action": mooncode_json_string(arguments, "next_action", default=""),
-  }
+  let checkpoint : Json = mooncode_nochange_copy_proposal(
+    {
+      "horizon_id": mooncode_runtime_horizon_id(command),
+      "milestones": Json::array(
+        mooncode_json_array_items(arguments, "milestones"),
+      ),
+      "next_action": mooncode_json_string(arguments, "next_action", default=""),
+    },
+    arguments,
+  )
   let result = if error == "" {
     mooncode_tool_ok_result(
       "checkpoint",
@@ -829,7 +876,17 @@ fn mooncode_runtime_horizon_progress_message(
     {
       "role": "user",
       "content": "Authoritative immutable checkpoint contract:\n\{checkpoint_contract.stringify(indent=2)}\n" +
-      "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add only status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
+      "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add " +
+      (if mooncode_nochange_enabled(command) { "" } else { "only " }) +
+      "status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
+      (if mooncode_nochange_enabled(command) {
+        "Only the initial completion_policy permits no_change: run every exact required check and preserve every original milestone. Propose completion_outcome=no_change with no_change.reason=already_satisfied, a worker observation, and accepted native event IDs including all required checks. Only named mutation/path_changed milestones may add resolution=already_satisfied. Copy the identical proposal to the final all-done checkpoint and finish. Engineering-only settlement never establishes goal or original-task acceptance.\n" +
+        "Current exact required-check evidence references: " +
+        Json::array(mooncode_nochange_check_evidence(command, results)).stringify() +
+        "\n"
+      } else {
+        ""
+      }) +
       "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
       "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
       horizon +

@@ -17,8 +17,10 @@ pub async fn start(ArrayView[String]) -> Unit
 
 // Types and methods
 type CreateMessageRequest
-pub fn CreateMessageRequest::new(message~ : @ai.Message, web_search? : Bool) -> Self
+pub fn CreateMessageRequest::new(message~ : @ai.Message, web_search? : Bool, optional_context? : @agent.OptionalInputContext) -> Self
+pub fn CreateMessageRequest::queue_on(Self, @agent.Agent) -> @uuid.Uuid
 pub impl ToJson for CreateMessageRequest
+pub impl @json.FromJson for CreateMessageRequest
 
 type CreateMessageResponse
 pub fn CreateMessageResponse::new(id~ : @uuid.Uuid, queued~ : Bool) -> Self
@@ -46,7 +48,7 @@ pub(all) struct RegisterResponse {
 } derive(ToJson, @json.FromJson)
 
 type Server
-pub async fn Server::new(name? : String, model? : String, register? : RegisterInfo, serve~ : String, port~ : Int, home? : String, cwd? : String, web_search? : Bool, resume_id? : @uuid.Uuid, source_kind? : String, workspace_trust? : String) -> Self
+pub async fn Server::new(name? : String, model? : String, model_workspace? : String, register? : RegisterInfo, serve~ : String, port~ : Int, home? : String, cwd? : String, web_search? : Bool, resume_id? : @uuid.Uuid, source_kind? : String, workspace_trust? : String) -> Self
 pub fn Server::port(Self) -> Int
 pub async fn Server::start(Self) -> Unit
 

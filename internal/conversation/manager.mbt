@@ -125,5 +125,6 @@ pub fn Manager::new_conversation(
     web_search,
     source_kind,
     workspace_trust,
+    optional_input_contexts: {},
   }
 }

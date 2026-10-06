@@ -102,43 +102,85 @@ async fn Daemon::mooncode_queue_command_response(
   binding.restore_first_user_prompt()
   binding.restore_session_metadata()
   let body = mooncode_command_with_session_model(body, binding.model)
-  let requested_model = mooncode_runtime_turn_requested_model(body)
-  let selector = match mooncode_runtime_model_selector(requested_model) {
-    Some(selector) => selector
-    None =>
-      raise json_error(400, "Bad Request", {
-        "error": {
-          "code": -1,
-          "message": "MoonCode requires a model selected from the provider catalog",
-          "metadata": { "requested_model": requested_model },
-        },
-      })
-  }
-  let selected_model = match self.models.get_model(name=selector) {
-    Some(value) => value
-    None =>
-      raise json_error(400, "Bad Request", {
-        "error": {
-          "code": -1,
-          "message": "MoonCode model is not available",
-          "metadata": { "requested_model": requested_model },
-        },
-      })
-  }
-  if requires_image && !selected_model.supports_image_input() {
-    raise json_error(400, "Bad Request", {
-      "error": {
-        "code": -1,
-        "message": "The selected MoonCode model does not declare image input support",
-        "metadata": { "requested_model": requested_model },
+  let body = match
+    mooncode_command_with_model_workspace(
+      body,
+      if binding.command_count > 0 {
+        Some(binding.model_workspace)
+      } else {
+        None
       },
-    })
+    ) {
+    Ok(body) => body
+    Err(error) =>
+      raise json_error(409, "Conflict", {
+        "error": { "code": -1, "message": error },
+      })
+  }
+  let action = mooncode_json_string(body, "command", default="prompt")
+  // Stopping accepted work must not depend on its provider catalog still being
+  // available. All validation, session binding, and durable retry checks remain.
+  if action != "cancel" {
+    if !mooncode_model_workspace_is_canonical(
+        mooncode_json_string(body, "model_workspace", default=""),
+      ) {
+      raise json_error(400, "Bad Request", {
+        "error": {
+          "code": -1,
+          "message": "model_workspace must name an existing canonical directory",
+        },
+      })
+    }
+    let requested_model = mooncode_runtime_turn_requested_model(body)
+    let selector = match mooncode_runtime_model_selector(requested_model) {
+      Some(selector) => selector
+      None =>
+        raise json_error(400, "Bad Request", {
+          "error": {
+            "code": -1,
+            "message": "MoonCode requires a model selected from the provider catalog",
+            "metadata": { "requested_model": requested_model },
+          },
+        })
+    }
+    let selected_model = match
+      mooncode_runtime_turn_resolve_model(
+        self.models,
+        self.home,
+        body,
+        selector,
+        legacy_source_fallback=false,
+      ) {
+      Some(value) => value
+      None =>
+        raise json_error(400, "Bad Request", {
+          "error": {
+            "code": -1,
+            "message": "MoonCode model is not available",
+            "metadata": { "requested_model": requested_model },
+          },
+        })
+    }
+    if requires_image && !selected_model.supports_image_input() {
+      raise json_error(400, "Bad Request", {
+        "error": {
+          "code": -1,
+          "message": "The selected MoonCode model does not declare image input support",
+          "metadata": { "requested_model": requested_model },
+        },
+      })
+    }
   }
   let command_id = mooncode_command_id(body)
-  let action = mooncode_json_string(body, "command", default="prompt")
   // The journal is the acceptance boundary. A retry must not increment the
   // binding or publish a second queued event for the same command identity.
-  let appended = self.mooncode_persist_command(body, binding)
+  let appended = self.mooncode_persist_command(body, binding) catch {
+    InvalidJournal(message) =>
+      raise json_error(409, "Conflict", {
+        "error": { "code": -1, "message": message },
+      })
+    error => raise error
+  }
   if !appended {
     if !mooncode_command_retry_is_exact(book_root, session_id, command_id, body) {
       raise json_error(409, "Conflict", {
@@ -165,8 +207,15 @@ async fn Daemon::mooncode_queue_command_response(
     }
   }
   binding.command_count += 1
+  binding.model_workspace = mooncode_json_string(
+    body,
+    "model_workspace",
+    default="",
+  )
   binding.remember_workspace(body)
-  binding.remember_model(body)
+  if action != "cancel" {
+    binding.remember_model(body)
+  }
   binding.remember_first_user_prompt(body)
   binding.last_command_id = command_id
   binding.last_updated = now
@@ -242,18 +291,30 @@ fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
     Ok(_) => ""
     Err(error) => error
   }
+  let model_workspace_error = match mooncode_command_model_workspace(body) {
+    Ok(_) => ""
+    Err(error) => error
+  }
+  let completion_policy_error = mooncode_nochange_policy_error(body)
   {
     "ok": missing.length() == 0 &&
     unsupported.length() == 0 &&
-    media_error == "",
+    media_error == "" &&
+    model_workspace_error == "" &&
+    completion_policy_error == "",
     "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "command_id": command_id,
     "missing": Json::array(missing),
     "unsupported": Json::array(unsupported),
     "media_error": media_error,
+    "model_workspace_error": model_workspace_error,
     "message": if unsupported.length() > 0 {
       "MoonCode command uses unsupported fields: \{unsupported.map(item => item.stringify()).join(", ")}"
+    } else if model_workspace_error != "" {
+      model_workspace_error
+    } else if completion_policy_error != "" {
+      completion_policy_error
     } else if media_error != "" {
       media_error
     } else if missing.length() == 0 {

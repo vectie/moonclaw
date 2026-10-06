@@ -92,6 +92,57 @@ async fn canonical_daemon_path(label : String, path : String) -> String {
 }
 
 ///|
+/// Serialize model selection separately from the isolated execution directory.
+pub fn daemon_child_model_arguments(
+  model_selector : String?,
+  model_workspace : String?,
+) -> Array[String] raise TrustedHostProcessError {
+  let args : Array[String] = []
+  if model_selector is Some(selector) {
+    validate_daemon_data("model selector", selector, 256)
+    args.append(["--model", selector])
+  }
+  if model_workspace is Some(workspace) {
+    validate_daemon_data("model workspace", workspace, 4096)
+    if !@pathx.is_absolute(workspace) || workspace == "/" {
+      raise InvalidParameter(
+        "model workspace must be an absolute non-root path",
+      )
+    }
+    args.append(["--model-workspace", workspace])
+  }
+  args
+}
+
+///|
+fn daemon_child_environment_from_values(
+  home : String,
+  register_id : String,
+  register_token : String,
+  moonfort_config? : String,
+  moonfort_promotion_config? : String,
+) -> Map[String, String] {
+  let environment : Map[String, String] = {
+    "HOME": home,
+    "PATH": "/usr/bin:/bin",
+    "LANG": "C",
+    "LC_ALL": "C",
+    "TMPDIR": "/tmp",
+    "MOONCLAW_WORKER_REGISTRATION_INSTANCE": register_id,
+    "MOONCLAW_WORKER_REGISTRATION_TOKEN": register_token,
+  }
+  // Only the two operator-owned references cross this boundary. Keep invalid
+  // configured values present so the existing MoonFort loaders fail closed.
+  if moonfort_config is Some(reference) {
+    environment["MOONCLAW_MOONFORT_CONFIG"] = reference
+  }
+  if moonfort_promotion_config is Some(reference) {
+    environment["MOONCLAW_MOONFORT_PROMOTION_CONFIG"] = reference
+  }
+  environment
+}
+
+///|
 /// Spawn the fixed MoonClaw `server` subcommand with typed data arguments. The
 /// environment is replaced rather than inherited, preventing ambient daemon
 /// secrets from leaking into the child process.
@@ -100,6 +151,7 @@ pub async fn DaemonChildManager::spawn_server(
   cwd~ : String,
   name? : String,
   model_selector? : String,
+  model_workspace? : String,
   web_search? : Bool = false,
   resume_id? : String,
   register_id~ : String,
@@ -116,6 +168,9 @@ pub async fn DaemonChildManager::spawn_server(
   let executable = canonical_daemon_path("executable", executable)
   let cwd = canonical_daemon_path("working directory", cwd)
   let home = canonical_daemon_path("home", self.home)
+  // This is a read-only discovery context, not the child execution directory.
+  // Preserve the explicit owning Book path (including a suite-local symlink),
+  // because resolving the link can incorrectly move discovery to another suite.
   validate_daemon_data("register id", register_id, 128)
   validate_daemon_data("registration token", register_token, 128)
   if register_token.length() != 72 {
@@ -127,11 +182,7 @@ pub async fn DaemonChildManager::spawn_server(
   validate_daemon_data("source kind", source_kind, 64)
   validate_daemon_data("workspace trust", workspace_trust, 16)
   let args = ["server"]
-  if model_selector is Some(model_selector) {
-    validate_daemon_data("model selector", model_selector, 256)
-    args.push("--model")
-    args.push(model_selector)
-  }
+  args.append(daemon_child_model_arguments(model_selector, model_workspace))
   if name is Some(name) {
     validate_daemon_data("name", name, 1024)
     args.push("--name")
@@ -166,15 +217,15 @@ pub async fn DaemonChildManager::spawn_server(
     executable,
     arguments: args,
     cwd,
-    environment: {
-      "HOME": home,
-      "PATH": "/usr/bin:/bin",
-      "LANG": "C",
-      "LC_ALL": "C",
-      "TMPDIR": "/tmp",
-      "MOONCLAW_WORKER_REGISTRATION_INSTANCE": register_id,
-      "MOONCLAW_WORKER_REGISTRATION_TOKEN": register_token,
-    },
+    environment: daemon_child_environment_from_values(
+      home,
+      register_id,
+      register_token,
+      moonfort_config?=@os.getenv("MOONCLAW_MOONFORT_CONFIG"),
+      moonfort_promotion_config?=@os.getenv(
+        "MOONCLAW_MOONFORT_PROMOTION_CONFIG",
+      ),
+    ),
     response,
   })
   response.get().unwrap_or_error()

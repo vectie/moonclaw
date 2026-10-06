@@ -245,6 +245,14 @@ fn mooncode_conversation_apply_receipt(
   if index < 0 {
     return
   }
+  let status = mooncode_json_string(receipt, "status", default="")
+  // Receipts replay after events. Claims and other nonterminal receipts must
+  // not overwrite newer progress, assistant text, or terminal event outcomes.
+  if !mooncode_runtime_receipt_status_delivered(status) &&
+    !@mooncode_core.runtime_receipt_status_is_delivered(status) &&
+    status != @mooncode_core.runtime_receipt_status_failed() {
+    return
+  }
   let turn = turns[index]
   let usage = mooncode_conversation_receipt_usage(receipt)
   if usage.stringify() != "{}" {
@@ -261,18 +269,16 @@ fn mooncode_conversation_apply_receipt(
       turn.assistant_delta = ""
     }
   }
-  let status = mooncode_json_string(receipt, "status", default="")
-  if status != "" {
-    turn.status = if status == "runtime-failed" {
-      "failed"
-    } else if status == "runtime-cancelled" {
-      "cancelled"
-    } else {
-      "done"
-    }
+  let failed = status == "runtime-failed" ||
+    status == @mooncode_core.runtime_receipt_status_failed()
+  turn.status = if failed {
+    "failed"
+  } else if status == "runtime-cancelled" {
+    "cancelled"
+  } else {
+    "done"
   }
-  if status == "runtime-failed" &&
-    mooncode_conversation_message_content(turn.assistant) == "" {
+  if failed && mooncode_conversation_message_content(turn.assistant) == "" {
     turn.assistant = mooncode_conversation_assistant_message(
       receipt,
       "MoonCode could not complete this request. Review the failed work details and try again.",

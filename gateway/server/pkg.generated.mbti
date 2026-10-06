@@ -203,6 +203,8 @@ type CoworkConfigParams derive(@debug.Debug, @json.FromJson)
 
 type CoworkMessageParams derive(@debug.Debug, @json.FromJson)
 
+type CoworkModelRouteParams derive(@json.FromJson)
+
 type CoworkPlanParams derive(@debug.Debug, @json.FromJson)
 
 type CoworkProposalRef derive(ToJson, @debug.Debug, @json.FromJson)

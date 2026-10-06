@@ -33,3 +33,8 @@ import {
   "moonbitlang/async/socket",
   "vectie/moonclaw/cmd/internal/test_utils",
 } for "test"
+
+import {
+  "vectie/moonclaw/plugin/moongate",
+  "moonbitlang/async/fs" @model_workspace_fs,
+} for "wbtest"

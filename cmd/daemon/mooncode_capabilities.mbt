@@ -20,6 +20,8 @@ fn mooncode_capabilities_payload() -> Json {
     "executable_book_lifecycle_contract_id": mooncode_executable_book_lifecycle_contract_id(),
     "executable_book_lifecycle_contract": mooncode_executable_book_lifecycle_contract_json(),
     "native_runtime_ready": true,
+    "model_workspace_contract": "mooncode.model-workspace.v1",
+    "completion_outcome_contract": "mooncode.completion-outcome.v1",
     "runtime_mode": "moonclaw-daemon-native-mooncode",
     "runtime_owner": "moonclaw",
     "session_owner": "moonclaw",

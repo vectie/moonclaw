@@ -301,21 +301,6 @@ async fn Daemon::mooncode_tool_wait_workers(
 }
 
 ///|
-async fn mooncode_worker_runtime_service_events(
-  child_session_id : String,
-  child_book_root : String,
-) -> Array[Json] {
-  let journal = mooncode_read_session_journal(child_book_root, child_session_id)
-  let events = mooncode_journal_entries(journal, mooncode_journal_event())
-  events.filter(event => {
-    let kind = mooncode_json_string(event, "kind", default="")
-    kind == "runtime.service_started" ||
-    kind == "runtime.service_finished" ||
-    kind == "runtime.service_failed"
-  })
-}
-
-///|
 async fn mooncode_wait_workers_projection(
   parent_session_id : String,
   parent_book_root : String,
@@ -338,39 +323,7 @@ async fn mooncode_wait_workers_projection(
       requested.any(item => item is String(id) && id == worker_id)
     if selected {
       found[worker_id] = true
-      let child_session_id = mooncode_json_string(
-        record,
-        "child_session_id",
-        default="",
-      )
-      let child_book_root = mooncode_json_string(
-        record,
-        "child_book_root",
-        default="",
-      )
-      let service_id = mooncode_json_string(record, "service_id", default="")
-      let state = mooncode_runtime_service_state_payload(
-        child_session_id,
-        child_book_root,
-        mooncode_worker_runtime_service_events(
-          child_session_id, child_book_root,
-        ),
-        service_id~,
-      )
-      let status = mooncode_json_string(state, "status", default="idle")
-      let terminal = status != "idle" &&
-        !mooncode_json_bool(state, "running", default=false)
-      projected.push({
-        "worker_id": worker_id,
-        "child_session_id": child_session_id,
-        "child_book_root": child_book_root,
-        "status": status,
-        "running": mooncode_json_bool(state, "running", default=false),
-        "terminal": terminal,
-        "terminal_evidence": mooncode_json_object_field_or_empty(
-          state, "latest_event",
-        ),
-      })
+      projected.push(mooncode_worker_result_projection(record))
     }
   }
   let missing : Array[Json] = []
@@ -401,7 +354,7 @@ async fn mooncode_wait_workers_projection(
     message=if ready {
       "worker wait condition satisfied"
     } else {
-      "workers are still running or missing"
+      "workers are unfinished or missing"
     },
     output=metadata.stringify(),
     metadata~,

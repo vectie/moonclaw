@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/json",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/book_learning",
   "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/security",
@@ -956,6 +957,7 @@ pub(all) struct JobDefinition {
   updated_at : Int
   tags : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobDefinition::public_json(Self) -> Json
 
 pub(all) struct JobNotificationDecision {
   messages : Array[String]
@@ -1876,7 +1878,9 @@ pub async fn SupervisorRuntime::verify_worker_retry(Self, SupervisorWorkerRetryR
 pub async fn SupervisorRuntime::verify_worker_steer(Self, SupervisorWorkerSteerRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
 pub async fn SupervisorRuntime::verify_worker_stop(Self, SupervisorWorkerStopRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
 pub async fn SupervisorRuntime::wake_resume(Self, SupervisorWakeRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::worker_definition_provider_id(Self, SupervisorDelegateIntentRequestV1) -> Result[String?, String]
 pub fn SupervisorRuntime::worker_intent(Self, String, String) -> Result[SupervisorDelegateIntentRequestV1, String]
+pub async fn SupervisorRuntime::worker_learning_input(Self, String, String) -> Result[@book_learning.Snapshot, String]
 pub async fn SupervisorRuntime::worker_retry(Self, SupervisorWorkerRetryRequestV1, Json) -> Result[SupervisorCommandReceiptV1, String]
 pub fn SupervisorRuntime::worker_status(Self, String, String) -> Result[SupervisorWorkerStatusV1, String]
 pub async fn SupervisorRuntime::worker_steer(Self, SupervisorWorkerSteerRequestV1, Json) -> Result[SupervisorCommandReceiptV1, String]
@@ -2025,6 +2029,7 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  artifact_recovery_issues : Array[String]
   memories : Map[String, MemoryRecord]
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
@@ -2051,6 +2056,7 @@ pub fn SystemStore::get_notification_preference(Self, String) -> JobNotification
 pub fn SystemStore::get_run(Self, String) -> JobRun?
 pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
 pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
+pub fn SystemStore::list_artifact_recovery_issues(Self) -> Array[String]
 pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
 pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
 pub fn SystemStore::list_controller_decisions(Self, controller_run_id? : String?) -> Array[JobControllerDecision]
@@ -2079,6 +2085,7 @@ pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
 pub async fn SystemStore::save_job_proposal(Self, JobProposal) -> Unit
 pub async fn SystemStore::save_memory(Self, MemoryRecord) -> Unit
 pub async fn SystemStore::save_notification_preference(Self, JobNotificationPreference) -> Unit
+pub async fn SystemStore::save_public_definition(Self, JobDefinition) -> Result[JobDefinition, String]
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit
 pub async fn SystemStore::save_workflow(Self, WorkflowDefinition) -> Unit

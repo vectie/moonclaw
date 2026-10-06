@@ -246,7 +246,7 @@ pub fn native_command_body_supported_fields() -> Array[String] {
     "protocol", "command", "text", "model", "session_id", "book_root", "context_path",
     "payload", "packet", "execution_plan", "tool_authorization", "tool_contract",
     "result_contract", "owner", "web_search", "runtime_tool_calls", "deferred_steering",
-    "content_parts",
+    "content_parts", "model_workspace",
   ]
 }
 

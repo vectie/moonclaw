@@ -59,14 +59,14 @@ async test "Loader reads canonical product providers manifest" (t : @test.Test) 
       (
         {
           "providers": {
-            "moongate": {
-              "baseUrl": "http://127.0.0.1:15721/v1",
+            "custom-provider": {
+              "baseUrl": "https://configured-provider.invalid/v1",
               "api": "openai",
-              "apiKey": "moongate-local",
+              "apiKey": "dummy-provider-key",
               "models": [
                 {
                   "id": "gpt-5.5",
-                  "name": "moongate/gpt-5.5",
+                  "name": "custom-provider/gpt-5.5",
                   "reasoning": true,
                   "input": ["text", "image"],
                 },
@@ -76,13 +76,13 @@ async test "Loader reads canonical product providers manifest" (t : @test.Test) 
         } : Json).stringify(indent=2),
     )
     let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
-    let loaded = loader.get_model(name="moongate/gpt-5.5")
+    let loaded = loader.get_model(name="custom-provider/gpt-5.5")
     guard loaded is Some(model) else {
       fail("expected canonical provider model")
     }
-    inspect(model.name, content="moongate/gpt-5.5")
+    inspect(model.name, content="custom-provider/gpt-5.5")
     inspect(model.model_name, content="gpt-5.5")
-    inspect(model.base_url, content="http://127.0.0.1:15721/v1")
+    inspect(model.base_url, content="https://configured-provider.invalid/v1")
   })
 }
 

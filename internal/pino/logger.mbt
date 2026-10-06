@@ -38,6 +38,22 @@ pub fn Logger::close(self : Logger) -> Unit {
 }
 
 ///|
+/// Returns whether a severity reaches this logger's configured threshold.
+/// Check before constructing expensive diagnostic data. Logging still applies
+/// the same threshold, and child loggers inherit it.
+///
+/// ```mbt check
+/// test {
+///   let log = logger("example", Transport::sink())
+///   assert_false(log.is_enabled(Debug))
+///   assert_true(log.is_enabled(Error))
+/// }
+/// ```
+pub fn Logger::is_enabled(self : Logger, level : Level) -> Bool {
+  level >= self.level
+}
+
+///|
 /// Logs a message at the specified level with additional context.
 ///
 /// This is the core logging method. All level-specific methods (error, warn, info, debug)

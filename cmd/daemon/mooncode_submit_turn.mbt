@@ -62,10 +62,13 @@ async fn Daemon::mooncode_submit_turn_response(
     // Reconcile the durable command before a retry. If a process stopped
     // between queueing and starting the service, resume that same command.
     // Delivered commands and controls never start another service here.
+    // An accepted but unsettled cancel must finish its durable settlement.
     let claim_state = self.mooncode_runtime_claim_state_payload(
       session_id, book_root,
     )
-    if (action == "prompt" || action == "package" || action == "steer") &&
+    if action == "cancel" {
+      self.mooncode_submit_cancel_control(session_id, book_root, body)
+    } else if (action == "prompt" || action == "package" || action == "steer") &&
       mooncode_runtime_command_pending(claim_state, mooncode_command_id(body)) {
       self.mooncode_start_runtime_service(group~, session_id, book_root, body)
     } else {

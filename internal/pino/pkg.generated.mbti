@@ -27,6 +27,7 @@ pub fn Logger::close(Self) -> Unit
 pub async fn Logger::debug(Self, StringView, data? : Map[String, Json]) -> Unit
 pub async fn Logger::error(Self, StringView, data? : Map[String, Json]) -> Unit
 pub async fn Logger::info(Self, StringView, data? : Map[String, Json]) -> Unit
+pub fn Logger::is_enabled(Self, Level) -> Bool
 pub async fn Logger::log(Self, Level, StringView, data? : Map[String, Json]) -> Unit
 pub async fn Logger::warn(Self, StringView, data? : Map[String, Json]) -> Unit
 

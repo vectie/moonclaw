@@ -86,7 +86,7 @@ async fn Gateway::handle_jobs_list_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some({ "jobs": jobs.map(job => job.to_json()) }),
+    payload: Some({ "jobs": jobs.map(job => job.public_json()) }),
     error: None,
   })
 }
@@ -112,7 +112,7 @@ async fn Gateway::handle_jobs_get_method(
       self.send_response(w, {
         id: request.id,
         ok: true,
-        payload: Some({ "job": job.to_json() }),
+        payload: Some({ "job": job.public_json() }),
         error: None,
       })
     None =>
@@ -168,11 +168,27 @@ async fn Gateway::handle_jobs_create_method(
         }),
       })
   }
-  self.job_runtime().register_definition(definition)
+  let definition = match
+    self.job_runtime().store().save_public_definition(definition) {
+    Ok(value) => value
+    Err(error) =>
+      return self.send_response(w, {
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some({
+          code: "immutable_worker_input",
+          message: error,
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some({ "status": "created", "job": definition.to_json() }),
+    payload: Some({ "status": "created", "job": definition.public_json() }),
     error: None,
   })
 }
@@ -228,11 +244,27 @@ async fn Gateway::handle_jobs_update_method(
       }),
     })
   }
-  self.job_runtime().register_definition(definition)
+  let definition = match
+    self.job_runtime().store().save_public_definition(definition) {
+    Ok(value) => value
+    Err(error) =>
+      return self.send_response(w, {
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some({
+          code: "immutable_worker_input",
+          message: error,
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some({ "status": "updated", "job": definition.to_json() }),
+    payload: Some({ "status": "updated", "job": definition.public_json() }),
     error: None,
   })
 }

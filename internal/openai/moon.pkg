@@ -17,6 +17,10 @@ import {
 supported_targets = "native"
 
 import {
+  "moonbitlang/async/aqueue",
+} for "wbtest"
+
+import {
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/ai",

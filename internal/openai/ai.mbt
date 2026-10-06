@@ -130,8 +130,16 @@ pub async fn chat(
   logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body? : Map[String, Json] = {},
   timeout_ms? : Int? = None,
+  transport? : ChatTransport,
 ) -> ChatCompletion {
-  chat_with_text_deltas(model~, request, logger~, extra_body~, timeout_ms~)
+  chat_with_text_deltas(
+    model~,
+    request,
+    logger~,
+    extra_body~,
+    timeout_ms~,
+    transport?,
+  )
 }
 
 ///|
@@ -142,14 +150,32 @@ pub async fn chat_with_text_deltas(
   extra_body? : Map[String, Json] = {},
   on_text_delta? : (String) -> Unit = _ => (),
   timeout_ms? : Int? = None,
+  transport? : ChatTransport,
 ) -> ChatCompletion {
+  if transport is Some(_) {
+    match model.model_type {
+      SaaS(CodexOAuth | Copilot | Anthropic) =>
+        fail(
+          "Serialized chat transport requires an OpenAI-compatible model route",
+        )
+      _ => ()
+    }
+  }
   let run = async fn() {
     match model.model_type {
       SaaS(CodexOAuth) => chat_codex(model~, request, logger~, on_text_delta~)
       SaaS(Copilot) => chat_copilot(model~, request, logger~, on_text_delta~)
       SaaS(Anthropic) =>
         chat_anthropic(model~, request, logger~, on_text_delta~)
-      _ => chat_openai(model~, request, logger~, extra_body~, on_text_delta~)
+      _ =>
+        chat_openai(
+          model~,
+          request,
+          logger~,
+          extra_body~,
+          on_text_delta~,
+          transport?,
+        )
     }
   }
   match timeout_ms {
@@ -268,6 +294,7 @@ async fn chat_openai(
   logger~ : @pino.Logger,
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
+  transport? : ChatTransport,
 ) -> ChatCompletion {
   let route = openai_chat_route_for_model(model)
   @async.retry(
@@ -284,17 +311,13 @@ async fn chat_openai(
       }
     },
     () => {
-      logger.debug("RequestSent", data={
-        "model": { "name": model.model_name, "base_url": model.base_url },
-        "route": { "url": route.url, "via_moongate": route.via_moongate },
-        "request": request,
-      })
-      let uri = Uri::parse(route.url)
-      let client = @http.Client(
-        "\{uri.schema}://\{uri.host}",
-        headers=route.headers,
-      )
-      defer client.close()
+      if logger.is_enabled(Debug) {
+        logger.debug("RequestSent", data={
+          "model": { "name": model.model_name, "base_url": model.base_url },
+          "route": { "url": route.url, "via_moongate": route.via_moongate },
+          "request": request,
+        })
+      }
       let body = request.to_json()
       guard body is Object(body) else {
         abort("Request body is not a JSON object")
@@ -305,39 +328,15 @@ async fn chat_openai(
       for k, v in extra_body {
         body[k] = v
       }
-      let response = client.post(uri.path, Json::object(body))
-      guard response.code is (200..=299) else {
-        raise HttpRetryError(
-          code=response.code,
-          body=client.read_all().text(),
-          retry_after_ms=response_retry_after_ms(response.headers),
-        )
+      let serialized : ChatTransportRequest = {
+        url: route.url,
+        headers: route.headers,
+        body: Json::object(body).stringify(),
+        stream: route.via_moongate || request.stream is Some(true),
       }
-      if route.via_moongate || request.stream is Some(true) {
-        let reader = ChunkReader::new(client)
-        let builder = ChatCompletionBuilder::new()
-        while reader.read() is Some(chunk) {
-          logger.debug("ChunkReceived", data={ "chunk": chunk })
-          emit_text_deltas_from_chunk(chunk, on_text_delta)
-          builder.add_chunk(chunk)
-        }
-        let chat_completion = builder.to_chat_completion()
-        logger.debug("ResponseReceived", data={
-          "model": { "name": model.model_name, "base_url": model.base_url },
-          "response_code": response.code,
-          "response_body": chat_completion,
-        })
-        chat_completion
-      } else {
-        let body = client.read_all().text()
-        let json = @json.parse(body)
-        let chat_completion : ChatCompletion = @json.from_json(json)
-        logger.debug("ResponseReceived", data={
-          "model": { "name": model.model_name, "base_url": model.base_url },
-          "response_code": response.code,
-          "response_body": chat_completion,
-        })
-        chat_completion
+      match transport {
+        Some(transport) => transport(serialized, on_text_delta)
+        None => send_chat_request(serialized, model~, logger~, on_text_delta~)
       }
     },
   )

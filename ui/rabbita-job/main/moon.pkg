@@ -5,8 +5,13 @@ import {
   "moonbit-community/rabbita/url",
   "moonbit-community/rabbita/http",
   "moonbit-community/rabbita/js",
+  "moonbit-community/rabbita/cmd",
   "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
 }
 
 pkgtype(kind: "executable")
+
+import {
+  "moonbit-community/rabbita/common",
+} for "wbtest"

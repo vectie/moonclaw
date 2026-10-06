@@ -11,6 +11,7 @@ struct Conversation {
   web_search : Bool
   source_kind : String
   workspace_trust : String
+  optional_input_contexts : Map[String, Json]
 }
 
 ///|

@@ -6,12 +6,14 @@ priv struct MoonCodeSessionBinding {
   mut workspace_id : String
   mut workspace_name : String
   mut model : String
+  mut model_workspace : String
   mut command_count : Int
   mut first_user_prompt : String
   mut custom_title : String
   mut last_command_id : String
   mut last_updated : @clock.Timestamp
   mut runtime_service_running : Bool
+  mut runtime_service_wake_pending : Bool
   mut runtime_service_task : @async.Task[Unit]?
   mut active_command_id : String
   events : @broadcast.Broadcast[Json]
@@ -25,6 +27,7 @@ fn MoonCodeSessionBinding::to_json(self : MoonCodeSessionBinding) -> Json {
     "workspace_id": self.workspace_id,
     "workspace_name": self.workspace_name,
     "model": self.model,
+    "model_workspace": self.model_workspace,
     "command_count": self.command_count,
     "first_user_prompt": self.first_user_prompt,
     "custom_title": self.custom_title,
@@ -76,12 +79,14 @@ fn Daemon::mooncode_binding_for_session(
         workspace_id: "",
         workspace_name: "",
         model: "",
+        model_workspace: "",
         command_count: 0,
         first_user_prompt: "",
         custom_title: "",
         last_command_id: "",
         last_updated: self.clock.now(),
         runtime_service_running: false,
+        runtime_service_wake_pending: false,
         runtime_service_task: None,
         active_command_id: "",
         events: @broadcast.Broadcast::new(),
@@ -295,6 +300,37 @@ async fn MoonCodeSessionBinding::restore_session_metadata(
     )
   }
   self.model = mooncode_json_string(snapshot, "model", default=self.model)
+  self.model_workspace = mooncode_json_string(
+    snapshot,
+    "model_workspace",
+    default=self.model_workspace,
+  )
+  let journal = mooncode_read_session_journal(self.book_root, self.session_id)
+  match mooncode_journal_model_workspace(journal) {
+    Some(root) => {
+      if self.model_workspace != "" && self.model_workspace != root {
+        raise InvalidJournal(
+          "MoonCode snapshot model workspace differs from accepted journal",
+        )
+      }
+      self.model_workspace = root
+      let commands = mooncode_journal_entries(
+        journal,
+        mooncode_journal_command(),
+      )
+      self.command_count = commands.length()
+      if root != "" {
+        for entry in commands {
+          let command = mooncode_json_object_field_or_empty(entry, "command")
+          if mooncode_json_string(command, "command", default="prompt") !=
+            "cancel" {
+            self.remember_model(command)
+          }
+        }
+      }
+    }
+    None => ()
+  }
   if self.workspace_id == "" {
     self.workspace_id = mooncode_json_string(
       snapshot,

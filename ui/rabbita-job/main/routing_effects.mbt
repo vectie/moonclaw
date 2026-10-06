@@ -425,7 +425,7 @@ fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] 
             String(text) => Some(text)
             value => Some(value.stringify())
           }
-          Ok(LoadedArtifact::{ artifact, content })
+          Ok(LoadedArtifact::{ artifact, content, })
         }
         Err(error) => Err("Failed to parse artifact payload: \{error}")
       }
@@ -854,7 +854,7 @@ fn parse_stream_drain_payload_json(
         Some(value) => stream_drain_error_message(value)
         None => None
       }
-      Ok({ entries, closed, error })
+      Ok({ entries, closed, error, })
     }
     _ => Err("Failed to parse stream payload: expected object")
   }
@@ -946,6 +946,7 @@ fn fetch_artifact(
   dispatch : Dispatch[Msg],
   gateway_base : String,
   artifact_id : String,
+  generation : Int,
 ) -> Cmd {
   @http.get("\{gateway_base}/v1/artifacts/\{artifact_id}").expect_json(fn(
     result,
@@ -953,6 +954,7 @@ fn fetch_artifact(
     dispatch(
       ArtifactLoaded(
         artifact_id,
+        generation,
         match result {
           Ok(json) => parse_loaded_artifact_payload(json)
           Err(error) => Err(display_error("\{error}"))
@@ -1061,6 +1063,7 @@ fn fetch_cowork_session(
   dispatch : Dispatch[Msg],
   gateway_base : String,
   session_key : String,
+  generation : Int,
 ) -> Cmd {
   @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}").expect_json(fn(
     result,
@@ -1068,6 +1071,7 @@ fn fetch_cowork_session(
     dispatch(
       CoworkSessionLoaded(
         session_key,
+        generation,
         match result {
           Ok(json) => parse_cowork_session_payload(json)
           Err(error) => Err(display_error("\{error}"))
@@ -1098,6 +1102,7 @@ fn fetch_cowork_workspace(
 fn create_cowork_session(
   dispatch : Dispatch[Msg],
   gateway_base : String,
+  generation : Int,
 ) -> Cmd {
   let body : Json = {}
   @http.post("\{gateway_base}/v1/cowork/sessions")
@@ -1105,6 +1110,7 @@ fn create_cowork_session(
   .expect_json(fn(result) {
     dispatch(
       CoworkSessionCreated(
+        generation,
         match result {
           Ok(json) => parse_cowork_session_payload(json)
           Err(error) => Err(display_error("\{error}"))
@@ -1118,13 +1124,19 @@ fn create_cowork_session(
 fn post_cowork_action(
   dispatch : Dispatch[Msg],
   url : String,
+  model : Model,
   body? : Json = {},
+  consumes_draft? : Bool = true,
 ) -> Cmd {
   @http.post(url)
   .with_json(body)
   .expect_json(fn(result) {
     dispatch(
       CoworkActionFinished(
+        model.cowork_request_generation + 1,
+        model.selected_cowork_session_key.unwrap_or(""),
+        model.cowork_draft_revision,
+        consumes_draft,
         match result {
           Ok(json) => parse_cowork_session_payload(json)
           Err(error) => Err(display_error("\{error}"))
@@ -1219,23 +1231,39 @@ fn stream_entry_requires_snapshot(entry : UiTimelineEntry) -> Bool {
 
 ///|
 #cfg(target="js")
-extern "js" fn start_job_ui_event_stream(url : String) =
-  #| (url) => {
+extern "js" fn start_job_ui_event_stream(url : String, notify : () -> Unit) =
+  #| (url, notify) => {
   #|   const key = "__moonclawJobUiStream";
   #|   const current = window[key];
   #|   if (current && current.es) current.es.close();
-  #|   const state = { queue: [], closed: false, error: null, es: null };
+  #|   if (current && current.drainTimer != null) clearTimeout(current.drainTimer);
+  #|   const state = { queue: [], closed: false, error: null, es: null, drainTimer: null };
+  #|   const scheduleDrain = () => {
+  #|     if (window[key] !== state || state.drainTimer != null) return;
+  #|     state.drainTimer = setTimeout(() => {
+  #|       state.drainTimer = null;
+  #|       if (window[key] === state) notify();
+  #|     }, 16);
+  #|   };
   #|   const es = new EventSource(url);
   #|   state.es = es;
-  #|   es.addEventListener("job_ui_event", (event) => { state.queue.push(event.data); });
+  #|   es.addEventListener("job_ui_event", (event) => {
+  #|     if (window[key] !== state || state.closed) return;
+  #|     state.queue.push(event.data);
+  #|     scheduleDrain();
+  #|   });
   #|   es.addEventListener("job_ui_complete", () => {
+  #|     if (window[key] !== state || state.closed) return;
   #|     state.closed = true;
   #|     es.close();
+  #|     scheduleDrain();
   #|   });
   #|   es.onerror = () => {
+  #|     if (window[key] !== state || state.closed) return;
   #|     state.error = "stream_error";
   #|     state.closed = true;
   #|     es.close();
+  #|     scheduleDrain();
   #|   };
   #|   window[key] = state;
   #| }
@@ -1247,6 +1275,7 @@ extern "js" fn stop_job_ui_event_stream() =
   #|   const key = "__moonclawJobUiStream";
   #|   const state = window[key];
   #|   if (state && state.es) state.es.close();
+  #|   if (state && state.drainTimer != null) clearTimeout(state.drainTimer);
   #|   window[key] = null;
   #| }
 
@@ -1272,14 +1301,12 @@ fn start_stream_cmd(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
-  batch([
-    @rabbita.effect(fn() noraise {
-      start_job_ui_event_stream(
-        "\{gateway_base}/v1/jobs/runs/\{run_id}/events/stream",
-      )
-    }),
-    @rabbita.delay(dispatch(PumpStream(run_id)), 500),
-  ])
+  @cmd.custom_cmd(scheduler => {
+    start_job_ui_event_stream(
+      "\{gateway_base}/v1/jobs/runs/\{run_id}/events/stream",
+      fn() { scheduler.add(dispatch(PumpStream(run_id))) },
+    )
+  })
 }
 
 ///|
@@ -1309,23 +1336,39 @@ fn load_run_cmd(
 
 ///|
 #cfg(target="js")
-extern "js" fn start_acp_ui_event_stream(url : String) =
-  #| (url) => {
+extern "js" fn start_acp_ui_event_stream(url : String, notify : () -> Unit) =
+  #| (url, notify) => {
   #|   const key = "__moonclawAcpUiStream";
   #|   const current = window[key];
   #|   if (current && current.es) current.es.close();
-  #|   const state = { queue: [], closed: false, error: null, es: null };
+  #|   if (current && current.drainTimer != null) clearTimeout(current.drainTimer);
+  #|   const state = { queue: [], closed: false, error: null, es: null, drainTimer: null };
+  #|   const scheduleDrain = () => {
+  #|     if (window[key] !== state || state.drainTimer != null) return;
+  #|     state.drainTimer = setTimeout(() => {
+  #|       state.drainTimer = null;
+  #|       if (window[key] === state) notify();
+  #|     }, 16);
+  #|   };
   #|   const es = new EventSource(url);
   #|   state.es = es;
-  #|   es.addEventListener("acp_ui_event", (event) => { state.queue.push(event.data); });
+  #|   es.addEventListener("acp_ui_event", (event) => {
+  #|     if (window[key] !== state || state.closed) return;
+  #|     state.queue.push(event.data);
+  #|     scheduleDrain();
+  #|   });
   #|   es.addEventListener("acp_ui_complete", () => {
+  #|     if (window[key] !== state || state.closed) return;
   #|     state.closed = true;
   #|     es.close();
+  #|     scheduleDrain();
   #|   });
   #|   es.onerror = () => {
+  #|     if (window[key] !== state || state.closed) return;
   #|     state.error = "stream_error";
   #|     state.closed = true;
   #|     es.close();
+  #|     scheduleDrain();
   #|   };
   #|   window[key] = state;
   #| }
@@ -1337,6 +1380,7 @@ extern "js" fn stop_acp_ui_event_stream() =
   #|   const key = "__moonclawAcpUiStream";
   #|   const state = window[key];
   #|   if (state && state.es) state.es.close();
+  #|   if (state && state.drainTimer != null) clearTimeout(state.drainTimer);
   #|   window[key] = null;
   #| }
 
@@ -1358,12 +1402,11 @@ extern "js" fn drain_acp_ui_event_stream() -> String =
 
 ///|
 fn start_acp_stream_cmd(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
-  batch([
-    @rabbita.effect(fn() noraise {
-      start_acp_ui_event_stream("\{gateway_base}/v1/acp/events/stream")
-    }),
-    @rabbita.delay(dispatch(PumpAcpStream), 500),
-  ])
+  @cmd.custom_cmd(scheduler => {
+    start_acp_ui_event_stream("\{gateway_base}/v1/acp/events/stream", fn() {
+      scheduler.add(dispatch(PumpAcpStream))
+    })
+  })
 }
 
 ///|

@@ -64,7 +64,7 @@ fn cowork_composer_content(model : Model, content : String) -> String {
 fn push_cowork_input_history(model : Model, content : String) -> Model {
   let trimmed = content.trim().to_string()
   if trimmed.is_blank() {
-    { ..model, cowork_input_history_index: None }
+    { ..model, cowork_input_history_index: None, }
   } else {
     let deduped = model.cowork_input_history.filter(fn(item) { item != trimmed })
     let history = [trimmed, ..deduped]
@@ -73,7 +73,11 @@ fn push_cowork_input_history(model : Model, content : String) -> Model {
     for index in 0..<count {
       limited.push(history[index])
     }
-    { ..model, cowork_input_history: limited, cowork_input_history_index: None }
+    {
+      ..model,
+      cowork_input_history: limited,
+      cowork_input_history_index: None,
+    }
   }
 }
 
@@ -163,11 +167,47 @@ fn upsert_local_uploads(
 
 ///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
+  if cowork_starts_action(msg) && model.cowork_action_loading {
+    return (@rabbita.none, model)
+  }
+  if cowork_starts_action(msg) &&
+    !(msg is CreateCoworkSession) &&
+    !cowork_ready_to_send(model) {
+    return (
+      @rabbita.none,
+      {
+        ..model,
+        cowork_notice: Some(
+          "Start a conversation or wait for the selected work thread to load, then send your retained request.",
+        ),
+      },
+    )
+  }
+  let (cmd, next_model) = update_message(dispatch, msg, model)
+  let next_model = cowork_request_ownership(model, next_model, msg)
+  // Invalidate the viewer immediately on navigation, before queued loads run.
+  // Same-context URL changes (for example focus/panel sync) preserve it.
+  (
+    cmd,
+    if artifact_context_changed(model, next_model) {
+      close_artifact_viewer(next_model)
+    } else {
+      next_model
+    },
+  )
+}
+
+///|
+fn update_message(
+  dispatch : Dispatch[Msg],
+  msg : Msg,
+  model : Model,
+) -> (Cmd, Model) {
   match msg {
     LoadRuns =>
       (
         fetch_runs(dispatch, model.gateway_base),
-        { ..model, runs_loading: true, runs_error: None },
+        { ..model, runs_loading: true, runs_error: None, },
       )
     LoadAcp =>
       (
@@ -176,15 +216,15 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           fetch_acp_timeline(dispatch, model.gateway_base),
           start_acp_stream_cmd(dispatch, model.gateway_base),
         ]),
-        { ..model, acp_loading: true, acp_error: None },
+        { ..model, acp_loading: true, acp_error: None, },
       )
     LoadCoworkSessions =>
       (
         fetch_cowork_sessions(dispatch, model.gateway_base),
-        { ..model, cowork_sessions_loading: true, cowork_sessions_error: None },
+        { ..model, cowork_sessions_loading: true, cowork_sessions_error: None, },
       )
     RunsLoaded(Ok(runs)) => {
-      let next_model = { ..model, runs, runs_loading: false, runs_error: None }
+      let next_model = { ..model, runs, runs_loading: false, runs_error: None, }
       match model.route {
         Run(run_id) =>
           if model.selected_run_id == Some(run_id) &&
@@ -201,6 +241,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 selected_run_id: Some(run_id),
                 detail_loading: true,
                 detail_error: None,
+                artifact_pending_id: None,
                 artifact_modal_loading: false,
                 artifact_modal_error: None,
                 artifact_modal: None,
@@ -212,7 +253,10 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
     }
     RunsLoaded(Err(error)) =>
-      (@rabbita.none, { ..model, runs_loading: false, runs_error: Some(error) })
+      (
+        @rabbita.none,
+        { ..model, runs_loading: false, runs_error: Some(error), },
+      )
     SelectRun(run_id) =>
       (
         @nav.push_url(
@@ -239,6 +283,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
+          artifact_pending_id: None,
           artifact_modal_loading: false,
           artifact_modal_error: None,
           artifact_modal: None,
@@ -266,6 +311,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
+          artifact_pending_id: None,
           artifact_modal_loading: false,
           artifact_modal_error: None,
           artifact_modal: None,
@@ -291,10 +337,13 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         cowork_sessions_loading: false,
         cowork_sessions_error: None,
       }
+      if model.cowork_action_loading {
+        return (@rabbita.none, next_model)
+      }
       match (model.route, model.selected_cowork_session_key) {
         (Cowork, Some(session_key)) =>
           (
-            fetch_cowork_session(dispatch, model.gateway_base, session_key),
+            dispatch(LoadCoworkSession(session_key)),
             {
               ..next_model,
               cowork_detail_loading: true,
@@ -302,22 +351,24 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             },
           )
         (Cowork, None) =>
-          match sessions {
-            [first, ..] =>
-              (
-                fetch_cowork_session(
-                  dispatch,
-                  model.gateway_base,
-                  first.session_key,
-                ),
-                {
-                  ..next_model,
-                  selected_cowork_session_key: Some(first.session_key),
-                  cowork_detail_loading: true,
-                  cowork_detail_error: None,
-                },
-              )
-            _ => (@rabbita.none, next_model)
+          if !cowork_composer_content(model, model.cowork_composer)
+            .trim()
+            .is_empty() {
+            (@rabbita.none, next_model)
+          } else {
+            match sessions {
+              [first, ..] =>
+                (
+                  dispatch(LoadCoworkSession(first.session_key)),
+                  {
+                    ..next_model,
+                    selected_cowork_session_key: Some(first.session_key),
+                    cowork_detail_loading: true,
+                    cowork_detail_error: None,
+                  },
+                )
+              _ => (@rabbita.none, next_model)
+            }
           }
         _ => (@rabbita.none, next_model)
       }
@@ -333,30 +384,40 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     CreateCoworkSession =>
       (
-        create_cowork_session(dispatch, model.gateway_base),
+        create_cowork_session(
+          dispatch,
+          model.gateway_base,
+          model.cowork_request_generation + 1,
+        ),
         {
           ..model,
           cowork_action_loading: true,
           cowork_action_error: None,
-          cowork_local_uploads: [],
-          cowork_context_chips: [],
+          cowork_create_pending: true,
+          cowork_notice: Some(
+            "Starting a conversation. Your request and attachments will stay here; send them when it is ready.",
+          ),
         },
       )
-    CoworkSessionCreated(Ok(session)) => {
+    CoworkSessionCreated(generation, Ok(session)) => {
+      if !model.cowork_create_pending ||
+        generation != model.cowork_request_generation {
+        return (@rabbita.none, model)
+      }
       let next_model = sync_cowork_session_fields(
         {
           ..model,
           cowork_action_loading: false,
           cowork_action_error: None,
+          cowork_create_pending: false,
+          cowork_detail_generation: model.cowork_detail_generation + 1,
           cowork_detail: Some(session),
           selected_cowork_session_key: Some(session.session.session_key),
           cowork_detail_loading: false,
           cowork_detail_error: None,
-          cowork_composer: "",
-          cowork_reply_preview: None,
-          cowork_local_uploads: [],
-          cowork_context_chips: [],
-          cowork_notice: Some("Conversation created."),
+          cowork_notice: Some(
+            "Conversation ready. Your draft and attachments are here. Choose Send request when you are ready.",
+          ),
         },
         session,
       )
@@ -380,19 +441,33 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         next_model,
       )
     }
-    CoworkSessionCreated(Err(error)) =>
+    CoworkSessionCreated(generation, Err(error)) => {
+      if !model.cowork_create_pending ||
+        generation != model.cowork_request_generation {
+        return (@rabbita.none, model)
+      }
       (
         @rabbita.none,
         {
           ..model,
           cowork_action_loading: false,
           cowork_action_error: Some(error),
+          cowork_create_pending: false,
+          cowork_notice: Some(
+            "Conversation creation was not confirmed. Your draft is retained. Refresh work threads before trying again.",
+          ),
         },
       )
+    }
     SelectCoworkSession(session_key) => {
+      if model.selected_cowork_session_key == Some(session_key) {
+        return update_message(dispatch, LoadCoworkSession(session_key), model)
+      }
       let next_model = {
         ..model,
         selected_cowork_session_key: Some(session_key),
+        cowork_detail: None,
+        cowork_detail_generation: model.cowork_detail_generation + 1,
         cowork_detail_loading: true,
         cowork_detail_error: None,
         cowork_linked_snapshot: None,
@@ -411,7 +486,12 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               panel=model.cowork_panel,
             ),
           ),
-          fetch_cowork_session(dispatch, model.gateway_base, session_key),
+          fetch_cowork_session(
+            dispatch,
+            model.gateway_base,
+            session_key,
+            next_model.cowork_detail_generation,
+          ),
           fetch_cowork_workspace(dispatch, model.gateway_base),
           schedule_cowork_drop_poll(dispatch),
         ]),
@@ -419,29 +499,66 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     }
     LoadCoworkSession(session_key) =>
-      (
-        batch([
-          fetch_cowork_session(dispatch, model.gateway_base, session_key),
-          fetch_cowork_workspace(dispatch, model.gateway_base),
-          schedule_cowork_drop_poll(dispatch),
-        ]),
-        {
-          ..model,
-          selected_cowork_session_key: Some(session_key),
-          cowork_detail_loading: true,
-          cowork_detail_error: None,
-          cowork_linked_snapshot: None,
-          cowork_linked_snapshot_loading: false,
-          cowork_linked_snapshot_error: None,
-          cowork_workspace_loading: true,
-          cowork_workspace_error: None,
-          cowork_local_uploads: [],
-          cowork_context_chips: [],
-        },
-      )
-    CoworkSessionLoaded(session_key, Ok(session)) =>
-      if model.selected_cowork_session_key == Some(session_key) ||
+      if model.cowork_action_loading &&
+        model.selected_cowork_session_key == Some(session_key) {
+        (@rabbita.none, model)
+      } else {
+        (
+          batch([
+            fetch_cowork_session(
+              dispatch,
+              model.gateway_base,
+              session_key,
+              model.cowork_detail_generation + 1,
+            ),
+            fetch_cowork_workspace(dispatch, model.gateway_base),
+            schedule_cowork_drop_poll(dispatch),
+          ]),
+          {
+            ..model,
+            selected_cowork_session_key: Some(session_key),
+            cowork_detail: None,
+            cowork_detail_generation: model.cowork_detail_generation + 1,
+            cowork_detail_loading: true,
+            cowork_detail_error: None,
+            cowork_linked_snapshot: None,
+            cowork_linked_snapshot_loading: false,
+            cowork_linked_snapshot_error: None,
+            cowork_workspace_loading: true,
+            cowork_workspace_error: None,
+            cowork_local_uploads: if model.selected_cowork_session_key ==
+              Some(session_key) {
+              model.cowork_local_uploads
+            } else {
+              []
+            },
+            cowork_context_chips: if model.selected_cowork_session_key ==
+              Some(session_key) {
+              model.cowork_context_chips
+            } else {
+              []
+            },
+          },
+        )
+      }
+    CoworkSessionLoaded(session_key, generation, Ok(session)) =>
+      if model.selected_cowork_session_key == Some(session_key) &&
+        generation == model.cowork_detail_generation &&
+        !model.cowork_action_loading &&
         model.route is Cowork {
+        if session.session.session_key != session_key {
+          return (
+            @rabbita.none,
+            {
+              ..model,
+              cowork_detail_loading: false,
+              cowork_detail_generation: model.cowork_detail_generation + 1,
+              cowork_detail_error: Some(
+                "The returned conversation does not match the selected thread. Select it again to retry.",
+              ),
+            },
+          )
+        }
         (
           match session.linked_run {
             Some(run) =>
@@ -452,6 +569,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             {
               ..model,
               cowork_detail: Some(session),
+              cowork_detail_generation: model.cowork_detail_generation + 1,
               cowork_detail_loading: false,
               cowork_detail_error: None,
               cowork_linked_snapshot_loading: session.linked_run is Some(_),
@@ -463,15 +581,22 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       } else {
         (@rabbita.none, model)
       }
-    CoworkSessionLoaded(_, Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          cowork_detail_loading: false,
-          cowork_detail_error: Some(error),
-        },
-      )
+    CoworkSessionLoaded(session_key, generation, Err(error)) =>
+      if model.selected_cowork_session_key == Some(session_key) &&
+        generation == model.cowork_detail_generation &&
+        !model.cowork_action_loading &&
+        model.route is Cowork {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_detail_loading: false,
+            cowork_detail_error: Some(error),
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
     CoworkLinkedSnapshotLoaded(run_id, Ok(snapshot)) =>
       match model.cowork_detail {
         Some(detail) =>
@@ -521,18 +646,18 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     SetCoworkComposer(value) =>
       (
         @rabbita.none,
-        { ..model, cowork_composer: value, cowork_input_history_index: None },
+        { ..model, cowork_composer: value, cowork_input_history_index: None, },
       )
     SetCoworkTitleOverride(value) =>
-      (@rabbita.none, { ..model, cowork_title_override: value })
+      (@rabbita.none, { ..model, cowork_title_override: value, })
     SetCoworkModelOverride(value) =>
-      (@rabbita.none, { ..model, cowork_model_override: value })
+      (@rabbita.none, { ..model, cowork_model_override: value, })
     SetCoworkProviderOverride(value) =>
-      (@rabbita.none, { ..model, cowork_provider_override: value })
+      (@rabbita.none, { ..model, cowork_provider_override: value, })
     SetCoworkCwdOverride(value) =>
-      (@rabbita.none, { ..model, cowork_cwd_override: value })
+      (@rabbita.none, { ..model, cowork_cwd_override: value, })
     SetCoworkSessionQuery(value) =>
-      (@rabbita.none, { ..model, cowork_session_query: value })
+      (@rabbita.none, { ..model, cowork_session_query: value, })
     TogglePinnedCoworkSession(session_key) =>
       if contains_id(model.cowork_pinned_session_keys, session_key) {
         (
@@ -566,6 +691,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/config",
+              model,
+              consumes_draft=false,
               body={
                 "title": model.cowork_title_override,
                 "cwd": model.cowork_cwd_override,
@@ -585,7 +712,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     OpenCoworkFilePicker =>
       (
         pick_cowork_local_files(dispatch),
-        { ..model, cowork_notice: Some("Opening file picker...") },
+        { ..model, cowork_notice: Some("Opening file picker..."), },
       )
     PollCoworkDroppedFiles =>
       if model.route is Cowork {
@@ -619,7 +746,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     CoworkFilesPicked(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, cowork_notice: Some("File import failed: \{error}") },
+        { ..model, cowork_notice: Some("File import failed: \{error}"), },
       )
     SendCoworkMessage =>
       match model.selected_cowork_session_key {
@@ -630,6 +757,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/messages",
+              model,
               body={
                 "content": content,
                 "cwd": next_model.cowork_cwd_override,
@@ -655,6 +783,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/plan",
+              model,
               body={
                 "request_text": content,
                 "cwd": next_model.cowork_cwd_override,
@@ -679,6 +808,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/preview",
+              model,
               body={
                 "guidance": content,
                 "cwd": next_model.cowork_cwd_override,
@@ -703,6 +833,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/promote",
+              model,
               body={
                 "guidance": content,
                 "cwd": next_model.cowork_cwd_override,
@@ -725,6 +856,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/proposals/\{proposal_id}/confirm",
+              model,
+              consumes_draft=false,
             ),
             {
               ..model,
@@ -744,6 +877,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/runs/\{run_id}/resume",
+              model,
               body={ "content": content },
             ),
             {
@@ -761,7 +895,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         .trim()
         .to_string()
       if content.is_blank() {
-        (@rabbita.none, { ..model, cowork_notice: Some("Composer is empty.") })
+        (@rabbita.none, { ..model, cowork_notice: Some("Composer is empty."), })
       } else {
         let draft = QueuedCoworkDraft::{
           id: "queue:\{model.cowork_draft_queue.length() + 1}:\{content.length()}",
@@ -822,7 +956,13 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 content,
               )
               (
-                post_cowork_action(dispatch, url, body~),
+                post_cowork_action(
+                  dispatch,
+                  url,
+                  model,
+                  body~,
+                  consumes_draft=false,
+                ),
                 {
                   ..next_model,
                   cowork_action_loading: true,
@@ -839,7 +979,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       match next_queued_cowork_draft(model) {
         Some(draft) => update(dispatch, RunQueuedCoworkDraft(draft.id), model)
         None =>
-          (@rabbita.none, { ..model, cowork_notice: Some("Queue is empty.") })
+          (@rabbita.none, { ..model, cowork_notice: Some("Queue is empty."), })
       }
     RemoveQueuedCoworkDraft(draft_id) =>
       (
@@ -889,7 +1029,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         None => (@rabbita.none, model)
       }
     SetQueuedCoworkDraftContent(content) =>
-      (@rabbita.none, { ..model, cowork_queue_editing_content: content })
+      (@rabbita.none, { ..model, cowork_queue_editing_content: content, })
     SaveQueuedCoworkDraftEdit =>
       match model.cowork_queue_editing_id {
         Some(draft_id) => {
@@ -897,7 +1037,10 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           if trimmed.is_blank() {
             (
               @rabbita.none,
-              { ..model, cowork_notice: Some("Queued draft content is empty.") },
+              {
+                ..model,
+                cowork_notice: Some("Queued draft content is empty."),
+              },
             )
           } else {
             (
@@ -906,7 +1049,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 ..model,
                 cowork_draft_queue: model.cowork_draft_queue.map(fn(draft) {
                   if draft.id == draft_id {
-                    { ..draft, content: trimmed }
+                    { ..draft, content: trimmed, }
                   } else {
                     draft
                   }
@@ -954,16 +1097,20 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     CopyCoworkMessage(content) =>
       (
         copy_cowork_text(dispatch, content),
-        { ..model, cowork_notice: Some("Copying message...") },
+        { ..model, cowork_notice: Some("Copying message..."), },
       )
     CoworkCopyFinished(Ok(status)) =>
       (
         @rabbita.none,
-        { ..model, cowork_notice: Some("Message copied: \{status}") },
+        { ..model, cowork_notice: Some("Message copied: \{status}"), },
       )
     CoworkCopyFinished(Err(error)) =>
-      (@rabbita.none, { ..model, cowork_notice: Some("Copy failed: \{error}") })
-    ClearCoworkReply => (@rabbita.none, { ..model, cowork_reply_preview: None })
+      (
+        @rabbita.none,
+        { ..model, cowork_notice: Some("Copy failed: \{error}"), },
+      )
+    ClearCoworkReply =>
+      (@rabbita.none, { ..model, cowork_reply_preview: None, })
     RemoveCoworkLocalUpload(id) =>
       (
         @rabbita.none,
@@ -984,7 +1131,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             ..model,
             cowork_context_chips: [
               ..model.cowork_context_chips,
-              CoworkContextChip::{ id, label, content },
+              CoworkContextChip::{ id, label, content, },
             ],
             cowork_notice: Some("Attached \{label} to composer context."),
           },
@@ -1028,7 +1175,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           if current <= 0 {
             (
               @rabbita.none,
-              { ..model, cowork_input_history_index: None, cowork_composer: "" },
+              {
+                ..model,
+                cowork_input_history_index: None,
+                cowork_composer: "",
+              },
             )
           } else {
             let index = current - 1
@@ -1043,7 +1194,53 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           }
         None => (@rabbita.none, model)
       }
-    CoworkActionFinished(Ok(session)) => {
+    CoworkActionFinished(
+      generation,
+      session_key,
+      draft_revision,
+      consumes_draft,
+      Ok(session)
+    ) => {
+      if !cowork_has_pending_request(
+          model, generation, session_key, draft_revision, consumes_draft,
+        ) {
+        return (@rabbita.none, model)
+      }
+      let current = cowork_action_is_current(model, generation, session_key)
+      if session.session.session_key != session_key {
+        let model = cowork_settle_request(
+          model, generation, session_key, draft_revision, consumes_draft, false,
+        )
+        if !current {
+          return (@rabbita.none, model)
+        }
+        return (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_action_loading: false,
+            cowork_action_error: Some(
+              "The returned conversation does not match this request. Refresh the work thread; your draft is retained.",
+            ),
+          },
+        )
+      }
+      let model = cowork_settle_request(
+        model, generation, session_key, draft_revision, consumes_draft, true,
+      )
+      if !current {
+        return (
+          if model.selected_cowork_session_key == Some(session_key) &&
+            model.route is Cowork {
+            dispatch(LoadCoworkSession(session_key))
+          } else {
+            @rabbita.none
+          },
+          model,
+        )
+      }
+      let clear_draft = consumes_draft &&
+        draft_revision == model.cowork_draft_revision
       let next_model = sync_cowork_session_fields(
         {
           ..model,
@@ -1053,10 +1250,27 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_detail_loading: false,
           cowork_detail_error: None,
           cowork_linked_snapshot_loading: session.linked_run is Some(_),
-          cowork_composer: "",
-          cowork_reply_preview: None,
-          cowork_local_uploads: [],
-          cowork_context_chips: [],
+          cowork_detail_generation: model.cowork_detail_generation + 1,
+          cowork_composer: if clear_draft {
+            ""
+          } else {
+            model.cowork_composer
+          },
+          cowork_reply_preview: if clear_draft {
+            None
+          } else {
+            model.cowork_reply_preview
+          },
+          cowork_local_uploads: if clear_draft {
+            []
+          } else {
+            model.cowork_local_uploads
+          },
+          cowork_context_chips: if clear_draft {
+            []
+          } else {
+            model.cowork_context_chips
+          },
           cowork_notice: Some("Conversation updated."),
         },
         session,
@@ -1080,18 +1294,38 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         next_model,
       )
     }
-    CoworkActionFinished(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          cowork_action_loading: false,
-          cowork_action_error: Some(error),
-          cowork_notice: Some(error),
-        },
+    CoworkActionFinished(
+      generation,
+      session_key,
+      draft_revision,
+      consumes_draft,
+      Err(error)
+    ) => {
+      if !cowork_has_pending_request(
+          model, generation, session_key, draft_revision, consumes_draft,
+        ) {
+        return (@rabbita.none, model)
+      }
+      let current = cowork_action_is_current(model, generation, session_key)
+      let model = cowork_settle_request(
+        model, generation, session_key, draft_revision, consumes_draft, false,
       )
+      if current {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_action_loading: false,
+            cowork_action_error: Some(error),
+            cowork_notice: Some(error),
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    }
     SelectCoworkPanel(panel) => {
-      let next_model = { ..model, cowork_panel: panel }
+      let next_model = { ..model, cowork_panel: panel, }
       (sync_url_cmd(next_model), next_model)
     }
     PollAcp =>
@@ -1131,7 +1365,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           fn(node) { node.id },
         ),
         selected_acp_node_id: resolved_acp_node_id(
-          { ..model, acp_snapshot: Some(snapshot) },
+          { ..model, acp_snapshot: Some(snapshot), },
           snapshot,
         ),
       }
@@ -1145,7 +1379,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     }
     AcpSnapshotLoaded(Err(error)) =>
-      (@rabbita.none, { ..model, acp_loading: false, acp_error: Some(error) })
+      (@rabbita.none, { ..model, acp_loading: false, acp_error: Some(error), })
     AcpEventsLoaded(Ok(timeline)) =>
       (
         @rabbita.none,
@@ -1160,7 +1394,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         },
       )
     AcpEventsLoaded(Err(error)) =>
-      (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false })
+      (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false, })
     AcpStreamDrained(Ok((entries, closed))) => {
       let merged : Array[AcpUiTimelineEntry] = model.acp_timeline.copy()
       let fresh : Array[String] = []
@@ -1177,12 +1411,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_cmd = if closed {
         fetch_acp_snapshot(dispatch, model.gateway_base)
       } else if needs_snapshot {
-        batch([
-          fetch_acp_snapshot(dispatch, model.gateway_base),
-          @rabbita.delay(dispatch(PumpAcpStream), 500),
-        ])
+        fetch_acp_snapshot(dispatch, model.gateway_base)
       } else {
-        @rabbita.delay(dispatch(PumpAcpStream), 500)
+        @rabbita.none
       }
       (
         next_cmd,
@@ -1199,11 +1430,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     }
     AcpStreamDrained(Err(error)) =>
       (
-        @rabbita.delay(dispatch(PumpAcpStream), 1000),
-        { ..model, acp_error: Some(error) },
+        fetch_acp_snapshot(dispatch, model.gateway_base),
+        { ..model, acp_error: Some(error), },
       )
     SetAcpRunMessage(message) =>
-      (@rabbita.none, { ..model, acp_run_message: message })
+      (@rabbita.none, { ..model, acp_run_message: message, })
     AttachAcpTarget(target_id) =>
       (
         post_action(dispatch, "\{model.gateway_base}/v1/acp/sessions", body={
@@ -1254,7 +1485,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             ),
           },
         ),
-        { ..model, acp_action_notice: Some("Starting remote ACP run...") },
+        { ..model, acp_action_notice: Some("Starting remote ACP run..."), },
       )
     CancelAcpRun(run_id) =>
       (
@@ -1262,7 +1493,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           dispatch,
           "\{model.gateway_base}/v1/acp/runs/\{run_id}/cancel",
         ),
-        { ..model, acp_action_notice: Some("Cancelling ACP run \{run_id}...") },
+        { ..model, acp_action_notice: Some("Cancelling ACP run \{run_id}..."), },
       )
     AcpActionFinished(Ok(status)) =>
       (
@@ -1315,7 +1546,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           } else {
             @rabbita.none
           },
-          { ..next_model },
+          { ..next_model, },
         )
       } else {
         (@rabbita.none, model)
@@ -1342,17 +1573,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (@rabbita.none, model)
       }
     OpenArtifact(artifact_id) =>
-      (
-        fetch_artifact(dispatch, model.gateway_base, artifact_id),
-        {
-          ..model,
-          artifact_modal_loading: true,
-          artifact_modal_error: None,
-          artifact_editor_draft: "",
-        },
-      )
-    ArtifactLoaded(artifact_id, Ok(artifact)) =>
-      if artifact.artifact.id == artifact_id {
+      open_artifact_viewer(dispatch, model, artifact_id)
+    ArtifactLoaded(artifact_id, generation, Ok(artifact)) =>
+      if !artifact_request_is_current(model, artifact_id, generation) {
+        (@rabbita.none, model)
+      } else if artifact.artifact.id == artifact_id {
         let content = artifact.content.unwrap_or(
           "Artifact content is not available as text.",
         )
@@ -1360,6 +1585,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           @rabbita.none,
           {
             ..model,
+            artifact_pending_id: None,
             artifact_modal_loading: false,
             artifact_modal_error: None,
             artifact_modal: Some(artifact),
@@ -1367,30 +1593,35 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           },
         )
       } else {
-        (@rabbita.none, { ..model, artifact_modal_loading: false })
+        (
+          @rabbita.none,
+          {
+            ..model,
+            artifact_pending_id: None,
+            artifact_modal_loading: false,
+            artifact_modal_error: Some(
+              "The loaded artifact did not match the selected result. Close and reopen it to retry.",
+            ),
+          },
+        )
       }
-    ArtifactLoaded(_, Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          artifact_modal_loading: false,
-          artifact_modal_error: Some(error),
-        },
-      )
+    ArtifactLoaded(artifact_id, generation, Err(error)) =>
+      if artifact_request_is_current(model, artifact_id, generation) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            artifact_pending_id: None,
+            artifact_modal_loading: false,
+            artifact_modal_error: Some(error),
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
     SetArtifactEditorDraft(value) =>
-      (@rabbita.none, { ..model, artifact_editor_draft: value })
-    CloseArtifactModal =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          artifact_modal_loading: false,
-          artifact_modal_error: None,
-          artifact_modal: None,
-          artifact_editor_draft: "",
-        },
-      )
+      (@rabbita.none, { ..model, artifact_editor_draft: value, })
+    CloseArtifactModal => (@rabbita.none, close_artifact_viewer(model))
     EventsLoaded(run_id, Ok(timeline)) =>
       if model.selected_run_id == Some(run_id) {
         (
@@ -1410,7 +1641,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       }
     EventsLoaded(run_id, Err(error)) =>
       if model.selected_run_id == Some(run_id) && model.detail_error is None {
-        (@rabbita.none, { ..model, detail_error: Some(error) })
+        (@rabbita.none, { ..model, detail_error: Some(error), })
       } else {
         (@rabbita.none, model)
       }
@@ -1434,12 +1665,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             fetch_runs(dispatch, model.gateway_base),
           ])
         } else if needs_snapshot {
-          batch([
-            fetch_snapshot(dispatch, model.gateway_base, run_id),
-            @rabbita.delay(dispatch(PumpStream(run_id)), 500),
-          ])
+          fetch_snapshot(dispatch, model.gateway_base, run_id)
         } else {
-          @rabbita.delay(dispatch(PumpStream(run_id)), 500)
+          @rabbita.none
         }
         (
           next_cmd,
@@ -1459,8 +1687,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     StreamDrained(run_id, Err(error)) =>
       if model.selected_run_id == Some(run_id) {
         (
-          @rabbita.delay(dispatch(PumpStream(run_id)), 1000),
-          { ..model, detail_error: Some(error) },
+          batch([
+            fetch_snapshot(dispatch, model.gateway_base, run_id),
+            fetch_runs(dispatch, model.gateway_base),
+          ]),
+          { ..model, detail_error: Some(error), },
         )
       } else {
         (@rabbita.none, model)
@@ -1516,19 +1747,19 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         },
       )
     SelectRunsStatus(status) => {
-      let next_model = { ..model, runs_status_filter: status, runs_page: 0 }
+      let next_model = { ..model, runs_status_filter: status, runs_page: 0, }
       (sync_url_cmd(next_model), next_model)
     }
     SetRunsQuery(query) => {
-      let next_model = { ..model, runs_query: query, runs_page: 0 }
+      let next_model = { ..model, runs_query: query, runs_page: 0, }
       (sync_url_cmd(next_model), next_model)
     }
     SelectRunsSort(sort) => {
-      let next_model = { ..model, runs_sort: sort, runs_page: 0 }
+      let next_model = { ..model, runs_sort: sort, runs_page: 0, }
       (sync_url_cmd(next_model), next_model)
     }
     SelectRunsPage(page) => {
-      let next_model = { ..model, runs_page: page }
+      let next_model = { ..model, runs_page: page, }
       (sync_url_cmd(next_model), next_model)
     }
     CanvasZoomIn =>
@@ -1555,11 +1786,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           },
         },
       )
-    CanvasZoomReset => (@rabbita.none, { ..model, canvas_zoom: 100 })
+    CanvasZoomReset => (@rabbita.none, { ..model, canvas_zoom: 100, })
     ToggleCanvasFullscreen =>
-      (@rabbita.none, { ..model, canvas_fullscreen: !model.canvas_fullscreen })
+      (@rabbita.none, { ..model, canvas_fullscreen: !model.canvas_fullscreen, })
     SelectMixedHandoff(key) => {
-      let next_model = { ..model, selected_mixed_handoff_key: key }
+      let next_model = { ..model, selected_mixed_handoff_key: key, }
       (sync_url_cmd(next_model), next_model)
     }
     ExportMixedLineage(key) =>
@@ -1630,7 +1861,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           let (collapsed_node_ids, expanded_node_ids) = toggle_manual_tree_state(
             model, snapshot, node_id,
           )
-          (@rabbita.none, { ..model, collapsed_node_ids, expanded_node_ids })
+          (@rabbita.none, { ..model, collapsed_node_ids, expanded_node_ids, })
         }
         None => (@rabbita.none, model)
       }
@@ -1695,26 +1926,23 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 timeline_scope_node_id: None,
                 timeline_scope_branch_only: false,
                 right_panel: panel_for_node(model, node),
-                artifact_modal_loading: should_open_report,
-                artifact_modal_error: if should_open_report {
-                  None
-                } else {
-                  model.artifact_modal_error
-                },
               }
-              let next_cmd = match maybe_artifact {
-                Some(artifact) if should_open_report =>
-                  batch([
-                    sync_url_cmd(next_model),
-                    fetch_artifact(dispatch, model.gateway_base, artifact.id),
-                  ])
-                _ => sync_url_cmd(next_model)
+              match maybe_artifact {
+                Some(artifact) if should_open_report => {
+                  let (cmd, next_model) = open_artifact_viewer(
+                    dispatch,
+                    next_model,
+                    artifact.id,
+                  )
+                  (batch([sync_url_cmd(next_model), cmd]), next_model)
+                }
+                _ => (sync_url_cmd(next_model), next_model)
               }
-              (next_cmd, next_model)
             }
-            None => (@rabbita.none, { ..model, focused_node_id: Some(node_id) })
+            None =>
+              (@rabbita.none, { ..model, focused_node_id: Some(node_id), })
           }
-        None => (@rabbita.none, { ..model, focused_node_id: Some(node_id) })
+        None => (@rabbita.none, { ..model, focused_node_id: Some(node_id), })
       }
     FocusTimeline(entry_id) =>
       match model.snapshot {
@@ -1737,7 +1965,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                     None =>
                       return (
                         @rabbita.none,
-                        { ..model, focused_node_id: Some(node_id) },
+                        { ..model, focused_node_id: Some(node_id), },
                       )
                   }
                 None => return (@rabbita.none, model)
@@ -1773,12 +2001,12 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     CopyAcpOutput(_label, text) =>
       (
         copy_to_clipboard(dispatch, text),
-        { ..model, acp_action_notice: Some("Copying ACP output...") },
+        { ..model, acp_action_notice: Some("Copying ACP output..."), },
       )
     AcpCopyFinished(Ok(status)) =>
       (
         @rabbita.none,
-        { ..model, acp_action_notice: Some("ACP output copied: \{status}") },
+        { ..model, acp_action_notice: Some("ACP output copied: \{status}"), },
       )
     AcpCopyFinished(Err(error)) =>
       (
@@ -1920,11 +2148,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         },
       )
     SelectPanel(panel) => {
-      let next_model = { ..model, right_panel: panel }
+      let next_model = { ..model, right_panel: panel, }
       (sync_url_cmd(next_model), next_model)
     }
     SelectAcpNode(node_id) => {
-      let next_model = { ..model, selected_acp_node_id: Some(node_id) }
+      let next_model = { ..model, selected_acp_node_id: Some(node_id), }
       (sync_url_cmd(next_model), next_model)
     }
     UrlRequest(request) =>
@@ -1938,7 +2166,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let runs_query = query_value(url, "q").unwrap_or("")
       let runs_sort = run_sort_from_query(query_value(url, "sort"))
       let runs_page = match query_value(url, "page") {
-        Some(page) => @strconv.parse_int(page) catch { _ => 0 }
+        Some(page) => @string.parse_int(page) catch { _ => 0 }
         None => 0
       }
       let focused_node_id = query_value(url, "focus")
@@ -2124,6 +2352,10 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             },
           )
         Cowork => {
+          if model.route is Cowork &&
+            model.selected_cowork_session_key == selected_cowork_session_key {
+            return (@rabbita.none, { ..model, cowork_panel, })
+          }
           let next_model = {
             ..model,
             route,

@@ -185,6 +185,19 @@ pub async fn ArtifactStore::write_bytes(
   artifact_id : String,
   now_ms : Int,
 ) -> ArtifactRecord {
+  self.store.with_store_lock(async fn() {
+    self.store.reload_artifacts_unlocked()
+    self.write_bytes_unlocked(request, artifact_id, now_ms)
+  })
+}
+
+///|
+async fn ArtifactStore::write_bytes_unlocked(
+  self : ArtifactStore,
+  request : ArtifactBytesWriteRequest,
+  artifact_id : String,
+  now_ms : Int,
+) -> ArtifactRecord {
   let existing = self.existing_mutable_bytes_record(request)
   let id = match existing {
     Some(record) => record.id
@@ -198,14 +211,36 @@ pub async fn ArtifactStore::write_bytes(
     ArtifactStore::default_file_name(request.content_type),
   )
   let path = self.store.artifact_content_file(id, file_name~)
+  if @fsx.exists(self.store.artifact_deleted_file(id)) {
+    fail("Artifact \{id} was deleted; use a new artifact identity")
+  }
+  if existing is None && self.store.get_artifact(id) is Some(record) {
+    // A lost cache acknowledgement may cause the caller to repeat persistence.
+    // Identical replay recovers the original checkpoint; changed content must
+    // not overwrite an already confirmed append-only revision.
+    if record.run_id == request.run_id &&
+      record.job_id == request.job_id &&
+      record.artifact_type == request.artifact_type &&
+      record.logical_key == request.logical_key &&
+      record.content_type == request.content_type &&
+      record.metadata == request.metadata &&
+      record.scope == request.scope &&
+      record.path == path &&
+      @fsx.exists(path) &&
+      @fs.read_file(path).binary() == request.content {
+      self.store.save_artifacts_index_unlocked()
+      return record
+    }
+    fail(
+      "Artifact \{id} already records different output; use a new artifact identity",
+    )
+  }
   @fsx.make_directory(
     self.store.artifact_dir(id),
     recursive=true,
     exists_ok=true,
-  ) catch {
-    _ => ()
-  }
-  @fsx.write_bytes_to_file(path, request.content)
+  )
+  write_artifact_checkpoint(path, request.content)
   let record = ArtifactRecord::{
     id,
     run_id: request.run_id,
@@ -221,7 +256,7 @@ pub async fn ArtifactStore::write_bytes(
     archived_at: None,
     scope: request.scope,
   }
-  self.store.save_artifact(record)
+  self.store.save_artifact_unlocked(record)
   record
 }
 
@@ -231,17 +266,20 @@ pub async fn ArtifactStore::archive(
   artifact_id : String,
   now_ms : Int,
 ) -> ArtifactRecord? {
-  let artifact = match self.store.get_artifact(artifact_id) {
-    Some(artifact) => artifact
-    None => return None
-  }
-  let updated = ArtifactRecord::{
-    ..artifact,
-    status: Archived,
-    archived_at: Some(now_ms),
-  }
-  self.store.save_artifact(updated)
-  Some(updated)
+  self.store.with_store_lock(async fn() {
+    self.store.reload_artifacts_unlocked()
+    let artifact = match self.store.get_artifact(artifact_id) {
+      Some(artifact) => artifact
+      None => return None
+    }
+    let updated = ArtifactRecord::{
+      ..artifact,
+      status: Archived,
+      archived_at: Some(now_ms),
+    }
+    self.store.save_artifact_unlocked(updated)
+    Some(updated)
+  })
 }
 
 ///|

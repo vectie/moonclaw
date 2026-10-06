@@ -230,7 +230,12 @@ async fn Daemon::ensure_supervisor_task(
       )
   }
   let model_selector = supervisor_runtime_model_selector(model_name)
-  let model = match self.models.get_model(name=model_selector) {
+  let model_workspace = supervisor_model_workspace(model_selector, self.home)
+  let resolved = match model_workspace {
+    Some(root) => @model.load(home=self.home, cwd=root, name=model_selector)
+    None => self.models.get_model(name=model_selector)
+  }
+  let model = match resolved {
     Some(value) => value
     None =>
       raise supervisor_http_failure(
@@ -271,6 +276,7 @@ async fn Daemon::ensure_supervisor_task(
               group~,
               name?=stopped.name,
               model~,
+              model_workspace?,
               cwd=stopped.cwd,
               resume_id=stopped.id,
               broadcast=stopped.broadcast,
@@ -305,7 +311,7 @@ async fn Daemon::ensure_supervisor_task(
       (task, false)
     }
     None => {
-      let task = self.spawn_task(group~, name~, model~, cwd~)
+      let task = self.spawn_task(group~, name~, model~, model_workspace?, cwd~)
       guard task.model == model.name else {
         raise supervisor_http_failure(
           "supervisor did not register the immutable model",

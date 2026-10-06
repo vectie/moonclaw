@@ -90,6 +90,7 @@ pub fn Conversation::updated(self : Conversation) -> @clock.Timestamp {
 pub fn Conversation::messages(
   self : Conversation,
   include_system? : Bool = true,
+  user_message_overrides? : Map[@uuid.Uuid, String] = {},
 ) -> Array[@ai.Message] {
   // First pass: collect pruned event IDs
   let pruned_ids : Set[@uuid.Uuid] = Set([])
@@ -111,7 +112,11 @@ pub fn Conversation::messages(
       SystemPromptSet(None) if include_system && !pruned_ids.contains(e.id) =>
         sys_msg = None
       UserMessage(content) if !pruned_ids.contains(e.id) =>
-        msgs.push(@ai.user_message(content~))
+        msgs.push(
+          @ai.user_message(
+            content=user_message_overrides.get(e.id).unwrap_or(content),
+          ),
+        )
       AssistantMessage(tool_calls~, content, ..) if !pruned_ids.contains(e.id) =>
         msgs.push(@ai.assistant_message(content~, tool_calls~))
       PostToolCall(tc, rendered~, ..) =>

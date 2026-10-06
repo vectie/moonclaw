@@ -110,6 +110,7 @@ fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
         button(
           class="tree-control-button",
           title="Start a new work thread",
+          disabled=model.cowork_action_loading,
           on_click=dispatch(CreateCoworkSession),
           [operator_icon("work", size=18), span("New")],
         ),
@@ -953,15 +954,53 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
                 ),
                 button(
                   class="operator-primary-action cowork-send-action",
-                  title="Send this request to the current work thread",
+                  title=if model.selected_cowork_session_key is None {
+                    "Start a conversation and keep your draft here"
+                  } else {
+                    "Send this request to the current work thread"
+                  },
                   disabled=model.cowork_action_loading ||
-                    model.cowork_composer.trim().is_empty(),
-                  on_click=dispatch(SendCoworkMessage),
-                  [operator_icon("arrow", size=18), span("Send request")],
+                    (
+                      model.selected_cowork_session_key is Some(_) &&
+                      (
+                        !cowork_ready_to_send(model) ||
+                        model.cowork_composer.trim().is_empty()
+                      )
+                    ),
+                  on_click=dispatch(
+                    if model.selected_cowork_session_key is None {
+                      CreateCoworkSession
+                    } else {
+                      SendCoworkMessage
+                    },
+                  ),
+                  [
+                    operator_icon("arrow", size=18),
+                    span(
+                      if model.selected_cowork_session_key is None {
+                        "Start conversation"
+                      } else {
+                        "Send request"
+                      },
+                    ),
+                  ],
                 ),
               ]),
+              if model.selected_cowork_session_key is None {
+                p(
+                  class="muted",
+                  "First start a conversation. Your draft and attachments stay here; send them when you are ready.",
+                )
+              } else {
+                nothing
+              },
               if model.cowork_action_loading {
                 span(class="status-badge pending", "Working")
+              } else if cowork_thread_request_pending(model) {
+                p(
+                  class="muted",
+                  "This thread still has a request in progress. Your draft stays here until its result is confirmed.",
+                )
               } else {
                 nothing
               },

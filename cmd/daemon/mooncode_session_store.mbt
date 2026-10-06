@@ -379,6 +379,9 @@ async fn mooncode_session_listing_record_from_parts_locked(
     "safe_session_id": safe_session_id,
     "book_root": book_root,
     "model": mooncode_json_string(snapshot, "model", default=""),
+    "model_workspace": mooncode_journal_model_workspace(journal).unwrap_or(
+      mooncode_json_string(snapshot, "model_workspace", default=""),
+    ),
     "source_kind": mooncode_json_string(
       snapshot,
       "source_kind",
@@ -594,6 +597,9 @@ async fn mooncode_session_record_from_parts_locked(
     "safe_session_id": safe_session_id,
     "book_root": book_root,
     "model": mooncode_json_string(resolved_snapshot, "model", default=""),
+    "model_workspace": mooncode_journal_model_workspace(journal).unwrap_or(
+      mooncode_json_string(resolved_snapshot, "model_workspace", default=""),
+    ),
     "source_kind": mooncode_json_string(
       resolved_snapshot,
       "source_kind",
@@ -673,6 +679,7 @@ fn mooncode_session_snapshot(
     "workspace_id": binding.workspace_id,
     "workspace_name": binding.workspace_name,
     "model": binding.model,
+    "model_workspace": binding.model_workspace,
     "command_count": binding.command_count,
     "first_user_prompt": binding.first_user_prompt,
     "custom_title": binding.custom_title,
