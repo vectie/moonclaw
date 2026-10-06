@@ -330,12 +330,25 @@ async test "worker native failure and cancellation are terminal distinct unsucce
         }),
       )
       if id == "cancelled" {
+        let cancel_command : Json = {
+          "command": "cancel",
+          "packet": { "command_id": "cancel-child" },
+          "payload": { "target_command_id": "child-command-\{id}" },
+        }
+        ignore(mooncode_append_session_journal(
+          child_root, "child-\{id}", mooncode_journal_command(), {
+            "kind": "mooncode-command",
+            "protocol": mooncode_protocol_version(),
+            "session_id": "child-\{id}",
+            "command_id": "cancel-child",
+            "created_at": @clock.Timestamp::from_ms(2L),
+            "command": cancel_command,
+          },
+        ))
         ignore(
-          daemon.mooncode_submit_cancel_control("child-\{id}", child_root, {
-            "command": "cancel",
-            "packet": { "command_id": "cancel-child" },
-            "payload": { "target_command_id": "child-command-\{id}" },
-          }),
+          daemon.mooncode_submit_cancel_control(
+            "child-\{id}", child_root, cancel_command,
+          ),
         )
       }
     }

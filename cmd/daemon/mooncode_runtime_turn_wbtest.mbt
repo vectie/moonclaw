@@ -984,11 +984,12 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Read README.md and summarize it.",
   }
   let summary_tools = mooncode_runtime_turn_model_tools_for_command(summary)
-  assert_eq(summary_tools.length(), 3)
+  assert_eq(summary_tools.length(), 5)
   let summary_json = summary_tools.to_json().stringify()
   assert_true(summary_json.contains("read"))
   assert_true(summary_json.contains("finish"))
   assert_false(summary_json.contains("moon_check"))
+  assert_false(summary_json.contains("\"name\":\"edit\""))
 
   let coding : Json = {
     "command": "prompt",
@@ -1048,7 +1049,7 @@ test "mooncode model planner sends a compact request envelope" {
     }
     assert_eq(
       mooncode_runtime_turn_model_tools_for_command(command).length(),
-      2,
+      5,
     )
     assert_false(mooncode_runtime_turn_requires_verification(command))
   }

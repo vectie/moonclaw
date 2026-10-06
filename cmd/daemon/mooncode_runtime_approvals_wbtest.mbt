@@ -949,41 +949,64 @@ async test "mooncode cancel control rejects a stale turn target" (
       attempts += 1
     }
     assert_eq(binding.active_command_id, "cmd-active")
+    let stale_command : Json = {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-stale-cancel",
+      "book_root": book_root,
+      "command": "cancel",
+      "model": "fixture/mooncode",
+      "packet": { "command_id": "cmd-stale-cancel" },
+      "payload": { "target_command_id": "command-no-longer-active" },
+    }
+    ignore(mooncode_append_session_journal(
+      book_root, "session-stale-cancel", mooncode_journal_command(), {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-stale-cancel",
+        "command_id": "cmd-stale-cancel",
+        "created_at": @clock.Timestamp::from_ms(2L),
+        "command": stale_command,
+      },
+    ))
     let rejected = try {
       ignore(
         daemon.mooncode_submit_cancel_control(
           "session-stale-cancel",
           book_root,
-          {
-            "protocol": mooncode_protocol_version(),
-            "session_id": "session-stale-cancel",
-            "book_root": book_root,
-            "command": "cancel",
-            "model": "fixture/mooncode",
-            "packet": { "command_id": "cmd-stale-cancel" },
-            "payload": { "target_command_id": "command-no-longer-active" },
-          },
+          stale_command,
         ),
       )
       false
     } catch {
+      InvalidJournal(_) => false
       _ => true
     }
     assert_true(rejected)
     assert_true(binding.runtime_service_running)
     assert_eq(binding.active_command_id, "cmd-active")
+    let correct_command : Json = {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-stale-cancel",
+      "book_root": book_root,
+      "command": "cancel",
+      "model": "fixture/mooncode",
+      "packet": { "command_id": "cmd-correct-cancel" },
+      "payload": { "target_command_id": "cmd-active" },
+    }
+    ignore(mooncode_append_session_journal(
+      book_root, "session-stale-cancel", mooncode_journal_command(), {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-stale-cancel",
+        "command_id": "cmd-correct-cancel",
+        "created_at": @clock.Timestamp::from_ms(3L),
+        "command": correct_command,
+      },
+    ))
     let cancelled = daemon.mooncode_submit_cancel_control(
       "session-stale-cancel",
       book_root,
-      {
-        "protocol": mooncode_protocol_version(),
-        "session_id": "session-stale-cancel",
-        "book_root": book_root,
-        "command": "cancel",
-        "model": "fixture/mooncode",
-        "packet": { "command_id": "cmd-correct-cancel" },
-        "payload": { "target_command_id": "cmd-active" },
-      },
+      correct_command,
     )
     assert_eq(
       mooncode_json_string(cancelled, "target_command_id", default=""),

@@ -1217,9 +1217,14 @@ async test "cancel settles a claim paused for patient replanning" {
         ),
       )
       let daemon = mooncode_runtime_quantum_test_daemon(root)
-      let paused = daemon.mooncode_runtime_turn_execute(session_id, root, {
-        "consumer_id": "patient-cancel-pause",
-      })
+      let paused = try {
+        daemon.mooncode_runtime_turn_execute(session_id, root, {
+          "consumer_id": "patient-cancel-pause",
+        })
+      } catch {
+        InvalidJournal(message) => fail("pause journal: \{message}")
+        error => raise error
+      }
       assert_true(mooncode_json_bool(paused, "accepted", default=false))
       assert_true(
         mooncode_json_bool(
@@ -1228,7 +1233,7 @@ async test "cancel settles a claim paused for patient replanning" {
           default=false,
         ),
       )
-      let cancelled = daemon.mooncode_submit_cancel_control(session_id, root, {
+      let cancel_command : Json = {
         "protocol": mooncode_protocol_version(),
         "session_id": session_id,
         "book_root": root,
@@ -1236,7 +1241,19 @@ async test "cancel settles a claim paused for patient replanning" {
         "model": "test-planner",
         "packet": { "command_id": "cmd-cancel-patient-replan" },
         "payload": { "target_command_id": command_id },
-      })
+      }
+      ignore(mooncode_append_session_journal(root, session_id, mooncode_journal_command(), {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": "cmd-cancel-patient-replan",
+        "created_at": @clock.Timestamp::from_ms(2L),
+        "command": cancel_command,
+      }))
+      let cancelled = try { daemon.mooncode_submit_cancel_control(session_id, root, cancel_command) } catch {
+        InvalidJournal(message) => fail("cancel journal: \{message}")
+        error => raise error
+      }
       assert_eq(
         mooncode_json_string(cancelled, "target_command_id", default=""),
         command_id,
