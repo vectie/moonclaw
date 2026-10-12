@@ -1,0 +1,2 @@
+{"run_id":"child","job_id":"job-fixture","event_type":"adapter.unknown","timestamp":20,"message":"Receipt not observed","data":{"outcome":"unknown","correlation_id":"attempt-1"},"step_id":"dispatch"}
+{"run_id":"child","job_id":"job-fixture","event_type":"step.failed","timestamp":30,"message":"Local result parse failed","data":{},"status":"Failed","step_id":"inspect"}

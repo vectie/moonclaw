@@ -68,6 +68,11 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
           ]),
           div(class="tree-controls", [
             span(class="meta-chip", content_type),
+            match model.artifact_modal {
+              Some(loaded) =>
+                artifact_download_button(dispatch, loaded.artifact)
+              None => nothing
+            },
             button(
               class="tree-control-button",
               title="Close artifact viewer",
@@ -83,13 +88,11 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
             p(class="empty", error)
           } else {
             div(class="artifact-editor-stack", [
-              p(
-                class="muted",
-                "Local editing only for now. Changes here are not persisted back to the artifact yet.",
-              ),
+              render_human_revision_controls(dispatch, model),
               textarea(
                 class="artifact-editor-textarea mono",
                 value=model.artifact_editor_draft,
+                read_only=human_revision_editor_locked(model),
                 on_input=value => dispatch(SetArtifactEditorDraft(value)),
                 nothing,
               ),
@@ -144,11 +147,12 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
         @html.details(class="runtime-disclosure", [
           @html.summary(title="Show runtime connection details", [
             operator_icon("settings", size=18),
-            span("Runtime details"),
+            span("Runtime & gateway access"),
           ]),
           div(class="runtime-disclosure-body", [
             span(class="gateway-chip", last_update_label(model)),
             span(class="gateway-chip", "Gateway · \{model.gateway_base}"),
+            render_gateway_access(dispatch, model),
           ]),
         ]),
       ]),
@@ -216,6 +220,19 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
           ]
       },
     ),
+    render_command_live_view(dispatch, model),
+    match model.artifact_download_notice {
+      Some(message) =>
+        section(class="panel artifact-download-notice", [
+          p(attrs=@html.Attrs::build().role("status"), message),
+          if model.artifact_download_pending is Some(_) {
+            button(on_click=dispatch(CancelArtifactDownload), "Cancel download")
+          } else {
+            nothing
+          },
+        ])
+      None => nothing
+    },
     render_artifact_modal(dispatch, model),
   ])
 }

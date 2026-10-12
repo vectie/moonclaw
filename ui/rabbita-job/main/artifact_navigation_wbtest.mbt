@@ -15,6 +15,7 @@ fn artifact_test_result(id : String, content : String) -> LoadedArtifact {
       content_type: "text/markdown",
     },
     content: Some(content),
+    revision_source: None,
   }
 }
 

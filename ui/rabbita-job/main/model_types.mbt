@@ -97,6 +97,14 @@ struct UiArtifact {
 struct LoadedArtifact {
   artifact : UiArtifact
   content : String?
+  revision_source : ArtifactRevisionSource?
+} derive(FromJson, Show)
+
+///|
+struct ArtifactRevisionSource {
+  run_id : String
+  parent_digest : String
+  parent_version : Int
 } derive(FromJson, Show)
 
 ///|
@@ -373,7 +381,15 @@ struct NodeEventStats {
 
 ///|
 struct Model {
+  recovery : RecoveryUiState
   gateway_base : String
+  gateway_token_draft : String
+  gateway_token_notice : String?
+  artifact_download_generation : Int
+  artifact_download_pending : String?
+  artifact_download_notice : String?
+  command_live_generation : Int
+  command_live_view : CommandLiveView?
   route : Route
   selected_mixed_handoff_key : String?
   runs : Array[RunSummary]
@@ -401,6 +417,7 @@ struct Model {
   artifact_modal_error : String?
   artifact_modal : LoadedArtifact?
   artifact_editor_draft : String
+  artifact_drafts : Map[String, HumanRevisionDraft]
   right_panel : RightPanel
   cowork_panel : CoworkPanel
   canvas_zoom : Int
@@ -457,6 +474,24 @@ struct Model {
 
 ///|
 enum Msg {
+  SetRecoveryField(String, String)
+  InspectRecovery
+  RecoveryRead(Int, String)
+  ClearRecovery
+  SetGatewayTokenDraft(String)
+  ApplyGatewayToken
+  ClearGatewayToken
+  DownloadArtifact(String)
+  DownloadCommandOutput(String)
+  TailCommandOutput(String)
+  PollCommandLive(Int)
+  CommandLiveRead(Int, String, String)
+  PauseCommandLive
+  ResumeCommandLive
+  ReloadCommandLive
+  CloseCommandLive
+  CancelArtifactDownload
+  ArtifactDownloadFinished(Int, Result[String, String])
   LoadRuns
   RunsLoaded(Result[Array[RunSummary], String])
   SelectRun(String)
@@ -468,6 +503,9 @@ enum Msg {
   OpenArtifact(String)
   ArtifactLoaded(String, Int, Result[LoadedArtifact, String])
   SetArtifactEditorDraft(String)
+  SaveHumanRevision
+  RebaseHumanRevision
+  HumanRevisionSaved(String, Int, String, Result[UiArtifact, String])
   CloseArtifactModal
   LoadCoworkSessions
   CoworkSessionsLoaded(Result[Array[CoworkSessionSummary], String])
@@ -720,8 +758,18 @@ fn runs_page_size() -> Int {
 
 ///|
 fn init_model() -> Model {
+  let gateway_base = gateway_base_url()
+  configure_gateway_transport(gateway_base)
   {
-    gateway_base: gateway_base_url(),
+    gateway_base,
+    recovery: recovery_initial(),
+    gateway_token_draft: "",
+    gateway_token_notice: None,
+    artifact_download_generation: 0,
+    artifact_download_pending: None,
+    artifact_download_notice: None,
+    command_live_generation: 0,
+    command_live_view: None,
     route: Overview,
     selected_mixed_handoff_key: None,
     runs: [],
@@ -749,6 +797,7 @@ fn init_model() -> Model {
     artifact_modal_error: None,
     artifact_modal: None,
     artifact_editor_draft: "",
+    artifact_drafts: Map([]),
     right_panel: Artifacts,
     cowork_panel: CoworkPreview,
     canvas_zoom: 100,

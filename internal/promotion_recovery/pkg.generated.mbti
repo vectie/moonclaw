@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/promotion_recovery"
+
+import {
+  "vectie/moonclaw/internal/httpx",
+}
+
+// Values
+pub async fn handle(@httpx.RequestReader, @httpx.ResponseWriter) -> Unit
+
+pub async fn pending_reference(Json) -> Json?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

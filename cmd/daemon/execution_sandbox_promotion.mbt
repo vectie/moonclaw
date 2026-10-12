@@ -301,8 +301,15 @@ async fn Daemon::moondesk_promote_retention(
       execute_moondesk_promotion(request, route_config)
     }
   } catch {
-    _ =>
+    _ => {
+      let reference = if request.instance_id == route_config.instance_id &&
+        request.workspace_id == route_config.workspace_id {
+        @promotion_recovery.pending_reference(request.to_json()) catch { _ => None }
+      } else {
+        None
+      }
       raise json_error(503, "ServiceUnavailable", {
+        "pending_return": reference,
         "error": {
           "code": if read_receipt {
             "promotion_receipt_unavailable"
@@ -316,6 +323,7 @@ async fn Daemon::moondesk_promote_retention(
           },
         },
       })
+    }
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)

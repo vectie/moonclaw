@@ -220,6 +220,7 @@ async test "MoonFort v3 invocation is opaque and grant-bound receipt is persiste
         mock.cwd.path(),
         home=mock.cwd.path(),
         sandbox_config=config,
+        output_owner={ run_id: "trusted-claw-run", step_id: "trusted-step", },
       )
       let result = tool.call({
         "command": "printf hello",
@@ -233,6 +234,15 @@ async test "MoonFort v3 invocation is opaque and grant-bound receipt is persiste
       inspect(receipt.enforcement is Degraded, content="true")
       json_inspect(receipt.changed_paths, content=["generated.txt"])
       assert_eq(audit_id, receipt.run_id)
+      let outputs = @execution_sandbox.list_bound_command_outputs(
+        config, "trusted-claw-run", 0L,
+      )
+      assert_eq(outputs.length(), 1)
+      assert_eq(outputs[0].output_id, audit_id)
+      assert_eq(outputs[0].status, "unavailable")
+      assert_true(
+        @execution_sandbox.list_bound_command_outputs(config, "other-run", 0L).is_empty(),
+      )
       let audit_path = @pathx.join(config.receipt_root, "\{audit_id}.json")
       inspect(@fsx.exists(audit_path), content="true")
       let request = @json.parse(@fsx.read_file(capture))

@@ -1,5 +1,7 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/buffer",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/security",
   "vectie/moonclaw/internal/execution_sandbox_adapter" @sandbox_adapter,
@@ -7,6 +9,8 @@ import {
   "vectie/moonlib/fsx",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/string",
   "moonbitlang/core/env",
   "moonbitlang/x/crypto",
 }

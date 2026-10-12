@@ -1,0 +1,13 @@
+import {
+  "vectie/moonclaw/tools/read_feed" @feed,
+  "vectie/moonlib/fsx",
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/x/sys",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

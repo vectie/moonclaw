@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Observatory dispatches</title>
+    <atom:link rel="next" href="https://example.test/feed?page=2"/>
+    <item>
+      <guid isPermaLink="false">telescope</guid>
+      <title>Telescope opening</title>
+      <pubDate>2026-10-07T09:00:00Z</pubDate>
+      <description>&lt;p&gt;The public telescope opens on Friday.&lt;/p&gt;</description>
+      <link>https://example.test/telescope</link>
+    </item>
+    <item>
+      <guid isPermaLink="false">archived-talk</guid>
+      <title>September sky talk</title>
+      <description>An older talk that may have moved to the publisher archive.</description>
+      <link>https://example.test/talk</link>
+    </item>
+    <item>
+      <guid isPermaLink="false">steady</guid>
+      <title>Night-sky guide</title>
+      <description>Clear skies and a bright Moon.</description>
+      <link>https://example.test/guide</link>
+    </item>
+  </channel>
+</rss>

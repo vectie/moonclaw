@@ -1,11 +1,11 @@
 ///|
 priv struct AdapterProcessResult {
   status : Int
-  stdout : String
+  stdout : Bytes
 }
 
 ///|
-async fn run_adapter_process(
+async fn run_adapter_process_bytes(
   executable : String,
   arguments : Array[String],
   stdin~ : String,
@@ -14,7 +14,7 @@ async fn run_adapter_process(
   env~ : Map[String, String],
   stdout_limit? : Int = 16 * 1024 * 1024,
 ) -> AdapterProcessResult {
-  guard stdout_limit > 0 && stdout_limit <= 16 * 1024 * 1024 else {
+  guard stdout_limit > 0 && stdout_limit <= 64 * 1024 * 1024 else {
     fail("MoonFort adapter output limit is invalid")
   }
   @async.with_task_group(group => {
@@ -39,7 +39,7 @@ async fn run_adapter_process(
         }
         output.write_bytes(chunk)
       }
-      @encoding/utf8.decode_lossy(output.to_bytes())
+      output.to_bytes()
     })
     let status = @async.with_timeout(timeout, () => {
       @process.run(
@@ -55,4 +55,26 @@ async fn run_adapter_process(
     })
     { status, stdout: stdout_task.wait(), }
   })
+}
+
+///|
+async fn run_adapter_process(
+  executable : String,
+  arguments : Array[String],
+  stdin~ : String,
+  timeout~ : Int,
+  cwd~ : String,
+  env~ : Map[String, String],
+  stdout_limit? : Int = 16 * 1024 * 1024,
+) -> ProcessResponse {
+  let result = run_adapter_process_bytes(
+    executable,
+    arguments,
+    stdin~,
+    timeout~,
+    cwd~,
+    env~,
+    stdout_limit~,
+  )
+  { status: result.status, stdout: @encoding/utf8.decode_lossy(result.stdout), }
 }

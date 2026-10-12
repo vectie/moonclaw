@@ -1,0 +1,20 @@
+import {
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/resource_providers",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x/crypto",
+}
+
+supported_targets = "native"
+
+import {
+  "vectie/moonclaw/internal/httpx",
+  "vectie/moonclaw/internal/httpx/status",
+  "vectie/moonclaw/tools/read_resource",
+} for "test"

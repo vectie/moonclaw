@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/async",
+  "vectie/moonclaw/job",
+  "vectie/moonclaw/workspace",
+  "vectie/moonlib/fsx",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+supported_targets = "native"
+options("is-main": true)

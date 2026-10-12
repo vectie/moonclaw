@@ -1,0 +1,11 @@
+{
+  "contract_version": "moonclaw.book-outcome-source.v1",
+  "source_digest": "sha256:5e88b40551b887f2da13913c44873733be7d98e9ad5a3bba6c0fc05bc9e09aa8",
+  "source_json": "{\"contract_version\":\"moonclaw.completed-text-source.v1\",\"run\":{\"id\":\"run-1\",\"job_id\":\"job.sample.sync\",\"trigger\":\"Manual\",\"depth\":0,\"workspace_dir\":\".moonsuite/products/moonclaw/jobs/run-1\",\"status\":\"Succeeded\",\"attempt\":1,\"started_at\":200,\"finished_at\":200,\"summary\":\"Workflow completed\"},\"artifacts\":[{\"record\":{\"id\":\"text-one\",\"run_id\":\"run-1\",\"job_id\":\"job.sample.sync\",\"artifact_type\":\"fixture.report\",\"logical_key\":\"report\",\"version\":1,\"status\":\"Active\",\"path\":\"/tmp/claw-book-source-tXmc24/artifacts/text-one/content.txt\",\"content_type\":\"text/plain\",\"metadata\":{\"origin\":\"deterministic-local-fixture\",\"provider_executed\":false},\"created_at\":150,\"scope\":[]},\"digest\":\"sha256:2f0810c13db52f9deda0fe33f6cfdc16207ce1cf0b6dc0f50fa0b2d5791cd19a\",\"byte_length\":93}]}",
+  "artifacts": [
+    {
+      "id": "text-one",
+      "text": "﻿Local deterministic fixture, no provider or customer claim.\n报告 <&>\u0000 retained exactly.\n"
+    }
+  ]
+}

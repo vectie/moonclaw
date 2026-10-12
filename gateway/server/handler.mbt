@@ -364,11 +364,19 @@ async fn Gateway::handle_get_artifact(
   let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store())
   match artifacts.get(artifact_id) {
     Some(artifact) => {
+      let source = artifacts.human_revision_source(artifact.run_id, artifact.id) catch {
+        _ => Json::null()
+      }
       w.header().set("Content-Type", "application/json")
+      w.header().set("Cache-Control", "no-store")
       w.write_header(200)
-      let result : Json = {
-        "artifact": artifact.to_json(),
-        "content": artifacts.read_text(artifact_id),
+      let result : Json = if source is Object(_) {
+        source
+      } else {
+        {
+          "artifact": artifact.to_json(),
+          "content": artifacts.read_text(artifact_id),
+        }
       }
       w.write(result.stringify())
     }

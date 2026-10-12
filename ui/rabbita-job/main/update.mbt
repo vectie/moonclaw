@@ -185,12 +185,27 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   }
   let (cmd, next_model) = update_message(dispatch, msg, model)
   let next_model = cowork_request_ownership(model, next_model, msg)
+  let next_model = if model.route != next_model.route ||
+    model.gateway_base != next_model.gateway_base ||
+    msg is (ApplyGatewayToken | ClearGatewayToken) {
+    recovery_invalidate(next_model)
+  } else {
+    next_model
+  }
+  let next_model = if model.gateway_base != next_model.gateway_base {
+    configure_gateway_transport(next_model.gateway_base)
+    { ..next_model, gateway_token_draft: "", gateway_token_notice: None, }
+  } else {
+    next_model
+  }
   // Invalidate the viewer immediately on navigation, before queued loads run.
   // Same-context URL changes (for example focus/panel sync) preserve it.
   (
     cmd,
     if artifact_context_changed(model, next_model) {
-      close_artifact_viewer(next_model)
+      invalidate_command_live(
+        invalidate_artifact_download(close_artifact_viewer(next_model)),
+      )
     } else {
       next_model
     },
@@ -204,6 +219,108 @@ fn update_message(
   model : Model,
 ) -> (Cmd, Model) {
   match msg {
+    SetRecoveryField(field, value) =>
+      (@rabbita.none, recovery_set_field(model, field, value))
+    InspectRecovery => recovery_start(dispatch, model)
+    RecoveryRead(generation, raw) =>
+      (@rabbita.none, recovery_accept(model, generation, raw))
+    ClearRecovery => (@rabbita.none, recovery_invalidate(model))
+    SetGatewayTokenDraft(value) =>
+      (@rabbita.none, { ..model, gateway_token_draft: value, })
+    ApplyGatewayToken => {
+      let configured = set_gateway_token(
+        model.gateway_base,
+        model.gateway_token_draft,
+      )
+      (
+        fetch_runs(dispatch, model.gateway_base),
+        {
+          ..invalidate_command_live(invalidate_artifact_download(model)),
+          gateway_token_draft: "",
+          gateway_token_notice: Some(
+            if configured {
+              "Token set for this gateway in this tab only. Refresh the selected run to retry its data."
+            } else {
+              "Enter a valid gateway token."
+            },
+          ),
+        },
+      )
+    }
+    ClearGatewayToken => {
+      clear_gateway_token()
+      (
+        @rabbita.none,
+        {
+          ..invalidate_command_live(invalidate_artifact_download(model)),
+          gateway_token_draft: "",
+          gateway_token_notice: Some("Gateway token cleared from this tab."),
+        },
+      )
+    }
+    DownloadArtifact(id) => download_artifact(dispatch, model, id)
+    DownloadCommandOutput(id) => download_command_output(dispatch, model, id)
+    TailCommandOutput(id) => start_command_live(dispatch, model, id)
+    PollCommandLive(generation) =>
+      if generation == model.command_live_generation {
+        poll_command_live(dispatch, model)
+      } else {
+        (@rabbita.none, model)
+      }
+    CommandLiveRead(generation, cursor, raw) =>
+      accept_command_live(dispatch, model, generation, cursor, raw)
+    CloseCommandLive => (@rabbita.none, invalidate_command_live(model))
+    PauseCommandLive =>
+      match model.command_live_view {
+        Some(view) =>
+          command_live_failure(
+            model, view, "Tail paused. Resume continues at the last accepted byte; the command keeps its own lifecycle.",
+          )
+        None => (@rabbita.none, model)
+      }
+    ResumeCommandLive | ReloadCommandLive =>
+      match model.command_live_view {
+        Some(view) =>
+          poll_command_live(dispatch, {
+            ..model,
+            command_live_generation: model.command_live_generation + 1,
+            command_live_view: Some({
+              ..view,
+              paused: false,
+              pending: false,
+              terminal: false,
+            }),
+          })
+        None => (@rabbita.none, model)
+      }
+    CancelArtifactDownload =>
+      (
+        @rabbita.none,
+        {
+          ..invalidate_artifact_download(model),
+          artifact_download_notice: Some(
+            "Download cancelled. You can retry the same artifact.",
+          ),
+        },
+      )
+    ArtifactDownloadFinished(generation, result) =>
+      if generation != model.artifact_download_generation ||
+        model.artifact_download_pending is None {
+        (@rabbita.none, model)
+      } else {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            artifact_download_pending: None,
+            artifact_download_notice: Some(
+              match result {
+                Ok(message) | Err(message) => message
+              },
+            ),
+          },
+        )
+      }
     LoadRuns =>
       (
         fetch_runs(dispatch, model.gateway_base),
@@ -1583,14 +1700,17 @@ fn update_message(
         )
         (
           @rabbita.none,
-          {
-            ..model,
-            artifact_pending_id: None,
-            artifact_modal_loading: false,
-            artifact_modal_error: None,
-            artifact_modal: Some(artifact),
-            artifact_editor_draft: content,
-          },
+          install_human_revision_draft(
+            {
+              ..model,
+              artifact_pending_id: None,
+              artifact_modal_loading: false,
+              artifact_modal_error: None,
+              artifact_modal: Some(artifact),
+              artifact_editor_draft: content,
+            },
+            artifact,
+          ),
         )
       } else {
         (
@@ -1620,7 +1740,14 @@ fn update_message(
         (@rabbita.none, model)
       }
     SetArtifactEditorDraft(value) =>
-      (@rabbita.none, { ..model, artifact_editor_draft: value, })
+      (@rabbita.none, set_human_revision_draft(model, value))
+    SaveHumanRevision => save_human_revision(dispatch, model)
+    RebaseHumanRevision => (@rabbita.none, rebase_human_revision(model))
+    HumanRevisionSaved(key, generation, id, result) =>
+      (
+        @rabbita.none,
+        complete_human_revision(model, key, generation, id, result),
+      )
     CloseArtifactModal => (@rabbita.none, close_artifact_viewer(model))
     EventsLoaded(run_id, Ok(timeline)) =>
       if model.selected_run_id == Some(run_id) {

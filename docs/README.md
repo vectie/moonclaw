@@ -3,6 +3,13 @@
 Start with the [product contract](PRODUCT_CONTRACT.md) for current maturity,
 capability labels, boundaries and release gates.
 
+For saved result inspection, keep [exact-revision reviewer notes](ARTIFACT_REVIEW_NOTES.md)
+and [collect feedback from several reviewers](ARTIFACT_FEEDBACK_COLLECTION.md).
+The collection reopens locally and exposes change requests, mixed checklist
+states and pending inspections without making an acceptance decision.
+Use [CSV review editing](ARTIFACT_REVIEW_CSV.md) to exchange selected worksheet
+rows with local editors and preview exact-base note changes before import.
+
 MoonClaw is the bounded agent runtime for MoonSuite. It owns agent execution,
 job/session state, tool use, runtime evidence, gateway APIs, and MoonCode
 execution behavior. It should not become a desktop shell, durable knowledge
@@ -102,3 +109,16 @@ pre-approval tools, and settle the same canonical turn.
   tools, tests, package, and final assistant output.
 - Keep operator surfaces focused on actionable runtime state rather than raw
   debug noise.
+
+## Retained revision comparison
+
+See [Compare retained text artifacts](COMPARE_ARTIFACTS.md) for the local
+`compare_artifacts` command and host API.
+
+- [Portable retained-artifact export](EXPORT_ARTIFACTS.md): copy selected exact text/binary revisions with original records, lineage and standard checksums.
+
+- [Search saved artifact revisions](SEARCH_ARTIFACTS.md): find exact outputs by metadata and literal text, inspect bounded line excerpts, then export the observed matches.
+
+- [Import portable artifacts for inspection](IMPORT_ARTIFACTS.md): reopen received exports with exact original-record provenance and use saved-store search, comparison and re-export.
+
+- [Compare saved job runs](COMPARE_RUNS.md): align steps and inspect changed observations.

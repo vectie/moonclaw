@@ -1,0 +1,4 @@
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Planetary Lab</title>
+<entry><id>shared-1</id><title>Moon sample [analysis]</title><summary>New mineral results &amp; a revised estimate.</summary><published>2026-10-08</published><link href="sample-analysis"/></entry>
+<entry><id>mars</id><title>Mars soil observations</title><summary>Independent synthetic measurements.</summary></entry>
+</feed>

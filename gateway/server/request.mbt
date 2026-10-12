@@ -29,6 +29,17 @@ pub async fn Gateway::handle_request(
           ["assets", ..rest.map(fn(part) { part.to_owned() })],
         )
       (Get, ["", "health"]) => self.handle_health(r, w)
+      (Post, ["", "v1", "execution-sandbox", "promotion-recovery"]) => {
+        guard self.auth.token is Some(token) && !token.is_blank() else {
+          raise json_error(401, "Unauthorized", {
+            "error": {
+              "code": "recovery_auth_required",
+              "message": "Recovery inspection requires configured gateway authentication.",
+            },
+          })
+        }
+        @promotion_recovery.handle(r, w)
+      }
       (Post, ["", "v1", "cowork", "model-route"]) =>
         self.handle_cowork_model_route(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
@@ -36,6 +47,75 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "runs", _run_id]) => self.handle_get_run(r, w)
       (Get, ["", "v1", "jobs"]) => self.handle_list_jobs(r, w)
       (Get, ["", "v1", "jobs", "runs"]) => self.handle_list_job_runs(r, w)
+      (
+        Get,
+        [
+          "",
+          "v1",
+          "jobs",
+          "runs",
+          run_id,
+          "command-outputs",
+          output_id,
+          "live",
+          cursor,
+        ],
+      ) =>
+        self.handle_read_command_live_output(
+          w,
+          run_id.to_owned(),
+          output_id.to_owned(),
+          cursor.to_owned(),
+        )
+      (Post, ["", "v1", "jobs", "runs", run_id, "book-outcome-source"]) =>
+        self.handle_book_outcome_source(r, w, run_id.to_owned())
+      (
+        Post,
+        [
+          "",
+          "v1",
+          "jobs",
+          "runs",
+          run_id,
+          "artifacts",
+          parent_id,
+          "human-revisions",
+        ],
+      ) =>
+        self.handle_save_human_revision(
+          r,
+          w,
+          run_id.to_owned(),
+          parent_id.to_owned(),
+        )
+      (
+        Get,
+        [
+          "",
+          "v1",
+          "jobs",
+          "runs",
+          run_id,
+          "command-outputs",
+          output_id,
+          "download",
+        ],
+      ) =>
+        self.handle_download_command_output(
+          w,
+          run_id.to_owned(),
+          output_id.to_owned(),
+        )
+      (
+        Get,
+        ["", "v1", "jobs", "runs", run_id, "artifacts", artifact_id, "download"],
+      ) =>
+        self.handle_download_artifact(
+          r,
+          w,
+          run_id.to_owned(),
+          artifact_id.to_owned(),
+        )
       (Get, ["", "v1", "jobs", "runs", _run_id, "ui"]) =>
         self.handle_get_job_ui(r, w)
       (Get, ["", "v1", "jobs", "runs", _run_id, "events", "stream"]) =>
@@ -332,6 +412,9 @@ async fn Gateway::handle_operator_ui(
       })
   }
   w.header().set("Content-Type", operator_ui_content_type(full_path))
+  // Revalidate the normal entry document after recovery UI updates. New
+  // compiler/loader assets also have content-derived names.
+  w.header().set("Cache-Control", "no-cache")
   w.write_header(200)
   w.write(content)
 }

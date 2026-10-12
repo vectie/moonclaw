@@ -16,6 +16,7 @@ pub struct Gateway {
   port : Int
   events : @broadcast.Broadcast[GatewayEvent]
   auth : AuthConfig
+  command_output_config : @execution_sandbox.SandboxExecutorConfig?
   sessions : SessionManager
   dedupe : DedupeCache
   logger : @pino.Logger

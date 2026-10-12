@@ -224,6 +224,8 @@ pub(all) struct SandboxExecutorConfig {
   executor_args : Array[String]
   live_output_reader_path : String?
   live_output_reader_args : Array[String]?
+  /// Fixed operator-owned complete-output reader; never supplied by tool/UI input.
+  command_output_reader_path : String?
   /// Canonical regular file loaded by MoonFort through its sole config env var.
   executor_config_path : String
   /// Canonical MoonClaw-owned directory for terminal audit records.
@@ -256,6 +258,7 @@ pub fn local_sandbox_executor_config(
     executor_args: [],
     live_output_reader_path: None,
     live_output_reader_args: None,
+    command_output_reader_path: None,
     executor_config_path,
     receipt_root,
     workspace_id,
@@ -371,8 +374,10 @@ pub fn moonfort_output_artifact_valid(
       canonical_digest(reference.sha256) &&
       reference.size_bytes >= 0L &&
       reference.size_bytes <= output_limit.to_int64() &&
-      reference.size_bytes >= @utf8.encode(receipt.output).length().to_int64() &&
-      reference.media_type == MoonFortCommandOutputMediaType &&
+      (
+        reference.media_type == MoonFortCommandOutputMediaType ||
+        reference.media_type == "application/octet-stream"
+      ) &&
       reference.expires_at_ms > now_ms &&
       safe_identifier(reference.key_id) &&
       canonical_digest(reference.signature)
@@ -404,7 +409,6 @@ pub fn moonfort_live_output_reference_valid(
   reference.status == expected_status &&
   reference.size_bytes >= 0L &&
   reference.size_bytes <= output_limit.to_int64() &&
-  reference.size_bytes >= @utf8.encode(receipt.output).length().to_int64() &&
   canonical_digest(reference.sha256) &&
   reference.expires_at_ms > now_ms &&
   safe_identifier(reference.key_id) &&
@@ -871,6 +875,7 @@ pub async fn invoke_moonfort(
     @async.with_task_group(group => {
       let done = Ref(false)
       let offset = Ref(0L)
+      let stream : Ref[String?] = Ref(None)
       let executor = group.spawn(
         () => {
           client.invoke_executor(
@@ -903,7 +908,22 @@ pub async fn invoke_moonfort(
                     continue
                   }
                 }
-                if response.error is None && response.next_offset >= offset.val {
+                let valid = try {
+                  ignore(
+                    validated_live_output_bytes(
+                      response,
+                      plan.grant.approval_id,
+                      plan.grant.request_id,
+                      offset.val,
+                      plan.grant.limits.output_bytes,
+                    ),
+                  )
+                  stream.val is None || stream.val == Some(response.stream_id)
+                } catch {
+                  _ => false
+                }
+                if valid {
+                  stream.val = Some(response.stream_id)
                   offset.val = response.next_offset
                   progress(response.available_bytes, response.terminal)
                 }

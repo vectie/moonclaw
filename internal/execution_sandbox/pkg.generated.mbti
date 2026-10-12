@@ -10,7 +10,13 @@ import {
 // Values
 pub fn approved_plan(@security.ApprovalRecord) -> SandboxApprovalPlan raise
 
+pub async fn download_bound_command_output(SandboxExecutorConfig, String, String, Int64) -> Bytes
+
 pub async fn invoke_moonfort(SandboxExecutorConfig, SandboxApprovalPlan, live_output_progress? : async (Int64, Bool) -> Unit) -> MoonFortReceipt
+
+pub async fn list_bound_command_live_outputs(SandboxExecutorConfig, String) -> Array[BoundCommandLiveOutput]
+
+pub async fn list_bound_command_outputs(SandboxExecutorConfig, String, Int64) -> Array[BoundCommandOutput]
 
 pub fn local_sandbox_executor_config(String, String, String, String, String, allow_degraded? : Bool) -> SandboxExecutorConfig
 
@@ -28,7 +34,13 @@ pub fn moonfort_live_output_reference_valid(MoonFortLiveOutputReference, MoonFor
 
 pub fn moonfort_output_artifact_valid(MoonFortReceipt, Int, Int64) -> Bool
 
+pub async fn persist_command_live_binding(SandboxExecutorConfig, CommandOutputOwner, SandboxApprovalPlan) -> Unit
+
+pub async fn persist_command_output_binding(SandboxExecutorConfig, CommandOutputOwner, SandboxApprovalPlan, MoonFortReceipt) -> Unit
+
 pub async fn persist_sandbox_audit(SandboxExecutorConfig, SandboxApprovalPlan, MoonFortReceipt) -> String
+
+pub async fn read_bound_command_live_output(SandboxExecutorConfig, String, String, String) -> CommandLiveChunk
 
 pub async fn run_approved_exec(SandboxExecutorConfig, String, String, String, Array[String], SandboxApprovalPlan) -> SandboxExecution
 
@@ -51,6 +63,52 @@ pub async fn validate_moon_diagnostics_plan(SandboxApprovalPlan, SandboxExecutor
 // Errors
 
 // Types and methods
+pub(all) struct BoundCommandLiveOutput {
+  output_id : String
+  run_id : String
+  step_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BoundCommandOutput {
+  output_id : String
+  run_id : String
+  step_id : String
+  status : String
+  size_bytes : Int64
+  sha256 : String
+  expires_at_ms : Int64
+  message : String
+  receipt_status : String
+  exit_code : Int?
+  output_truncated : Bool
+  limit_reason : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type CommandLiveBinding derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandLiveChunk {
+  protocol_version : Int
+  output_id : String
+  run_id : String
+  step_id : String
+  stream_id : String
+  offset : Int
+  next_offset : Int
+  available_bytes : Int
+  content_base64 : String
+  status : String
+  terminal : Bool
+  retry_after_ms : Int
+  next_cursor : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type CommandOutputBinding derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandOutputOwner {
+  run_id : String
+  step_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum MoonFortBackendKind {
   LocalOs
   MicroVm
@@ -217,6 +275,7 @@ pub(all) struct SandboxExecutorConfig {
   executor_args : Array[String]
   live_output_reader_path : String?
   live_output_reader_args : Array[String]?
+  command_output_reader_path : String?
   executor_config_path : String
   receipt_root : String
   workspace_id : String

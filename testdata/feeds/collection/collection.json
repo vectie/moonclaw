@@ -1,0 +1,8 @@
+{
+  "title": "Saved Moon Research",
+  "sources": [
+    {"source": "https://observatory.example.test/feed", "label": "Observatory, 9 October save", "path": "observatory.rss"},
+    {"source": "https://lab.example.test/feed", "label": "Lab, 9 October save", "path": "lab.atom"},
+    {"source": "https://notes.example.test/feed", "label": "Field notes, 8 October save", "path": "notes.json"}
+  ]
+}

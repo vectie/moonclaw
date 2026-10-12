@@ -1090,6 +1090,8 @@ fn render_artifacts_panel(
   section(class="panel", [
     header(class="panel-header", [h2(class="panel-title", "Artifacts")]),
     div(class="panel-body", [
+      render_command_outputs(dispatch, snapshot),
+      render_book_outcome_panel(snapshot),
       if snapshot.artifacts.is_empty() {
         p(class="empty", "No artifacts yet.")
       } else {

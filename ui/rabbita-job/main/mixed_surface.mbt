@@ -757,6 +757,7 @@ fn render_overview(dispatch : Dispatch[Msg], model : Model) -> Html {
     header(class="panel-header", [h2(class="panel-title", "Work overview")]),
     div(class="panel-body", [
       render_operator_next_step(dispatch, model),
+      render_recovery_panel(dispatch, model),
       div(class="overview-grid", [
         article(class="overview-stat", [
           p(class="kv-label", "Durable runs"),

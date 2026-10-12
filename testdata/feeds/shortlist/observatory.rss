@@ -1,0 +1,4 @@
+<rss version="2.0"><channel><title>Lunar Observatory</title>
+<item><guid isPermaLink="false">shared-1</guid><title>Moon telescope night</title><description>Observe the Moon with the new telescope.</description><pubDate>2026-10-09</pubDate><link>https://observatory.example.test/moon-night</link></item>
+<item><guid isPermaLink="false">weather</guid><title>Weather station upgrade</title><description>A new sensor arrives.</description></item>
+</channel></rss>

@@ -121,8 +121,7 @@ test "MoonFort output artifact metadata is adversarially bounded and run-bound" 
     output_artifact_test_reference(artifact_id="../../leak"),
     output_artifact_test_reference(sha256="not-a-digest"),
     output_artifact_test_reference(size_bytes=4_097L),
-    output_artifact_test_reference(size_bytes=1L),
-    output_artifact_test_reference(media_type="application/octet-stream"),
+    output_artifact_test_reference(media_type="text/html"),
     output_artifact_test_reference(expires_at_ms=999L),
     output_artifact_test_reference(key_id="../../host-key"),
     output_artifact_test_reference(signature="not-a-signature"),
@@ -162,7 +161,7 @@ test "MoonFort live output metadata is terminal, bounded, and run-bound" {
   let invalid = [
     live_output_test_reference(run_id="another-run"),
     live_output_test_reference(status="running"),
-    live_output_test_reference(size_bytes=1L),
+    live_output_test_reference(size_bytes=-1L),
     live_output_test_reference(size_bytes=4_097L),
     live_output_test_reference(expires_at_ms=999L),
   ]
@@ -173,6 +172,29 @@ test "MoonFort live output metadata is terminal, bounded, and run-bound" {
       ),
     )
   }
+}
+
+///|
+test "raw output size may be smaller than replacement-character display" {
+  let artifact = output_artifact_test_reference(
+    size_bytes=1L,
+    media_type="application/octet-stream",
+  )
+  let receipt = {
+    ..output_artifact_test_receipt(output_artifact=artifact),
+    output: "�",
+  }
+  assert_true(
+    @execution_sandbox.moonfort_output_artifact_valid(receipt, 4096, 1000L),
+  )
+  assert_true(
+    @execution_sandbox.moonfort_live_output_reference_valid(
+      live_output_test_reference(size_bytes=1L),
+      receipt,
+      4096,
+      1000L,
+    ),
+  )
 }
 
 ///|

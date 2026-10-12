@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/artifact_diff"
+
+// Values
+pub fn compare_text(String, String) -> TextDiff raise
+
+// Errors
+
+// Types and methods
+pub struct LineEdit {
+  kind : String
+  left_line : Int?
+  right_line : Int?
+  text : String
+  ending : String
+} derive(ToJson)
+
+pub struct TextDiff {
+  identical : Bool
+  left_lines : Int
+  right_lines : Int
+  added_lines : Int
+  removed_lines : Int
+  unchanged_lines : Int
+  edits : Array[LineEdit]
+} derive(ToJson)
+
+// Type aliases
+
+// Traits

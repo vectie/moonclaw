@@ -1,0 +1,3 @@
+
+{"run_id":"parent","job_id":"job-fixture","event_type":"step.completed","timestamp":20,"message":"Prepared local inputs","data":{"artifact_id":"artifact-1"},"status":"Succeeded","step_id":"prepare"}
+{"run_id":"parent","job_id":"job-fixture","event_type":"step.started","timestamp":10,"message":"Reading local inputs","data":{},"status":"Running","step_id":"prepare"}

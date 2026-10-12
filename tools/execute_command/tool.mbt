@@ -158,6 +158,7 @@ pub fn new(
   cwd : String,
   home? : String,
   approval_scope? : String,
+  output_owner? : @execution_sandbox.CommandOutputOwner,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
   live_output_progress? : async (Int64, Bool) -> Unit,
 ) -> @tool.Tool[CommandResult] {
@@ -356,6 +357,15 @@ pub fn new(
             error~,
           )
       }
+      if output_owner is Some(owner) {
+        @execution_sandbox.persist_command_live_binding(config, owner, plan) catch {
+          error =>
+            return @tool.error(
+              "Live command ownership could not be retained; execution was not dispatched: \{error}",
+              error~,
+            )
+        }
+      }
       let receipt = @execution_sandbox.invoke_moonfort(
         config,
         plan,
@@ -377,6 +387,18 @@ pub fn new(
           )
       }
       ignore(audit_path)
+      if output_owner is Some(owner) &&
+        (receipt.status is Exited || receipt.status is Killed) {
+        @execution_sandbox.persist_command_output_binding(
+          config, owner, plan, receipt,
+        ) catch {
+          error =>
+            return @tool.error(
+              "Command completed, but its run-output link could not be retained: \{error}",
+              error~,
+            )
+        }
+      }
       let audit_id = receipt.run_id
       match receipt.status {
         Exited => {

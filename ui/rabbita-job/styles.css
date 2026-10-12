@@ -2037,3 +2037,16 @@ button:disabled {
     transition-duration: 0.001ms !important;
   }
 }
+/* Keep download progress/recovery visible beside long artifact lists. */
+.artifact-download-notice {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+/* Live output is text-only, bounded independently of the retained spool. */
+.command-live-view { padding: 1rem; margin: 1rem; min-width: 0; }
+.command-live-text { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 30rem; font-family: monospace; }

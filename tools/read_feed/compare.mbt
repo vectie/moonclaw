@@ -1,0 +1,218 @@
+///|
+pub struct FeedObservation {
+  label : String
+  title : String
+  format : String
+  total_items : Int
+  next_url : String?
+} derive(Show)
+
+///|
+pub struct FeedChange {
+  kind : String
+  id : String
+  before : FeedArticle?
+  after : FeedArticle?
+  changed_fields : Array[String]
+} derive(Show)
+
+///|
+pub struct FeedComparison {
+  source : String
+  before : FeedObservation
+  after : FeedObservation
+  newly_listed : Int
+  changed : Int
+  no_longer_listed : Int
+  unchanged : Int
+  changes : Array[FeedChange]
+  total_changes : Int
+  matched_changes : Int
+  offset : Int
+  next_offset : Int?
+  query : String
+  kind : String
+} derive(Show)
+
+///|
+let comparison_scope : String = "Normalized visible fields: title, date_published, summary (first 2000 Unicode characters), url. Match by exact parsed ID; no full-content comparison."
+
+///|
+let comparison_caveat : String = "No longer listed means absent from the supplied after document, not deleted. Publisher next documents are not fetched; these observations may be partial."
+
+///|
+fn observation_index(
+  document : FeedDocument,
+  side : String,
+) -> Map[String, FeedArticle] raise {
+  let index : Map[String, FeedArticle] = {}
+  for article in document.articles {
+    guard !article.id.trim().is_empty() else {
+      fail("\{side} observation has an empty article ID")
+    }
+    guard index.get(article.id) is None else {
+      fail("\{side} observation has duplicate article ID: \{article.id}")
+    }
+    index[article.id] = article
+  }
+  index
+}
+
+///|
+fn changed_fields(before : FeedArticle, after : FeedArticle) -> Array[String] {
+  let fields : Array[String] = []
+  if before.title != after.title {
+    fields.push("title")
+  }
+  if before.date_published != after.date_published {
+    fields.push("date_published")
+  }
+  if before.summary != after.summary {
+    fields.push("summary")
+  }
+  if before.url != after.url {
+    fields.push("url")
+  }
+  fields
+}
+
+///|
+fn article_matches(article : FeedArticle?, needle : String) -> Bool {
+  match article {
+    None => false
+    Some(article) =>
+      (article.id +
+      "\n" +
+      article.title +
+      "\n" +
+      article.summary +
+      "\n" +
+      article.url.unwrap_or("") +
+      "\n" +
+      article.date_published.unwrap_or(""))
+      .to_lower()
+      .contains(needle)
+  }
+}
+
+///|
+/// Compare two explicitly selected observations of the same logical source.
+/// All entries in both supplied documents participate before filtering/paging.
+/// Duplicate or empty IDs fail rather than silently choosing an article.
+/// Current-order new/changed entries precede prior-order no-longer-listed entries.
+/// Only normalized reader-visible fields are compared, not full article content.
+pub fn compare_feeds(
+  before_body : String,
+  after_body : String,
+  source : String,
+  before_label? : String = "before",
+  after_label? : String = "after",
+  query? : String = "",
+  kind? : String = "all",
+  limit? : Int = 50,
+  offset? : Int = 0,
+) -> FeedComparison raise {
+  guard !source.trim().is_empty() else {
+    fail("source must identify the same logical feed for both observations")
+  }
+  guard limit >= 1 && limit <= 50 && offset >= 0 else {
+    fail("limit must be 1..50 and offset must be nonnegative")
+  }
+  guard kind is ("all" | "newly_listed" | "changed" | "no_longer_listed") else {
+    fail("kind must be all, newly_listed, changed or no_longer_listed")
+  }
+  let before = parse_feed_document(before_body, source)
+  let after = parse_feed_document(after_body, source)
+  let prior = observation_index(before, "before")
+  let current = observation_index(after, "after")
+  let changes : Array[FeedChange] = []
+  let mut newly_listed = 0
+  let mut changed = 0
+  let mut no_longer_listed = 0
+  let mut unchanged = 0
+  for article in after.articles {
+    match prior.get(article.id) {
+      None => {
+        newly_listed += 1
+        changes.push({
+          kind: "newly_listed",
+          id: article.id,
+          before: None,
+          after: Some(article),
+          changed_fields: [],
+        })
+      }
+      Some(old) => {
+        let fields = changed_fields(old, article)
+        if fields.is_empty() {
+          unchanged += 1
+        } else {
+          changed += 1
+          changes.push({
+            kind: "changed",
+            id: article.id,
+            before: Some(old),
+            after: Some(article),
+            changed_fields: fields,
+          })
+        }
+      }
+    }
+  }
+  for article in before.articles {
+    if current.get(article.id) is None {
+      no_longer_listed += 1
+      changes.push({
+        kind: "no_longer_listed",
+        id: article.id,
+        before: Some(article),
+        after: None,
+        changed_fields: [],
+      })
+    }
+  }
+  let query = query.trim().to_owned()
+  let needle = query.to_lower()
+  let matching = changes.filter(change => {
+    (kind == "all" || change.kind == kind) &&
+    (
+      needle.is_empty() ||
+      article_matches(change.before, needle) ||
+      article_matches(change.after, needle)
+    )
+  })
+  let start = Int::min(offset, matching.length())
+  let end = start + Int::min(limit, matching.length() - start)
+  {
+    source,
+    before: {
+      label: before_label,
+      title: before.title,
+      format: before.format,
+      total_items: before.articles.length(),
+      next_url: before.next_url,
+    },
+    after: {
+      label: after_label,
+      title: after.title,
+      format: after.format,
+      total_items: after.articles.length(),
+      next_url: after.next_url,
+    },
+    newly_listed,
+    changed,
+    no_longer_listed,
+    unchanged,
+    changes: matching[start:end].to_owned(),
+    total_changes: changes.length(),
+    matched_changes: matching.length(),
+    offset,
+    next_offset: if end < matching.length() {
+      Some(end)
+    } else {
+      None
+    },
+    query,
+    kind,
+  }
+}

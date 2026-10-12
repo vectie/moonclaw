@@ -1,4 +1,5 @@
 import '/styles.css'
+import { installBookOutcome } from './book-outcome.js'
 
 const app = document.getElementById('app')
 
@@ -17,3 +18,4 @@ if (app) {
 }
 
 import('/main.js')
+installBookOutcome(document)

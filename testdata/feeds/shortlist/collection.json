@@ -1,0 +1,8 @@
+{
+  "title": "Saved Moon Research",
+  "sources": [
+    {"source":"https://observatory.example.test/feed","label":"Observatory, caller-labeled morning save","path":"observatory.rss"},
+    {"source":"https://lab.example.test/feed","label":"Lab, caller-labeled earlier save","path":"lab.atom"},
+    {"source":"https://notes.example.test/feed","label":"Field notes, caller-labeled later save","path":"notes.json"}
+  ]
+}

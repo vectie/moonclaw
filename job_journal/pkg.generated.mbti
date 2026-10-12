@@ -1,0 +1,133 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/job_journal"
+
+// Values
+pub fn compare_journal_runs(Array[JournalEntry], baseline_run~ : String, candidate_run~ : String) -> JournalRunComparison raise
+
+pub fn explore_journal(Array[JournalEntry], run_id? : String, step_id? : String, event_type? : String, query? : String, since? : Int, until? : Int, offset? : Int, limit? : Int) -> JournalPage raise
+
+pub fn extract_run_journal(Array[JournalEntry], job_id~ : String, run_id~ : String) -> String raise
+
+pub fn journal_csv(Array[JournalEntry], run_id? : String, step_id? : String, event_type? : String, query? : String, since? : Int, until? : Int) -> String raise
+
+pub fn journal_run_directory(Array[JournalEntry], job_id? : String, query? : String, offset? : Int, limit? : Int) -> JournalRunDirectory raise
+
+pub fn journal_run_html(Array[JournalEntry], job_id~ : String, run_id~ : String) -> String raise
+
+pub fn parse_journal(String, source~ : String) -> Array[JournalEntry] raise
+
+pub fn review_run(Array[JournalEntry], String, manifest_source~ : String, run_id~ : String) -> RunReview raise
+
+// Errors
+
+// Types and methods
+pub struct JournalEntry {
+  source : String
+  line : Int
+  record : Json
+} derive(ToJson)
+
+pub struct JournalEventCount {
+  event_type : String
+  count : Int
+} derive(Eq, ToJson)
+
+pub struct JournalObservation {
+  events : Int
+  first : JournalEntry
+  last : JournalEntry
+  span : Int64
+  event_counts : Array[JournalEventCount]
+  last_status : Json?
+  status_source : JournalEntry?
+} derive(ToJson)
+
+pub struct JournalPage {
+  schema : String
+  total_events : Int
+  matched_events : Int
+  returned_events : Int
+  offset : Int
+  next_offset : Int?
+  entries : Array[JournalEntry]
+} derive(ToJson)
+pub fn JournalPage::to_markdown(Self) -> String raise
+
+pub struct JournalRunCard {
+  job_id : String
+  run_id : String
+  ambiguous_run_id : Bool
+  events : Int
+  steps : Int
+  sources : Array[String]
+  first_timestamp : Int
+  last_timestamp : Int
+  last_event : JournalEntry
+  last_run_status : Json?
+  status_source : JournalEntry?
+} derive(ToJson)
+
+pub struct JournalRunComparison {
+  schema : String
+  baseline_run : String
+  candidate_run : String
+  baseline_job : String
+  candidate_job : String
+  baseline : JournalObservation
+  candidate : JournalObservation
+  span_delta : Int64
+  steps : Array[JournalStepComparison]
+  baseline_run_level_events : Int
+  candidate_run_level_events : Int
+} derive(ToJson)
+pub fn JournalRunComparison::to_markdown(Self) -> String raise
+
+pub struct JournalRunDirectory {
+  schema : String
+  total_events : Int
+  total_runs : Int
+  matched_runs : Int
+  offset : Int
+  next_offset : Int?
+  runs : Array[JournalRunCard]
+} derive(ToJson)
+pub fn JournalRunDirectory::to_markdown(Self) -> String raise
+
+pub struct JournalStepComparison {
+  step_id : String
+  presence : String
+  baseline : JournalObservation?
+  candidate : JournalObservation?
+  span_delta : Int64?
+  event_count_delta : Int
+  status_changed : Bool?
+  event_counts_changed : Bool?
+  last_message_changed : Bool?
+} derive(ToJson)
+
+pub struct ReviewArtifact {
+  source : String
+  index : Int
+  entry : Json
+} derive(ToJson)
+
+pub struct RunReview {
+  schema : String
+  run_id : String
+  job_id : String
+  manifest_source : String
+  total_events : Int
+  excluded_events : Int
+  total_artifacts : Int
+  excluded_artifacts : Int
+  selected_content_bytes : Int
+  content_verification : String
+  notes : Array[String]
+  events : Array[JournalEntry]
+  artifacts : Array[ReviewArtifact]
+} derive(ToJson)
+pub fn RunReview::to_markdown(Self) -> String raise
+
+// Type aliases
+
+// Traits

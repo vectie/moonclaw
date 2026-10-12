@@ -1,0 +1,5 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
+<title>Lunar Observatory</title><atom:link rel="next" href="https://observatory.example.test/older"/>
+<item><guid isPermaLink="false">shared-1</guid><title>Moon telescope night</title><description><![CDATA[<p>Observe the Moon on Saturday with the new telescope.</p>]]></description><pubDate>2026-10-09</pubDate><link>https://observatory.example.test/moon-night</link></item>
+<item><guid isPermaLink="false">weather</guid><title>Weather station upgrade</title><description>A new temperature sensor arrives.</description></item>
+</channel></rss>

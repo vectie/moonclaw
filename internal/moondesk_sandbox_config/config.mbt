@@ -85,7 +85,11 @@ async fn read_bounded_file(path : String) -> String {
 }
 
 ///|
-async fn load_from_path(path : String, control_root : String) -> Config {
+async fn load_from_path(
+  path : String,
+  control_root : String,
+  read_only? : Bool = false,
+) -> Config {
   guard control_root != "" &&
     @pathx.dirname(path).to_owned() == control_root &&
     @fs.kind(control_root, follow_symlink=false) is Directory &&
@@ -96,10 +100,25 @@ async fn load_from_path(path : String, control_root : String) -> Config {
   }
   // The target is exact and already proven to be below the private app-support
   // control root, so tightening its permissions cannot affect workspace data.
-  @fs.chmod(control_root, 0o700)
-  @fs.chmod(path, 0o600)
+  if read_only {
+    guard check_private_control_path(control_root, true) &&
+      check_private_control_path(path, false) else {
+      fail(
+        "MoonDesk sandbox config must already be private for read-only inspection",
+      )
+    }
+  } else {
+    @fs.chmod(control_root, 0o700)
+    @fs.chmod(path, 0o600)
+  }
   let config : Config = @json.from_json(@json.parse(read_bounded_file(path))) catch {
     _ => fail("MoonDesk sandbox config is malformed")
+  }
+  if read_only {
+    guard check_private_control_path(control_root, true) &&
+      check_private_control_path(path, false) else {
+      fail("MoonDesk sandbox config privacy changed while loading")
+    }
   }
   guard config.protocol_version == 1 &&
     safe_hex(config.instance_id, 32) &&
@@ -114,7 +133,7 @@ async fn load_from_path(path : String, control_root : String) -> Config {
 }
 
 ///|
-pub async fn load() -> Config? {
+pub async fn load(read_only? : Bool = false) -> Config? {
   let configured = @os.getenv(MoonDeskSandboxConfigEnv) catch {
     _ => fail("MoonDesk sandbox config environment is unavailable")
   }
@@ -127,5 +146,11 @@ pub async fn load() -> Config? {
     _ => ""
   }
   let home = @os.getenv("HOME").unwrap_or("") catch { _ => "" }
-  Some(load_from_path(path, control_root_from_environment(app_data_root, home)))
+  Some(
+    load_from_path(
+      path,
+      control_root_from_environment(app_data_root, home),
+      read_only~,
+    ),
+  )
 }

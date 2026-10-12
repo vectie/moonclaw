@@ -421,11 +421,23 @@ fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] 
       match (try? @json.from_json(artifact_json) : Result[UiArtifact, Error]) {
         Ok(artifact) => {
           let content = match content_json {
-            Null => None
+            Null | [] => None
             String(text) => Some(text)
+            [String(text)] => Some(text)
             value => Some(value.stringify())
           }
-          Ok(LoadedArtifact::{ artifact, content, })
+          let revision_source = match json {
+            { "revision_source": value, .. } =>
+              match
+                (
+                  try? @json.from_json(value) :
+                  Result[ArtifactRevisionSource, Error]) {
+                Ok(source) => Some(source)
+                Err(_) => None
+              }
+            _ => None
+          }
+          Ok(LoadedArtifact::{ artifact, content, revision_source, })
         }
         Err(error) => Err("Failed to parse artifact payload: \{error}")
       }
@@ -929,6 +941,7 @@ fn parse_acp_stream_drain_payload(
 
 ///|
 fn fetch_runs(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/jobs/runs").expect_json(fn(result) {
     dispatch(
       RunsLoaded(
@@ -948,6 +961,7 @@ fn fetch_artifact(
   artifact_id : String,
   generation : Int,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/artifacts/\{artifact_id}").expect_json(fn(
     result,
   ) {
@@ -970,6 +984,7 @@ fn fetch_snapshot(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui").expect_json(fn(
     result,
   ) {
@@ -991,6 +1006,7 @@ fn fetch_cowork_linked_snapshot(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui").expect_json(fn(
     result,
   ) {
@@ -1012,6 +1028,7 @@ fn fetch_timeline(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/events").expect_json(fn(
     result,
   ) {
@@ -1029,6 +1046,7 @@ fn fetch_timeline(
 
 ///|
 fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/acp/ui").expect_json(fn(result) {
     dispatch(
       AcpSnapshotLoaded(
@@ -1046,6 +1064,7 @@ fn fetch_cowork_sessions(
   dispatch : Dispatch[Msg],
   gateway_base : String,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/cowork/sessions").expect_json(fn(result) {
     dispatch(
       CoworkSessionsLoaded(
@@ -1065,6 +1084,7 @@ fn fetch_cowork_session(
   session_key : String,
   generation : Int,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}").expect_json(fn(
     result,
   ) {
@@ -1086,6 +1106,7 @@ fn fetch_cowork_workspace(
   dispatch : Dispatch[Msg],
   gateway_base : String,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/workspace").expect_json(fn(result) {
     dispatch(
       CoworkWorkspaceLoaded(
@@ -1104,6 +1125,7 @@ fn create_cowork_session(
   gateway_base : String,
   generation : Int,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   let body : Json = {}
   @http.post("\{gateway_base}/v1/cowork/sessions")
   .with_json(body)
@@ -1128,6 +1150,7 @@ fn post_cowork_action(
   body? : Json = {},
   consumes_draft? : Bool = true,
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.post(url)
   .with_json(body)
   .expect_json(fn(result) {
@@ -1148,6 +1171,7 @@ fn post_cowork_action(
 
 ///|
 fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.get("\{gateway_base}/v1/acp/events").expect_json(fn(result) {
     dispatch(
       AcpEventsLoaded(
@@ -1184,6 +1208,7 @@ fn post_action(
   url : String,
   body? : Json = {},
 ) -> Cmd {
+  let dispatch = gateway_owned_dispatch(dispatch)
   @http.post(url)
   .with_json(body)
   .expect_text(fn(result) {

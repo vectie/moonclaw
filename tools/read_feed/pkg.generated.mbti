@@ -1,0 +1,168 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/tools/read_feed"
+
+import {
+  "vectie/moonclaw/tool",
+}
+
+// Values
+pub fn capture_reading_shortlist(Array[FeedSnapshot], title? : String) -> ReadingShortlist raise
+
+pub async fn capture_reading_shortlist_file(String) -> ReadingShortlist
+
+pub fn collect_feeds(Array[FeedSnapshot], title? : String, query? : String, source? : String, limit? : Int, offset? : Int) -> FeedCollectionPage raise
+
+pub fn compare_feeds(String, String, String, before_label? : String, after_label? : String, query? : String, kind? : String, limit? : Int, offset? : Int) -> FeedComparison raise
+
+pub fn discover_feeds(String, String, prefix? : String) -> FeedDiscovery raise
+
+pub fn new(String, home? : String?, allow_files? : Bool) -> @tool.Tool[FeedPage]
+
+pub fn parse_feed(String, String, limit? : Int, offset? : Int, query? : String) -> FeedPage raise
+
+pub fn parse_opml(String, prefix? : String) -> FeedCollection raise
+
+pub fn parse_reading_shortlist(String) -> ReadingShortlist raise
+
+pub async fn read_feed_collection(String, query? : String, source? : String, limit? : Int, offset? : Int) -> FeedCollectionPage
+
+pub async fn read_reading_shortlist(String) -> ReadingShortlist
+
+// Errors
+
+// Types and methods
+pub struct CollectionArticle {
+  source : String
+  label : String
+  source_title : String
+  article_index : Int
+  article : FeedArticle
+} derive(ToJson)
+pub fn CollectionArticle::to_json(Self) -> Json
+
+pub struct CollectionSource {
+  source : String
+  label : String
+  title : String
+  format : String
+  total_items : Int
+  matched_items : Int
+  next_url : String?
+}
+pub fn CollectionSource::to_json(Self) -> Json
+pub impl ToJson for CollectionSource
+
+pub struct FeedArticle {
+  id : String
+  title : String
+  date_published : String?
+  summary : String
+  url : String?
+} derive(Show)
+pub impl ToJson for FeedArticle
+
+pub struct FeedChange {
+  kind : String
+  id : String
+  before : FeedArticle?
+  after : FeedArticle?
+  changed_fields : Array[String]
+} derive(Show)
+pub impl ToJson for FeedChange
+
+pub struct FeedCollection {
+  title : String
+  providers : Array[Json]
+  duplicate_feeds : Int
+  skipped_outlines : Int
+  warnings : Array[String]
+} derive(Show, ToJson)
+
+pub struct FeedCollectionPage {
+  title : String
+  sources : Array[CollectionSource]
+  articles : Array[CollectionArticle]
+  total_items : Int
+  matched_items : Int
+  offset : Int
+  next_offset : Int?
+  query : String
+  source_filter : String
+}
+pub fn FeedCollectionPage::to_json(Self) -> Json
+pub fn FeedCollectionPage::to_markdown(Self) -> String
+pub impl ToJson for FeedCollectionPage
+
+pub struct FeedComparison {
+  source : String
+  before : FeedObservation
+  after : FeedObservation
+  newly_listed : Int
+  changed : Int
+  no_longer_listed : Int
+  unchanged : Int
+  changes : Array[FeedChange]
+  total_changes : Int
+  matched_changes : Int
+  offset : Int
+  next_offset : Int?
+  query : String
+  kind : String
+} derive(Show)
+pub fn FeedComparison::to_markdown(Self) -> String
+pub impl ToJson for FeedComparison
+
+pub struct FeedDiscovery {
+  page_url : String
+  base_url : String?
+  providers : Array[Json]
+  duplicate_links : Int
+  rejected_links : Int
+  warnings : Array[String]
+} derive(Show, ToJson)
+
+pub struct FeedObservation {
+  label : String
+  title : String
+  format : String
+  total_items : Int
+  next_url : String?
+} derive(Show)
+pub impl ToJson for FeedObservation
+
+pub struct FeedPage {
+  source : String
+  title : String
+  articles : Array[FeedArticle]
+  offset : Int
+  next_offset : Int?
+  next_url : String?
+  total_items : Int
+  matched_items : Int
+  format : String
+  query : String
+} derive(Show)
+pub fn FeedPage::to_markdown(Self) -> String
+pub impl ToJson for FeedPage
+
+pub(all) struct FeedSnapshot {
+  source : String
+  label : String
+  body : String
+}
+
+pub struct ReadingShortlist {
+  // private fields
+}
+pub fn ReadingShortlist::catalog(Self, query? : String) -> Json
+pub fn ReadingShortlist::edit(Self, Json) -> Self raise
+pub fn ReadingShortlist::merge(Self, Self, conflict? : String) -> Self raise
+pub fn ReadingShortlist::preview_merge(Self, Self) -> Json
+pub fn ReadingShortlist::to_archive(Self) -> String raise
+pub fn ReadingShortlist::to_json(Self) -> Json
+pub fn ReadingShortlist::to_markdown(Self) -> String
+pub impl ToJson for ReadingShortlist
+
+// Type aliases
+
+// Traits

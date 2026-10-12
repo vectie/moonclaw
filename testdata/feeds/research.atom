@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:base="https://research.example.test/updates/">
+  <title>Open Research Notes</title>
+  <id>urn:example:open-research</id>
+  <updated>2026-10-08T12:00:00Z</updated>
+  <link rel="self" href="feed.atom" />
+  <link rel="alternate" href="https://research.example.test/" />
+  <link rel="next" href="archive.atom?page=2&amp;topic=all" />
+  <entry>
+    <id>urn:example:climate-ocean</id>
+    <title>Climate model includes new ocean observations</title>
+    <published>2026-10-08T10:00:00Z</published>
+    <updated>2026-10-08T12:00:00Z</updated>
+    <link rel="self" type="application/atom+xml" href="climate-ocean.atom" />
+    <link href="../papers/climate-ocean" />
+    <summary type="html">&lt;p&gt;An open &lt;strong&gt;climate&lt;/strong&gt; dataset adds ocean readings &amp;amp; reproducible notebooks.&lt;/p&gt;</summary>
+  </entry>
+  <entry xml:base="../papers/">
+    <id>urn:example:climate-city</id>
+    <title>Climate resilience in growing cities</title>
+    <updated>2026-10-07T08:15:00Z</updated>
+    <link rel="alternate" href="climate-city" />
+    <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>A neighborhood-scale heat map.</p><p>Includes reusable analysis code.</p></div></content>
+  </entry>
+  <entry>
+    <id>urn:example:quantum-sensor</id>
+    <title>Quantum sensor notes</title>
+    <updated>2026-10-06T09:00:00Z</updated>
+    <link href="../papers/quantum-sensor" />
+    <summary>A synthetic paper about precision measurements.</summary>
+  </entry>
+</feed>

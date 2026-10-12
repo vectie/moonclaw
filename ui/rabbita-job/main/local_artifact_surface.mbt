@@ -98,21 +98,47 @@ fn render_starter_docs_card(
     p(class="muted", summary),
     p(class="mono", starter_artifact_preview(artifacts)),
   ]
-  match primary {
-    Some(artifact) if artifact_is_textual(artifact) =>
-      button(
-        class="artifact-card artifact-card-button",
-        on_click=dispatch(OpenArtifact(artifact.id)),
-        body,
-      )
-    _ => article(class="artifact-card", body)
-  }
+  article(class="artifact-card", [
+    match primary {
+      Some(artifact) if artifact_is_textual(artifact) =>
+        button(
+          class="artifact-card-button",
+          on_click=dispatch(OpenArtifact(artifact.id)),
+          body,
+        )
+      _ => div(body)
+    },
+    div(
+      artifacts.map(artifact => {
+        div([
+          p(class="mono", path_basename(artifact.path)),
+          artifact_download_button(dispatch, artifact),
+        ])
+      }),
+    ),
+  ])
 }
 
 ///|
 fn artifact_is_textual(artifact : UiArtifact) -> Bool {
   artifact.content_type.has_prefix("text/") ||
   artifact.content_type == "application/json"
+}
+
+///|
+fn artifact_download_button(
+  dispatch : Dispatch[Msg],
+  artifact : UiArtifact,
+) -> Html {
+  if artifact.id.has_prefix("synthetic:") {
+    p(class="muted", "Preview only; download requires a retained artifact")
+  } else {
+    button(
+      class="tree-control-button",
+      on_click=dispatch(DownloadArtifact(artifact.id)),
+      "Download",
+    )
+  }
 }
 
 ///|
@@ -136,15 +162,18 @@ fn render_artifact_card(
     p(class="muted", artifact.artifact_type),
     p(class="mono", artifact.path),
   ]
-  if artifact_is_textual(artifact) {
-    button(
-      class="artifact-card artifact-card-button",
-      on_click=dispatch(OpenArtifact(artifact.id)),
-      body,
-    )
-  } else {
-    article(class="artifact-card", body)
-  }
+  article(class="artifact-card", [
+    if artifact_is_textual(artifact) {
+      button(
+        class="artifact-card-button",
+        on_click=dispatch(OpenArtifact(artifact.id)),
+        body,
+      )
+    } else {
+      div(body)
+    },
+    artifact_download_button(dispatch, artifact),
+  ])
 }
 
 ///|
@@ -162,13 +191,16 @@ fn render_artifact_focus_card(
     p(class="muted", label),
     p(class="mono", preview),
   ]
-  if artifact_is_textual(artifact) {
-    button(
-      class="artifact-card artifact-card-button",
-      on_click=dispatch(OpenArtifact(artifact.id)),
-      body,
-    )
-  } else {
-    article(class="artifact-card", body)
-  }
+  article(class="artifact-card", [
+    if artifact_is_textual(artifact) {
+      button(
+        class="artifact-card-button",
+        on_click=dispatch(OpenArtifact(artifact.id)),
+        body,
+      )
+    } else {
+      div(body)
+    },
+    artifact_download_button(dispatch, artifact),
+  ])
 }

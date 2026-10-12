@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xml:base="https://observatory.example.test/news/">
+  <channel>
+    <title>Lunar Observatory &amp; Community</title>
+    <link>https://observatory.example.test/</link>
+    <description>Synthetic science updates for the feed reader demo.</description>
+    <atom:link rel="next" href="archive.xml?page=2" />
+    <item>
+      <guid isPermaLink="false">observatory:telescope-first-light</guid>
+      <title>New telescope reaches first light</title>
+      <link>telescope-first-light</link>
+      <pubDate>Thu, 08 Oct 2026 08:00:00 GMT</pubDate>
+      <description><![CDATA[<p>The new <strong>telescope</strong> is ready for community observing.</p><p>First session: Friday &amp; Saturday.</p>]]></description>
+    </item>
+    <item>
+      <guid isPermaLink="false">observatory:autumn-sky</guid>
+      <title>October night sky guide</title>
+      <link>autumn-sky</link>
+      <dc:date>2026-10-07T09:30:00Z</dc:date>
+      <content:encoded><![CDATA[<p>Find the Moon, Saturn and the autumn constellations.</p>]]></content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">observatory:telescope-workshop</guid>
+      <title>Build a telescope workshop</title>
+      <link>../events/telescope-workshop</link>
+      <description>Bring a notebook. No previous equipment experience is needed.</description>
+    </item>
+  </channel>
+</rss>

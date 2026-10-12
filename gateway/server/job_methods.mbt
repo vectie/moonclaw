@@ -486,7 +486,7 @@ async fn Gateway::handle_job_ui_get_method(
       self.send_response(w, {
         id: request.id,
         ok: true,
-        payload: Some({ "snapshot": snapshot.to_json() }),
+        payload: Some({ "snapshot": self.with_command_outputs(snapshot).to_json() }),
         error: None,
       })
     None =>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Observatory dispatches</title>
+  <link rel="next" href="https://example.test/feed?page=2"/>
+  <entry>
+    <id>steady</id>
+    <title>Night-sky guide</title>
+    <summary>Clear skies and a bright Moon.</summary>
+    <link href="https://example.test/guide"/>
+  </entry>
+  <entry>
+    <id>moonrise</id>
+    <title>Moonrise [field notes]</title>
+    <published>2026-10-08T12:00:00Z</published>
+    <summary type="text">Bring a notebook &amp; look east. &lt;sample markup&gt; stays plain text.</summary>
+    <link href="https://example.test/moonrise"/>
+  </entry>
+  <entry>
+    <id>telescope</id>
+    <title>Telescope opening: Saturday</title>
+    <published>2026-10-08T11:00:00Z</published>
+    <summary>The public telescope now opens on Saturday. Friday is reserved for calibration.</summary>
+    <link href="https://example.test/telescope"/>
+  </entry>
+</feed>

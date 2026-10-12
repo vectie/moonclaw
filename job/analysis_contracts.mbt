@@ -498,13 +498,21 @@ pub fn configure_analysis_agent_for_contract(
   home : String?,
   contract : AnalysisToolContract,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
+  output_owner? : @execution_sandbox.CommandOutputOwner,
+  live_output_progress? : async (Int64, Bool) -> Unit,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   let builtin_tools = []
   if contract.shell {
     builtin_tools.push(
-      @execute_command.new(cwd, home?, sandbox_config?).to_agent_tool(),
+      @execute_command.new(
+        cwd,
+        home?,
+        sandbox_config?,
+        output_owner?,
+        live_output_progress?,
+      ).to_agent_tool(),
     )
   }
   if contract.list_files {
@@ -545,6 +553,13 @@ pub fn configure_analysis_agent_for_contract(
   }
   if contract.web_fetch {
     agent.add_tool(@web_fetch.new())
+    agent.add_tool(
+      @read_feed.new(
+        agent.cwd,
+        home~,
+        allow_files=contract.read_files || contract.read_resource,
+      ),
+    )
   }
   if contract.unlimited_ocr {
     agent.add_tool(@unlimited_ocr.new(agent.cwd))
@@ -566,6 +581,7 @@ pub fn configure_analysis_agent_for_request(
   agent : @agent.Agent,
   request : AnalysisRequest,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
+  live_output_progress? : async (Int64, Bool) -> Unit,
 ) -> Unit {
   let constrained = constrain_tool_contract_for_request(request)
   configure_analysis_agent_for_contract(
@@ -574,6 +590,8 @@ pub fn configure_analysis_agent_for_request(
     request.home,
     constrained,
     sandbox_config?,
+    output_owner={ run_id: request.run_id, step_id: request.step_id, },
+    live_output_progress?,
   )
   if constrained.runtime_context {
     agent.add_tool(@runtime_context.new(runtime_context_tool_result(request)))

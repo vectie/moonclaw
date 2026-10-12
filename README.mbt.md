@@ -14,6 +14,22 @@ For executable MoonBooks, MoonClaw is the runtime owner for agent, task, session
 
 Start with [docs/README.md](docs/README.md) for the product boundary,
 implementation map, testing guidance, operational notes, and future plan.
+Find saved outputs by job/run/type or literal text with [offline artifact search](docs/SEARCH_ARTIFACTS.md), inspect exact revisions, and export matching selections.
+
+Read saved events beside exact exported output revisions in a [run review](docs/RUN_REVIEW.md), with local links to copied content and original records.
+
+Keep [revision-bound reviewer notes](docs/ARTIFACT_REVIEW_NOTES.md), then
+[collect several reviewers' feedback](docs/ARTIFACT_FEEDBACK_COLLECTION.md) into
+one local per-artifact view with change requests and pending inspections.
+Edit states and multiline notes with [CSV review exchange](docs/ARTIFACT_REVIEW_CSV.md),
+preview changes, and import selected rows against the exact original worksheet.
+
+Export selected saved outputs into a [portable review folder](docs/EXPORT_ARTIFACTS.md), with exact binary/text bytes, original records and checksums.
+Reopen a received review folder with [portable artifact import](docs/IMPORT_ARTIFACTS.md), then search, compare and re-export exact outputs without the original machine.
+
+Explore public articles with the [RSS, Atom and JSON Feed reader](docs/READ_FEED.md), including topic filtering, Markdown digests, offline samples and a provider-free operator CLI.
+
+Find advertised subscription URLs in saved publisher HTML with [feed discovery](docs/DISCOVER_FEEDS.md), then review the generated source manifest before using it in a workspace.
 The stricter pack/runtime ownership rules are documented in
 [Responsibility and Testability](docs/RESPONSIBILITY_AND_TESTABILITY.md).
 Cross-product execution now uses the
@@ -724,3 +740,47 @@ xychart-beta
     line [23,23,23,23,23,23,23,23,23,23,23,22,22,22]
 ```
 <!-- STAR_GROWTH:END -->
+
+## Saved job journal exploration
+
+[Explore saved job journals](docs/JOB_JOURNAL_EXPLORER.md) merges explicit local
+run journals, searches and filters observations, and exports JSON or Markdown
+with original run identities and source-line provenance. No running provider or
+gateway is required.
+
+## Compare saved job runs
+
+Use `cmd/compare_runs` to compare two saved runs by step ID, recorded status,
+event counts and observation spans without starting jobs. See
+[the workflow guide](docs/COMPARE_RUNS.md).
+
+## Saved journal CSV export
+
+Use `cmd/journal_csv` to export every matching saved observation into a sortable
+CSV, with source lines, original JSON and reversible spreadsheet text prefixes.
+See [the spreadsheet workflow guide](docs/JOURNAL_CSV.md).
+
+## Discover saved runs
+
+Use `cmd/list_runs` to browse exact job/run pairs across saved journals, find
+old objectives and open an unambiguous run in the existing explorer. Cards keep
+run-level status provenance without promoting a step status or inferring current
+state. See [the saved run directory guide](docs/SAVED_RUN_DIRECTORY.md).
+
+### Standalone saved-run report
+
+Use `cmd/run_report` to turn one exact saved job/run pair into a self-contained
+HTML report with a step index and expandable chronological observations. It
+preserves original source positions and recorded status distinctions. See
+[RUN_REPORT.md](docs/RUN_REPORT.md) for usage, limits and sharing considerations.
+
+## Local feedback on exported artifacts
+
+[Keep reviewer notes on exact exported revisions](docs/ARTIFACT_REVIEW_NOTES.md)
+with the dependency-free `python3 tools/artifact_review.py` workflow. Reopen
+verified copies, record inspected or needs-changes notes, and export a readable
+handoff without changing runtime status or implying acceptance.
+
+[Track expected artifact reviews](docs/ARTIFACT_REVIEW_COVERAGE.md) with an explicit
+reviewer/artifact plan and reopen its missing/returned feedback coverage. This
+local checklist preserves exact revisions and never grants acceptance authority.

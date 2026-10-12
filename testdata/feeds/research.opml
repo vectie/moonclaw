@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head><title>Science reading list</title></head>
+  <body>
+    <outline text="Research">
+      <outline text="Space">
+        <outline type="rss" text="Observatory" xmlUrl="https://observatory.example.test/feed.rss"/>
+      </outline>
+      <outline text="Climate" xmlUrl="https://climate.example.test/atom.xml"/>
+      <outline text="Observatory duplicate" xmlUrl="https://observatory.example.test/feed.rss"/>
+      <outline type="link" text="Research homepage" url="https://research.example.test/"/>
+    </outline>
+  </body>
+</opml>

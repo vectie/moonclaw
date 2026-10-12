@@ -5,6 +5,7 @@ pub async fn Gateway::new(
   cwd? : StringView,
   home? : StringView,
   auth? : AuthConfig,
+  command_output_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Gateway {
   let home = match home {
     None => @os.home()
@@ -71,6 +72,10 @@ pub async fn Gateway::new(
     now=current_time_ms,
   )
   let gateway = Gateway::{
+    command_output_config: match command_output_config {
+      Some(config) => Some(config)
+      None => @moonfort_config.load_sandbox_executor_config()
+    },
     clock: @clock.epoch,
     uuid,
     httpx: httpx_server,

@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/json",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
+  "vectie/moonclaw/artifact_diff",
   "vectie/moonclaw/internal/book_learning",
   "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/internal/resource_providers",
@@ -55,6 +56,8 @@ pub async fn cleanup_run_execution_isolations(SystemStore, JobRun) -> Array[Stri
 
 pub fn compact_analysis_result_metadata(Json) -> Json
 
+pub async fn compare_retained_artifacts(String, String, String) -> ArtifactComparison
+
 pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : String) -> ProposalCompilation
 
 pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, RunStatus, Int) -> Unit
@@ -63,9 +66,9 @@ pub async fn complete_controller_run(SystemStore, JobRun, RunStatus, Int) -> Uni
 
 pub async fn compose_job_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
 
-pub fn configure_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
+pub fn configure_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract, sandbox_config? : @execution_sandbox.SandboxExecutorConfig, output_owner? : @execution_sandbox.CommandOutputOwner, live_output_progress? : async (Int64, Bool) -> Unit) -> Unit
 
-pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
+pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest, sandbox_config? : @execution_sandbox.SandboxExecutorConfig, live_output_progress? : async (Int64, Bool) -> Unit) -> Unit
 
 pub fn configure_analysis_agent_tools(@agent.Agent, String, web_search? : Bool, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
 
@@ -111,6 +114,8 @@ pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> Work
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
 
+pub async fn export_retained_artifacts(String, Array[String], String) -> ArtifactExport
+
 pub fn external_proposal_packet_summary(ExternalProposalPacket) -> String
 
 pub fn extract_output_format_hint(String) -> String?
@@ -124,6 +129,8 @@ pub fn format_progress_event(JobRunEvent) -> String?
 pub fn human_readable_proposal_id(String, Int, String) -> String
 
 pub fn human_readable_run_id(Int, String) -> String
+
+pub async fn import_artifact_export(String, String) -> ArtifactImport
 
 pub fn initial_notification_runtime_state(Int, last_notified_event_count? : Int) -> JobNotificationRuntimeState
 
@@ -298,6 +305,8 @@ pub async fn save_job_notification_preference(SystemStore, String, String, Strin
 pub async fn save_presented_job_proposal(SystemStore, JobProposal, String) -> Unit
 
 pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
+
+pub async fn search_retained_artifacts(String, query? : ArtifactQuery, text? : String?, limit? : Int) -> ArtifactSearch
 
 pub fn split_job_chat_command(String) -> (String, String)
 
@@ -487,6 +496,28 @@ pub(all) struct ArtifactCleanupReport {
   deleted_ids : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
+pub struct ArtifactComparison {
+  schema : String
+  left : ComparedArtifact
+  right : ComparedArtifact
+  diff : @artifact_diff.TextDiff
+} derive(ToJson)
+pub fn ArtifactComparison::to_markdown(Self) -> String
+
+pub struct ArtifactExport {
+  schema : String
+  artifacts : Array[ExportedArtifact]
+  total_content_bytes : Int
+} derive(ToJson, @json.FromJson)
+pub fn ArtifactExport::to_readme(Self) -> String
+
+pub struct ArtifactImport {
+  schema : String
+  source_manifest_sha256 : String
+  artifacts : Array[ImportedArtifact]
+  total_content_bytes : Int
+} derive(ToJson)
+
 pub(all) struct ArtifactQuery {
   job_id : String?
   run_id : String?
@@ -522,6 +553,41 @@ pub(all) struct ArtifactRetentionPolicy {
 } derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ArtifactRetentionPolicy::new(artifact_type? : String?, scope? : String?, keep_latest? : Int?, max_age_ms? : Int?, archive_before_delete? : Bool) -> Self
 
+pub struct ArtifactSearch {
+  schema : String
+  store_root : String
+  query : ArtifactQuery
+  text : String?
+  scanned_records : Int
+  excluded_nontext : Int
+  deleted_records : Int
+  matching_artifacts : Int
+  truncated : Bool
+  matches : Array[ArtifactSearchMatch]
+  issues : Array[ArtifactSearchIssue]
+} derive(ToJson)
+pub async fn ArtifactSearch::export_selected(Self, String) -> ArtifactExport
+pub fn ArtifactSearch::to_text(Self) -> String
+
+pub struct ArtifactSearchIssue {
+  artifact_id : String
+  reason : String
+} derive(ToJson)
+
+pub struct ArtifactSearchLine {
+  line : Int
+  excerpt : String
+} derive(ToJson)
+
+pub struct ArtifactSearchMatch {
+  record : ArtifactRecord
+  record_sha256 : String
+  content_sha256 : String
+  content_bytes : Int
+  matching_lines : Int
+  lines : Array[ArtifactSearchLine]
+} derive(ToJson)
+
 pub(all) enum ArtifactStatus {
   Active
   Archived
@@ -532,10 +598,16 @@ pub struct ArtifactStore {
 }
 pub async fn ArtifactStore::apply_retention(Self, ArtifactRetentionPolicy, Int) -> ArtifactCleanupReport
 pub async fn ArtifactStore::archive(Self, String, Int) -> ArtifactRecord?
+pub async fn ArtifactStore::compare_text(Self, String, String) -> ArtifactComparison
+pub async fn ArtifactStore::export_selected(Self, Array[String], String) -> ArtifactExport
+pub async fn ArtifactStore::freeze_book_outcome_source(Self, String, Array[String]) -> Json
 pub fn ArtifactStore::get(Self, String) -> ArtifactRecord?
+pub async fn ArtifactStore::human_revision_source(Self, String, String) -> Json
 pub fn ArtifactStore::list(Self, query? : ArtifactQuery) -> Array[ArtifactRecord]
 pub fn ArtifactStore::new(store~ : SystemStore) -> Self
+pub async fn ArtifactStore::read_bytes(Self, String, String) -> Bytes?
 pub async fn ArtifactStore::read_text(Self, String) -> String?
+pub async fn ArtifactStore::save_human_revision(Self, String, String, String, String, String, Int) -> ArtifactRecord
 pub async fn ArtifactStore::write(Self, ArtifactWriteRequest, String, Int) -> ArtifactRecord
 pub async fn ArtifactStore::write_bytes(Self, ArtifactBytesWriteRequest, String, Int) -> ArtifactRecord
 
@@ -683,6 +755,12 @@ pub(all) struct ChildRunStatus {
   status : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
+pub struct ComparedArtifact {
+  record : ArtifactRecord
+  content_sha256 : String
+  content_bytes : Int
+} derive(ToJson)
+
 pub struct ConfirmProposalResult {
   compilation : ProposalCompilation
   run : JobRun
@@ -749,6 +827,23 @@ pub(all) struct ExecutionIsolationSpec {
 } derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, cleanup_policy? : String?, force_new_branch? : Bool) -> Self
 
+pub struct ExportedArtifact {
+  record : ArtifactRecord
+  record_path : String
+  record_sha256 : String
+  content_path : String
+  content_sha256 : String
+  content_bytes : Int
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ExternalOneoffReceipt {
+  packet_id : String
+  proposal_id : String
+  run_id : String
+  status : String
+  workspace_dir : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub struct ExternalProposalImportResult {
   proposal : JobProposal
   confirm_result : ConfirmProposalResult?
@@ -811,6 +906,7 @@ pub async fn GatewayJobApp::revise_draft_proposal(Self, JobProposal, String, Str
 pub async fn GatewayJobApp::revise_proposal(Self, JobProposal, String) -> JobProposal
 pub async fn GatewayJobApp::revise_proposal_in_workspace(Self, JobProposal, String, String, String) -> JobProposal
 pub fn GatewayJobApp::runtime(Self) -> RuntimeManager
+pub async fn GatewayJobApp::start_external_oneoff_file(Self, String, execute? : Bool, analysis_executor? : AnalysisExecutor?) -> Result[ExternalOneoffReceipt, String]
 pub fn GatewayJobApp::state(Self) -> GatewayJobState
 pub fn GatewayJobApp::workspace_prompt_context(Self) -> String
 pub fn GatewayJobApp::workspace_root(Self) -> String
@@ -846,6 +942,15 @@ pub(all) struct Id(Int) derive(Eq, Hash)
 pub impl Show for Id
 pub impl ToJson for Id
 pub impl @json.FromJson for Id
+
+pub struct ImportedArtifact {
+  record : ArtifactRecord
+  record_sha256 : String
+  original_record_path : String
+  original_record_sha256 : String
+  content_sha256 : String
+  content_bytes : Int
+} derive(ToJson)
 
 pub struct Job {
   id : Id

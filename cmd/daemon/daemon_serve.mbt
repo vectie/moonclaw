@@ -155,6 +155,8 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.moondesk_promote_retention(r, w)
             (Post, ["", "v1", "execution-sandbox", "promotion-receipt"]) =>
               self.moondesk_promote_retention(r, w, read_receipt=true)
+            (Post, ["", "v1", "execution-sandbox", "promotion-recovery"]) =>
+              @promotion_recovery.handle(r, w)
             (Get, ["", "v1", "code", "sessions"]) =>
               self.mooncode_list_sessions(r, w)
             (Get, ["", "v1", "code", "sessions", session_id]) =>

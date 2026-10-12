@@ -2,6 +2,7 @@
 pub async fn start(args : ArrayView[String]) -> Unit {
   let arr = args.to_owned()
   match arr[:] {
+    ["oneoff", packet_path, ..] => oneoff_packet(arr, packet_path)
     ["import", packet_path, ..] => import_packet(arr, packet_path)
     ["run", run_id, ..] => run_packet_job(arr, run_id)
     ["status", run_id, ..] => status_packet_job(arr, run_id)
@@ -20,6 +21,7 @@ fn print_help() -> Unit {
   println("")
   println("Commands:")
   println("  import <packet.json>   Import an external proposal packet")
+  println("  oneoff <packet.json>   Start or reconcile an exact one-off packet once")
   println("  status <run_id>        Load and print a run without executing it")
   println("  cancel <run_id>        Cancel a persisted interrupted run")
   println("  version                Show version")

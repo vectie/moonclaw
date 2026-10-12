@@ -25,6 +25,7 @@ pub struct WorkspaceRuntime {
   cwd : String
   mut snapshot : WorkspaceSnapshot
 }
+pub async fn WorkspaceRuntime::captured(String) -> Self
 pub async fn WorkspaceRuntime::load(Self) -> Unit
 pub async fn WorkspaceRuntime::new(home~ : String, cwd~ : String) -> Self
 pub fn WorkspaceRuntime::prompt_context(Self) -> String

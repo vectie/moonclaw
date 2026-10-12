@@ -1,0 +1,1 @@
+{"version":"https://jsonfeed.org/version/1.1","title":"Escaped article links","items":[{"id":"spaces-and-angles","title":"Repeated spaces and angle brackets","url":"https://example.test/a b c/<one>/<two>"},{"id":"line-breaks","title":"Repeated carriage returns and newlines","url":"https://example.test/a\r\nb\r\n"}]}

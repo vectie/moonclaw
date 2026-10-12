@@ -23,6 +23,8 @@ type AcpUiSnapshotPayload derive(Show, @json.FromJson)
 
 type AcpUiTimelineEntry derive(Show, @json.FromJson)
 
+type ArtifactRevisionSource derive(Show, @json.FromJson)
+
 type BrowserCopyResult derive(Show, @json.FromJson)
 
 type BrowserLocalUploadBatch derive(Show, @json.FromJson)
@@ -30,6 +32,8 @@ type BrowserLocalUploadBatch derive(Show, @json.FromJson)
 type CanvasEdgeLayout
 
 type CanvasNodeLayout
+
+type CommandLiveView derive(@debug.Debug)
 
 type CompanyBoardStats
 
@@ -65,6 +69,10 @@ type CoworkSessionSummary derive(Show, @json.FromJson)
 
 type CoworkSessionsPayload derive(Show, @json.FromJson)
 
+type HumanRevisionDraft
+
+type LiveDisplayPart derive(@debug.Debug, @json.FromJson)
+
 type LoadedArtifact derive(Show, @json.FromJson)
 
 type MixedHandoffGroup
@@ -78,6 +86,10 @@ type NodeEventStats
 type OperatorNextStep derive(Eq, @debug.Debug)
 
 type QueuedCoworkDraft derive(Show)
+
+type RecoveryProjection derive(ToJson, @json.FromJson)
+
+type RecoveryUiState
 
 type RightPanel derive(Compare, Eq, Show)
 
@@ -96,6 +108,12 @@ type Surface derive(Compare, Eq, Show)
 type TimelineGroup
 
 type UiArtifact derive(Show, @json.FromJson)
+
+type UiCommandLiveChunk derive(ToJson, @debug.Debug, @json.FromJson)
+
+type UiCommandLiveOwner derive(ToJson, @debug.Debug, @json.FromJson)
+
+type UiCommandOutput derive(ToJson, @debug.Debug, @json.FromJson)
 
 type UiEventsPayload derive(Show, @json.FromJson)
 

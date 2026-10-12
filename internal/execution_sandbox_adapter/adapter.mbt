@@ -87,7 +87,20 @@ pub async fn Client::read_live_output(
   request : String,
 ) -> ProcessResponse? {
   guard self.live_output_reader_path is Some(path) else { return None }
-  Some(self.run(path, self.live_output_reader_args, request, 2_000))
+  guard @encoding/utf8.encode(request).length() <= 8192 else {
+    fail("MoonFort live output request exceeds its bound")
+  }
+  Some(
+    run_adapter_process(
+      path,
+      self.live_output_reader_args,
+      stdin=request,
+      timeout=2_000,
+      cwd=self.receipt_root,
+      env={ "MOONFORT_EXECUTOR_CONFIG": self.executor_config_path },
+      stdout_limit=96 * 1024,
+    ),
+  )
 }
 
 ///|

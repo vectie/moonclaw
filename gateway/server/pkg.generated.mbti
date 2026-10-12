@@ -11,6 +11,7 @@ import {
   "vectie/moonclaw/event",
   "vectie/moonclaw/gateway/protocol",
   "vectie/moonclaw/internal/broadcast",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/internal/httpx",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/job",
@@ -254,6 +255,7 @@ pub struct Gateway {
   port : Int
   events : @broadcast.Broadcast[GatewayEvent]
   auth : AuthConfig
+  command_output_config : @execution_sandbox.SandboxExecutorConfig?
   sessions : SessionManager
   dedupe : DedupeCache
   logger : @pino.Logger
@@ -286,7 +288,7 @@ pub struct Gateway {
 pub fn Gateway::acp_runtime(Self) -> @acp.AcpRuntime
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
-pub async fn Gateway::new(uuid? : @uuid.Generator, port? : Int, cwd? : StringView, home? : StringView, auth? : AuthConfig) -> Self
+pub async fn Gateway::new(uuid? : @uuid.Generator, port? : Int, cwd? : StringView, home? : StringView, auth? : AuthConfig, command_output_config? : @execution_sandbox.SandboxExecutorConfig) -> Self
 pub fn Gateway::plugin_runtime(Self) -> @plugin.PluginRuntime
 pub fn Gateway::port(Self) -> Int
 pub fn Gateway::register_extension(Self, &@channel.ChannelExtension) -> Unit raise
