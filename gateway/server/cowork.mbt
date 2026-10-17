@@ -1161,8 +1161,12 @@ async fn Gateway::handle_cowork_resume_run(
   }
   if params.expected_checkpoint is Some(expected) {
     let recovery = self.cowork_recovery_snapshot(session_key, run_id)
-    guard recovery is { "checkpoint": String(actual), "can_resume": True, .. } &&
-      actual == expected else {
+    let checkpoint_matches = match recovery {
+      { "checkpoint": String(actual), "can_resume": True, .. } =>
+        actual == expected
+      _ => false
+    }
+    guard checkpoint_matches else {
       raise json_error(409, "Conflict", {
         "error": {
           "code": "resume_not_submitted",
@@ -1267,10 +1271,14 @@ async fn Gateway::handle_cowork_resume_run(
   // Persistence yields. Re-read exact state before launching so a concurrent
   // stop, changed link/folder, newer wait or active launch cannot be undone.
   let after_save = self.cowork_recovery_snapshot(session_key, run_id)
-  guard expected_after_save is { "checkpoint": String(expected), .. } &&
-    after_save is { "checkpoint": String(actual), "can_resume": True, .. } &&
-    expected == actual &&
-    self.root_group() is Some(_) else {
+  let checkpoint_matches = match (expected_after_save, after_save) {
+    (
+      { "checkpoint": String(expected), .. },
+      { "checkpoint": String(actual), "can_resume": True, .. },
+    ) => expected == actual && self.root_group() is Some(_)
+    _ => false
+  }
+  guard checkpoint_matches else {
     raise json_error(409, "Conflict", {
       "error": {
         "code": "resume_retained_not_launched",

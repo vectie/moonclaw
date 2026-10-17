@@ -30,7 +30,11 @@ pub async fn Gateway::handle_request(
         )
       (Get, ["", "health"]) => self.handle_health(r, w)
       (Post, ["", "v1", "execution-sandbox", "promotion-recovery"]) => {
-        guard self.auth.token is Some(token) && !token.is_blank() else {
+        let recovery_authenticated = match self.auth.token {
+          Some(token) => !token.is_blank()
+          None => false
+        }
+        guard recovery_authenticated else {
           raise json_error(401, "Unauthorized", {
             "error": {
               "code": "recovery_auth_required",
