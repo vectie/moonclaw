@@ -24,8 +24,10 @@ jobs:
         channel: [latest, nightly]
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: true
+      - name: Check out declared guide source
+        # Historical job fixtures include unmapped gitlinks. Retain them and
+        # initialize the actual source dependency declared in .gitmodules.
+        run: git submodule update --init --depth=1 -- internal/skills/system/moonbit-agent-guide
       - name: Install MoonBit
         uses: ./.github/actions/install-moonbit
         with:
