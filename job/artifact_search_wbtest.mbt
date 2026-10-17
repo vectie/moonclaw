@@ -135,11 +135,19 @@ async test "artifact search returns bounded Unicode snippets and literal single-
   assert_true(all.to_text().contains("first 3 shown"))
   for needle in ["", "a\nb", "a\rb", Array::make(129, "x").join("")] {
     assert_true(
-      (try? search_retained_artifacts(store.root, text=Some(needle))) is Err(_),
+      (Ok(search_retained_artifacts(store.root, text=Some(needle))) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
   }
   for limit in [0, 33] {
-    assert_true((try? search_retained_artifacts(store.root, limit~)) is Err(_))
+    assert_true(
+      (Ok(search_retained_artifacts(store.root, limit~)) catch {
+        error => Err(error)
+      })
+      is Err(_),
+    )
   }
 }
 
@@ -161,7 +169,9 @@ async test "artifact search reports partial checkpoints and ignores retained del
   assert_eq(result.deleted_records, 1)
   assert_eq(result.issues.length(), 1)
   let output = @pathx.join(root, "refused")
-  assert_true((try? result.export_selected(output)) is Err(_))
+  assert_true(
+    (Ok(result.export_selected(output)) catch { error => Err(error) }) is Err(_),
+  )
   assert_false(@fsx.exists(output))
 }
 
@@ -194,18 +204,27 @@ async test "artifact search exports the complete observed exact selection and re
   assert_true(limited.truncated)
   assert_eq(limited.matching_artifacts, 2)
   assert_true(
-    (try? limited.export_selected(@pathx.join(root, "truncated"))) is Err(_),
+    (Ok(limited.export_selected(@pathx.join(root, "truncated"))) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(@pathx.join(root, "truncated")))
   @fsx.write_to_file(first.path, "match altered")
   assert_true(
-    (try? full.export_selected(@pathx.join(root, "changed"))) is Err(_),
+    (Ok(full.export_selected(@pathx.join(root, "changed"))) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(@pathx.join(root, "changed")))
   @fsx.write_to_file(first.path, "match A")
   store.save_artifact({ ..first, status: Archived, })
   assert_true(
-    (try? full.export_selected(@pathx.join(root, "metadata-changed"))) is Err(_),
+    (Ok(full.export_selected(@pathx.join(root, "metadata-changed"))) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(@pathx.join(root, "metadata-changed")))
 }
@@ -223,7 +242,10 @@ async test "artifact search text output escapes terminal and newline content and
   assert_true(rendered.contains("Runtime evidence only"))
   let empty = search_retained_artifacts(store.root, text=Some("missing"))
   assert_true(
-    (try? empty.export_selected(@pathx.join(root, "empty"))) is Err(_),
+    (Ok(empty.export_selected(@pathx.join(root, "empty"))) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(@pathx.join(root, "empty")))
 }

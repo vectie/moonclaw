@@ -78,7 +78,7 @@ fn feed_html_text(html : String) -> String {
             "&hellip;" => "…"
             "&copy;" => "©"
             _ =>
-              match (try? xml_entities(entity)) {
+              match (Ok(xml_entities(entity)) catch { error => Err(error) }) {
                 Ok(value) => value
                 Err(_) => entity
               }

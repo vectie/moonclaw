@@ -91,16 +91,27 @@ test "run directory stable timestamp ties, duplicate observations and missing st
 test "run directory rejects invalid bounds and oversized input" {
   let entries = directory_fixture()
   assert_true(
-    (try? @job_journal.journal_run_directory(entries, limit=0)) is Err(_),
+    (Ok(@job_journal.journal_run_directory(entries, limit=0)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_true(
-    (try? @job_journal.journal_run_directory(entries, limit=101)) is Err(_),
+    (Ok(@job_journal.journal_run_directory(entries, limit=101)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_true(
-    (try? @job_journal.journal_run_directory(entries, offset=-1)) is Err(_),
+    (Ok(@job_journal.journal_run_directory(entries, offset=-1)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_true(
-    (try? @job_journal.journal_run_directory(Array::make(10001, entries[0])))
+    (Ok(@job_journal.journal_run_directory(Array::make(10001, entries[0]))) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }

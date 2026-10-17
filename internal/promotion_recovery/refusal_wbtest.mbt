@@ -21,7 +21,10 @@ async test "recovery never follows a checkpoint symlink or inspects terminal cor
       ] {
       @fs.write_file(path, contents)
       assert_true(
-        (try? moondesk_recovery_inspect(request, root, invoke)) is Err(_),
+        (Ok(moondesk_recovery_inspect(request, root, invoke)) catch {
+          error => Err(error)
+        })
+        is Err(_),
       )
       assert_eq(@fs.read_file(path).text(), contents)
     }
@@ -30,7 +33,10 @@ async test "recovery never follows a checkpoint symlink or inspects terminal cor
     @fs.write_file(target, original, create_mode=CreateNew, permission=0o600)
     @fs.symlink(path, target~)
     assert_true(
-      (try? moondesk_recovery_inspect(request, root, invoke)) is Err(_),
+      (Ok(moondesk_recovery_inspect(request, root, invoke)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
     assert_eq(@fs.read_file(target).binary(), original)
     assert_eq(calls.val, 0)

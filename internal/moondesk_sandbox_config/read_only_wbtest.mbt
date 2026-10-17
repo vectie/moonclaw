@@ -24,12 +24,22 @@ async test "read-only config preserves private modes and content and refuses ins
   assert_true(check_private_control_path(path, false))
   assert_eq(@fs.read_file(path).binary(), before)
   @fs.chmod(path, 0o644)
-  assert_true((try? load_from_path(path, root, read_only=true)) is Err(_))
+  assert_true(
+    (Ok(load_from_path(path, root, read_only=true)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
   assert_false(check_private_control_path(path, false))
   assert_eq(@fs.read_file(path).binary(), before)
   @fs.chmod(path, 0o600)
   @fs.chmod(root, 0o755)
-  assert_true((try? load_from_path(path, root, read_only=true)) is Err(_))
+  assert_true(
+    (Ok(load_from_path(path, root, read_only=true)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
   assert_false(check_private_control_path(root, true))
   assert_eq(@fs.read_file(path).binary(), before)
 }

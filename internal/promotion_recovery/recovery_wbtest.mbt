@@ -131,35 +131,48 @@ async test "recovery refuses wrong pending attempt missing lock active return an
         { ..request, retention_id: "another", },
       ] {
       assert_true(
-        (try? moondesk_recovery_inspect(wrong, root, invoke)) is Err(_),
+        (Ok(moondesk_recovery_inspect(wrong, root, invoke)) catch {
+          error => Err(error)
+        })
+        is Err(_),
       )
     }
     assert_eq(invoked.val, 0)
     let lock = @fs.open(path + ".lock", mode=ReadWrite)
     lock.lock(Exclusive)
     assert_true(
-      (try? moondesk_recovery_inspect(request, root, invoke)) is Err(_),
+      (Ok(moondesk_recovery_inspect(request, root, invoke)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
     lock.unlock()
     lock.close()
     assert_eq(invoked.val, 0)
     assert_true(
-      (try? moondesk_recovery_inspect(request, root, async fn(_) {
-        let changed = {
-          ..recovery_test_selection(),
-          request_id: "new-attempt",
-        }
-        @fs.write_file(
-          path,
-          ({ "request": changed.to_json(), "pending_attempt": true } : Json).stringify(),
-        )
-        recovery_test_response("desired-applied")
-      }))
+      (Ok(
+        moondesk_recovery_inspect(request, root, async fn(_) {
+          let changed = {
+            ..recovery_test_selection(),
+            request_id: "new-attempt",
+          }
+          @fs.write_file(
+            path,
+            ({ "request": changed.to_json(), "pending_attempt": true } : Json).stringify(),
+          )
+          recovery_test_response("desired-applied")
+        }),
+      ) catch {
+        error => Err(error)
+      })
       is Err(_),
     )
     @fs.remove(path + ".lock")
     assert_true(
-      (try? moondesk_recovery_inspect(request, root, invoke)) is Err(_),
+      (Ok(moondesk_recovery_inspect(request, root, invoke)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
     assert_false(@fs.exists(path + ".lock"))
   })
@@ -183,7 +196,12 @@ test "inspection response binding and state matrix reject substituted contradict
       { ..response, outcome: "manual-recovery", },
       { ..response, profile_digest: "secret", },
     ] {
-    assert_true((try? moondesk_recovery_validate(pending, wrong)) is Err(_))
+    assert_true(
+      (Ok(moondesk_recovery_validate(pending, wrong)) catch {
+        error => Err(error)
+      })
+      is Err(_),
+    )
   }
   moondesk_recovery_validate(pending, {
     ..response,
@@ -195,5 +213,8 @@ test "inspection response binding and state matrix reject substituted contradict
   let extra = recovery_test_request().to_json()
   guard extra is Object(fields) else { fail("object") }
   fields["workspace_root"] = "/private/secret".to_json()
-  assert_true((try? moondesk_recovery_parse_request(extra)) is Err(_))
+  assert_true(
+    (Ok(moondesk_recovery_parse_request(extra)) catch { error => Err(error) })
+    is Err(_),
+  )
 }

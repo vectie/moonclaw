@@ -127,6 +127,12 @@ pub struct Event {
 } derive(ToJson)
 
 ///|
+pub extend Event with ToJson::{to_json}
+
+///|
+pub extend Event with Show::{to_string, output}
+
+///|
 /// Creates a new SSE event with the specified event type and data payload.
 ///
 /// Parameters:

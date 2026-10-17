@@ -6,13 +6,19 @@
 struct Header(Map[String, String])
 
 ///|
+pub extend Header with ToJson::{to_json}
+
+///|
+pub extend Header with Show::{output, to_string}
+
+///|
 pub impl ToJson for Header with fn to_json(self : Header) -> Json {
-  self.0.to_json()
+  ToJson::to_json(self.0)
 }
 
 ///|
 pub impl Show for Header with fn output(self : Header, logger : &Logger) -> Unit {
-  logger.write_string(self.0.to_json().stringify())
+  logger.write_string(ToJson::to_json(self.0).stringify())
 }
 
 ///|

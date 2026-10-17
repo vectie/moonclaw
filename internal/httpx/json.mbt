@@ -23,7 +23,7 @@ pub fn JsonError::new(
   code : Int32,
   error : Error,
   message~ : String = error.to_string(),
-  data~ : Json = error.to_json(),
+  data~ : Json = ToJson::to_json(error),
 ) -> JsonError {
   JsonError(code~, error~, message~, data~)
 }

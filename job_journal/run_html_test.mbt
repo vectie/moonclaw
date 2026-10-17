@@ -72,11 +72,15 @@ test "HTML report validates unrelated records and rejects missing exact pair" {
     source="input",
   )
   assert_true(
-    (try? @job_journal.journal_run_html(entries, job_id="wrong", run_id="r"))
+    (Ok(@job_journal.journal_run_html(entries, job_id="wrong", run_id="r")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? @job_journal.journal_run_html([], job_id="job-1", run_id="r"))
+    (Ok(@job_journal.journal_run_html([], job_id="job-1", run_id="r")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   if entries[0].record is Object(fields) {
@@ -93,7 +97,9 @@ test "HTML report validates unrelated records and rejects missing exact pair" {
   }
   entries.append(unrelated)
   assert_true(
-    (try? @job_journal.journal_run_html(entries, job_id="job-1", run_id="r"))
+    (Ok(@job_journal.journal_run_html(entries, job_id="job-1", run_id="r")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }

@@ -18,8 +18,15 @@ test "parse titles dates summaries links and local pagination" {
   assert_eq(second.articles[0].url, Some("https://example.test/sky"))
   assert_eq(second.next_offset, None)
   assert_eq(second.next_url, Some("https://example.test/feed?page=2"))
-  assert_true((try? parse_feed("{}", "fixture")) is Err(_))
-  assert_true((try? parse_feed(fixture(), "fixture", limit=0)) is Err(_))
+  assert_true(
+    (Ok(parse_feed("{}", "fixture")) catch { error => Err(error) }) is Err(_),
+  )
+  assert_true(
+    (Ok(parse_feed(fixture(), "fixture", limit=0)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
 }
 
 ///|

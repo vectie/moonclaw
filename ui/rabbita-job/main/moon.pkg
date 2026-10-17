@@ -11,7 +11,3 @@ import {
 }
 
 pkgtype(kind: "executable")
-
-import {
-  "moonbit-community/rabbita/common",
-} for "wbtest"

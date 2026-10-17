@@ -13,6 +13,21 @@ pub(all) enum Method {
 } derive(Eq, Compare, Hash, ToJson)
 
 ///|
+pub extend Method with Eq::{equal, not_equal}
+
+///|
+pub extend Method with Compare::{compare, op_lt, op_le, op_gt, op_ge}
+
+///|
+pub extend Method with Hash::{hash, hash_combine}
+
+///|
+pub extend Method with ToJson::{to_json}
+
+///|
+pub extend Method with Show::{to_string, output}
+
+///|
 pub impl Show for Method with fn to_string(self : Method) -> String {
   match self {
     Get => "GET"

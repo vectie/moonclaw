@@ -139,7 +139,10 @@ test "journal empty inputs and exhausted pages are explicit" {
 test "journal malformed records fail with source line and never echo raw data" {
   let secret = "private-fixture-marker"
   let bad = fixture("run", 1, "good").stringify() + "\n\n" + secret
-  match (try? @job_journal.parse_journal(bad, source="saved")) {
+  match
+    (Ok(@job_journal.parse_journal(bad, source="saved")) catch {
+      error => Err(error)
+    }) {
     Err(error) => {
       let text = error.to_string()
       assert_true(text.contains("line 3"))
@@ -147,13 +150,26 @@ test "journal malformed records fail with source line and never echo raw data" {
     }
     Ok(_) => fail("Expected malformed JSON to fail")
   }
-  assert_true((try? @job_journal.parse_journal("{}", source="saved")) is Err(_))
-  assert_true((try? @job_journal.parse_journal("[]", source="saved")) is Err(_))
+  assert_true(
+    (Ok(@job_journal.parse_journal("{}", source="saved")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.parse_journal("[]", source="saved")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
   let fractional = fixture("run", 1, "x")
     .stringify()
     .replace(old="\"timestamp\":1", new="\"timestamp\":1.5")
   assert_true(
-    (try? @job_journal.parse_journal(fractional, source="saved")) is Err(_),
+    (Ok(@job_journal.parse_journal(fractional, source="saved")) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
 }
 
@@ -190,23 +206,55 @@ test "journal bounds and invalid pagination are rejected" {
     content="1",
   )
   assert_true(
-    (try? @job_journal.parse_journal(
-      Array::make(10001, entry).join("\n"),
-      source="large",
-    ))
+    (Ok(
+      @job_journal.parse_journal(
+        Array::make(10001, entry).join("\n"),
+        source="large",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   entries.append(@job_journal.parse_journal(entry, source="extra"))
-  assert_true((try? @job_journal.explore_journal(entries)) is Err(_))
-  assert_true((try? @job_journal.explore_journal([], limit=0)) is Err(_))
-  assert_true((try? @job_journal.explore_journal([], limit=1001)) is Err(_))
-  assert_true((try? @job_journal.explore_journal([], offset=-1)) is Err(_))
   assert_true(
-    (try? @job_journal.explore_journal([], since=2, until=1)) is Err(_),
+    (Ok(@job_journal.explore_journal(entries)) catch { error => Err(error) })
+    is Err(_),
   )
-  assert_true((try? @job_journal.parse_journal("", source=" ")) is Err(_))
   assert_true(
-    (try? @job_journal.parse_journal(" ".repeat(4194305), source="large"))
+    (Ok(@job_journal.explore_journal([], limit=0)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.explore_journal([], limit=1001)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.explore_journal([], offset=-1)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.explore_journal([], since=2, until=1)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.parse_journal("", source=" ")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@job_journal.parse_journal(" ".repeat(4194305), source="large")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }

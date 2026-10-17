@@ -24,7 +24,7 @@ fn agent_memory_review_fields(fields : Map[String, Json]) -> String {
 ///|
 fn agent_memory_text_status_value(value : String) -> String {
   let value = value.trim().to_owned()
-  match (try? @json.parse(value)) {
+  match (Ok(@json.parse(value)) catch { error => Err(error) }) {
     Ok(String(text)) => text
     _ =>
       if value.length() >= 2 && value.has_prefix("'") && value.has_suffix("'") {
@@ -87,7 +87,7 @@ fn agent_memory_text_review_status(content : String) -> String {
 
 ///|
 pub fn review_status(content : String) -> String {
-  match (try? @json.parse(content)) {
+  match (Ok(@json.parse(content)) catch { error => Err(error) }) {
     Ok(Object(fields)) => agent_memory_review_fields(fields)
     Ok(_) => "candidate"
     Err(_) => agent_memory_text_review_status(content)

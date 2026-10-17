@@ -134,7 +134,9 @@ pub async fn search_retained_artifacts(
       continue
     }
     scanned += 1
-    let observed = try? retained_artifact_record(store, entry.name)
+    let observed = Ok(retained_artifact_record(store, entry.name)) catch {
+      error => Err(error)
+    }
     guard observed is Ok((record, record_bytes)) else {
       if observed is Err(error) && @async.is_being_cancelled() {
         raise error
@@ -159,7 +161,9 @@ pub async fn search_retained_artifacts(
       excluded += 1
       continue
     }
-    let observed = try? comparison_bytes(record.path, 16777216)
+    let observed = Ok(comparison_bytes(record.path, 16777216)) catch {
+      error => Err(error)
+    }
     guard observed is Ok(bytes) else {
       if observed is Err(error) && @async.is_being_cancelled() {
         raise error
@@ -175,7 +179,9 @@ pub async fn search_retained_artifacts(
       fail("Search content scan exceeds 64 MiB; narrow metadata filters")
     }
     let (matching_lines, lines) = if text is Some(needle) {
-      let decoded = try? @encoding/utf8.decode(bytes)
+      let decoded = Ok(@encoding/utf8.decode(bytes)) catch {
+        error => Err(error)
+      }
       guard decoded is Ok(content) && @encoding/utf8.encode(content) == bytes else {
         issues.push({
           artifact_id: entry.name,
@@ -190,10 +196,11 @@ pub async fn search_retained_artifacts(
     if text is Some(_) && matching_lines == 0 {
       continue
     }
-    let unchanged = try? comparison_bytes(
-      store.artifact_record_file(record.id),
-      262144,
-    )
+    let unchanged = Ok(
+      comparison_bytes(store.artifact_record_file(record.id), 262144),
+    ) catch {
+      error => Err(error)
+    }
     guard unchanged is Ok(current_record) &&
       current_record == record_bytes &&
       !@fsx.exists(store.artifact_deleted_file(record.id)) else {

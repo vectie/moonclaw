@@ -12,7 +12,8 @@ priv struct MethodSet {
 }
 
 ///|
-fn MethodSet::op_get(self : MethodSet, method_ : Method) -> Bool {
+#alias("_[_]")
+fn MethodSet::at(self : MethodSet, method_ : Method) -> Bool {
   match method_ {
     Get => self.get
     Head => self.head
@@ -27,7 +28,8 @@ fn MethodSet::op_get(self : MethodSet, method_ : Method) -> Bool {
 }
 
 ///|
-fn MethodSet::op_set(self : MethodSet, method_ : Method, value : Bool) -> Unit {
+#alias("_[_]=_")
+fn MethodSet::set(self : MethodSet, method_ : Method, value : Bool) -> Unit {
   match method_ {
     Get => self.get = value
     Head => self.head = value

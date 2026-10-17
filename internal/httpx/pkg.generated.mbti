@@ -31,6 +31,9 @@ pub struct Event {
   data : String
 } derive(ToJson)
 pub fn Event::new(event? : String, data~ : String) -> Self
+pub fn Event::output(Self, &Logger) -> Unit
+pub fn Event::to_json(Self) -> Json
+pub fn Event::to_string(Self) -> String
 pub impl Show for Event
 
 type EventStreamReader
@@ -59,7 +62,10 @@ type Header
 pub fn Header::add(Self, String, String) -> Unit
 pub fn Header::config(Self, Map[String, String]) -> Unit
 pub fn Header::new() -> Self
+pub fn Header::output(Self, &Logger) -> Unit
 pub fn Header::set(Self, String, String) -> Unit
+pub fn Header::to_json(Self) -> Json
+pub fn Header::to_string(Self) -> String
 pub impl Show for Header
 pub impl ToJson for Header
 
@@ -85,7 +91,19 @@ pub(all) enum Method {
   Trace
   Patch
 } derive(Compare, Eq, Hash, ToJson)
+pub fn Method::compare(Self, Self) -> Int
+pub fn Method::equal(Self, Self) -> Bool
+pub fn Method::hash(Self) -> Int
+pub fn Method::hash_combine(Self, Hasher) -> Unit
+pub fn Method::not_equal(Self, Self) -> Bool
+pub fn Method::op_ge(Self, Self) -> Bool
+pub fn Method::op_gt(Self, Self) -> Bool
+pub fn Method::op_le(Self, Self) -> Bool
+pub fn Method::op_lt(Self, Self) -> Bool
+pub fn Method::output(Self, &Logger) -> Unit
 pub fn Method::to_http(Self) -> @http.RequestMethod
+pub fn Method::to_json(Self) -> Json
+pub fn Method::to_string(Self) -> String
 pub impl Show for Method
 
 pub(all) struct Middleware((Handler) -> Handler)
@@ -105,7 +123,10 @@ type ResponseWriter
 pub async fn ResponseWriter::close(Self) -> Unit
 pub async fn ResponseWriter::flush(Self) -> Unit
 pub fn ResponseWriter::header(Self) -> Header
+pub async fn ResponseWriter::write(Self, &@io.Data) -> Unit
 pub async fn ResponseWriter::write_header(Self, Int, reason? : String) -> Unit
+pub async fn ResponseWriter::write_once(Self, Bytes, offset~ : Int, len~ : Int) -> Int
+pub async fn ResponseWriter::write_reader(Self, &@io.Reader) -> Unit
 pub impl @io.Writer for ResponseWriter
 
 type Router

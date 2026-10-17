@@ -138,12 +138,16 @@ test "run review supports partial supplied evidence without pretending missing d
     ),
   )
   assert_true(
-    (try? @job_journal.review_run(
-      entries,
-      manifest,
-      manifest_source="manifest.json",
-      run_id="absent",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        entries,
+        manifest,
+        manifest_source="manifest.json",
+        run_id="absent",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }
@@ -158,12 +162,16 @@ test "run review rejects ambiguous run jobs both within journals and across expo
     source="events",
   )
   assert_true(
-    (try? @job_journal.review_run(
-      entries,
-      manifest,
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        entries,
+        manifest,
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   let conflicts = @job_journal.parse_journal(
@@ -173,12 +181,16 @@ test "run review rejects ambiguous run jobs both within journals and across expo
     source="events",
   )
   assert_true(
-    (try? @job_journal.review_run(
-      conflicts,
-      manifest,
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        conflicts,
+        manifest,
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }
@@ -198,31 +210,43 @@ test "run review checks all export entries including unselected entries and refu
     let changed = fields.copy()
     changed[key] = value
     assert_true(
-      (try? @job_journal.review_run(
-        [],
-        review_manifest([good, changed.to_json()]),
-        manifest_source="manifest",
-        run_id="run",
-      ))
+      (Ok(
+        @job_journal.review_run(
+          [],
+          review_manifest([good, changed.to_json()]),
+          manifest_source="manifest",
+          run_id="run",
+        ),
+      ) catch {
+        error => Err(error)
+      })
       is Err(_),
     )
   }
   assert_true(
-    (try? @job_journal.review_run(
-      [],
-      review_manifest([good, good]),
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        [],
+        review_manifest([good, good]),
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? @job_journal.review_run(
-      [],
-      review_manifest([]),
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        [],
+        review_manifest([]),
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }
@@ -269,12 +293,16 @@ test "run review retains repeated evidence beyond explorer page size and validat
   )
   assert_true(invalid_total != manifest)
   assert_true(
-    (try? @job_journal.review_run(
-      [],
-      invalid_total,
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        [],
+        invalid_total,
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   let conflict = review_manifest([
@@ -282,12 +310,16 @@ test "run review retains repeated evidence beyond explorer page size and validat
     review_export_entry("b", "run", "other-job", 2, 2),
   ])
   assert_true(
-    (try? @job_journal.review_run(
-      [],
-      conflict,
-      manifest_source="manifest",
-      run_id="run",
-    ))
+    (Ok(
+      @job_journal.review_run(
+        [],
+        conflict,
+        manifest_source="manifest",
+        run_id="run",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }

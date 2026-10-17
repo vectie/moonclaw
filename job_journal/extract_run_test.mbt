@@ -63,15 +63,15 @@ test "extract fails on absent pair and includes all events beyond a page" {
   )
   assert_eq(@job_journal.parse_journal(output, source="again").length(), 1001)
   assert_true(
-    (try? @job_journal.extract_run_journal(
-      entries,
-      job_id="other",
-      run_id="run",
-    ))
+    (Ok(@job_journal.extract_run_journal(entries, job_id="other", run_id="run")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? @job_journal.extract_run_journal([], job_id="job-1", run_id="run"))
+    (Ok(@job_journal.extract_run_journal([], job_id="job-1", run_id="run")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
 }

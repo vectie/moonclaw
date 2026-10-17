@@ -158,7 +158,7 @@ async fn capture_ready(
       } else {
         "belief"
       },
-      format: match (try? @json.parse(content)) {
+      format: match (Ok(@json.parse(content)) catch { error => Err(error) }) {
         Ok(Object(_)) => "json"
         _ => "text"
       },

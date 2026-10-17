@@ -8,7 +8,7 @@ test "nested OPML collection becomes a deduplicated usable registry" {
   inspect(collection.duplicate_feeds, content="1")
   inspect(collection.skipped_outlines, content="2")
   inspect(collection.providers.length(), content="2")
-  @json.inspect(collection.providers[0], content={
+  @json.json_inspect(collection.providers[0], content={
     "name": "research-1",
     "title": "Observatory 🔭",
     "description": "",
@@ -36,11 +36,16 @@ test "OPML refuses malformed input and reports unsupported subscriptions" {
       "<opml version='2.0'><body></opml>", "<!DOCTYPE opml SYSTEM 'file:///not-read'><opml version='2.0'><body/></opml>",
       "<opml version='2.0'><body><outline xmlUrl='&custom;'/></body></opml>",
     ] {
-    assert_true((try? parse_opml(body)) is Err(_))
+    assert_true((Ok(parse_opml(body)) catch { error => Err(error) }) is Err(_))
   }
   let body = "<opml version='2.0'><body/></opml>"
-  assert_true((try? parse_opml(body, prefix="bad/name")) is Err(_))
-  assert_true((try? parse_opml(body, prefix="")) is Err(_))
+  assert_true(
+    (Ok(parse_opml(body, prefix="bad/name")) catch { error => Err(error) })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(parse_opml(body, prefix="")) catch { error => Err(error) }) is Err(_),
+  )
   for
     url in [
       "file:///feed", "javascript:alert(1)", "relative.xml", "https:///feed", "http://",

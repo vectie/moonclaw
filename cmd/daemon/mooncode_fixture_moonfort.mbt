@@ -88,7 +88,7 @@ async fn[T] mooncode_with_fixture_moonfort(
         #|    if grant["allowed_commands"] != ["shell-compat"]:
         #|        raise RuntimeError("fixture shell capability mismatch")
         #|    script = payload["script"] if isinstance(payload, dict) else payload
-        #|    argv = ["/bin/zsh", "-lc", script]
+        #|    argv = ["/bin/bash", "-c", script]
         #|elif tag == "Exec":
         #|    tool = payload["tool"]
         #|    if tool != "moon" or grant["allowed_commands"] != ["moon"]:

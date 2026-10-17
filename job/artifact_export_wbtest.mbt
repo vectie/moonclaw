@@ -113,13 +113,19 @@ async test "artifact export validates all selections before creating output" {
   let destination = @pathx.join(root, "never-created")
   for ids in [[], ["a", "a"], ["a", "missing"], ["../a"], [""]] {
     assert_true(
-      (try? export_retained_artifacts(store.root, ids, destination)) is Err(_),
+      (Ok(export_retained_artifacts(store.root, ids, destination)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
     assert_false(@fsx.exists(destination))
   }
   @fsx.write_to_file(store.artifact_record_file(a.id), "{broken")
   assert_true(
-    (try? export_retained_artifacts(store.root, ["a"], destination)) is Err(_),
+    (Ok(export_retained_artifacts(store.root, ["a"], destination)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(destination))
   store.save_artifact({ ..a, path: @pathx.join(root, "outside.bin"), })
@@ -129,7 +135,10 @@ async test "artifact export validates all selections before creating output" {
     create_mode=CreateNew,
   )
   assert_true(
-    (try? export_retained_artifacts(store.root, ["a"], destination)) is Err(_),
+    (Ok(export_retained_artifacts(store.root, ["a"], destination)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(destination))
   store.save_artifact(a)
@@ -139,7 +148,10 @@ async test "artifact export validates all selections before creating output" {
   )
   @fsx.write_to_file(store.artifact_deleted_file("a"), "{}")
   assert_true(
-    (try? export_retained_artifacts(store.root, ["a"], destination)) is Err(_),
+    (Ok(export_retained_artifacts(store.root, ["a"], destination)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_false(@fsx.exists(destination))
 }
@@ -154,7 +166,10 @@ async test "artifact export refuses destination reuse and store writes" {
     @pathx.join(destination, "manifest.json"),
   )
   assert_true(
-    (try? export_retained_artifacts(store.root, ["a"], destination)) is Err(_),
+    (Ok(export_retained_artifacts(store.root, ["a"], destination)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_eq(
     @fsx.read_file(@pathx.join(destination, "manifest.json")),
@@ -162,7 +177,10 @@ async test "artifact export refuses destination reuse and store writes" {
   )
   for output in [store.root, @pathx.join(store.root, "new-export"), a.path] {
     assert_true(
-      (try? export_retained_artifacts(store.root, ["a"], output)) is Err(_),
+      (Ok(export_retained_artifacts(store.root, ["a"], output)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
   }
   assert_false(@fsx.exists(@pathx.join(store.root, "new-export")))
@@ -188,11 +206,11 @@ async test "artifact export bounds selection and content before publishing" {
   assert_eq(result.total_content_bytes, 0)
   ids.push("extra")
   assert_true(
-    (try? export_retained_artifacts(
-      store.root,
-      ids,
-      @pathx.join(root, "too-many"),
-    ))
+    (Ok(
+      export_retained_artifacts(store.root, ids, @pathx.join(root, "too-many")),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   let huge = export_test_write(artifacts, "huge", b"")
@@ -200,11 +218,15 @@ async test "artifact export bounds selection and content before publishing" {
   file.write_at(b"x", position=16777216L)
   file.close()
   assert_true(
-    (try? export_retained_artifacts(
-      store.root,
-      ["huge"],
-      @pathx.join(root, "too-large"),
-    ))
+    (Ok(
+      export_retained_artifacts(
+        store.root,
+        ["huge"],
+        @pathx.join(root, "too-large"),
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_false(@fsx.exists(@pathx.join(root, "too-large")))

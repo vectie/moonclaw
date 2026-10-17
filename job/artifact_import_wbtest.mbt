@@ -66,7 +66,12 @@ async test "portable import preserves producer identity and opens search compari
   assert_eq(recovered.list_artifact_recovery_issues().length(), 0)
   assert_eq(recovered.list_runs().length(), 0)
   assert_false(@fsx.exists(@pathx.join(destination, "index")))
-  assert_true((try? import_artifact_export(packet, destination)) is Err(_))
+  assert_true(
+    (Ok(import_artifact_export(packet, destination)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
 }
 
 ///|
@@ -81,11 +86,16 @@ async test "portable import refuses empty packets and malformed numerical fields
     "total_content_bytes": 0,
   }
   @fsx.write_to_file(@pathx.join(packet, "manifest.json"), invalid.stringify())
-  assert_true((try? import_artifact_export(packet, output)) is Err(_))
+  assert_true(
+    (Ok(import_artifact_export(packet, output)) catch { error => Err(error) })
+    is Err(_),
+  )
   assert_false(@fsx.exists(output))
   let numbers : Array[Json] = [{ "n": 1.5 }, { "n": "1" }, { "n": -1 }]
   for json in numbers {
-    assert_true((try? import_integer(json, "n", 1)) is Err(_))
+    assert_true(
+      (Ok(import_integer(json, "n", 1)) catch { error => Err(error) }) is Err(_),
+    )
   }
   import_integer({ "n": 1 }, "n", 1)
 }

@@ -163,35 +163,47 @@ test "duplicate IDs in either whole observation fail even beyond selected page o
   }
   duplicates.push({ "id": "0", "title": "Ambiguous duplicate" })
   let empty = observation_json([])
-  let before = try? @read_feed.compare_feeds(
-    observation_json(duplicates),
-    empty,
-    "same",
-    query="no match",
-    limit=1,
-  )
+  let before = Ok(
+    @read_feed.compare_feeds(
+      observation_json(duplicates),
+      empty,
+      "same",
+      query="no match",
+      limit=1,
+    ),
+  ) catch {
+    error => Err(error)
+  }
   guard before is Err(Failure(message)) else {
     fail("Expected duplicate error")
   }
   assert_true(
     message.has_suffix("before observation has duplicate article ID: 0"),
   )
-  let after = try? @read_feed.compare_feeds(
-    empty,
-    observation_json(duplicates),
-    "same",
-    kind="changed",
-  )
+  let after = Ok(
+    @read_feed.compare_feeds(
+      empty,
+      observation_json(duplicates),
+      "same",
+      kind="changed",
+    ),
+  ) catch {
+    error => Err(error)
+  }
   guard after is Err(Failure(message)) else { fail("Expected duplicate error") }
   assert_true(
     message.has_suffix("after observation has duplicate article ID: 0"),
   )
   assert_true(
-    (try? @read_feed.compare_feeds(
-      empty,
-      observation_json([{ "id": " \t" }]),
-      "same",
-    ))
+    (Ok(
+      @read_feed.compare_feeds(
+        empty,
+        observation_json([{ "id": " \t" }]),
+        "same",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   // Comparison's ambiguity rule does not silently change the existing reader.
@@ -200,7 +212,12 @@ test "duplicate IDs in either whole observation fail even beyond selected page o
     62,
   )
   let rss = "<rss version='2.0'><channel><title>Duplicate</title><item><guid>x</guid></item><item><guid>x</guid></item></channel></rss>"
-  assert_true((try? @read_feed.compare_feeds(rss, empty, "same")) is Err(_))
+  assert_true(
+    (Ok(@read_feed.compare_feeds(rss, empty, "same")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
 }
 
 ///|
@@ -328,22 +345,46 @@ test "Markdown escapes untrusted observation IDs labels titles summaries and lin
 ///|
 test "invalid observations and comparison options fail instead of producing an empty diff" {
   let empty = observation_json([])
-  assert_true((try? @read_feed.compare_feeds("{}", empty, "same")) is Err(_))
   assert_true(
-    (try? @read_feed.compare_feeds(empty, "<broken", "same")) is Err(_),
-  )
-  assert_true((try? @read_feed.compare_feeds(empty, empty, " ")) is Err(_))
-  assert_true(
-    (try? @read_feed.compare_feeds(empty, empty, "same", kind="deleted"))
+    (Ok(@read_feed.compare_feeds("{}", empty, "same")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? @read_feed.compare_feeds(empty, empty, "same", limit=0)) is Err(_),
+    (Ok(@read_feed.compare_feeds(empty, "<broken", "same")) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_true(
-    (try? @read_feed.compare_feeds(empty, empty, "same", limit=51)) is Err(_),
+    (Ok(@read_feed.compare_feeds(empty, empty, " ")) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   assert_true(
-    (try? @read_feed.compare_feeds(empty, empty, "same", offset=-1)) is Err(_),
+    (Ok(@read_feed.compare_feeds(empty, empty, "same", kind="deleted")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@read_feed.compare_feeds(empty, empty, "same", limit=0)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@read_feed.compare_feeds(empty, empty, "same", limit=51)) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@read_feed.compare_feeds(empty, empty, "same", offset=-1)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
 }

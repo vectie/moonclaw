@@ -389,7 +389,7 @@ fn display_error(error : String) -> String {
 
 ///|
 fn parse_runs_payload(json : Json) -> Result[Array[RunSummary], String] {
-  let payload : Result[RunsPayload, Error] = try? @json.from_json(json)
+  let payload : Result[RunsPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.runs)
     Err(error) => Err("Failed to parse runs payload: \{error}")
@@ -398,7 +398,7 @@ fn parse_runs_payload(json : Json) -> Result[Array[RunSummary], String] {
 
 ///|
 fn parse_snapshot_payload(json : Json) -> Result[UiSnapshot, String] {
-  let payload : Result[UiSnapshotPayload, Error] = try? @json.from_json(json)
+  let payload : Result[UiSnapshotPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.snapshot)
     Err(error) => Err("Failed to parse job snapshot: \{error}")
@@ -407,7 +407,7 @@ fn parse_snapshot_payload(json : Json) -> Result[UiSnapshot, String] {
 
 ///|
 fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
-  let payload : Result[UiEventsPayload, Error] = try? @json.from_json(json)
+  let payload : Result[UiEventsPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.timeline)
     Err(error) => Err("Failed to parse job timeline: \{error}")
@@ -418,7 +418,7 @@ fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
 fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] {
   match json {
     { "artifact": artifact_json, "content": content_json, .. } =>
-      match (try? @json.from_json(artifact_json) : Result[UiArtifact, Error]) {
+      match ((try Ok(@json.from_json(artifact_json)) catch { error => Err(error) }) : Result[UiArtifact, Error]) {
         Ok(artifact) => {
           let content = match content_json {
             Null | [] => None
@@ -430,7 +430,7 @@ fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] 
             { "revision_source": value, .. } =>
               match
                 (
-                  try? @json.from_json(value) :
+                  (try Ok(@json.from_json(value)) catch { error => Err(error) }) :
                   Result[ArtifactRevisionSource, Error]) {
                 Ok(source) => Some(source)
                 Err(_) => None
@@ -449,9 +449,9 @@ fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] 
 fn parse_cowork_sessions_payload(
   json : Json,
 ) -> Result[Array[CoworkSessionSummary], String] {
-  let payload : Result[CoworkSessionsPayload, Error] = try? @json.from_json(
+  let payload : Result[CoworkSessionsPayload, Error] = (try Ok(@json.from_json(
     json,
-  )
+  )) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.sessions)
     Err(error) => Err("Failed to parse Cowork sessions: \{error}")
@@ -462,7 +462,7 @@ fn parse_cowork_sessions_payload(
 fn parse_cowork_session_payload(
   json : Json,
 ) -> Result[CoworkSessionDetail, String] {
-  let payload : Result[CoworkSessionPayload, Error] = try? @json.from_json(json)
+  let payload : Result[CoworkSessionPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.session)
     Err(error) => Err("Failed to parse Cowork session: \{error}")
@@ -473,9 +473,9 @@ fn parse_cowork_session_payload(
 fn parse_workspace_snapshot_payload(
   json : Json,
 ) -> Result[UiWorkspaceSnapshot, String] {
-  let payload : Result[UiWorkspaceSnapshotPayload, Error] = try? @json.from_json(
+  let payload : Result[UiWorkspaceSnapshotPayload, Error] = (try Ok(@json.from_json(
     json,
-  )
+  )) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.workspace)
     Err(error) => Err("Failed to parse workspace snapshot: \{error}")
@@ -484,7 +484,7 @@ fn parse_workspace_snapshot_payload(
 
 ///|
 fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
-  let payload : Result[AcpUiSnapshotPayload, Error] = try? @json.from_json(json)
+  let payload : Result[AcpUiSnapshotPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.snapshot)
     Err(error) => Err("Failed to parse ACP snapshot: \{error}")
@@ -495,7 +495,7 @@ fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
 fn parse_acp_events_payload(
   json : Json,
 ) -> Result[Array[AcpUiTimelineEntry], String] {
-  let payload : Result[AcpUiEventsPayload, Error] = try? @json.from_json(json)
+  let payload : Result[AcpUiEventsPayload, Error] = (try Ok(@json.from_json(json)) catch { error => Err(error) })
   match payload {
     Ok(payload) => Ok(payload.timeline)
     Err(error) => Err("Failed to parse ACP timeline: \{error}")
@@ -506,10 +506,10 @@ fn parse_acp_events_payload(
 fn parse_acp_timeline_entry_payload(
   text : String,
 ) -> Result[AcpUiTimelineEntry, String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   match json {
     Ok(json) =>
-      match (try? @json.from_json(json) : Result[AcpUiTimelineEntry, Error]) {
+      match ((try Ok(@json.from_json(json)) catch { error => Err(error) }) : Result[AcpUiTimelineEntry, Error]) {
         Ok(entry) => Ok(entry)
         Err(error) =>
           Err("Failed to parse streamed ACP timeline entry: \{error}")
@@ -520,7 +520,7 @@ fn parse_acp_timeline_entry_payload(
 
 ///|
 fn parse_action_status_payload(text : String) -> Result[String, String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   match json {
     Ok({ "status": String(status), .. }) => Ok(status)
     Ok({ "error": { "message": String(message), .. }, .. }) => Err(message)
@@ -558,10 +558,10 @@ struct BrowserLocalUploadBatch {
 
 ///|
 fn parse_browser_copy_result(text : String) -> Result[String, String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   let payload = match json {
     Ok(json) =>
-      match (try? @json.from_json(json) : Result[BrowserCopyResult, Error]) {
+      match ((try Ok(@json.from_json(json)) catch { error => Err(error) }) : Result[BrowserCopyResult, Error]) {
         Ok(payload) => payload
         Err(error) => return Err("Failed to parse clipboard result: \{error}")
       }
@@ -703,11 +703,11 @@ fn parse_browser_local_upload_batch(
   if text.trim().to_string().is_blank() {
     return Ok([])
   }
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   let payload = match json {
     Ok(json) =>
       match
-        (try? @json.from_json(json) : Result[BrowserLocalUploadBatch, Error]) {
+        ((try Ok(@json.from_json(json)) catch { error => Err(error) }) : Result[BrowserLocalUploadBatch, Error]) {
         Ok(payload) => payload
         Err(error) => return Err("Failed to parse local upload batch: \{error}")
       }
@@ -876,10 +876,10 @@ fn parse_stream_drain_payload_json(
 fn parse_timeline_entry_payload(
   text : String,
 ) -> Result[UiTimelineEntry, String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   match json {
     Ok(json) =>
-      match (try? @json.from_json(json) : Result[UiTimelineEntry, Error]) {
+      match ((try Ok(@json.from_json(json)) catch { error => Err(error) }) : Result[UiTimelineEntry, Error]) {
         Ok(entry) => Ok(entry)
         Err(error) => Err("Failed to parse streamed timeline entry: \{error}")
       }
@@ -891,7 +891,7 @@ fn parse_timeline_entry_payload(
 fn parse_stream_drain_payload(
   text : String,
 ) -> Result[(Array[UiTimelineEntry], Bool), String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   let payload = match json {
     Ok(json) =>
       match parse_stream_drain_payload_json(json) {
@@ -917,7 +917,7 @@ fn parse_stream_drain_payload(
 fn parse_acp_stream_drain_payload(
   text : String,
 ) -> Result[(Array[AcpUiTimelineEntry], Bool), String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
+  let json : Result[Json, Error] = (try Ok(@json.parse(text)) catch { error => Err(error) })
   let payload = match json {
     Ok(json) =>
       match parse_stream_drain_payload_json(json) {

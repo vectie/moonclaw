@@ -17,7 +17,7 @@ impl @cmd.Scheduler for StreamDrainTestScheduler with fn run_effect(
 ///|
 impl @cmd.Scheduler for StreamDrainTestScheduler with fn queue_message(
   _self,
-  _id : @common.Id,
+  _id,
   _send,
 ) {
   ()

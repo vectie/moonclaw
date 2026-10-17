@@ -85,7 +85,10 @@ async test "artifact comparison rejects different output lineage" {
     ] {
     store.save_artifact(changed)
     assert_true(
-      (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+      (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
   }
 }
@@ -96,27 +99,47 @@ async test "artifact comparison refuses missing record content deleted identity 
   let (left, right) = comparison_test_pair(root)
   let store = SystemStore::new(root~)
   assert_true(
-    (try? compare_retained_artifacts(root, "missing", right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, "missing", right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   for id in ["", ".", "..", "../revision-old", "bad/id", "bad\\id", "bad\n"] {
-    assert_true((try? compare_retained_artifacts(root, id, right.id)) is Err(_))
+    assert_true(
+      (Ok(compare_retained_artifacts(root, id, right.id)) catch {
+        error => Err(error)
+      })
+      is Err(_),
+    )
   }
   store.save_artifact({ ..right, path: right.path + ".absent", })
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   store.save_artifact({ ..right, content_type: "image/png", })
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   store.save_artifact(right)
   @fs.write_file(right.path, b"invalid\xff")
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   @fs.write_file(right.path, b"a\x00b")
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   @fs.write_file(right.path, b"valid")
   @fsx.make_directory(
@@ -125,7 +148,10 @@ async test "artifact comparison refuses missing record content deleted identity 
   )
   write_artifact_checkpoint(store.artifact_deleted_file(right.id), b"{}")
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
 }
 
@@ -139,7 +165,10 @@ async test "artifact comparison binds checkpoint identity and validates numeric 
     left.to_json().stringify(),
   )
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   @fsx.write_to_file(
     store.artifact_record_file(right.id),
@@ -149,15 +178,24 @@ async test "artifact comparison binds checkpoint identity and validates numeric 
     .replace(old="\"version\":2", new="\"version\":2.5"),
   )
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   @fsx.write_to_file(store.artifact_record_file(right.id), "{broken")
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   store.save_artifact({ ..right, path: left.path, })
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
 }
 
@@ -189,7 +227,10 @@ async test "artifact comparison limits file size before reading and retains lite
   large.write_at(b"x", position=1048576L)
   large.close()
   assert_true(
-    (try? compare_retained_artifacts(root, left.id, right.id)) is Err(_),
+    (Ok(compare_retained_artifacts(root, left.id, right.id)) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
   @fs.write_file(
     right.path,

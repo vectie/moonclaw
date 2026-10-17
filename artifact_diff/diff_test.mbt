@@ -121,9 +121,22 @@ test "maximum line count and text size pass while overflow and binary fail" {
     @artifact_diff.compare_text("x".repeat(1048576), "").removed_lines,
     content="1",
   )
-  assert_true((try? @artifact_diff.compare_text(text + "a\n", "")) is Err(_))
   assert_true(
-    (try? @artifact_diff.compare_text("", "x".repeat(1048577))) is Err(_),
+    (Ok(@artifact_diff.compare_text(text + "a\n", "")) catch {
+      error => Err(error)
+    })
+    is Err(_),
   )
-  assert_true((try? @artifact_diff.compare_text("a\u0000b", "")) is Err(_))
+  assert_true(
+    (Ok(@artifact_diff.compare_text("", "x".repeat(1048577))) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
+  assert_true(
+    (Ok(@artifact_diff.compare_text("a\u0000b", "")) catch {
+      error => Err(error)
+    })
+    is Err(_),
+  )
 }

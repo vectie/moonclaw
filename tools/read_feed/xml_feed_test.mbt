@@ -128,25 +128,39 @@ test "Atom namespace text content relative links and Markdown reading digest" {
 ///|
 test "XML feed failures are explicit and JSON filtering retains compatibility" {
   assert_true(
-    (try? parse_feed(
-      "<rss version='2.0'><channel><title>Bad</channel></rss>", "file://bad",
-    ))
+    (Ok(
+      parse_feed(
+        "<rss version='2.0'><channel><title>Bad</channel></rss>", "file://bad",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? parse_feed(
-      "<!DOCTYPE rss SYSTEM 'file:///not-read'><rss version='2.0'/>", "file://bad",
-    ))
+    (Ok(
+      parse_feed(
+        "<!DOCTYPE rss SYSTEM 'file:///not-read'><rss version='2.0'/>", "file://bad",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? parse_feed("<html><title>Not a feed</title></html>", "file://bad"))
+    (Ok(parse_feed("<html><title>Not a feed</title></html>", "file://bad")) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   assert_true(
-    (try? parse_feed(
-      "<feed xmlns='urn:not-atom'><title>Wrong namespace</title></feed>", "file://bad",
-    ))
+    (Ok(
+      parse_feed(
+        "<feed xmlns='urn:not-atom'><title>Wrong namespace</title></feed>", "file://bad",
+      ),
+    ) catch {
+      error => Err(error)
+    })
     is Err(_),
   )
   let json = "{\"version\":\"https://jsonfeed.org/version/1.1\",\"title\":\"News\",\"items\":[{\"id\":\"one\",\"title\":\"Research\",\"content_text\":\"Moon science\"},{\"id\":\"two\",\"title\":\"Weather\"}]}"

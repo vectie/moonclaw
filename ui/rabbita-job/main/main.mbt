@@ -17,7 +17,10 @@ using @html {
 }
 
 ///|
-using @rabbita {type Cmd, type Dispatch, type Html, batch}
+using @rabbita {type Cmd, type Html, batch}
+
+///|
+using @cmd {type Dispatch}
 
 ///|
 
@@ -866,7 +869,7 @@ fn local_linkage_metadata(
 
 ///|
 fn main {
-  let (dispatch, app) = @rabbita.cell_with_dispatch(
+  let (dispatch, app) = @rabbita.cell_with_emit(
     model=init_model(),
     update~,
     view~,

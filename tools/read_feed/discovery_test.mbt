@@ -8,7 +8,7 @@ test "HTML feed discovery reads mixed formats and usable provider metadata" {
   inspect(result.providers.length(), content="3")
   inspect(result.duplicate_links, content="0")
   inspect(result.rejected_links, content="0")
-  @json.inspect(result.providers[0], content={
+  @json.json_inspect(result.providers[0], content={
     "name": "research-1",
     "title": "Research 🔭",
     "description": "Discovered feed candidate; content has not been fetched or verified",
@@ -143,7 +143,9 @@ test "HTML discovery rejects unsupported links and invalid base stays visible" {
 ///|
 test "HTML discovery bounded malformed and empty inputs" {
   let long_url = "https://example.test/" + "a".repeat(8192)
-  assert_true((try? discover_feeds("", long_url)) is Err(_))
+  assert_true(
+    (Ok(discover_feeds("", long_url)) catch { error => Err(error) }) is Err(_),
+  )
   let long_link = discover_feeds(
     "<link rel=alternate type=application/rss+xml href='\{long_url}'>",
     "https://example.test/",
@@ -170,18 +172,28 @@ test "HTML discovery bounded malformed and empty inputs" {
       "<link rel=alternate type=application/rss+xml href=/rss>".repeat(257),
       "x".repeat(4194305),
     ] {
-    assert_true((try? discover_feeds(body, "https://example.test/")) is Err(_))
+    assert_true(
+      (Ok(discover_feeds(body, "https://example.test/")) catch {
+        error => Err(error)
+      })
+      is Err(_),
+    )
   }
   for
     url in [
       "file:///tmp/page", "https://user:secret@example.test/", "https:///page", "https://example.test/a b",
       "https://example.test\\host/",
     ] {
-    assert_true((try? discover_feeds("", url)) is Err(_))
+    assert_true(
+      (Ok(discover_feeds("", url)) catch { error => Err(error) }) is Err(_),
+    )
   }
   for prefix in ["", "bad/name", "a".repeat(65)] {
     assert_true(
-      (try? discover_feeds("", "https://example.test/", prefix~)) is Err(_),
+      (Ok(discover_feeds("", "https://example.test/", prefix~)) catch {
+        error => Err(error)
+      })
+      is Err(_),
     )
   }
   let result = discover_feeds(

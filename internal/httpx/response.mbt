@@ -10,6 +10,9 @@ struct ResponseWriter {
 }
 
 ///|
+pub extend ResponseWriter with @io.Writer::{write_once, write, write_reader}
+
+///|
 fn ResponseWriter::new(conn : @http.ServerConnection) -> ResponseWriter {
   { sent: false, header: Header({}), conn, }
 }

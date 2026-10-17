@@ -137,7 +137,7 @@ fn parse_human_revision_result(raw : String) -> Result[UiArtifact, String] {
   }
   match value {
     { "artifact": artifact, .. } =>
-      match (try? @json.from_json(artifact) : Result[UiArtifact, Error]) {
+      match ((try Ok(@json.from_json(artifact)) catch { error => Err(error) }) : Result[UiArtifact, Error]) {
         Ok(artifact) => Ok(artifact)
         Err(_) =>
           Err("Save confirmation could not be read. Retry the same save.")
