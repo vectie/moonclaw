@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "range",
+    "start_line": 3,
+    "end_line": 3,
+    "purpose": "Describe the revised retry behavior."
+  },
+  {
+    "mode": "exact",
+    "candidate": 0
+  }
+]

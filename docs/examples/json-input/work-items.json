@@ -1,0 +1,7 @@
+{
+  "items": [
+    {"id": 9007199254740993, "status": "ready", "owner": "private-owner-a", "cost": 1.2300e+4},
+    {"id": 9007199254740995, "status": "uncertain", "owner": "private-owner-b", "note": "Ask for the observed outcome before closing."}
+  ],
+  "metadata": {"source": "Synthetic local example", "a/b~c": null}
+}

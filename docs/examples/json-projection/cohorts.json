@@ -1,0 +1,9 @@
+{
+  "items": [
+    {"status":"ready","details":{"amount":1.2300e+02},"private-owner":"omitted"},
+    {"status":"\u0072eady","details":{"amount":9007199254740993123},"private-owner":"omitted"},
+    {"status":"later","details":{"amount":false}},
+    {"status":null,"details":{}},
+    {"details":{"amount":null}}
+  ]
+}

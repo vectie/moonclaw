@@ -148,6 +148,8 @@ pub async fn Gateway::handle_request(
         self.handle_list_cowork_sessions(r, w)
       (Post, ["", "v1", "cowork", "sessions"]) =>
         self.handle_create_cowork_session(r, w)
+      (Get, ["", "v1", "cowork", "sessions", session_key, "procedures"]) =>
+        self.handle_cowork_procedures(w, session_key.to_owned())
       (Get, ["", "v1", "cowork", "sessions", session_key]) =>
         self.handle_get_cowork_session(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "config"]) =>
@@ -184,6 +186,25 @@ pub async fn Gateway::handle_request(
         ["", "v1", "cowork", "sessions", session_key, "runs", run_id, "resume"],
       ) =>
         self.handle_cowork_resume_run(
+          r,
+          w,
+          session_key.to_owned(),
+          run_id.to_owned(),
+        )
+      (
+        Get,
+        [
+          "",
+          "v1",
+          "cowork",
+          "sessions",
+          session_key,
+          "runs",
+          run_id,
+          "recovery",
+        ],
+      ) =>
+        self.handle_cowork_recovery(
           r,
           w,
           session_key.to_owned(),

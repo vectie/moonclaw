@@ -1,0 +1,29 @@
+{
+  "contract_version": "moonclaw.source-project.v1",
+  "authority_granted": false,
+  "accepted_knowledge": false,
+  "disk_freshness_verified": false,
+  "excerpt_budget_bytes": 4096,
+  "sources": [
+    {
+      "name": "research-note.txt",
+      "content_utf8": "Research note\nThe queue currently retries twice.\nUnknown effects require reconciliation.\n",
+      "bytes": 89,
+      "sha256": "sha256:12e12dcbd9d028ba7e92ca63ae63808d206c5fa391365cd1223d7cfcd67b4906"
+    }
+  ],
+  "excerpts": [
+    {
+      "source_key": "[\"local\",\"research-note.txt\"]",
+      "start_line": 2,
+      "end_line": 2,
+      "purpose": "Describe the existing retry behavior."
+    },
+    {
+      "source_key": "[\"local\",\"research-note.txt\"]",
+      "start_line": 3,
+      "end_line": 3,
+      "purpose": "Compare the stop condition with that behavior."
+    }
+  ]
+}

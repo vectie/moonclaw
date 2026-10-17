@@ -1,0 +1,8 @@
+{
+  "items": [
+    {"id":"A","details":{"amount":1.2300e+02},"private-owner":"omitted"},
+    {"id":"B","details":{"amount":9007199254740993123},"private-owner":"omitted"},
+    {"id":"C","details":{"amount":null}},
+    {"id":"D","details":{}}
+  ]
+}

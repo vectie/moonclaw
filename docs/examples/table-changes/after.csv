@@ -1,0 +1,5 @@
+Memo,Item,Private,State
+unchanged,002,private-owner-updated,ready
+"First line
+new line",001,private-owner-a,active
+=SUM(A1),004,private-owner-d,new

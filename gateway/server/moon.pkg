@@ -1,4 +1,5 @@
 import {
+  "vectie/moonclaw/internal/book_learning",
   "vectie/moonclaw/internal/promotion_recovery",
   "moonbitlang/core/json",
   "moonbitlang/core/string",

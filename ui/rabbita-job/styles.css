@@ -2050,3 +2050,12 @@ button:disabled {
 /* Live output is text-only, bounded independently of the retained spool. */
 .command-live-view { padding: 1rem; margin: 1rem; min-width: 0; }
 .command-live-text { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 30rem; font-family: monospace; }
+
+/* A method choice is part of the ordinary Work review flow. */
+.procedure-panel { border: 1px solid var(--line, #d5dce5); border-radius: 12px; padding: 14px; margin: 12px 0; }
+.procedure-panel summary { cursor: pointer; font-weight: 600; }
+.procedure-panel label { display: grid; gap: 6px; margin: 12px 0; }
+.procedure-panel input, .procedure-panel select, .procedure-panel textarea { width: 100%; box-sizing: border-box; padding: 8px; }
+.procedure-panel textarea { min-height: 72px; }
+.procedure-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; font-size: 12px; }
+.procedure-panel button { padding: 8px 12px; margin: 4px 6px 4px 0; }

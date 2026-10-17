@@ -1,0 +1,2 @@
+{"task":"sample-one","observed":{"ready":false,"missing":"outcome"}}
+{"task":"sample-two","observed":{"ready":true,"count":9007199254740993}}

@@ -1,0 +1,4 @@
+Updated research note
+Prepared for source review.
+The queue now retries only after confirmed no effect.
+Unknown effects require reconciliation.

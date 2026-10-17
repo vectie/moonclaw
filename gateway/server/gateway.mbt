@@ -40,6 +40,7 @@ pub struct Gateway {
   channel_state : ChannelStateStore
   job_app : @job.GatewayJobApp
   active_job_tasks : Map[String, @async.Task[Unit]]
+  recovery_resume_pending : Map[String, Bool]
   security_runtime : @security.SecurityRuntime
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
