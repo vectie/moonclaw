@@ -281,7 +281,9 @@ async fn Gateway::handle_get_job_ui(
       handoffs=remote.handoffs,
     ) {
     Some(snapshot) => {
-      let result : Json = { "snapshot": self.with_command_outputs(snapshot).to_json() }
+      let result : Json = {
+        "snapshot": self.with_command_outputs(snapshot).to_json(),
+      }
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       w.write(result.stringify())

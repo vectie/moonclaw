@@ -21,7 +21,9 @@ fn print_help() -> Unit {
   println("")
   println("Commands:")
   println("  import <packet.json>   Import an external proposal packet")
-  println("  oneoff <packet.json>   Start or reconcile an exact one-off packet once")
+  println(
+    "  oneoff <packet.json>   Start or reconcile an exact one-off packet once",
+  )
   println("  status <run_id>        Load and print a run without executing it")
   println("  cancel <run_id>        Cancel a persisted interrupted run")
   println("  version                Show version")

@@ -1269,7 +1269,8 @@ async fn Gateway::handle_cowork_resume_run(
   let after_save = self.cowork_recovery_snapshot(session_key, run_id)
   guard expected_after_save is { "checkpoint": String(expected), .. } &&
     after_save is { "checkpoint": String(actual), "can_resume": True, .. } &&
-    expected == actual && self.root_group() is Some(_) else {
+    expected == actual &&
+    self.root_group() is Some(_) else {
     raise json_error(409, "Conflict", {
       "error": {
         "code": "resume_retained_not_launched",

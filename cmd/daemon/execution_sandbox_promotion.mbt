@@ -304,7 +304,9 @@ async fn Daemon::moondesk_promote_retention(
     _ => {
       let reference = if request.instance_id == route_config.instance_id &&
         request.workspace_id == route_config.workspace_id {
-        @promotion_recovery.pending_reference(request.to_json()) catch { _ => None }
+        @promotion_recovery.pending_reference(request.to_json()) catch {
+          _ => None
+        }
       } else {
         None
       }
