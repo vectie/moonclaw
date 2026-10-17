@@ -6,8 +6,8 @@ pub let mooncode_goal_runtime_contract : String = "mooncode-goal-runtime.v1"
 /// Per-operation policy is deliberately separate from aggregate goal progress.
 /// Limits here bound one potentially unsafe operation; they never settle a goal.
 pub(all) struct GoalOperationPolicy {
-  max_output_bytes : Int
-  timeout_milliseconds : Int
+  max_output_bytes : Int32
+  timeout_milliseconds : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -116,17 +116,17 @@ pub fn goal_runtime_is_terminal(state : GoalRuntimeState) -> Bool {
 }
 
 ///|
-pub fn goal_runtime_handled_count(state : GoalRuntimeState) -> Int {
+pub fn goal_runtime_handled_count(state : GoalRuntimeState) -> Int32 {
   state.handled_ids.length()
 }
 
 ///|
-pub fn goal_runtime_operation_count(state : GoalRuntimeState) -> Int {
+pub fn goal_runtime_operation_count(state : GoalRuntimeState) -> Int32 {
   state.operation_ids.length()
 }
 
 ///|
-pub fn goal_runtime_checkpoint_count(state : GoalRuntimeState) -> Int {
+pub fn goal_runtime_checkpoint_count(state : GoalRuntimeState) -> Int32 {
   state.checkpoint_ids.length()
 }
 

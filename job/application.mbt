@@ -5,7 +5,7 @@ pub struct GatewayJobApp {
   home : String
   workspace : @workspace.WorkspaceRuntime
   next_id : () -> String
-  now : () -> Int
+  now : () -> Int32
 }
 
 ///|
@@ -21,7 +21,7 @@ pub fn GatewayJobApp::new(
   home~ : String,
   workspace~ : @workspace.WorkspaceRuntime,
   next_id~ : () -> String,
-  now~ : () -> Int,
+  now~ : () -> Int32,
 ) -> GatewayJobApp {
   { state: GatewayJobState::new(root~), cwd, home, workspace, next_id, now, }
 }
@@ -52,7 +52,7 @@ pub fn GatewayJobApp::workspace_prompt_context(self : GatewayJobApp) -> String {
 }
 
 ///|
-pub fn GatewayJobApp::now(self : GatewayJobApp) -> Int {
+pub fn GatewayJobApp::now(self : GatewayJobApp) -> Int32 {
   (self.now)()
 }
 
@@ -82,7 +82,7 @@ pub fn GatewayJobApp::next_run_id(self : GatewayJobApp) -> String {
 fn unique_memory_hits(
   hits : Array[MemorySearchHit],
   extra : Array[MemorySearchHit],
-  limit : Int,
+  limit : Int32,
 ) -> Array[MemorySearchHit] {
   let combined : Array[MemorySearchHit] = []
   let seen : Map[String, Bool] = Map([])
@@ -158,13 +158,13 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
   request_text : String,
   workspace_root : String,
   cwd : String,
-  e2e_mode? : Bool = false,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
+  e2e_mode~ : Bool = false,
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
 ) -> JobProposal {
   let now_ms = self.now()
   let memory_context = self.planning_memory_context(
@@ -216,13 +216,13 @@ pub async fn GatewayJobApp::plan_mode_in_workspace(
   request_text : String,
   workspace_root : String,
   cwd : String,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  executor? : AnalysisExecutor = default_analysis_executor(),
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
 ) -> JobPlanPreview {
   let memory_context = self.planning_memory_context(
     request_text, workspace_root, channel_id, account_id, recipient, thread_id,
@@ -248,13 +248,13 @@ pub async fn GatewayJobApp::plan_mode_in_workspace(
 pub async fn GatewayJobApp::plan_mode(
   self : GatewayJobApp,
   request_text : String,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  executor? : AnalysisExecutor = default_analysis_executor(),
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
 ) -> JobPlanPreview {
   self.plan_mode_in_workspace(
     request_text,
@@ -274,12 +274,12 @@ pub async fn GatewayJobApp::plan_mode(
 pub async fn GatewayJobApp::plan_proposal(
   self : GatewayJobApp,
   request_text : String,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
 ) -> JobProposal {
   self.plan_proposal_in_workspace(
     request_text,
@@ -300,12 +300,12 @@ pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(
   request_text : String,
   workspace_root : String,
   cwd : String,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
 ) -> JobProposal {
   self.plan_proposal_in_workspace(
     request_text,
@@ -325,12 +325,12 @@ pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(
 pub async fn GatewayJobApp::plan_e2e_proposal(
   self : GatewayJobApp,
   request_text : String,
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
 ) -> JobProposal {
   self.plan_e2e_proposal_in_workspace(
     request_text,
@@ -502,7 +502,7 @@ pub fn GatewayJobApp::new_workflow_engine(
 ///|
 pub fn GatewayJobApp::new_workflow_engine_with_child_executor(
   self : GatewayJobApp,
-  child_executor? : ChildRunExecutor? = None,
+  child_executor~ : ChildRunExecutor? = None,
 ) -> WorkflowEngine {
   self.new_workflow_engine_with_executors(child_executor~)
 }
@@ -510,8 +510,8 @@ pub fn GatewayJobApp::new_workflow_engine_with_child_executor(
 ///|
 pub fn GatewayJobApp::new_workflow_engine_with_executors(
   self : GatewayJobApp,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> WorkflowEngine {
   let runtime = self.runtime()
   let engine = WorkflowEngine::new(runtime~)

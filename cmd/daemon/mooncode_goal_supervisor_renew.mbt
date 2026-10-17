@@ -16,7 +16,7 @@ async fn mooncode_goal_supervisor_lease_renew(
   owner_id : String,
   acquisition_event_id : String,
   event_id : String,
-  fence_token : Int,
+  fence_token : Int32,
   expected_lease_expires_at : Int64,
   now : Int64,
   lease_expires_at : Int64,

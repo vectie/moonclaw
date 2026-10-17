@@ -2,7 +2,7 @@
 struct Pruner {
   logger : @pino.Logger
   token_counter : @token_counter.Counter
-  safe_zone_tokens : Int
+  safe_zone_tokens : Int32
 }
 
 ///|
@@ -11,9 +11,9 @@ pub struct PruneResult {
   /// Event IDs that should be pruned
   pruned_ids : Array[@uuid.Uuid]
   /// Original token count before pruning
-  origin_token_count : Int
+  origin_token_count : Int32
   /// Token count after pruning
-  pruned_token_count : Int
+  pruned_token_count : Int32
 }
 
 ///|
@@ -26,16 +26,16 @@ pub struct PruneResult {
 /// the system/rules/task prefix and the newest complete exchange.
 pub struct CompileResult {
   messages : Array[@openai.ChatCompletionMessageParam]
-  origin_token_count : Int
-  final_token_count : Int
-  redacted_tool_results : Int
-  compacted_messages : Int
+  origin_token_count : Int32
+  final_token_count : Int32
+  redacted_tool_results : Int32
+  compacted_messages : Int32
   within_budget : Bool
 }
 
 ///|
 pub fn Pruner::new(
-  safe_zone_tokens~ : Int,
+  safe_zone_tokens~ : Int32,
   logger~ : @pino.Logger,
 ) -> Pruner raise {
   {
@@ -52,13 +52,13 @@ const ClearedToolOutputPlaceholder : String = "[Cleared: tool output. If you wan
 const ContextCheckpoint : String = "[Context checkpoint: MoonClaw compacted older model-facing messages to control prompt cost. The original task contract and complete durable journal are unchanged. Continue from the retained recent exchange; re-read exact evidence only when needed.]"
 
 ///|
-const DefaultRecentContextTokens : Int = 20000
+const DefaultRecentContextTokens : Int32 = 20000
 
 ///|
-const MaxCheckpointTokens : Int = 768
+const MaxCheckpointTokens : Int32 = 768
 
 ///|
-const MaxCheckpointObservations : Int = 8
+const MaxCheckpointObservations : Int32 = 8
 
 ///|
 fn latest_tool_batch_ids(
@@ -127,7 +127,7 @@ fn tool_transcript_is_valid(
 /// assistant response protects both without depending on their exact count.
 fn protected_prefix_end(
   messages : Array[@openai.ChatCompletionMessageParam],
-) -> Int {
+) -> Int32 {
   for index in 0..<messages.length() {
     match messages[index] {
       Assistant(_) => return index
@@ -143,8 +143,8 @@ fn protected_prefix_end(
 /// corresponding assistant tool call to precede it.
 fn newest_complete_suffix_start(
   messages : Array[@openai.ChatCompletionMessageParam],
-  prefix_end : Int,
-) -> Int {
+  prefix_end : Int32,
+) -> Int32 {
   guard messages.length() > prefix_end else { return -1 }
   let mut latest_assistant = -1
   let mut index = messages.length() - 1
@@ -167,7 +167,7 @@ fn newest_complete_suffix_start(
 ///|
 fn contains_system_after(
   messages : Array[@openai.ChatCompletionMessageParam],
-  start : Int,
+  start : Int32,
 ) -> Bool {
   for index in start..<messages.length() {
     match messages[index] {
@@ -256,8 +256,8 @@ fn Pruner::checkpoint_observation(
 fn Pruner::context_checkpoint(
   pruner : Pruner,
   messages : Array[@openai.ChatCompletionMessageParam],
-  compacted_start : Int,
-  compacted_end : Int,
+  compacted_start : Int32,
+  compacted_end : Int32,
 ) -> String {
   let observations : Array[String] = []
   let mut index = compacted_end - 1
@@ -296,8 +296,8 @@ fn Pruner::context_checkpoint(
 fn Pruner::build_compacted_projection(
   pruner : Pruner,
   messages : Array[@openai.ChatCompletionMessageParam],
-  prefix_end : Int,
-  suffix_start : Int,
+  prefix_end : Int32,
+  suffix_start : Int32,
 ) -> Array[@openai.ChatCompletionMessageParam] {
   let compiled : Array[@openai.ChatCompletionMessageParam] = []
   for index in 0..<prefix_end {
@@ -317,10 +317,10 @@ fn Pruner::build_compacted_projection(
 ///|
 async fn Pruner::log_compilation(
   pruner : Pruner,
-  origin_token_count : Int,
-  final_token_count : Int,
-  redacted_tool_results : Int,
-  compacted_messages : Int,
+  origin_token_count : Int32,
+  final_token_count : Int32,
+  redacted_tool_results : Int32,
+  compacted_messages : Int32,
   within_budget : Bool,
 ) -> Unit {
   pruner.logger.info("ContextCompiled", data={
@@ -351,7 +351,7 @@ async fn Pruner::log_compilation(
 pub async fn Pruner::compile_messages(
   pruner : Pruner,
   messages : Array[@openai.ChatCompletionMessageParam],
-  tools? : Array[@openai.ChatCompletionToolParam] = [],
+  tools~ : Array[@openai.ChatCompletionToolParam] = [],
 ) -> CompileResult {
   let projected = messages.map(fn(message) { message })
   let origin_token_count = pruner.token_counter.count_param(
@@ -554,7 +554,7 @@ pub async fn Pruner::compile_messages(
 pub async fn Pruner::prune_messages(
   pruner : Pruner,
   messages : Array[@openai.ChatCompletionMessageParam],
-  tools? : Array[@openai.ChatCompletionToolParam] = [],
+  tools~ : Array[@openai.ChatCompletionToolParam] = [],
 ) -> Unit {
   let tokens = pruner.token_counter.count_param(messages~, tools~)
   if tokens <= pruner.safe_zone_tokens {
@@ -612,7 +612,7 @@ pub async fn Pruner::prune_messages(
 pub async fn Pruner::calculate_pruning(
   pruner : Pruner,
   conversation : @conversation.Conversation,
-  tools? : Array[@openai.ChatCompletionToolParam] = [],
+  tools~ : Array[@openai.ChatCompletionToolParam] = [],
 ) -> PruneResult {
   // Build set of already-pruned IDs
   let already_pruned : Set[@uuid.Uuid] = Set([])

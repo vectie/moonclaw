@@ -1,6 +1,6 @@
 ///|
 #borrow(source, destination)
-extern "c" fn fs_rename(source : Bytes, destination : Bytes) -> Int = "moonbit_moonclaw_fs_rename"
+extern "c" fn fs_rename(source : Bytes, destination : Bytes) -> Int32 = "moonbit_moonclaw_fs_rename"
 
 ///|
 /// Atomically rename a file-system entry when source and destination share a

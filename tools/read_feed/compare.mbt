@@ -3,7 +3,7 @@ pub struct FeedObservation {
   label : String
   title : String
   format : String
-  total_items : Int
+  total_items : Int32
   next_url : String?
 } derive(Show)
 
@@ -21,15 +21,15 @@ pub struct FeedComparison {
   source : String
   before : FeedObservation
   after : FeedObservation
-  newly_listed : Int
-  changed : Int
-  no_longer_listed : Int
-  unchanged : Int
+  newly_listed : Int32
+  changed : Int32
+  no_longer_listed : Int32
+  unchanged : Int32
   changes : Array[FeedChange]
-  total_changes : Int
-  matched_changes : Int
-  offset : Int
-  next_offset : Int?
+  total_changes : Int32
+  matched_changes : Int32
+  offset : Int32
+  next_offset : Int32?
   query : String
   kind : String
 } derive(Show)
@@ -105,12 +105,12 @@ pub fn compare_feeds(
   before_body : String,
   after_body : String,
   source : String,
-  before_label? : String = "before",
-  after_label? : String = "after",
-  query? : String = "",
-  kind? : String = "all",
-  limit? : Int = 50,
-  offset? : Int = 0,
+  before_label~ : String = "before",
+  after_label~ : String = "after",
+  query~ : String = "",
+  kind~ : String = "all",
+  limit~ : Int32 = 50,
+  offset~ : Int32 = 0,
 ) -> FeedComparison raise {
   guard !source.trim().is_empty() else {
     fail("source must identify the same logical feed for both observations")
@@ -181,8 +181,8 @@ pub fn compare_feeds(
       article_matches(change.after, needle)
     )
   })
-  let start = Int::min(offset, matching.length())
-  let end = start + Int::min(limit, matching.length() - start)
+  let start = Int32::min(offset, matching.length())
+  let end = start + Int32::min(limit, matching.length() - start)
   {
     source,
     before: {

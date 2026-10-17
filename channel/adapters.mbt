@@ -1,15 +1,15 @@
 ///|
 pub(all) struct OutboundAdapter {
-  text_chunk_limit : Int
+  text_chunk_limit : Int32
   delivery_mode : String
   chunker_mode : String
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn OutboundAdapter::new(
-  text_chunk_limit? : Int = 4000,
-  delivery_mode? : String = "default",
-  chunker_mode? : String = "sentence",
+  text_chunk_limit~ : Int32 = 4000,
+  delivery_mode~ : String = "default",
+  chunker_mode~ : String = "sentence",
 ) -> OutboundAdapter {
   { text_chunk_limit, delivery_mode, chunker_mode, }
 }
@@ -23,9 +23,9 @@ pub(all) struct ThreadingAdapter {
 
 ///|
 pub fn ThreadingAdapter::new(
-  reply_to_mode? : String = "off",
-  supports_threads? : Bool = false,
-  thread_id_key? : String? = None,
+  reply_to_mode~ : String = "off",
+  supports_threads~ : Bool = false,
+  thread_id_key~ : String? = None,
 ) -> ThreadingAdapter {
   { reply_to_mode, supports_threads, thread_id_key, }
 }
@@ -39,9 +39,9 @@ pub(all) struct MentionAdapter {
 
 ///|
 pub fn MentionAdapter::new(
-  strip_patterns? : Array[String] = [],
-  mention_prefix? : String? = None,
-  mention_suffix? : String? = None,
+  strip_patterns~ : Array[String] = [],
+  mention_prefix~ : String? = None,
+  mention_suffix~ : String? = None,
 ) -> MentionAdapter {
   { strip_patterns, mention_prefix, mention_suffix, }
 }
@@ -49,19 +49,19 @@ pub fn MentionAdapter::new(
 ///|
 pub(all) struct StreamingAdapter {
   enabled : Bool
-  chunk_size : Int
-  chunk_delay_ms : Int
-  min_chars : Int?
-  idle_ms : Int?
+  chunk_size : Int32
+  chunk_delay_ms : Int32
+  min_chars : Int32?
+  idle_ms : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn StreamingAdapter::new(
-  enabled? : Bool = false,
-  chunk_size? : Int = 100,
-  chunk_delay_ms? : Int = 50,
-  min_chars? : Int? = None,
-  idle_ms? : Int? = None,
+  enabled~ : Bool = false,
+  chunk_size~ : Int32 = 100,
+  chunk_delay_ms~ : Int32 = 50,
+  min_chars~ : Int32? = None,
+  idle_ms~ : Int32? = None,
 ) -> StreamingAdapter {
   { enabled, chunk_size, chunk_delay_ms, min_chars, idle_ms, }
 }
@@ -75,9 +75,9 @@ pub(all) struct SecurityAdapter {
 
 ///|
 pub fn SecurityAdapter::new(
-  dm_policy? : String = "pairing",
-  allow_from? : Array[String] = [],
-  require_mention_in_groups? : Bool = true,
+  dm_policy~ : String = "pairing",
+  allow_from~ : Array[String] = [],
+  require_mention_in_groups~ : Bool = true,
 ) -> SecurityAdapter {
   { dm_policy, allow_from, require_mention_in_groups, }
 }
@@ -93,11 +93,11 @@ pub(all) struct ChannelDockConfig {
 
 ///|
 pub fn ChannelDockConfig::new(
-  outbound? : OutboundAdapter? = None,
-  threading? : ThreadingAdapter? = None,
-  mentions? : MentionAdapter? = None,
-  streaming? : StreamingAdapter? = None,
-  security? : SecurityAdapter? = None,
+  outbound~ : OutboundAdapter? = None,
+  threading~ : ThreadingAdapter? = None,
+  mentions~ : MentionAdapter? = None,
+  streaming~ : StreamingAdapter? = None,
+  security~ : SecurityAdapter? = None,
 ) -> ChannelDockConfig {
   { outbound, threading, mentions, streaming, security, }
 }

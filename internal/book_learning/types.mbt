@@ -11,7 +11,7 @@ pub struct Record {
   path : String
   category : String
   format : String
-  size_bytes : Int
+  size_bytes : Int32
   sha256 : String
   content_utf8 : String
 } derive(Eq, Debug, ToJson, FromJson)
@@ -24,12 +24,12 @@ pub struct Snapshot {
   source_binding : Binding
   installation_lineage : Json
   records : Array[Record]
-  observed_entries : Int
-  admitted_records : Int
-  excluded_records : Int
+  observed_entries : Int32
+  admitted_records : Int32
+  excluded_records : Int32
   reasons : Array[String]
   limits : Json
-  captured_at : Int
+  captured_at : Int32
   content_digest : String
   binding_digest : String
 } derive(Eq, Debug, ToJson, FromJson)
@@ -70,7 +70,11 @@ fn binding_digest(snapshot : Snapshot) -> String {
 }
 
 ///|
-pub fn empty(binding : Binding, status : String, captured_at : Int) -> Snapshot {
+pub fn empty(
+  binding : Binding,
+  status : String,
+  captured_at : Int32,
+) -> Snapshot {
   seal({
     contract: "moonclaw.book-learning-input.v1",
     reader_contract: "moonbook.accepted-memory.v1",

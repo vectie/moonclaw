@@ -4,7 +4,7 @@
 pub struct ComparedArtifact {
   record : ArtifactRecord
   content_sha256 : String
-  content_bytes : Int
+  content_bytes : Int32
 } derive(ToJson)
 
 ///|
@@ -28,7 +28,7 @@ fn comparison_id(id : String) -> Unit raise {
 }
 
 ///|
-async fn comparison_bytes(path : String, maximum : Int) -> Bytes {
+async fn comparison_bytes(path : String, maximum : Int32) -> Bytes {
   let file = @fs.open(path, mode=ReadOnly)
   defer file.close()
   guard file.kind() is Regular else { fail("Expected a retained regular file") }

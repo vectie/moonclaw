@@ -14,7 +14,7 @@ pub struct WeixinAccountConfig {
 ///|
 pub struct WeixinAccessTokenResponse {
   access_token : String?
-  expires_in : Int?
-  errcode : Int?
+  expires_in : Int32?
+  errcode : Int32?
   errmsg : String?
 } derive(ToJson, FromJson, Debug)

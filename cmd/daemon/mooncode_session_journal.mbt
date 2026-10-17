@@ -301,7 +301,7 @@ async fn mooncode_append_session_journal_once_locked(
   session_id : String,
   record_kind : String,
   payload : Json,
-  require_active? : Bool = true,
+  require_active~ : Bool = true,
 ) -> Bool {
   if require_active {
     mooncode_require_active_session_state_locked(
@@ -526,7 +526,7 @@ fn mooncode_journal_entries(
 fn mooncode_journal_record_count(
   records : Array[Json],
   record_kind : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for record in records {
     if mooncode_json_string(record, "record_kind", default="") == record_kind {
@@ -555,7 +555,7 @@ fn mooncode_journal_last_sequence_exact(
 /// basis sequence remains an Int.
 fn mooncode_journal_last_sequence(
   records : Array[Json],
-) -> Int raise MoonCodeJournalError {
+) -> Int32 raise MoonCodeJournalError {
   let text = mooncode_journal_last_sequence_exact(records).text()
   @string.parse_int(text) catch {
     _ =>
@@ -566,7 +566,7 @@ fn mooncode_journal_last_sequence(
 }
 
 ///|
-fn mooncode_journal_sequence(record : Json) -> Int raise MoonCodeJournalError {
+fn mooncode_journal_sequence(record : Json) -> Int32 raise MoonCodeJournalError {
   match mooncode_journal_json_field(record, "sequence") {
     Some(Number(value, ..)) => {
       if value != value || value < 1.0 || value > 2147483647.0 {
@@ -802,7 +802,7 @@ fn mooncode_session_journal_path(
 fn mooncode_session_journal_path_by_safe_id(
   book_root : String,
   safe_session_id : String,
-  archived? : Bool = false,
+  archived~ : Bool = false,
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("journal.jsonl")
@@ -811,8 +811,8 @@ fn mooncode_session_journal_path_by_safe_id(
 ///|
 #warnings("-unused_value")
 fn mooncode_journal_checked_next_sequence(
-  last_sequence : Int,
-) -> Int raise MoonCodeJournalError {
+  last_sequence : Int32,
+) -> Int32 raise MoonCodeJournalError {
   if last_sequence == 2147483647 {
     raise InvalidJournal("MoonCode journal sequence is exhausted")
   }

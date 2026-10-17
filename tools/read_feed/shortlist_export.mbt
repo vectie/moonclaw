@@ -4,7 +4,7 @@
 fn shortlist_markdown_text(text : String) -> String {
   let out = StringBuilder()
   for c in feed_space(text) {
-    if c is ('!'..='/' | ':'..='@' | '['..='`' | '{'..='~') {
+    if c is ('!'..<='/' | ':'..<='@' | '['..<='`' | '{'..<='~') {
       out.write_char('\\')
     }
     out.write_char(c)

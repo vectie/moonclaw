@@ -21,7 +21,7 @@ fn scan_test_carrier() -> MoonCodeGoalRuntimeCarrier raise MoonCodeGoalRuntimeCo
 ///|
 fn scan_test_record(
   carrier : MoonCodeGoalRuntimeCarrier,
-  sequence : Int,
+  sequence : Int32,
 ) -> Json raise {
   let record = @moonlib_conversation.journal_record(
     session_id="session-你好",

@@ -9,7 +9,7 @@ pub struct CreateCoordinationParams {
 pub fn create_coordination_params(
   parent_agent~ : String,
   subtasks~ : Array[SubTaskParams],
-  metadata? : Map[String, Json] = Map([]),
+  metadata~ : Map[String, Json] = Map([]),
 ) -> CreateCoordinationParams {
   { parent_agent, subtasks, metadata, }
 }

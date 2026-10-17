@@ -1,7 +1,7 @@
 ///|
 
 ///|
-let gateway_root_groups : Map[Int, @async.TaskGroup[Unit]] = Map([])
+let gateway_root_groups : Map[Int32, @async.TaskGroup[Unit]] = Map([])
 
 ///|
 fn Gateway::root_group(self : Gateway) -> @async.TaskGroup[Unit]? {
@@ -43,7 +43,7 @@ async fn Gateway::child_run_step_started(
   self : Gateway,
   child_run : @job.JobRun,
   step : @job.WorkflowStepDefinition,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> @job.JobStepRun {
   let step_run = @job.JobStepRun::{
     id: "\{child_run.id}:\{step.id}",
@@ -68,11 +68,11 @@ async fn Gateway::finish_child_run_step(
   self : Gateway,
   step_run : @job.JobStepRun,
   status : @job.RunStatus,
-  now_ms : Int,
-  output? : Json? = None,
-  summary? : String? = None,
-  error? : String? = None,
-  logs? : Array[String] = [],
+  now_ms : Int32,
+  output~ : Json? = None,
+  summary~ : String? = None,
+  error~ : String? = None,
+  logs~ : Array[String] = [],
 ) -> Unit {
   self
   .job_runtime()
@@ -534,7 +534,7 @@ async fn Gateway::refresh_proposal_definition_if_present(
 async fn Gateway::launch_job_run(
   self : Gateway,
   run_id : String,
-  initial_input? : Json? = None,
+  initial_input~ : Json? = None,
 ) -> Unit {
   match self.root_group() {
     Some(group) => {
@@ -570,7 +570,7 @@ async fn Gateway::resume_pending_job_runs(self : Gateway) -> Unit {
 async fn Gateway::execute_job_run_async(
   self : Gateway,
   run_id : String,
-  initial_input? : Json? = None,
+  initial_input~ : Json? = None,
 ) -> Unit {
   self.clear_job_control_requests(run_id)
   let enriched_input = self.materialize_starter_attachments_for_run(
@@ -636,8 +636,8 @@ fn Gateway::job_run_for_definition(
 async fn Gateway::trigger_job_definition(
   self : Gateway,
   job_id : String,
-  trigger? : @job.TriggerSource = Manual,
-  initial_input? : Json? = None,
+  trigger~ : @job.TriggerSource = Manual,
+  initial_input~ : Json? = None,
 ) -> Result[@job.JobRun, String] {
   self.refresh_proposal_definition_if_present(job_id)
   let definition = match self.job_runtime().store().get_definition(job_id) {
@@ -667,7 +667,7 @@ async fn Gateway::trigger_job_definition(
 async fn Gateway::cancel_job_definition_run(
   self : Gateway,
   job_id : String,
-  force? : Bool = false,
+  force~ : Bool = false,
 ) -> Result[@job.JobRun, String] {
   let run = match self.job_run_for_definition(job_id) {
     Some(run) => run

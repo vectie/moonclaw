@@ -66,7 +66,7 @@ fn capability_test_digest(text : String) -> String {
 ///|
 async fn capability_fixture_catalog(
   workspace : String,
-  health_valid_until? : String = "2026-08-02T00:00:00Z",
+  health_valid_until~ : String = "2026-08-02T00:00:00Z",
 ) -> Json {
   let health_ref = "health/fixture-capability.json"
   let health_text = "{\"healthy\":true,\"probe\":\"fixture.execute\"}\n"

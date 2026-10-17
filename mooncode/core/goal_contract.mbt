@@ -38,12 +38,12 @@ pub(all) enum ApprovalOutcome {
 
 ///|
 pub(all) struct GoalBudget {
-  token_limit : Int?
-  turn_limit : Int?
-  wall_time_limit : Int?
-  tokens_used : Int
-  turns_used : Int
-  wall_time_used : Int
+  token_limit : Int32?
+  turn_limit : Int32?
+  wall_time_limit : Int32?
+  tokens_used : Int32
+  turns_used : Int32
+  wall_time_used : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -65,21 +65,21 @@ pub(all) struct BlockerIdentity {
 ///|
 pub(all) struct GoalBlocker {
   identity : BlockerIdentity
-  count : Int
-  last_consecutive_turn : Int
-  run_id : Int
+  count : Int32
+  last_consecutive_turn : Int32
+  run_id : Int32
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct GoalConvergence {
   report : ConvergenceReport
-  accepted_revision : Int
+  accepted_revision : Int32
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct ConvergenceReport {
   evaluation_id : String
-  evaluated_revision : Int
+  evaluated_revision : Int32
   evidence_digest : String
   outcome : Convergence
   requirement_deltas : Array[String]
@@ -89,18 +89,18 @@ pub(all) struct ConvergenceReport {
 ///|
 pub(all) struct EvaluationRequest {
   id : String
-  run_id : Int
-  revision : Int
+  run_id : Int32
+  revision : Int32
   evidence_digest : String
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct EvaluationBackoffRecord {
   evaluation_id : String
-  run_id : Int
-  basis_revision : Int
+  run_id : Int32
+  basis_revision : Int32
   evidence_digest : String
-  attempt : Int
+  attempt : Int32
   category : String
   next_retry_at : Int64
 } derive(Eq, Debug)
@@ -108,8 +108,8 @@ pub(all) struct EvaluationBackoffRecord {
 ///|
 /// ValidatedProjection is an explicit daemon-supplied snapshot. Core does not inspect journals.
 pub(all) struct ValidatedProjection {
-  revision : Int
-  evaluation_basis_revision : Int
+  revision : Int32
+  evaluation_basis_revision : Int32
   journal_digest : String
   workspace_digest : String
   evaluation_digest : String
@@ -132,12 +132,12 @@ pub(all) struct Goal {
   objective : String
   status : GoalStatus
   run_state : GoalRunState
-  run_id : Int
+  run_id : Int32
   created_at : Int64
   updated_at : Int64
-  revision : Int
-  current_goal_turn : Int
-  continuation_count : Int
+  revision : Int32
+  current_goal_turn : Int32
+  continuation_count : Int32
   budget : GoalBudget
   requirements : Array[GoalRequirement]
   blocker : GoalBlocker?
@@ -193,7 +193,7 @@ fn convergence_name(value : Convergence) -> String {
 }
 
 ///|
-fn remaining(limit : Int?, used : Int) -> Json {
+fn remaining(limit : Int32?, used : Int32) -> Json {
   match limit {
     Some(value) => (value - used).max(0).to_json()
     None => Json::null()

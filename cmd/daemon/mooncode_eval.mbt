@@ -2,7 +2,7 @@
 async fn mooncode_native_eval_harness_report(
   session_id : String,
   now~ : @clock.Timestamp,
-  fixture_book_root? : String = "",
+  fixture_book_root~ : String = "",
 ) -> Json {
   let fixture_root = match mooncode_fixture_sandbox_config(fixture_book_root) {
     Some(_) => fixture_book_root
@@ -252,10 +252,10 @@ async fn mooncode_eval_tool_case(
   command_id : String,
   arguments : Json,
   now~ : @clock.Timestamp,
-  expected_output? : String = "",
-  expected_path? : String = "",
-  expected_diff? : String = "",
-  expected_kind? : String = "",
+  expected_output~ : String = "",
+  expected_path~ : String = "",
+  expected_diff~ : String = "",
+  expected_kind~ : String = "",
   expected_detail~ : String,
 ) -> Json {
   let body : Json = {
@@ -331,7 +331,7 @@ fn mooncode_eval_harness(
 }
 
 ///|
-fn mooncode_eval_passed_case_count(cases : Array[Json]) -> Int {
+fn mooncode_eval_passed_case_count(cases : Array[Json]) -> Int32 {
   let mut passed = 0
   for case in cases {
     if mooncode_json_string(case, "status", default="") == "passed" {
@@ -342,7 +342,7 @@ fn mooncode_eval_passed_case_count(cases : Array[Json]) -> Int {
 }
 
 ///|
-fn mooncode_eval_passed_harness_count(harnesses : Array[Json]) -> Int {
+fn mooncode_eval_passed_harness_count(harnesses : Array[Json]) -> Int32 {
   let mut passed = 0
   for harness in harnesses {
     if mooncode_json_string(harness, "status", default="") == "passed" {

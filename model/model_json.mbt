@@ -60,7 +60,7 @@ pub impl @json.FromJson for Model with fn from_json(
     guard json.get("description") is Some(description) else { None }
     Some(@json.from_json(description, path=json_path.add_key("description")))
   }
-  let safe_zone_tokens : Int = {
+  let safe_zone_tokens : Int32 = {
     guard json.get("safe_zone_tokens") is Some(safe_zone_tokens) else {
       // raise @json.JsonDecodeError(
       //   (

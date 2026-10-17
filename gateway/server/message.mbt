@@ -5,7 +5,7 @@ pub struct AgentMessage {
   to_agent : String?
   topic : String
   payload : Json
-  timestamp : Int
+  timestamp : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -15,7 +15,7 @@ pub fn agent_message(
   to_agent? : String,
   topic~ : String,
   payload~ : Json,
-  timestamp~ : Int,
+  timestamp~ : Int32,
 ) -> AgentMessage {
   {
     message_id: uuid.v4().to_string(),
@@ -45,14 +45,14 @@ pub fn AgentMessage::is_directed(
 
 ///|
 pub struct AgentMailboxConfig {
-  max_size : Int
-  timeout_ms : Int
+  max_size : Int32
+  timeout_ms : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn agent_mailbox_config(
-  max_size? : Int = 1000,
-  timeout_ms? : Int = 30000,
+  max_size~ : Int32 = 1000,
+  timeout_ms~ : Int32 = 30000,
 ) -> AgentMailboxConfig {
   { max_size, timeout_ms, }
 }

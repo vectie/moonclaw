@@ -5,7 +5,7 @@ pub struct Model {
   name : String
   created : Int64
   description : String
-  context_length : Int
+  context_length : Int32
   architecture : Architecture
   pricing : Pricing
   top_provider : TopProvider
@@ -109,7 +109,7 @@ pub impl @json.FromJson for Model with fn from_json(
     }
     @json.from_json(description_json, path=path.add_key("description"))
   }
-  let context_length : Int = {
+  let context_length : Int32 = {
     guard json.get("context_length") is Some(context_length_json) else {
       raise JsonDecodeError(
         (
@@ -360,8 +360,8 @@ pub impl @json.FromJson for Pricing with fn from_json(
 
 ///|
 pub struct TopProvider {
-  context_length : Int?
-  max_completion_tokens : Int?
+  context_length : Int32?
+  max_completion_tokens : Int32?
   is_moderated : Bool
 } derive(ToJson)
 
@@ -375,7 +375,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
       (path, "\{PackageName}.TopProvider::from_json: expected object"),
     )
   }
-  let context_length : Int? = match json.get("context_length") {
+  let context_length : Int32? = match json.get("context_length") {
     Some(Null) => None
     Some(context_length_json) =>
       Some(
@@ -386,7 +386,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
       )
     None => None
   }
-  let max_completion_tokens : Int? = match json.get("max_completion_tokens") {
+  let max_completion_tokens : Int32? = match json.get("max_completion_tokens") {
     Some(Null) => None
     Some(max_completion_tokens_json) =>
       Some(
@@ -428,7 +428,7 @@ pub async fn get_models(api_key~ : StringView) -> Array[Model] {
 }
 
 ///|
-pub async fn get_models_count(api_key~ : StringView) -> Int {
+pub async fn get_models_count(api_key~ : StringView) -> Int32 {
   let (r, b) = @http.get("https://openrouter.ai/api/v1/models/count", headers={
     "Authorization": "Bearer \{api_key}",
   })

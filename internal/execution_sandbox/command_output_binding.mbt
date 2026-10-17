@@ -7,7 +7,7 @@ pub(all) struct CommandOutputOwner {
 
 ///|
 struct CommandOutputBinding {
-  contract_version : Int
+  contract_version : Int32
   owner : CommandOutputOwner
   audit_id : String
   audit_sha256 : String
@@ -24,7 +24,7 @@ pub(all) struct BoundCommandOutput {
   expires_at_ms : Int64
   message : String
   receipt_status : String
-  exit_code : Int?
+  exit_code : Int32?
   output_truncated : Bool
   limit_reason : String?
 } derive(Debug, Eq, ToJson, @json.FromJson)
@@ -47,7 +47,7 @@ fn command_output_binding_root(
 }
 
 ///|
-async fn command_output_read_file(path : String, limit : Int) -> String {
+async fn command_output_read_file(path : String, limit : Int32) -> String {
   guard @fs.kind(path, follow_symlink=false) is Regular &&
     @fs.realpath(path) == path else {
     fail("Retained command output record is unavailable")

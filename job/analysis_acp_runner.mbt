@@ -99,14 +99,14 @@ fn acp_patch_receipt_result_decision(receipt : Json) -> String? {
 }
 
 ///|
-fn current_analysis_time_ms() -> Int {
+fn current_analysis_time_ms() -> Int32 {
   @async.now().to_int()
 }
 
 ///|
 async fn run_acp_analysis_runner(
   request : AnalysisRequest,
-  fixture_sandbox_config? : @execution_sandbox.SandboxExecutorConfig? = None,
+  fixture_sandbox_config~ : @execution_sandbox.SandboxExecutorConfig? = None,
 ) -> Result[AnalysisExecution, String] {
   let target_id = match request.execution_target {
     Some(target_id) if !target_id.trim().to_owned().is_blank() =>

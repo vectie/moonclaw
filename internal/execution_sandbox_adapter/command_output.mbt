@@ -45,7 +45,7 @@ pub async fn CommandOutputClient::inspect(
 pub async fn CommandOutputClient::export(
   self : CommandOutputClient,
   request : String,
-  max_bytes : Int,
+  max_bytes : Int32,
 ) -> Bytes {
   guard @encoding/utf8.encode(request).length() <= 65_536 &&
     max_bytes >= 0 &&

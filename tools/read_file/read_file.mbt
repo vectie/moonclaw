@@ -2,15 +2,15 @@
 struct ReadFileToolResult {
   path : String
   content : String
-  start_line : Int
-  end_line : Int
+  start_line : Int32
+  end_line : Int32
 } derive(ToJson, FromJson)
 
 ///|
-const MaxReadFileTokens : Int = 25000
+const MaxReadFileTokens : Int32 = 25000
 
 ///|
-fn count_file_tokens(content : String) -> Int raise {
+fn count_file_tokens(content : String) -> Int32 raise {
   let encoding = @tiktoken.cl100k_base()
   encoding.encode(content).length()
 }

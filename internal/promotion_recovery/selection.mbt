@@ -7,7 +7,7 @@ priv struct MoonDeskPromotionItem {
 ///|
 #warnings("-unused_value")
 priv struct MoonDeskPromotionRequest {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   request_id : String
   workspace_id : String

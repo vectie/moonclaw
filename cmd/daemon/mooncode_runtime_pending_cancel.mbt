@@ -12,8 +12,8 @@ fn mooncode_runtime_cancel_control_receipt(
   target_command_id : String,
   cancelled_event : Json,
   interrupted_runtime~ : Bool,
-  cancel_status? : String = "",
-  target_status? : String = "",
+  cancel_status~ : String = "",
+  target_status~ : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let receipt = mooncode_runtime_control_receipt(
@@ -324,8 +324,8 @@ async fn mooncode_runtime_finish_cancel_locked(
   target : String,
   event : Json,
   interrupted_runtime~ : Bool,
-  cancel_status? : String = "",
-  target_status? : String = "",
+  cancel_status~ : String = "",
+  target_status~ : String = "",
   now~ : @clock.Timestamp,
 ) -> MoonCodeCancelSelection {
   if mooncode_json_string(event, "id", default="") != "" {

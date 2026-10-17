@@ -28,7 +28,7 @@ pub struct PresentationRenderPackage {
 
 ///|
 pub struct PresentationPageSpec {
-  page_number : Int
+  page_number : Int32
   page_type : String
   headline : String
   purpose : String

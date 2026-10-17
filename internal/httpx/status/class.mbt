@@ -25,13 +25,13 @@ pub(all) enum Class {
 }
 
 ///|
-pub fn classify(code : Int) -> Class {
+pub fn classify(code : Int32) -> Class {
   match code {
-    100..=199 => Informational
-    200..=299 => Successful
-    300..=399 => Redirection
-    400..=499 => ClientError
-    500..=599 => ServerError
+    100..<=199 => Informational
+    200..<=299 => Successful
+    300..<=399 => Redirection
+    400..<=499 => ClientError
+    500..<=599 => ServerError
     _ => Invalid
   }
 }

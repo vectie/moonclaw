@@ -16,16 +16,16 @@ pub struct RuntimeContextResult {
 ///|
 pub fn RuntimeContextResult::new(
   cwd~ : String,
-  home? : String? = None,
-  run_id? : String? = None,
-  job_id? : String? = None,
-  step_id? : String? = None,
-  model_name? : String? = None,
-  execution_mode? : String? = None,
-  execution_target? : String? = None,
-  workspace_dir? : String? = None,
-  execution_isolation? : Json? = None,
-  enabled_tools? : Array[String] = [],
+  home~ : String? = None,
+  run_id~ : String? = None,
+  job_id~ : String? = None,
+  step_id~ : String? = None,
+  model_name~ : String? = None,
+  execution_mode~ : String? = None,
+  execution_target~ : String? = None,
+  workspace_dir~ : String? = None,
+  execution_isolation~ : Json? = None,
+  enabled_tools~ : Array[String] = [],
 ) -> RuntimeContextResult {
   {
     cwd,

@@ -2,7 +2,7 @@
 pub struct BrowserWorker {
   scope : BrowserSessionScope
   mut status : BrowserSessionStatus
-  mut remaining_actions : Int
+  mut remaining_actions : Int32
   receipts : Array[BrowserActionReceipt]
 }
 
@@ -10,14 +10,14 @@ pub struct BrowserWorker {
 pub struct BrowserWorkerSnapshot {
   scope : BrowserSessionScope
   status : BrowserSessionStatus
-  remaining_actions : Int
+  remaining_actions : Int32
   receipts : Array[BrowserActionReceipt]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub fn BrowserWorker::new(
   scope : BrowserSessionScope,
-  action_budget? : Int = 100,
+  action_budget~ : Int32 = 100,
 ) -> BrowserWorker {
   {
     scope,
@@ -64,7 +64,7 @@ pub fn BrowserWorker::status(self : BrowserWorker) -> BrowserSessionStatus {
 }
 
 ///|
-pub fn BrowserWorker::remaining_actions(self : BrowserWorker) -> Int {
+pub fn BrowserWorker::remaining_actions(self : BrowserWorker) -> Int32 {
   self.remaining_actions
 }
 
@@ -219,12 +219,12 @@ fn BrowserWorker::record(
   self : BrowserWorker,
   action : BrowserAction,
   outcome : BrowserActionOutcome,
-  observations? : Array[String] = [],
-  before_state_digest? : String = "",
-  after_state_digest? : String = "",
-  evidence_refs? : Array[String] = [],
-  host_receipt_id? : String = "",
-  completed_at? : String = "",
+  observations~ : Array[String] = [],
+  before_state_digest~ : String = "",
+  after_state_digest~ : String = "",
+  evidence_refs~ : Array[String] = [],
+  host_receipt_id~ : String = "",
+  completed_at~ : String = "",
 ) -> BrowserActionReceipt {
   let receipt : BrowserActionReceipt = {
     action_id: action.action_id,
@@ -260,7 +260,7 @@ fn BrowserWorker::record(
 pub fn BrowserWorker::prepare(
   self : BrowserWorker,
   action : BrowserAction,
-  expected_before_digest? : String = "",
+  expected_before_digest~ : String = "",
 ) -> BrowserDispatch {
   match self.receipt_for_action(action.action_id) {
     Some(receipt) => return Duplicate(receipt)

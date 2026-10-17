@@ -173,8 +173,8 @@ fn mooncode_harness_regression_case(
   task_intent : String,
   required_tools : ArrayView[String],
   requires_verification : Bool,
-  retry_count : Int,
-  tool_call_count : Int,
+  retry_count : Int32,
+  tool_call_count : Int32,
 ) -> Json raise {
   let baseline = mooncode_harness_regression_command(text, task_intent, false)
   let dynamic = mooncode_harness_regression_command(text, task_intent, true)

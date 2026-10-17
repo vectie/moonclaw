@@ -16,7 +16,7 @@ async fn Daemon::listen_for_status_change(
   logger.info("Listening for status changes from task \{task.id}...")
   let (er, eb) = @http.get_stream("http://127.0.0.1:\{task.port}/v1/events")
   defer eb.close()
-  guard er.code is (200..=299) else {
+  guard er.code is (200..<=299) else {
     raise json_error(500, "Internal Server Error", {
       "error": {
         "code": er.code,
@@ -33,7 +33,7 @@ async fn Daemon::listen_for_status_change(
   let eb = @httpx.EventStreamReader::new(eb)
   let mut latest_assistant : String? = None
   let mut latest_assistant_event : Json? = None
-  let mut latest_total_tokens : Int? = None
+  let mut latest_total_tokens : Int32? = None
   while eb.read() is Some((event : @server.ServerStreamEvent)) {
     task.broadcast.put(event)
     if event is Moonclaw(event) {

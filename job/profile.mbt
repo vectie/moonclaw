@@ -15,7 +15,7 @@ pub(all) struct JobProfileStep {
   execution_mode : String?
   execution_target : String?
   include_parent_outputs : Bool?
-  max_depth : Int?
+  max_depth : Int32?
   metadata : Json?
 } derive(ToJson, FromJson, Debug)
 
@@ -25,7 +25,7 @@ pub(all) struct JobProfile {
   family : String
   label : String?
   role : String?
-  priority : Int
+  priority : Int32
   tags : Array[String]
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]
@@ -37,7 +37,7 @@ struct JobProfileConfigPayload {
   family : String?
   label : String?
   role : String?
-  priority : Int?
+  priority : Int32?
   tags : Array[String]?
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]?

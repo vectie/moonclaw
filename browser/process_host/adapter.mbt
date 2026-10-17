@@ -12,7 +12,7 @@ pub fn ProcessBrowserHost::new() -> ProcessBrowserHost {
 pub async fn ProcessBrowserHost::execute(
   _self : ProcessBrowserHost,
   _command : @browser.BrowserHostCommand,
-  timeout_ms? : Int = 30000,
+  timeout_ms~ : Int32 = 30000,
 ) -> Result[@browser.BrowserHostResult, String] {
   ignore(timeout_ms)
   Err(

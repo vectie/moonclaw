@@ -215,7 +215,7 @@ fn mooncode_goal_runtime_checked_nonnegative_int64(
 fn mooncode_goal_runtime_checked_positive_int(
   object : Map[String, Json],
   key : String,
-) -> Int raise MoonCodeGoalRuntimeCodecError {
+) -> Int32 raise MoonCodeGoalRuntimeCodecError {
   let value = match mooncode_goal_runtime_json_field(object, key) {
     Number(value, ..) => value
     _ => mooncode_goal_runtime_fail(key + " must be an integer")

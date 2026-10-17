@@ -1,13 +1,13 @@
 ///|
 priv struct HistoryManager {
   history : @deque.Deque[BytesView]
-  mut index : Int
-  size : Int
+  mut index : Int32
+  size : Int32
   events : @aqueue.Queue[@deque.Deque[BytesView]]
 }
 
 ///|
-fn HistoryManager::new(size : Int) -> HistoryManager {
+fn HistoryManager::new(size : Int32) -> HistoryManager {
   { history: Deque([]), index: -1, size, events: Queue(kind=Unbounded), }
 }
 
@@ -49,8 +49,8 @@ fn BytesView::trim(self : BytesView) -> BytesView {
 ///|
 fn reverse_string(
   line : BytesView,
-  from? : Byte = b'\r',
-  to? : Byte = b'\r',
+  from~ : Byte = b'\r',
+  to~ : Byte = b'\r',
 ) -> BytesView {
   let parts = []
   let mut start = 0

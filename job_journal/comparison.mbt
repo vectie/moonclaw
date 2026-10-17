@@ -1,14 +1,14 @@
 ///|
 pub struct JournalEventCount {
   event_type : String
-  count : Int
+  count : Int32
 } derive(ToJson, Eq)
 
 ///|
 /// An observed interval, not execution duration. First/last and last status keep
 /// their complete original source records so callers can inspect the evidence.
 pub struct JournalObservation {
-  events : Int
+  events : Int32
   first : JournalEntry
   last : JournalEntry
   span : Int64
@@ -24,7 +24,7 @@ pub struct JournalStepComparison {
   baseline : JournalObservation?
   candidate : JournalObservation?
   span_delta : Int64?
-  event_count_delta : Int
+  event_count_delta : Int32
   status_changed : Bool?
   event_counts_changed : Bool?
   last_message_changed : Bool?
@@ -41,14 +41,14 @@ pub struct JournalRunComparison {
   candidate : JournalObservation
   span_delta : Int64
   steps : Array[JournalStepComparison]
-  baseline_run_level_events : Int
-  candidate_run_level_events : Int
+  baseline_run_level_events : Int32
+  candidate_run_level_events : Int32
 } derive(ToJson)
 
 ///|
 fn observe_journal(entries : Array[JournalEntry]) -> JournalObservation raise {
   guard !entries.is_empty() else { fail("Cannot observe an empty selection") }
-  let counts : Map[String, Int] = {}
+  let counts : Map[String, Int32] = {}
   let mut status : Json? = None
   let mut status_source : JournalEntry? = None
   for entry in entries {
@@ -82,8 +82,8 @@ fn observe_journal(entries : Array[JournalEntry]) -> JournalObservation raise {
 fn journal_run_parts(
   entries : Array[JournalEntry],
   run_id : String,
-) -> (String, JournalObservation, Map[String, Array[JournalEntry]], Int) raise {
-  let selected : Array[(JournalEntry, Int, Int)] = []
+) -> (String, JournalObservation, Map[String, Array[JournalEntry]], Int32) raise {
+  let selected : Array[(JournalEntry, Int32, Int32)] = []
   let mut job_id : String? = None
   for index, entry in entries {
     let event = event_fields(entry)

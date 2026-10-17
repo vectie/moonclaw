@@ -23,7 +23,7 @@ pub fn EventStreamWriter::new(w : ResponseWriter) -> EventStreamWriter {
 /// Writes the HTTP status line and headers for the event stream response.
 pub async fn EventStreamWriter::write_header(
   self : EventStreamWriter,
-  status : Int,
+  status : Int32,
 ) -> Unit {
   self.w.write_header(status)
 }
@@ -42,7 +42,7 @@ pub async fn EventStreamWriter::write_event(
   id? : String,
   event? : String,
   data? : &@io.Data,
-  flush? : Bool = true,
+  flush~ : Bool = true,
 ) -> Unit {
   if event is Some(event) {
     self.w.write("event: \{event}\n")
@@ -88,7 +88,7 @@ pub async fn EventStreamWriter::write_comment(
 pub async fn[T : ToEvent] EventStreamWriter::write(
   self : EventStreamWriter,
   event : T,
-  flush? : Bool = true,
+  flush~ : Bool = true,
 ) -> Unit {
   let sse_event = event.to_event()
   self.write_event(event?=sse_event.event, data=sse_event.data, flush~)

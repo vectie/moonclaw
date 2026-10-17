@@ -13,8 +13,8 @@ pub struct PairingRecord {
   account_id : String
   recipient : String
   status : String
-  created_at : Int
-  approved_at : Int?
+  created_at : Int32
+  approved_at : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -24,8 +24,8 @@ pub struct ApprovalRecord {
   action_target : String
   scope_key : String
   status : String
-  created_at : Int
-  approved_at : Int?
+  created_at : Int32
+  approved_at : Int32?
   /// Immutable, action-specific data that must survive the approval
   /// round-trip. Command execution uses this to bind an approval to the exact
   /// MoonFort profile and command that were presented before approval.
@@ -127,7 +127,7 @@ pub fn command_approval_target(assessment : CommandAssessment) -> String {
 ///|
 pub fn command_approval_token(
   assessment : CommandAssessment,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> String {
   "cmd-\{now_ms}-\{command_approval_target(assessment).length()}"
 }
@@ -135,7 +135,7 @@ pub fn command_approval_token(
 ///|
 pub fn render_command_approval_required(
   assessment : CommandAssessment,
-  token? : String = "",
+  token~ : String = "",
 ) -> String {
   let reasons = assessment.reasons.join("; ")
   let lines = [
@@ -337,7 +337,7 @@ pub async fn SecurityRuntime::approve_pairing(
   channel_id : String,
   account_id : String,
   recipient : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> PairingRecord {
   let key = pairing_key(channel_id, account_id, recipient)
   let record = PairingRecord::{
@@ -392,7 +392,7 @@ pub async fn SecurityRuntime::request_approval(
   action_kind : String,
   action_target : String,
   scope_key : String,
-  now_ms : Int,
+  now_ms : Int32,
   context? : Json,
 ) -> ApprovalRecord {
   let record = ApprovalRecord::{
@@ -414,7 +414,7 @@ pub async fn SecurityRuntime::request_approval(
 pub async fn SecurityRuntime::approve_token(
   self : SecurityRuntime,
   token : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ApprovalRecord? {
   match self.approvals.get(token) {
     Some(record) => {

@@ -7,7 +7,7 @@ pub struct DelegateRunResult {
   execution_mode : String?
   execution_target : String?
   include_parent_outputs : Bool
-  max_depth : Int
+  max_depth : Int32
   bounded : Bool
   step_kind : String
   step_config : Json
@@ -90,7 +90,7 @@ pub fn new() -> @tool.Tool[DelegateRunResult] {
       }
       let max_depth = match args {
         { "max_depth": Number(value, ..), .. } =>
-          Int::min(4, Int::max(1, value.to_int()))
+          Int32::min(4, Int32::max(1, value.to_int()))
         _ => 2
       }
       let bounded = max_depth <= 4

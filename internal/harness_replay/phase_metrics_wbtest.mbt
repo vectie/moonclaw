@@ -1,5 +1,5 @@
 ///|
-fn harness_phase_metrics_test_value(total_ms : Int) -> Json {
+fn harness_phase_metrics_test_value(total_ms : Int32) -> Json {
   {
     "contract": "moonclaw.harness-phase-metrics.v1",
     "queue_ms": 2,
@@ -66,6 +66,6 @@ test "phase metrics reject invalid contract negative and impossible phase" {
 test "percentiles use deterministic nearest rank" {
   assert_eq(harness_replay_percentile([40, 10, 30, 20], 50), 20)
   assert_eq(harness_replay_percentile([40, 10, 30, 20], 95), 40)
-  let empty : Array[Int] = []
+  let empty : Array[Int32] = []
   assert_eq(harness_replay_percentile(empty, 95), 0)
 }

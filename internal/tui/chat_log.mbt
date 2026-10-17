@@ -10,8 +10,8 @@ pub enum MessageComponent {
 ///|
 pub fn MessageComponent::get_preferred_height(
   self : MessageComponent,
-  width : Int,
-) -> Int {
+  width : Int32,
+) -> Int32 {
   match self {
     UserMsg(m) => m.get_preferred_height(width)
     AssistantMsg(m) => m.get_preferred_height(width)
@@ -25,10 +25,10 @@ pub fn MessageComponent::get_preferred_height(
 pub fn MessageComponent::render(
   self : MessageComponent,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   match self {
     UserMsg(m) => m.render(output, x, y, width, height)
@@ -42,12 +42,12 @@ pub fn MessageComponent::render(
 ///|
 pub(all) struct ChatLog {
   mut components : Array[MessageComponent]
-  mut tool_by_id : Map[String, Int]
-  mut streaming_by_id : Map[String, Int]
+  mut tool_by_id : Map[String, Int32]
+  mut streaming_by_id : Map[String, Int32]
   mut tools_expanded : Bool
   mut follow_output : Bool
-  mut scroll_offset : Int // Line offset, not component index
-  max_components : Int
+  mut scroll_offset : Int32 // Line offset, not component index
+  max_components : Int32
 }
 
 ///|
@@ -64,7 +64,7 @@ pub fn ChatLog::new() -> ChatLog {
 }
 
 ///|
-pub fn ChatLog::with_max_components(max : Int) -> ChatLog {
+pub fn ChatLog::with_max_components(max : Int32) -> ChatLog {
   {
     components: [],
     tool_by_id: {},
@@ -80,8 +80,8 @@ pub fn ChatLog::with_max_components(max : Int) -> ChatLog {
 fn ChatLog::prune_overflow(self : ChatLog) -> Unit {
   while self.components.length() > self.max_components {
     ignore(self.components.remove(0))
-    let new_tool_by_id : Map[String, Int] = Map([])
-    let new_streaming_by_id : Map[String, Int] = Map([])
+    let new_tool_by_id : Map[String, Int32] = Map([])
+    let new_streaming_by_id : Map[String, Int32] = Map([])
     for id, idx in self.tool_by_id {
       if idx > 0 {
         new_tool_by_id[id] = idx - 1
@@ -117,8 +117,8 @@ pub fn ChatLog::clear_all(self : ChatLog) -> Unit {
 pub fn ChatLog::add_user(
   self : ChatLog,
   text : String,
-  width : Int,
-  viewport_height : Int,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   self.append(SpacerComp(Spacer::new(height=1)))
   self.append(UserMsg(UserMessage::new(text)))
@@ -129,8 +129,8 @@ pub fn ChatLog::add_user(
 pub fn ChatLog::add_system(
   self : ChatLog,
   text : String,
-  width : Int,
-  viewport_height : Int,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   self.append(SpacerComp(Spacer::new(height=1)))
   self.append(SystemMsg(SystemMessage::new(text)))
@@ -141,7 +141,7 @@ pub fn ChatLog::add_system(
 pub fn ChatLog::start_assistant(
   self : ChatLog,
   text : String,
-  run_id? : String = "default",
+  run_id~ : String = "default",
 ) -> AssistantMessage {
   let component = AssistantMessage::new(text)
   component.set_streaming(true)
@@ -155,7 +155,7 @@ pub fn ChatLog::start_assistant(
 pub fn ChatLog::update_assistant(
   self : ChatLog,
   text : String,
-  run_id? : String = "default",
+  run_id~ : String = "default",
 ) -> Unit {
   match self.streaming_by_id.get(run_id) {
     Some(i) =>
@@ -178,7 +178,7 @@ pub fn ChatLog::update_assistant(
 pub fn ChatLog::finalize_assistant(
   self : ChatLog,
   text : String,
-  run_id? : String = "default",
+  run_id~ : String = "default",
 ) -> Unit {
   match self.streaming_by_id.get(run_id) {
     Some(i) =>
@@ -199,7 +199,7 @@ pub fn ChatLog::finalize_assistant(
 ///|
 pub fn ChatLog::finalize_current_assistant(
   self : ChatLog,
-  run_id? : String = "default",
+  run_id~ : String = "default",
 ) -> Unit {
   match self.streaming_by_id.get(run_id) {
     Some(i) =>
@@ -217,14 +217,14 @@ pub fn ChatLog::finalize_current_assistant(
 ///|
 pub fn ChatLog::drop_assistant(
   self : ChatLog,
-  run_id? : String = "default",
+  run_id~ : String = "default",
 ) -> Unit {
   match self.streaming_by_id.get(run_id) {
     Some(i) =>
       if i >= 0 && i < self.components.length() {
         ignore(self.components.remove(i))
         self.streaming_by_id.remove(run_id) |> ignore()
-        let new_streaming_by_id : Map[String, Int] = Map([])
+        let new_streaming_by_id : Map[String, Int32] = Map([])
         for id, idx in self.streaming_by_id {
           if idx > i {
             new_streaming_by_id[id] = idx - 1
@@ -290,7 +290,7 @@ pub fn ChatLog::update_tool_result(
   self : ChatLog,
   tool_call_id : String,
   result : String,
-  is_error? : Bool = false,
+  is_error~ : Bool = false,
 ) -> Unit {
   match self.tool_by_id.get(tool_call_id) {
     Some(i) =>
@@ -318,8 +318,8 @@ pub fn ChatLog::set_tools_expanded(self : ChatLog, expanded : Bool) -> Unit {
 ///|
 pub fn ChatLog::scroll_to_bottom(
   self : ChatLog,
-  width : Int,
-  viewport_height : Int,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   // Calculate total rendered height and scroll to show bottom
   let total_height = self.get_preferred_height(width)
@@ -332,7 +332,7 @@ pub fn ChatLog::scroll_to_bottom(
 }
 
 ///|
-pub fn ChatLog::scroll_up(self : ChatLog, lines : Int) -> Unit {
+pub fn ChatLog::scroll_up(self : ChatLog, lines : Int32) -> Unit {
   self.scroll_offset = (self.scroll_offset - lines).max(0)
   self.follow_output = false
 }
@@ -340,9 +340,9 @@ pub fn ChatLog::scroll_up(self : ChatLog, lines : Int) -> Unit {
 ///|
 pub fn ChatLog::scroll_down(
   self : ChatLog,
-  lines : Int,
-  width : Int,
-  viewport_height : Int,
+  lines : Int32,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   let total_height = self.get_preferred_height(width)
   let max_scroll = (total_height - viewport_height).max(0)
@@ -353,8 +353,8 @@ pub fn ChatLog::scroll_down(
 ///|
 pub fn ChatLog::maybe_scroll_to_bottom(
   self : ChatLog,
-  width : Int,
-  viewport_height : Int,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   if self.follow_output {
     self.scroll_to_bottom(width, viewport_height)
@@ -364,8 +364,8 @@ pub fn ChatLog::maybe_scroll_to_bottom(
 ///|
 pub fn ChatLog::normalize_scroll(
   self : ChatLog,
-  width : Int,
-  viewport_height : Int,
+  width : Int32,
+  viewport_height : Int32,
 ) -> Unit {
   let max_scroll = (self.get_preferred_height(width) - viewport_height).max(0)
   if self.follow_output {
@@ -376,7 +376,7 @@ pub fn ChatLog::normalize_scroll(
 }
 
 ///|
-pub fn ChatLog::get_preferred_height(self : ChatLog, width : Int) -> Int {
+pub fn ChatLog::get_preferred_height(self : ChatLog, width : Int32) -> Int32 {
   let mut total = 0
   for component in self.components {
     total += component.get_preferred_height(width)
@@ -388,10 +388,10 @@ pub fn ChatLog::get_preferred_height(self : ChatLog, width : Int) -> Int {
 pub fn ChatLog::render(
   self : ChatLog,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let mut current_y = y
   let mut lines_rendered = 0
@@ -430,7 +430,7 @@ pub fn ChatLog::render(
 ///|
 fn render_component_lines(
   component : MessageComponent,
-  width : Int,
+  width : Int32,
 ) -> Array[String] {
   let theme = Theme::default()
   match component {
@@ -536,8 +536,8 @@ fn render_component_lines(
 ///|
 pub fn ChatLog::visible_lines(
   self : ChatLog,
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
 ) -> Array[String] {
   let visible : Array[String] = []
   let mut consumed = 0

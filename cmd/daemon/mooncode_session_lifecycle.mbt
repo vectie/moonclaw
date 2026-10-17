@@ -270,7 +270,7 @@ fn mooncode_lifecycle_has_accepted_book_result(
 }
 
 ///|
-fn mooncode_lifecycle_count_package_events(events : Array[Json]) -> Int {
+fn mooncode_lifecycle_count_package_events(events : Array[Json]) -> Int32 {
   let mut count = 0
   for event in events {
     if mooncode_json_string(event, "event", default="") ==
@@ -284,7 +284,7 @@ fn mooncode_lifecycle_count_package_events(events : Array[Json]) -> Int {
 }
 
 ///|
-fn mooncode_lifecycle_completed_count(steps : Array[Json]) -> Int {
+fn mooncode_lifecycle_completed_count(steps : Array[Json]) -> Int32 {
   let mut completed = 0
   for step in steps {
     if mooncode_json_bool(step, "ok", default=false) {

@@ -12,8 +12,8 @@ pub(all) struct PackToolExecutionRequest {
   run_id : String
   step_id : String
   evidence_path : String
-  attempt : Int
-  estimated_cost_micros : Int
+  attempt : Int32
+  estimated_cost_micros : Int32
 } derive(Debug, ToJson, FromJson)
 
 ///|
@@ -32,13 +32,13 @@ pub(all) struct PackToolExecutionResult {
 ///|
 pub fn PackToolExecutionResult::new(
   output~ : Json,
-  status? : String = "succeeded",
-  summary? : String? = None,
-  metrics? : Json = Json::empty_object(),
-  logs? : Array[String] = [],
-  output_artifacts? : Array[String] = [],
-  external_job_id? : String = "",
-  compensable? : Bool = false,
+  status~ : String = "succeeded",
+  summary~ : String? = None,
+  metrics~ : Json = Json::empty_object(),
+  logs~ : Array[String] = [],
+  output_artifacts~ : Array[String] = [],
+  external_job_id~ : String = "",
+  compensable~ : Bool = false,
 ) -> PackToolExecutionResult {
   {
     status,
@@ -64,7 +64,7 @@ pub(all) struct PackToolReconciliation {
 ///|
 /// Opaque pack execution boundary supplied by the host.
 pub struct PackToolExecutor {
-  estimate_cost_micros : (ToolBinding, Json) -> Int
+  estimate_cost_micros : (ToolBinding, Json) -> Int32
   run : async (PackToolExecutionRequest) -> Result[
     PackToolExecutionResult,
     String,
@@ -85,12 +85,12 @@ pub fn PackToolExecutor::new(
     PackToolExecutionResult,
     String,
   ],
-  estimate_cost_micros? : (ToolBinding, Json) -> Int = (_, _) => 0,
-  reconcile? : (async (PackToolExecutionRequest) -> Result[
+  estimate_cost_micros~ : (ToolBinding, Json) -> Int32 = (_, _) => 0,
+  reconcile~ : (async (PackToolExecutionRequest) -> Result[
     PackToolReconciliation,
     String,
   ])? = None,
-  cancel? : (async (PackToolExecutionRequest) -> Result[
+  cancel~ : (async (PackToolExecutionRequest) -> Result[
     PackToolReconciliation,
     String,
   ])? = None,

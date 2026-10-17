@@ -264,9 +264,9 @@ async fn Daemon::mooncode_runtime_loop_wait_for_ready(
   self : Daemon,
   session_id : String,
   book_root : String,
-  live_wait_ms : Int,
-  poll_ms : Int,
-  loop_index : Int,
+  live_wait_ms : Int32,
+  poll_ms : Int32,
+  loop_index : Int32,
 ) -> Json {
   let mut elapsed_ms = 0
   let mut attempt_count = 0
@@ -307,12 +307,12 @@ async fn Daemon::mooncode_runtime_loop_wait_for_ready(
 
 ///|
 fn mooncode_runtime_loop_wait_report(
-  loop_index : Int,
+  loop_index : Int32,
   ready~ : Bool,
   cancelled~ : Bool,
-  attempt_count~ : Int,
-  elapsed_ms~ : Int,
-  poll_ms~ : Int,
+  attempt_count~ : Int32,
+  elapsed_ms~ : Int32,
+  poll_ms~ : Int32,
   state~ : Json,
 ) -> Json {
   {
@@ -341,7 +341,7 @@ fn mooncode_runtime_loop_cancel_control(control : String) -> Bool {
 }
 
 ///|
-fn mooncode_runtime_loop_max_turns(payload : Json) -> Int {
+fn mooncode_runtime_loop_max_turns(payload : Json) -> Int32 {
   let requested = mooncode_json_int(payload, "max_turns", default=1)
   if requested < 1 {
     1
@@ -351,7 +351,7 @@ fn mooncode_runtime_loop_max_turns(payload : Json) -> Int {
 }
 
 ///|
-fn mooncode_runtime_loop_live_wait_ms(payload : Json) -> Int {
+fn mooncode_runtime_loop_live_wait_ms(payload : Json) -> Int32 {
   let requested = mooncode_json_int(payload, "live_wait_ms", default=0)
   if requested < 0 {
     0
@@ -363,7 +363,7 @@ fn mooncode_runtime_loop_live_wait_ms(payload : Json) -> Int {
 }
 
 ///|
-fn mooncode_runtime_loop_poll_ms(payload : Json) -> Int {
+fn mooncode_runtime_loop_poll_ms(payload : Json) -> Int32 {
   let requested = mooncode_json_int(payload, "poll_ms", default=250)
   if requested < 25 {
     25
@@ -377,8 +377,8 @@ fn mooncode_runtime_loop_poll_ms(payload : Json) -> Int {
 ///|
 fn mooncode_runtime_loop_message(
   stopped_by : String,
-  ran_turn_count : Int,
-  failed_turn_count : Int,
+  ran_turn_count : Int32,
+  failed_turn_count : Int32,
 ) -> String {
   match stopped_by {
     "idle" =>

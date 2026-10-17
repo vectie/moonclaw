@@ -26,8 +26,8 @@ fn test_goal() -> Goal raise {
 
 ///|
 fn completion_proof(
-  revision : Int,
-  basis : Int,
+  revision : Int32,
+  basis : Int32,
   digest : String,
 ) -> CompletionProof {
   {

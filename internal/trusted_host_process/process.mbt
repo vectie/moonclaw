@@ -1,9 +1,9 @@
 ///|
 priv struct HostProcessResult {
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
-  elapsed : Int
+  elapsed : Int32
 }
 
 ///|
@@ -11,10 +11,10 @@ async fn run_host_process(
   command : String,
   arguments : Array[String],
   stdin? : String,
-  timeout? : Int,
+  timeout? : Int32,
   cwd? : String,
   env? : Map[String, String],
-  inherit_env? : Bool = false,
+  inherit_env~ : Bool = false,
 ) -> HostProcessResult {
   @async.with_task_group(group => {
     fn redirect_input(content : String) -> &@process.ProcessInput raise {
@@ -36,7 +36,7 @@ async fn run_host_process(
     }
     let stdout = redirect_output()
     let stderr = redirect_output()
-    async fn run() -> Int {
+    async fn run() -> Int32 {
       @process.run(
         command,
         arguments,
@@ -64,10 +64,10 @@ async fn run_host_process(
 }
 
 ///|
-extern "c" fn trusted_getpid() -> Int = "moonbit_moonclaw_trusted_process_getpid"
+extern "c" fn trusted_getpid() -> Int32 = "moonbit_moonclaw_trusted_process_getpid"
 
 ///|
-extern "c" fn trusted_getppid() -> Int = "moonbit_moonclaw_trusted_process_getppid"
+extern "c" fn trusted_getppid() -> Int32 = "moonbit_moonclaw_trusted_process_getppid"
 
 ///|
-extern "c" fn trusted_kill(pid : Int, sig : Int) -> Int = "moonbit_moonclaw_trusted_process_kill"
+extern "c" fn trusted_kill(pid : Int32, sig : Int32) -> Int32 = "moonbit_moonclaw_trusted_process_kill"

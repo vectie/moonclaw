@@ -114,12 +114,12 @@ pub fn merge_initial_input_for_resume(
 pub fn job_intake_json(
   request_text : String,
   attachments : Array[E2EStarterAttachment],
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  message_id? : String? = None,
-  thread_id? : String? = None,
-  content_type? : String? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  message_id~ : String? = None,
+  thread_id~ : String? = None,
+  content_type~ : String? = None,
 ) -> Json {
   let normalized = normalized_request_text(request_text)
   E2EJobIntake::new(

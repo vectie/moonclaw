@@ -132,7 +132,7 @@ fn adaptive_subplan_proposal(
   policy_metadata : Json,
   execution_mode : String?,
   execution_target : String?,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobProposal {
   let proposal_steps : Array[JobProposalStep] = []
   let mut index = 0
@@ -201,9 +201,9 @@ async fn execute_analysis_subplan(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   envelope : AdaptiveAnalysisEnvelope,
-  now : () -> Int,
+  now : () -> Int32,
   next_run_id : () -> String,
-  max_depth : Int,
+  max_depth : Int32,
 ) -> Result[(String, String, Map[String, Json]), String] {
   let steps = adaptive_substeps(envelope)
   if steps.is_empty() {

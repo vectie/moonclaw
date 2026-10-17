@@ -43,7 +43,7 @@ fn harness_replay_bool(value : Json, key : String) -> Bool? {
 }
 
 ///|
-fn harness_replay_int(value : Json, key : String) -> Int? {
+fn harness_replay_int(value : Json, key : String) -> Int32? {
   match harness_replay_field(value, key) {
     Some(encoded) => Some(@json.from_json(encoded)) catch { _ => None }
     None => None
@@ -70,7 +70,7 @@ fn harness_replay_object(value : Json, key : String) -> Json {
 fn harness_replay_required_int(
   value : Json,
   key : String,
-) -> Int raise HarnessReplayError {
+) -> Int32 raise HarnessReplayError {
   match harness_replay_int(value, key) {
     Some(number) => number
     None => {

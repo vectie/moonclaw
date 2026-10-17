@@ -1,8 +1,8 @@
 ///|
 pub struct Version {
-  major : Int
-  minor : Int
-  patch : Int
+  major : Int32
+  minor : Int32
+  patch : Int32
   build : Build?
 } derive(ToJson)
 
@@ -18,7 +18,7 @@ pub impl Show for Version with fn output(self : Version, logger : &Logger) -> Un
 
 ///|
 pub struct Build {
-  number : Int
+  number : Int32
   commit : String
 } derive(ToJson)
 
@@ -26,7 +26,7 @@ pub struct Build {
 pub let version : Version = try! Version::parse(version_string)
 
 ///|
-fn parse_version_core(core : String) -> (Int, Int, Int) raise {
+fn parse_version_core(core : String) -> (Int32, Int32, Int32) raise {
   let parts : Array[StringView] = core.split(".").collect()
   guard parts.length() == 3 else {
     fail("Invalid version string format: " + core)
@@ -67,7 +67,7 @@ pub fn Version::parse(string : String) -> Version raise {
 }
 
 ///|
-pub impl Compare for Version with fn compare(self, other) -> Int {
+pub impl Compare for Version with fn compare(self, other) -> Int32 {
   if self.major != other.major {
     return self.major.compare(other.major)
   }

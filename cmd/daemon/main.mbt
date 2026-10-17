@@ -1,8 +1,8 @@
 ///|
 priv struct DaemonInfo {
   version : @buildinfo.Version
-  pid : Int
-  port : Int
+  pid : Int32
+  port : Int32
 }
 
 ///|
@@ -63,9 +63,9 @@ fn moonclaw_daemon_home_for_serve(serve : StringView?) -> String {
 /// already running daemon.
 pub async fn detach(
   exec_path? : String,
-  port? : Int,
+  port? : Int32,
   serve? : StringView,
-) -> Int {
+) -> Int32 {
   let home = moonclaw_daemon_home_for_serve(serve)
   let pid = @trusted_host_process.spawn_detached_daemon(
     server_exec_path?=exec_path,
@@ -73,7 +73,7 @@ pub async fn detach(
     serve?=serve.map(value => value.to_owned()),
   )
   @async.with_timeout(60_000, () => {
-    let mut resolved_pid : Int? = None
+    let mut resolved_pid : Int32? = None
     while resolved_pid is None {
       try {
         let info_file = @fs.open(moonclaw_daemon_info_path(home), mode=ReadOnly)
@@ -83,7 +83,7 @@ pub async fn detach(
             let text = info_file.read_all().text()
             let json = @json.parse(text)
             if json is { "pid": info_pid, .. } {
-              let info_pid : Int = @json.from_json(info_pid)
+              let info_pid : Int32 = @json.from_json(info_pid)
               if info_pid == pid {
                 resolved_pid = Some(pid)
               } else {
@@ -127,9 +127,9 @@ pub async fn detach(
 /// while the runtime is still unconfigured.
 async fn prepare_foreground_daemon(
   exec_path : String?,
-  port : Int,
+  port : Int32,
   serve : String,
-  lock? : Bool = true,
+  lock~ : Bool = true,
 ) -> Daemon? {
   let exec_path = match exec_path {
     Some(exec_path) => exec_path

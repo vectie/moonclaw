@@ -11,7 +11,7 @@ async fn export_test_write(
   artifacts : ArtifactStore,
   id : String,
   content : Bytes,
-  file_name? : String = "content.bin",
+  file_name~ : String = "content.bin",
 ) -> ArtifactRecord {
   artifacts.write_bytes(
     {

@@ -2,7 +2,7 @@
 fn review_event(
   run : String,
   job : String,
-  time : Int,
+  time : Int32,
   message : String,
 ) -> Json {
   {
@@ -22,8 +22,8 @@ fn review_export_entry(
   id : String,
   run : String,
   job : String,
-  index : Int,
-  version : Int,
+  index : Int32,
+  version : Int32,
 ) -> Json {
   let digest = "sha256:" + "a".repeat(64)
   {

@@ -9,7 +9,7 @@ pub struct CreatePipelineParams {
 pub fn create_pipeline_params(
   name~ : String,
   stages~ : Array[PipelineStageParams],
-  metadata? : Map[String, Json] = Map([], capacity=0),
+  metadata~ : Map[String, Json] = Map([], capacity=0),
 ) -> CreatePipelineParams {
   { name, stages, metadata, }
 }

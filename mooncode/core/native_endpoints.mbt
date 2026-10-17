@@ -120,7 +120,7 @@ fn native_endpoint_percent_encoded_byte(byte : Byte) -> String {
 }
 
 ///|
-fn native_endpoint_hex_digit(value : Int) -> String {
+fn native_endpoint_hex_digit(value : Int32) -> String {
   match value {
     0 => "0"
     1 => "1"
@@ -165,7 +165,7 @@ fn native_endpoint_query(query : Array[(String, String)]) -> String {
 ///|
 fn native_endpoint_url(
   segments : Array[String],
-  query? : Array[(String, String)] = [],
+  query~ : Array[(String, String)] = [],
 ) -> String {
   let path = native_endpoint_path(segments)
   if query.length() == 0 {
@@ -256,8 +256,8 @@ pub fn native_stream_endpoint_exact(
   book_root : String,
   format : String,
   since : String,
-  wait_ms? : Int = 0,
-  poll_ms? : Int = 100,
+  wait_ms~ : Int32 = 0,
+  poll_ms~ : Int32 = 100,
 ) -> String raise {
   require_exact_cursor("stream since", since)
   native_endpoint_url(["v1", "code", "sessions", session_id, "stream"], query=[
@@ -275,9 +275,9 @@ pub fn native_stream_endpoint(
   session_id : String,
   book_root : String,
   format : String,
-  since : Int,
-  wait_ms? : Int = 0,
-  poll_ms? : Int = 100,
+  since : Int32,
+  wait_ms~ : Int32 = 0,
+  poll_ms~ : Int32 = 100,
 ) -> String {
   native_endpoint_url(["v1", "code", "sessions", session_id, "stream"], query=[
     ("book_root", book_root),

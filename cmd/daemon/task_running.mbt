@@ -8,7 +8,7 @@ priv struct Running {
   /// Working directory where the task is executing.
   cwd : String
   /// HTTP port number where the task's server is listening.
-  port : Int
+  port : Int32
   /// Current execution status of the task (idle or busy).
   mut status : @server.Status
   /// Messages waiting to be processed by the task.
@@ -57,13 +57,13 @@ fn Running::new(
   name? : String,
   id~ : @uuid.Uuid,
   cwd~ : String,
-  port~ : Int,
+  port~ : Int32,
   created~ : @clock.Timestamp,
   web_search~ : Bool,
   model~ : String,
   broadcast~ : @broadcast.Broadcast[@server.ServerStreamEvent],
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
 ) -> Running {
   {
     name,
@@ -236,7 +236,7 @@ async fn Running::create_message(
     "http://127.0.0.1:\{self.port}/v1/message",
     request.to_json(),
   )
-  guard r.code is (200..=299) else {
+  guard r.code is (200..<=299) else {
     raise json_error(500, "Internal Server Error", {
       "error": {
         "code": r.code,

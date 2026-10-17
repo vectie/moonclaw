@@ -44,7 +44,7 @@ async fn Daemon::mooncode_get_command_media(
 fn mooncode_command_media_from_entries(
   entries : Array[Json],
   command_id : String,
-  ordinal : Int,
+  ordinal : Int32,
 ) -> Json {
   for entry in entries {
     let command = mooncode_conversation_command_body(entry)

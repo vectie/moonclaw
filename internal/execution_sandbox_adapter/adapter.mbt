@@ -26,7 +26,7 @@ pub struct PromotionClient {
 
 ///|
 pub(all) struct ProcessResponse {
-  status : Int
+  status : Int32
   stdout : String
 } derive(Debug, Eq)
 
@@ -57,7 +57,7 @@ pub async fn Client::new(
   executor_config_path : String,
   receipt_root : String,
   live_output_reader_path? : String,
-  live_output_reader_args? : Array[String] = [],
+  live_output_reader_args~ : Array[String] = [],
 ) -> Client {
   validate_regular_file(publisher_path, "grant publisher")
   validate_regular_file(executor_path, "executor")
@@ -109,7 +109,7 @@ async fn Client::run(
   executable : String,
   arguments : Array[String],
   stdin : String,
-  timeout : Int,
+  timeout : Int32,
 ) -> ProcessResponse {
   guard timeout > 0 else { fail("MoonFort transport timeout must be positive") }
   let process = run_adapter_process(
@@ -135,7 +135,7 @@ pub async fn Client::publish_grant(
 pub async fn Client::invoke_executor(
   self : Client,
   invocation : String,
-  transport_timeout : Int,
+  transport_timeout : Int32,
 ) -> ProcessResponse {
   self.run(
     self.executor_path,

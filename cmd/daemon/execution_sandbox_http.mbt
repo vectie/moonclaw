@@ -1,15 +1,15 @@
 ///|
-const MoonDeskSandboxRequestBytes : Int = 8_192
+const MoonDeskSandboxRequestBytes : Int32 = 8_192
 
 ///|
-const MoonDeskSandboxOutputBytes : Int = 160_000
+const MoonDeskSandboxOutputBytes : Int32 = 160_000
 
 ///|
-const MoonDeskSandboxTimeoutMs : Int = 60_000
+const MoonDeskSandboxTimeoutMs : Int32 = 60_000
 
 ///|
 priv struct MoonDeskMoonDiagnosticsRequest {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   request_id : String
   workspace_id : String
@@ -19,7 +19,7 @@ priv struct MoonDeskMoonDiagnosticsRequest {
 
 ///|
 priv struct MoonDeskMoonIdeRequest {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   request_id : String
   workspace_id : String
@@ -27,8 +27,8 @@ priv struct MoonDeskMoonIdeRequest {
   module_path : String
   action : String
   symbol : String
-  line : Int
-  column : Int
+  line : Int32
+  column : Int32
 } derive(@json.FromJson)
 
 ///|
@@ -150,7 +150,7 @@ async fn moondesk_sandbox_read_request(r : @httpx.RequestReader) -> Json {
 ///|
 async fn moondesk_sandbox_read_request_bounded(
   r : @httpx.RequestReader,
-  limit : Int,
+  limit : Int32,
 ) -> Json {
   let output = @buffer.Buffer(size_hint=1_024)
   for ;; {

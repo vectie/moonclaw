@@ -1,6 +1,6 @@
 ///|
 priv struct Entry[T] {
-  mut accessed : Int
+  mut accessed : Int32
   value : T
 }
 
@@ -11,13 +11,13 @@ impl[T : ToJson] ToJson for Entry[T] with fn to_json(self : Entry[T]) -> Json {
 
 ///|
 struct Cache[K, V] {
-  mut timestamp : Int
+  mut timestamp : Int32
   cache : Map[K, Entry[V]]
-  max_size : Int
+  max_size : Int32
 }
 
 ///|
-pub fn[K : Eq + Hash, V] cache(max_size? : Int = 100) -> Cache[K, V] {
+pub fn[K : Eq + Hash, V] cache(max_size~ : Int32 = 100) -> Cache[K, V] {
   { timestamp: 0, cache: {}, max_size, }
 }
 

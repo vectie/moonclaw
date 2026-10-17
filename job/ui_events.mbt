@@ -1,7 +1,7 @@
 ///|
 pub fn event_as_ui_timeline_entry(
   event : JobRunEvent,
-  index : Int,
+  index : Int32,
 ) -> JobUiTimelineEntry {
   {
     id: "\{event.run_id}:event:\{index}",

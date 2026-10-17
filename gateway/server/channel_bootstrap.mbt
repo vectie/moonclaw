@@ -123,7 +123,7 @@ fn set_string_field(
 ///|
 fn bootstrap_feishu_account_config(
   config : Json,
-  fallback? : Json = {},
+  fallback~ : Json = {},
 ) -> Json? {
   let app_id = match merged_string_field(config, fallback, "app_id", "appId") {
     Some(value) => value
@@ -273,7 +273,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
 ///|
 fn bootstrap_weixin_account_config(
   config : Json,
-  fallback? : Json = {},
+  fallback~ : Json = {},
 ) -> Json? {
   let app_id = match merged_string_field(config, fallback, "app_id", "appId") {
     Some(value) => value

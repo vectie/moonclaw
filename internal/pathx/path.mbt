@@ -2,7 +2,7 @@
 using @xpath {type Path}
 
 ///|
-fn StringView::end_offset(self : StringView) -> Int {
+fn StringView::end_offset(self : StringView) -> Int32 {
   self.start_offset() + self.length()
 }
 

@@ -56,7 +56,7 @@ struct Loader {
 pub fn Loader::new(
   home? : String,
   cwd~ : String,
-  logger? : @pino.Logger = @pino.logger("skills", @pino.Transport::console()),
+  logger~ : @pino.Logger = @pino.logger("skills", @pino.Transport::console()),
 ) -> Loader raise {
   let home = match home {
     Some(home) => home

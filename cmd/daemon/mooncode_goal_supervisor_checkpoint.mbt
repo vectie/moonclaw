@@ -15,14 +15,14 @@ priv struct MoonCodeGoalSupervisorCheckpointPayload {
   protocol : String
   session_id : String
   goal_id : String
-  goal_run_id : Int
-  goal_revision : Int
-  current_goal_turn : Int
+  goal_run_id : Int32
+  goal_revision : Int32
+  current_goal_turn : Int32
   owner_id : String
-  fence_token : Int
+  fence_token : Int32
   acquisition_event_id : String
   expected_lease_expires_at : Int64
-  basis_sequence : Int
+  basis_sequence : Int32
   last_terminal_command_id : String?
   last_terminal_claim_id : String?
   last_terminal_receipt_record_id : String?
@@ -158,14 +158,14 @@ fn mooncode_goal_supervisor_checkpoint_v1(
   protocol : String,
   session_id : String,
   goal_id : String,
-  goal_run_id : Int,
-  goal_revision : Int,
-  current_goal_turn : Int,
+  goal_run_id : Int32,
+  goal_revision : Int32,
+  current_goal_turn : Int32,
   owner_id : String,
-  fence_token : Int,
+  fence_token : Int32,
   acquisition_event_id : String,
   expected_lease_expires_at : Int64,
-  basis_sequence : Int,
+  basis_sequence : Int32,
   last_terminal_command_id : String?,
   last_terminal_claim_id : String?,
   last_terminal_receipt_record_id : String?,

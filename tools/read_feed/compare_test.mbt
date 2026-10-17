@@ -1,7 +1,7 @@
 ///|
 fn observation_json(
   items : Array[Json],
-  next? : String = "https://example.test/older",
+  next~ : String = "https://example.test/older",
 ) -> String {
   (
     {

@@ -58,7 +58,7 @@ async fn configured_primary_model(cwd : String, home : String?) -> String? {
 }
 
 ///|
-fn configured_adaptive_subplan_max_depth_from_json(json : Json?) -> Int? {
+fn configured_adaptive_subplan_max_depth_from_json(json : Json?) -> Int32? {
   match json {
     Some(Object(root)) =>
       match root.get("jobs") {
@@ -85,7 +85,7 @@ fn configured_adaptive_subplan_max_depth_from_json(json : Json?) -> Int? {
 async fn configured_adaptive_subplan_max_depth(
   cwd : String,
   home : String?,
-) -> Int? {
+) -> Int32? {
   for path in moonclaw_config_path_candidates(cwd, home) {
     let text = @fsx.read_file(path) catch { _ => continue }
     let json = @json.parse(text) catch { _ => continue }

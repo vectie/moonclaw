@@ -290,7 +290,7 @@ fn mooncode_session_listing_row(record : Json) -> Json {
 }
 
 ///|
-fn mooncode_compare_session_listing_rows(left : Json, right : Json) -> Int {
+fn mooncode_compare_session_listing_rows(left : Json, right : Json) -> Int32 {
   match
     (
       mooncode_json_int64_field(left, "updated_at_ms"),
@@ -311,7 +311,7 @@ fn mooncode_compare_session_listing_rows(left : Json, right : Json) -> Int {
 }
 
 ///|
-fn mooncode_compare_session_listing_labels(left : Json, right : Json) -> Int {
+fn mooncode_compare_session_listing_labels(left : Json, right : Json) -> Int32 {
   let title_order = mooncode_json_string(left, "title", default="").compare(
     mooncode_json_string(right, "title", default=""),
   )

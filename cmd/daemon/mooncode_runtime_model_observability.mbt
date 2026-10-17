@@ -2,13 +2,13 @@
 fn mooncode_runtime_turn_model_retry_event(
   command : Json,
   model_name : String,
-  attempt : Int,
+  attempt : Int32,
   summary : String,
-  delay_ms : Int,
-  provider_error_class? : String = "transient",
-  retry_after_ms? : Int? = None,
-  overload_compaction_tier? : Int = 0,
-  retry_request_chars? : Int = 0,
+  delay_ms : Int32,
+  provider_error_class~ : String = "transient",
+  retry_after_ms~ : Int32? = None,
+  overload_compaction_tier~ : Int32 = 0,
+  retry_request_chars~ : Int32 = 0,
   now~ : @clock.Timestamp,
 ) -> Json {
   let event = mooncode_event(
@@ -50,13 +50,13 @@ fn mooncode_runtime_turn_model_retry_event(
 async fn mooncode_runtime_turn_record_model_retry(
   command : Json,
   model_name : String,
-  attempt : Int,
+  attempt : Int32,
   summary : String,
-  delay_ms : Int,
-  provider_error_class? : String = "transient",
-  retry_after_ms? : Int? = None,
-  overload_compaction_tier? : Int = 0,
-  retry_request_chars? : Int = 0,
+  delay_ms : Int32,
+  provider_error_class~ : String = "transient",
+  retry_after_ms~ : Int32? = None,
+  overload_compaction_tier~ : Int32 = 0,
+  retry_request_chars~ : Int32 = 0,
 ) -> Unit {
   let book_root = mooncode_book_root(command)
   let session_id = mooncode_json_string(command, "session_id", default="")
@@ -88,7 +88,7 @@ async fn mooncode_runtime_turn_record_model_retry(
 fn mooncode_runtime_turn_model_retry_recovered_event(
   command : Json,
   model_name : String,
-  retry_count : Int,
+  retry_count : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
   mooncode_event(
@@ -107,7 +107,7 @@ fn mooncode_runtime_turn_model_retry_recovered_event(
 async fn mooncode_runtime_turn_record_model_retry_recovered(
   command : Json,
   model_name : String,
-  retry_count : Int,
+  retry_count : Int32,
 ) -> Unit {
   let book_root = mooncode_book_root(command)
   let session_id = mooncode_json_string(command, "session_id", default="")

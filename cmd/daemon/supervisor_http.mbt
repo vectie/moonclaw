@@ -3,13 +3,13 @@ fn supervisor_query_component(value : String) -> String {
   let encoded = StringBuilder::new()
   for character in value {
     match character {
-      'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' =>
+      'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
         encoded.write_char(character)
       _ => {
         let bytes = @encoding/utf8.encode(character.to_string())
         for byte in bytes {
           let number = byte.to_int()
-          let hex = fn(n : Int) -> Char {
+          let hex = fn(n : Int32) -> Char {
             if n < 10 {
               ('0'.to_int() + n).unsafe_to_char()
             } else {
@@ -118,7 +118,7 @@ async fn Daemon::supervisor_runtime(self : Daemon) -> @job.SupervisorRuntime {
 ///|
 async fn supervisor_http_json(
   w : @httpx.ResponseWriter,
-  status : Int,
+  status : Int32,
   value : Json,
 ) -> Unit {
   w.header().set("Content-Type", "application/json")
@@ -208,7 +208,7 @@ async fn Daemon::install_supervisor_profile(
     "http://127.0.0.1:\{task.port}/v1/system-prompt",
     exact_profile.to_json(),
   )
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     raise supervisor_http_failure(
       "canonical supervisor profile installation failed: \{body.text()}",
     )
@@ -525,7 +525,7 @@ async fn Daemon::supervisor_command(
                   "http://127.0.0.1:\{running.port}/v1/cancel",
                   {},
                 )
-                guard response.code is (200..=299) else {
+                guard response.code is (200..<=299) else {
                   raise supervisor_http_failure(
                     "canonical supervisor executor cancellation failed: \{body.text()}",
                   )

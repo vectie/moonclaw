@@ -6,7 +6,7 @@ priv struct TuiState {
 }
 
 ///|
-const StreamFlushIntervalMs : Int = 120
+const StreamFlushIntervalMs : Int32 = 120
 
 ///|
 async fn println(msg : String) -> Unit {

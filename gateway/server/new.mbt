@@ -1,7 +1,7 @@
 ///|
 pub async fn Gateway::new(
   uuid? : @uuid.Generator,
-  port? : Int = @protocol.DEFAULT_PORT,
+  port~ : Int32 = @protocol.DEFAULT_PORT,
   cwd? : StringView,
   home? : StringView,
   auth? : AuthConfig,
@@ -160,7 +160,7 @@ pub async fn Gateway::new(
 }
 
 ///|
-pub fn Gateway::port(self : Gateway) -> Int {
+pub fn Gateway::port(self : Gateway) -> Int32 {
   self.port
 }
 
@@ -323,7 +323,7 @@ async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
 }
 
 ///|
-pub fn current_time_ms() -> Int {
+pub fn current_time_ms() -> Int32 {
   let ts = @clock.epoch.now()
   ts.ms().to_int()
 }

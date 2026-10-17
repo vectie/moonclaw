@@ -6,7 +6,7 @@ fn streaming_test_sequence(text : String) -> MoonCodeJournalSequence raise {
 }
 
 ///|
-fn streaming_test_v1(sequence : Int) -> String {
+fn streaming_test_v1(sequence : Int32) -> String {
   @moonlib_conversation.journal_record(
     session_id="session",
     sequence~,

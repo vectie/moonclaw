@@ -51,7 +51,7 @@ pub fn conversation_watch_response_exact(
   changed~ : Bool,
   heartbeat~ : Bool,
   terminal~ : Bool,
-  retry_after_ms~ : Int,
+  retry_after_ms~ : Int32,
   snapshot~ : Json,
 ) -> Json raise {
   require_exact_cursor("conversation watch revision", revision)
@@ -73,12 +73,12 @@ pub fn conversation_watch_response_exact(
 ///|
 pub fn conversation_watch_response(
   session_id~ : String,
-  revision~ : Int,
-  next_sequence~ : Int,
+  revision~ : Int32,
+  next_sequence~ : Int32,
   changed~ : Bool,
   heartbeat~ : Bool,
   terminal~ : Bool,
-  retry_after_ms~ : Int,
+  retry_after_ms~ : Int32,
   snapshot~ : Json,
 ) -> Json {
   @conversation.watch_response(

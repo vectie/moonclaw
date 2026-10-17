@@ -1,9 +1,9 @@
 ///|
 priv struct Inventory {
   paths : Array[String]
-  mut count : Int
-  mut admitted : Int
-  mut excluded : Int
+  mut count : Int32
+  mut admitted : Int32
+  mut excluded : Int32
 }
 
 ///|
@@ -43,7 +43,7 @@ async fn inventory(
 ///|
 async fn inventory_all(
   root : String,
-  result? : Inventory = { paths: [], count: 0, admitted: 0, excluded: 0, },
+  result~ : Inventory = { paths: [], count: 0, admitted: 0, excluded: 0, },
 ) -> Inventory {
   if @fs.exists(root + "/memory") {
     guard @fs.kind(root + "/memory", follow_symlink=false) == Directory else {
@@ -121,7 +121,7 @@ async fn installation_lineage(root : String) -> Json {
 ///|
 async fn capture_ready(
   binding : Binding,
-  captured_at : Int,
+  captured_at : Int32,
   progress : Inventory,
   before_recheck? : async () -> Unit,
 ) -> Snapshot {
@@ -206,14 +206,14 @@ async fn capture_ready(
 
 ///|
 /// Host-only capture. Optional learning never blocks unrelated ordinary work.
-pub async fn capture(binding : Binding, captured_at : Int) -> Snapshot {
+pub async fn capture(binding : Binding, captured_at : Int32) -> Snapshot {
   capture_impl(binding, captured_at)
 }
 
 ///|
 async fn capture_impl(
   binding : Binding,
-  captured_at : Int,
+  captured_at : Int32,
   before_recheck? : async () -> Unit,
 ) -> Snapshot {
   if binding.workspace_id.is_empty() || binding.book_id.is_empty() {

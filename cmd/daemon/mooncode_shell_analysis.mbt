@@ -80,8 +80,8 @@ fn mooncode_shell_git_executable(word : String) -> Bool {
 ///|
 fn mooncode_shell_segment_executable_index_from(
   segment : Array[String],
-  start : Int,
-) -> Int {
+  start : Int32,
+) -> Int32 {
   if segment.is_empty() {
     return -1
   }
@@ -114,7 +114,7 @@ fn mooncode_shell_segment_executable_index_from(
 }
 
 ///|
-fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int {
+fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int32 {
   mooncode_shell_segment_executable_index_from(segment, 0)
 }
 
@@ -330,9 +330,9 @@ fn mooncode_shell_executable_is(word : String, name : String) -> Bool {
 ///|
 fn mooncode_shell_subcommand_index_after_options(
   segment : Array[String],
-  executable_index : Int,
+  executable_index : Int32,
   options_with_values : ArrayView[String],
-) -> Int {
+) -> Int32 {
   let mut index = executable_index + 1
   while index < segment.length() {
     let word = segment[index]
@@ -359,7 +359,7 @@ fn mooncode_shell_subcommand_index_after_options(
 ///|
 fn mooncode_shell_segment_requests_help(
   segment : Array[String],
-  subcommand_index : Int,
+  subcommand_index : Int32,
 ) -> Bool {
   for index in (subcommand_index + 1)..<segment.length() {
     let word = segment[index]
@@ -376,8 +376,8 @@ fn mooncode_shell_segment_requests_help(
 ///|
 fn mooncode_shell_nested_command_index(
   segment : Array[String],
-  executable_index : Int,
-) -> Int {
+  executable_index : Int32,
+) -> Int32 {
   let mut index = executable_index + 1
   while index < segment.length() {
     let word = segment[index]
@@ -575,7 +575,7 @@ fn mooncode_shell_segment_has_sensitive_command(
 /// sensitive.
 fn mooncode_shell_segment_is_safe_loopback_curl(
   segment : Array[String],
-  executable_index : Int,
+  executable_index : Int32,
 ) -> Bool {
   let mut index = executable_index + 1
   let mut url_seen = false
@@ -668,7 +668,7 @@ fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
 ///|
 fn mooncode_shell_segment_is_read_only_awk(
   segment : Array[String],
-  executable_index : Int,
+  executable_index : Int32,
 ) -> Bool {
   let mut index = executable_index + 1
   while index < segment.length() {
@@ -721,7 +721,7 @@ fn mooncode_shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
 ///|
 fn mooncode_shell_segment_is_read_only_gh(
   segment : Array[String],
-  index : Int,
+  index : Int32,
 ) -> Bool {
   if index + 2 >= segment.length() || segment.contains("--web") {
     return false
@@ -733,7 +733,7 @@ fn mooncode_shell_segment_is_read_only_gh(
 ///|
 fn mooncode_shell_segment_read_only_executable_index(
   segment : Array[String],
-) -> Int {
+) -> Int32 {
   let mut index = mooncode_shell_segment_executable_index(segment)
   if index < 0 {
     return -1
@@ -910,8 +910,8 @@ fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
 ///|
 fn mooncode_shell_command_substitution_at(
   chars : Array[Char],
-  start : Int,
-) -> (String, Int)? {
+  start : Int32,
+) -> (String, Int32)? {
   if start + 1 >= chars.length() ||
     chars[start] != '$' ||
     chars[start + 1] != '(' {
@@ -1045,7 +1045,7 @@ fn mooncode_shell_extract_command_substitutions(
 ///|
 fn mooncode_shell_compound_command_executable_index(
   segment : Array[String],
-) -> Int {
+) -> Int32 {
   let mut index = 0
   while index < segment.length() &&
         ["!", "(", "{", "do", "then", "else", "elif", "if", "while", "until"].contains(
@@ -1204,7 +1204,7 @@ fn mooncode_shell_has_inline_interpreter_authoring(command : String) -> Bool {
 ///|
 fn mooncode_shell_chars_match(
   chars : Array[Char],
-  start : Int,
+  start : Int32,
   expected : String,
 ) -> Bool {
   let expected_chars = expected.to_array()

@@ -1,7 +1,7 @@
 ///|
 /// Partial tool call emitted in streaming deltas.
 pub struct ChatCompletionChunkChoiceDeltaToolCall {
-  index : Int
+  index : Int32
   id : String?
   function : ChatCompletionChunkChoiceDeltaToolCallFunction
 } derive(ToJson)

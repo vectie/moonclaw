@@ -1,10 +1,10 @@
 ///|
 priv suberror HttpError {
-  HttpError(code~ : Int, reason~ : String, body~ : String)
+  HttpError(code~ : Int32, reason~ : String, body~ : String)
 }
 
 ///|
-fn json_error(code : Int, reason : String, body : Json) -> HttpError {
+fn json_error(code : Int32, reason : String, body : Json) -> HttpError {
   HttpError(code~, reason~, body=body.stringify())
 }
 
@@ -13,7 +13,7 @@ pub struct Gateway {
   clock : &@clock.Clock
   uuid : @uuid.Generator
   httpx : @httpx.Server
-  port : Int
+  port : Int32
   events : @broadcast.Broadcast[GatewayEvent]
   auth : AuthConfig
   command_output_config : @execution_sandbox.SandboxExecutorConfig?
@@ -23,8 +23,8 @@ pub struct Gateway {
   home : String
   cwd : String
   models : @model.Loader
-  mut started_at : Int
-  mut pending_requests : Int
+  mut started_at : Int32
+  mut pending_requests : Int32
   agent_runs : Map[String, AgentRun]
   active_channel_sessions : Map[String, @event.ExternalEventQueue]
   recent_thread_attachments : Map[String, Array[@job.E2EStarterAttachment]]
@@ -53,8 +53,8 @@ struct AgentRun {
   run_id : String
   session_key : String
   status : String
-  created_at : Int
-  completed_at : Int?
+  created_at : Int32
+  completed_at : Int32?
   result : Json?
   error : @protocol.ErrorShape?
 } derive(ToJson, FromJson, Debug)
@@ -77,7 +77,7 @@ pub struct SessionMessage {
   role : String
   kind : String
   content : String
-  timestamp : Int
+  timestamp : Int32
   metadata : Json
 } derive(ToJson, FromJson, Debug)
 
@@ -85,7 +85,7 @@ pub struct SessionMessage {
 struct SessionEntry {
   session_id : String
   title : String?
-  updated_at : Int
+  updated_at : Int32
   channel : String?
   model_override : String?
   provider_override : String?
@@ -184,18 +184,18 @@ struct PlanModeState {
   request_text : String
   notes : Array[String]
   latest_candidate : @job.JobProposal
-  updated_at : Int
+  updated_at : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
 struct DedupeCache {
   entries : Map[String, DedupeEntry]
-  ttl_ms : Int
+  ttl_ms : Int32
 }
 
 ///|
 struct DedupeEntry {
-  ts : Int
+  ts : Int32
   ok : Bool
   payload : Json?
   error : @protocol.ErrorShape?

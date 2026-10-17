@@ -30,8 +30,8 @@ pub fn journal_csv(
   step_id? : String,
   event_type? : String,
   query? : String,
-  since? : Int,
-  until? : Int,
+  since? : Int32,
+  until? : Int32,
 ) -> String raise {
   let selected = select_journal_entries(
     entries,

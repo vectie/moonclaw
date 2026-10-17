@@ -102,7 +102,7 @@ pub impl @json.FromJson for Conversation with fn from_json(
 ///|
 pub fn Conversation::display(
   self : Conversation,
-  show_messages? : Bool = false,
+  show_messages~ : Bool = false,
 ) -> Array[String] {
   let lines = []
   lines.push("Name: \{self.name}")

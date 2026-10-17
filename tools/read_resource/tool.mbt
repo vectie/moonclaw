@@ -81,7 +81,7 @@ fn parse_resource_uri(uri : String) -> ResourceUri raise {
 }
 
 ///|
-fn truncate_resource_text(text : String, max_chars : Int) -> (String, Bool) {
+fn truncate_resource_text(text : String, max_chars : Int32) -> (String, Bool) {
   if max_chars <= 0 {
     return ("", !text.is_empty())
   }
@@ -106,7 +106,7 @@ async fn read_file_resource(
   cwd : String,
   uri : String,
   path : String,
-  max_chars : Int,
+  max_chars : Int32,
 ) -> ReadResourceResult {
   let resolved_path = resolve_file_resource(cwd, path) catch {
     error => fail("failed to resolve file resource: \{error}")
@@ -133,7 +133,7 @@ async fn read_skill_resource(
   home : String?,
   uri : String,
   skill_name : String,
-  max_chars : Int,
+  max_chars : Int32,
 ) -> ReadResourceResult {
   let loader = @skills.Loader::new(
     home?,
@@ -286,7 +286,8 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
         return @tool.error("Error: 'uri' parameter is required")
       }
       let max_chars = match args {
-        { "max_chars": Number(value, ..), .. } => Int::max(100, value.to_int())
+        { "max_chars": Number(value, ..), .. } =>
+          Int32::max(100, value.to_int())
         _ => 20_000
       }
       let parsed_uri = parse_resource_uri(uri) catch {

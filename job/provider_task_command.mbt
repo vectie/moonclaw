@@ -292,7 +292,7 @@ async fn load_provider_task_task_batch(
   home : String?,
   target_id : String?,
   goal : String,
-  metadata? : Json = {},
+  metadata~ : Json = {},
 ) -> Result[(ProviderTaskCommand, ProviderTaskBatch), String] {
   let affinity_root = metadata_string_value(metadata, "workspace_root").unwrap_or(
     cwd,

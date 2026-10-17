@@ -202,7 +202,7 @@ fn mooncode_runtime_tool_requires_approval(tool_call : Json) -> Bool {
 fn mooncode_runtime_tool_approval_id(
   command_id : String,
   tool_call : Json,
-  occurrence~ : Int,
+  occurrence~ : Int32,
 ) -> String {
   let explicit = mooncode_json_string(tool_call, "approval_id", default="")
   if explicit != "" {
@@ -226,11 +226,11 @@ fn mooncode_runtime_tool_approval_event(
   session_id : String,
   command_id : String,
   tool_call : Json,
-  occurrence~ : Int,
+  occurrence~ : Int32,
   state~ : String,
-  tool_call_id? : String = "",
-  control_command_id? : String = "",
-  decision_reason? : String = "",
+  tool_call_id~ : String = "",
+  control_command_id~ : String = "",
+  decision_reason~ : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_runtime_tool_approval_id(
@@ -429,7 +429,7 @@ async fn mooncode_runtime_wait_for_tool_approval(
   book_root : String,
   session_id : String,
   approval_id : String,
-  timeout_ms~ : Int,
+  timeout_ms~ : Int32,
 ) -> Json {
   let mut elapsed = 0
   let mut latest = mooncode_runtime_recent_tool_approval_event_for_id(
@@ -453,7 +453,7 @@ async fn mooncode_runtime_wait_for_tool_approval(
 }
 
 ///|
-fn mooncode_runtime_approval_wait_ms(command : Json) -> Int {
+fn mooncode_runtime_approval_wait_ms(command : Json) -> Int32 {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let requested = mooncode_json_int(payload, "approval_wait_ms", default=300000)
   if requested < 0 {

@@ -1,5 +1,5 @@
 ///|
-let goal_event_codec_schema_version : Int = 1
+let goal_event_codec_schema_version : Int32 = 1
 
 ///|
 priv suberror GoalEventCodecError {
@@ -103,7 +103,7 @@ fn goal_event_codec_id(
 fn goal_event_codec_checked_int(
   object : Map[String, Json],
   field : String,
-) -> Int raise GoalEventCodecError {
+) -> Int32 raise GoalEventCodecError {
   match object.get(field) {
     Some(Number(value, ..)) => {
       if value != value ||
@@ -175,7 +175,7 @@ fn goal_event_codec_nonnegative_int64(
 fn goal_event_codec_nonnegative_int(
   object : Map[String, Json],
   field : String,
-) -> Int raise GoalEventCodecError {
+) -> Int32 raise GoalEventCodecError {
   let value = goal_event_codec_checked_int(object, field)
   if value < 0 {
     goal_event_codec_fail("invalid " + field)
@@ -187,7 +187,7 @@ fn goal_event_codec_nonnegative_int(
 fn goal_event_codec_optional_nonnegative_int(
   object : Map[String, Json],
   field : String,
-) -> Int? raise GoalEventCodecError {
+) -> Int32? raise GoalEventCodecError {
   match object.get(field) {
     Some(Null) => None
     Some(_) => Some(goal_event_codec_nonnegative_int(object, field))
@@ -690,7 +690,7 @@ fn strings_json(values : Array[String]) -> Json {
 }
 
 ///|
-fn int_option_json(value : Int?) -> Json {
+fn int_option_json(value : Int32?) -> Json {
   match value {
     Some(value) => Json::number(value.to_double())
     None => Json::null()

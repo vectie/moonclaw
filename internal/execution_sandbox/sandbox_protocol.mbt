@@ -69,12 +69,12 @@ pub(all) struct MoonFortScratchChange {
 
 ///|
 pub(all) struct MoonFortLimits {
-  wall_clock_ms : Int
-  cpu_seconds : Int
-  memory_mib : Int
-  disk_mib : Int
-  processes : Int
-  output_bytes : Int
+  wall_clock_ms : Int32
+  cpu_seconds : Int32
+  memory_mib : Int32
+  disk_mib : Int32
+  processes : Int32
+  output_bytes : Int32
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
@@ -85,7 +85,7 @@ pub(all) enum MoonFortCommand {
 
 ///|
 pub(all) struct MoonFortExecutionGrant {
-  protocol_version : Int
+  protocol_version : Int32
   approval_id : String
   request_id : String
   workspace_id : String
@@ -103,19 +103,19 @@ pub(all) struct MoonFortExecutionGrant {
 
 ///|
 struct MoonFortInvocation {
-  protocol_version : Int
+  protocol_version : Int32
   approval_id : String
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
 struct MoonFortGrantPublicationRequest {
-  protocol_version : Int
+  protocol_version : Int32
   grant : MoonFortExecutionGrant
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
 struct MoonFortGrantPublicationResponse {
-  protocol_version : Int
+  protocol_version : Int32
   approval_id : String
   approval_digest : String
   published : Bool
@@ -148,7 +148,7 @@ pub(all) struct MoonFortReceipt {
   enforcement : MoonFortEnforcement
   status : MoonFortRunStatus
   profile_digest : String
-  exit_code : Int?
+  exit_code : Int32?
   output : String
   output_truncated : Bool
   /// Present whenever the approved hard output ceiling was reached, and also
@@ -177,7 +177,7 @@ struct MoonFortProtocolError {
 
 ///|
 struct MoonFortExecutorResponse {
-  protocol_version : Int
+  protocol_version : Int32
   approval_id : String
   receipt : MoonFortReceipt?
   error : MoonFortProtocolError?
@@ -198,7 +198,7 @@ pub(all) struct MoonFortLiveOutputReference {
 
 ///|
 struct MoonFortLiveOutputReadResponse {
-  protocol_version : Int
+  protocol_version : Int32
   approval_id : String
   stream_id : String
   run_id : String
@@ -208,7 +208,7 @@ struct MoonFortLiveOutputReadResponse {
   content_base64 : String
   status : String
   terminal : Bool
-  retry_after_ms : Int
+  retry_after_ms : Int32
   error : MoonFortProtocolError?
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
@@ -249,7 +249,7 @@ pub fn local_sandbox_executor_config(
   executor_config_path : String,
   receipt_root : String,
   workspace_id : String,
-  allow_degraded? : Bool = false,
+  allow_degraded~ : Bool = false,
 ) -> SandboxExecutorConfig {
   {
     grant_publisher_path,
@@ -295,7 +295,7 @@ pub(all) struct SandboxApprovalPlan {
 
 ///|
 struct SandboxAuditRecord {
-  protocol_version : Int
+  protocol_version : Int32
   plan : SandboxApprovalPlan
   receipt : MoonFortReceipt
 } derive(Debug, Eq, ToJson, @json.FromJson)
@@ -359,7 +359,7 @@ const MoonFortCommandOutputMediaType : String = "text/plain; charset=utf-8"
 /// before returning any bytes.
 pub fn moonfort_output_artifact_valid(
   receipt : MoonFortReceipt,
-  output_limit : Int,
+  output_limit : Int32,
   now_ms : Int64,
 ) -> Bool {
   let terminal_output = receipt.status is Exited || receipt.status is Killed
@@ -392,7 +392,7 @@ pub fn moonfort_output_artifact_valid(
 pub fn moonfort_live_output_reference_valid(
   reference : MoonFortLiveOutputReference,
   receipt : MoonFortReceipt,
-  output_limit : Int,
+  output_limit : Int32,
   now_ms : Int64,
 ) -> Bool {
   let expected_status = match receipt.status {
@@ -502,7 +502,7 @@ pub async fn make_sandbox_plan(
   workspace : String,
   working_directory : String,
   command : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxApprovalPlan {
   validate_operator_config(config)
   guard config.allowed_commands.contains("shell-compat") else {
@@ -545,7 +545,7 @@ pub async fn make_exec_plan(
   working_directory : String,
   tool : String,
   args : Array[String],
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxApprovalPlan {
   validate_operator_config(config)
   guard safe_identifier(tool) && config.allowed_commands.contains(tool) else {
@@ -614,7 +614,7 @@ pub async fn make_moon_check_plan(
   workspace : String,
   working_directory : String,
   target : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxApprovalPlan {
   validate_operator_config(config)
   guard config.allowed_commands.contains("moon") else {
@@ -653,7 +653,7 @@ pub async fn make_moon_diagnostics_plan(
   workspace : String,
   working_directory : String,
   target : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxApprovalPlan {
   validate_operator_config(config)
   guard config.allowed_commands.contains("moon") else {
@@ -1050,7 +1050,7 @@ pub async fn run_moon_check(
   workspace : String,
   working_directory : String,
   target : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxExecution {
   let plan = make_moon_check_plan(
     config, workspace, working_directory, target, timeout_ms,
@@ -1069,7 +1069,7 @@ pub async fn run_moon_diagnostics(
   workspace : String,
   working_directory : String,
   target : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxExecution {
   let plan = make_moon_diagnostics_plan(
     config, workspace, working_directory, target, timeout_ms,
@@ -1092,7 +1092,7 @@ pub async fn run_exec(
   working_directory : String,
   tool : String,
   args : Array[String],
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> SandboxExecution {
   let plan = make_exec_plan(
     config, workspace, working_directory, tool, args, timeout_ms,

@@ -35,12 +35,12 @@ fn feed_html_text(html : String) -> String {
       }
     } else if html[pos] == '<' &&
       pos + 1 < html.length() &&
-      html[pos + 1] is ('a'..='z' | 'A'..='Z' | '/' | '!') {
+      html[pos + 1] is ('a'..<='z' | 'A'..<='Z' | '/' | '!') {
       let finish = feed_html_tag_end(html, pos)
       let tag = lower[pos + 1:finish - 1].trim().to_owned()
       let start = if tag.has_prefix("/") { 1 } else { 0 }
       let mut end = start
-      while end < tag.length() && tag[end] is ('a'..='z' | '0'..='9') {
+      while end < tag.length() && tag[end] is ('a'..<='z' | '0'..<='9') {
         end += 1
       }
       let name = tag[start:end].to_owned()
@@ -101,7 +101,7 @@ fn feed_html_text(html : String) -> String {
 }
 
 ///|
-fn feed_html_tag_end(html : String, start : Int) -> Int {
+fn feed_html_tag_end(html : String, start : Int32) -> Int32 {
   let mut quote : UInt16 = 0
   for i = start + 1; i < html.length(); i = i + 1 {
     let c = html[i]
@@ -150,9 +150,9 @@ fn feed_link(base : String, reference : String) -> String? {
   }
   let scheme_end = base.find("://").unwrap() + 3
   let origin_end = scheme_end +
-    Int::min(
+    Int32::min(
       base[scheme_end:].find("/").unwrap_or(base.length() - scheme_end),
-      Int::min(
+      Int32::min(
         base[scheme_end:].find("?").unwrap_or(base.length() - scheme_end),
         base[scheme_end:].find("#").unwrap_or(base.length() - scheme_end),
       ),
@@ -180,7 +180,7 @@ fn feed_link(base : String, reference : String) -> String? {
     ignore(pieces.pop())
     pieces.join("/") + "/" + reference
   }
-  let suffix_start = Int::min(
+  let suffix_start = Int32::min(
     combined.find("?").unwrap_or(combined.length()),
     combined.find("#").unwrap_or(combined.length()),
   )
@@ -242,7 +242,7 @@ fn atom_text(node : FeedXml) -> String {
 
 ///|
 fn fallback_feed_id(source : String, article : FeedXml) -> String {
-  let mut hash : UInt = 2166136261
+  let mut hash : UInt32 = 2166136261
   for byte in @utf8.encode(article.text) {
     hash = (hash ^ byte.to_uint()) * 16777619
   }

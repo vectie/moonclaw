@@ -33,7 +33,7 @@ pub fn SupervisorRuntime::new(
 ///|
 /// Safe process-local timestamp for legacy JobRun APIs. It is deliberately
 /// generated independently and never converted from an external epoch value.
-fn supervisor_native_runtime_timestamp() -> Int {
+fn supervisor_native_runtime_timestamp() -> Int32 {
   @async.now().to_int()
 }
 
@@ -280,13 +280,13 @@ async fn SupervisorRuntime::commit_unlocked(
   state : SupervisorStateV1,
   event_type : String,
   response : Json,
-  payload? : Json = {},
-  conversation_id? : String? = None,
-  task_id? : String? = None,
-  parent_run_id? : String? = None,
-  worker_run_id? : String? = None,
-  lineage? : SupervisorWorkerLineageV1? = None,
-  outcome_evidence? : SupervisorBookkeeperOutcomeEvidenceV1? = None,
+  payload~ : Json = {},
+  conversation_id~ : String? = None,
+  task_id~ : String? = None,
+  parent_run_id~ : String? = None,
+  worker_run_id~ : String? = None,
+  lineage~ : SupervisorWorkerLineageV1? = None,
+  outcome_evidence~ : SupervisorBookkeeperOutcomeEvidenceV1? = None,
 ) -> SupervisorCommandReceiptV1 {
   let cursor = state.cursor
   let event_id = "\{state.supervisor_id}:\{cursor}"
@@ -549,7 +549,7 @@ async fn SupervisorRuntime::resume_bound_run(
   self : SupervisorRuntime,
   supervisor_id : String,
   run_id : String?,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Result[String?, String] {
   let target = match run_id {
     Some(id) => Some(id)
@@ -788,7 +788,7 @@ fn SupervisorRuntime::mailbox_messages(
   self : SupervisorRuntime,
   supervisor_id : String,
   now_ms : SupervisorEpochMsV1,
-  claimable_only? : Bool = false,
+  claimable_only~ : Bool = false,
 ) -> Array[SupervisorMessageV1] {
   let messages : Map[String, SupervisorMessageV1] = Map([])
   let acknowledged : Map[String, Bool] = Map([])
@@ -1486,7 +1486,7 @@ fn SupervisorRuntime::outbox_unacknowledged(
   self : SupervisorRuntime,
   supervisor_id : String,
   now_ms : SupervisorEpochMsV1,
-  claimable_only? : Bool = false,
+  claimable_only~ : Bool = false,
 ) -> Array[SupervisorBookkeeperOutcomeEvidenceV1] {
   let items : Map[String, SupervisorBookkeeperOutcomeEvidenceV1] = Map([])
   let acknowledged : Map[String, Bool] = Map([])
@@ -1940,8 +1940,8 @@ pub async fn SupervisorRuntime::record_assistant_response(
 pub fn SupervisorRuntime::replay(
   self : SupervisorRuntime,
   supervisor_id : String,
-  after_cursor? : Int = 0,
-  limit? : Int = 100,
+  after_cursor~ : Int32 = 0,
+  limit~ : Int32 = 100,
 ) -> Result[SupervisorReplayResponseV1, String] {
   if self.states.get(supervisor_id) is None {
     return Err("unknown supervisor: \{supervisor_id}")

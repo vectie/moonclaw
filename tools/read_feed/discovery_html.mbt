@@ -9,7 +9,7 @@ priv struct DiscoveryTag {
 priv struct DiscoveryHtml {
   body : String
   lower : String
-  mut pos : Int
+  mut pos : Int32
 }
 
 ///|
@@ -19,7 +19,7 @@ fn discovery_lower(value : String) -> String {
     value
     .to_array()
     .map(c => {
-      if c is ('A'..='Z') {
+      if c is ('A'..<='Z') {
         (c.to_int() + 32).unsafe_to_char()
       } else {
         c
@@ -64,7 +64,7 @@ fn DiscoveryHtml::skip_declaration(self : DiscoveryHtml) -> Unit raise {
     } else if c == '[' {
       brackets += 1
     } else if c == ']' {
-      brackets = Int::max(0, brackets - 1)
+      brackets = Int32::max(0, brackets - 1)
     } else if c == '>' && brackets == 0 {
       return
     }
@@ -80,8 +80,10 @@ fn discovery_entities(value : String) -> String {
   let mut pos = 0
   while pos < value.length() {
     if value[pos] == '&' {
-      let mut semicolon : Int? = None
-      for end = pos + 1; end < Int::min(value.length(), pos + 17); end = end + 1 {
+      let mut semicolon : Int32? = None
+      for end = pos + 1
+          end < Int32::min(value.length(), pos + 17)
+          end = end + 1 {
         if value[end] == ';' {
           semicolon = Some(end - pos)
           break
@@ -134,7 +136,8 @@ fn DiscoveryHtml::next(self : DiscoveryHtml) -> DiscoveryTag? raise {
     }
     let start = self.pos
     while self.pos < self.body.length() &&
-          self.body[self.pos] is ('a'..='z' | 'A'..='Z' | '0'..='9' | '-' | ':') {
+          self.body[self.pos]
+          is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | ':') {
       self.pos += 1
     }
     if self.pos == start {

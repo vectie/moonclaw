@@ -11,7 +11,7 @@ async fn refresh_credentials(
     "Editor-Plugin-Version": "copilot-chat/0.32.4",
     "Copilot-Integration-Id": "vscode-chat",
   })
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_text = data.text()
     raise CopilotOAuthError(
       "Failed to refresh Copilot token: \{response.code} - \{error_text}",

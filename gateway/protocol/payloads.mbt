@@ -1,7 +1,7 @@
 ///|
 pub(all) struct ChallengePayload {
   nonce : String
-  ts : Int
+  ts : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -19,7 +19,7 @@ pub(all) struct AgentParams {
 pub(all) struct AgentAcceptedPayload {
   run_id : String
   status : String
-  accepted_at : Int
+  accepted_at : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -47,7 +47,7 @@ pub(all) struct SessionsListPayload {
 ///|
 pub(all) struct SessionInfo {
   session_id : String
-  updated_at : Int
+  updated_at : Int32
   channel : String?
   model_override : String?
   provider_override : String?
@@ -56,9 +56,9 @@ pub(all) struct SessionInfo {
 ///|
 pub(all) struct HealthPayload {
   status : String
-  uptime_ms : Int
-  active_sessions : Int
-  pending_requests : Int
+  uptime_ms : Int32
+  active_sessions : Int32
+  pending_requests : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|

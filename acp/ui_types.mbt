@@ -17,8 +17,8 @@ pub(all) struct AcpUiNode {
   target_id : String?
   session_id : String?
   run_id : String?
-  created_at : Int?
-  updated_at : Int?
+  created_at : Int32?
+  updated_at : Int32?
   metadata : Json
 } derive(ToJson, FromJson, Debug)
 
@@ -28,7 +28,7 @@ pub(all) struct AcpUiTimelineEntry {
   event_type : String
   title : String
   detail : String
-  timestamp : Int
+  timestamp : Int32
   target_id : String?
   session_id : String?
   run_id : String?

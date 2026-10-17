@@ -16,7 +16,7 @@ fn goal_runtime_test_body(session_id : String) -> Json {
 ///|
 fn goal_runtime_test_error(
   response : MoonCodeGoalRuntimeApiResponse,
-  status : Int,
+  status : Int32,
   code : String,
 ) -> Unit raise {
   assert_eq(response.status_code, status)
@@ -281,7 +281,7 @@ async test "handcrafted dual authority fails closed on both reads" {
 ///|
 fn goal_runtime_test_carrier_record(
   carrier : MoonCodeGoalRuntimeCarrier,
-  sequence : Int,
+  sequence : Int32,
 ) -> Json raise {
   scan_test_record(carrier, sequence)
 }

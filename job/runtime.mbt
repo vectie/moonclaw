@@ -1,13 +1,13 @@
 ///|
 pub(all) struct CheckpointRecord {
   job_id : String
-  last_triggered_at : Int?
-  last_started_at : Int?
-  last_completed_at : Int?
-  last_success_at : Int?
+  last_triggered_at : Int32?
+  last_started_at : Int32?
+  last_completed_at : Int32?
+  last_success_at : Int32?
   last_run_id : String?
-  retry_attempts : Int
-  next_retry_at : Int?
+  retry_attempts : Int32
+  next_retry_at : Int32?
   retry_source_run_id : String?
 } derive(ToJson, FromJson, Debug)
 
@@ -167,10 +167,10 @@ pub async fn RuntimeManager::create_run(
   run_id : String,
   job_id : String,
   trigger : TriggerSource,
-  now_ms : Int,
-  parent_run_id? : String? = None,
-  parent_step_id? : String? = None,
-  depth? : Int = 0,
+  now_ms : Int32,
+  parent_run_id~ : String? = None,
+  parent_step_id~ : String? = None,
+  depth~ : Int32 = 0,
 ) -> Result[JobRun, String] {
   if self.is_job_active(job_id) {
     return Err("Job \{job_id} already has an active run")
@@ -228,7 +228,7 @@ pub async fn RuntimeManager::create_run(
 pub async fn RuntimeManager::mark_run_started(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobRun? {
   let run = match self.store.get_run(run_id) {
     Some(run) => run
@@ -265,7 +265,7 @@ pub async fn RuntimeManager::mark_run_started(
 pub async fn RuntimeManager::mark_run_resumed(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobRun? {
   let run = match self.store.get_run(run_id) {
     Some(run) => run
@@ -331,7 +331,7 @@ fn RuntimeManager::with_failure_retry_state(
   self : RuntimeManager,
   run : JobRun,
   checkpoint : CheckpointRecord,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> CheckpointRecord {
   match self.definition_retry_policy(run.job_id) {
     Some(policy) if policy.max_attempts > checkpoint.retry_attempts => {
@@ -353,7 +353,7 @@ async fn RuntimeManager::finish_run_with_status(
   self : RuntimeManager,
   run_id : String,
   status : RunStatus,
-  now_ms : Int,
+  now_ms : Int32,
   summary : String?,
   error : String?,
 ) -> JobRun? {
@@ -425,7 +425,7 @@ async fn RuntimeManager::finish_run_with_status(
 pub async fn RuntimeManager::mark_run_succeeded(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
   summary? : String?,
 ) -> JobRun? {
   self.finish_run_with_status(
@@ -441,7 +441,7 @@ pub async fn RuntimeManager::mark_run_succeeded(
 pub async fn RuntimeManager::mark_run_failed(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
   error : String,
   summary? : String?,
 ) -> JobRun? {
@@ -458,7 +458,7 @@ pub async fn RuntimeManager::mark_run_failed(
 pub async fn RuntimeManager::cancel_run(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
   summary? : String?,
 ) -> JobRun? {
   self.finish_run_with_status(
@@ -474,7 +474,7 @@ pub async fn RuntimeManager::cancel_run(
 pub async fn RuntimeManager::mark_run_waiting_for_input(
   self : RuntimeManager,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
   summary? : String?,
 ) -> JobRun? {
   self.finish_run_with_status(
@@ -492,10 +492,10 @@ pub async fn RuntimeManager::trigger_definition(
   run_id : String,
   job_id : String,
   trigger : TriggerSource,
-  now_ms : Int,
-  parent_run_id? : String? = None,
-  parent_step_id? : String? = None,
-  depth? : Int = 0,
+  now_ms : Int32,
+  parent_run_id~ : String? = None,
+  parent_step_id~ : String? = None,
+  depth~ : Int32 = 0,
 ) -> Result[JobRun, String] {
   self.create_run(
     run_id,
@@ -513,7 +513,7 @@ pub async fn RuntimeManager::trigger_retry_run(
   self : RuntimeManager,
   run_id : String,
   job_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Result[JobRun, String] {
   if self.is_job_active(job_id) {
     return Err("Job \{job_id} already has an active run")
@@ -562,7 +562,7 @@ pub async fn RuntimeManager::trigger_retry_run(
 ///|
 pub async fn RuntimeManager::trigger_due_definitions(
   self : RuntimeManager,
-  now_ms : Int,
+  now_ms : Int32,
   next_run_id : () -> String,
 ) -> Array[JobRun] {
   let created : Array[JobRun] = []
@@ -612,7 +612,7 @@ pub fn RuntimeManager::list_active_runs(self : RuntimeManager) -> Array[JobRun] 
 ///|
 pub fn RuntimeManager::list_recent_runs(
   self : RuntimeManager,
-  limit? : Int = 20,
+  limit~ : Int32 = 20,
 ) -> Array[JobRun] {
   let runs = self.store.list_runs()
   runs.sort_by(fn(left, right) {
@@ -630,7 +630,7 @@ pub fn RuntimeManager::list_recent_runs(
 ///|
 pub fn RuntimeManager::due_definitions(
   self : RuntimeManager,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Array[JobDefinition] {
   let due : Array[JobDefinition] = []
   for definition in self.store.list_definitions() {

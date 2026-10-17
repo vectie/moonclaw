@@ -44,10 +44,10 @@ Token usage statistics from the API.
 ```moonbit nocheck
 ///|
 pub struct Usage {
-  input_tokens : Int
-  output_tokens : Int
-  total_tokens : Int
-  cache_read_tokens : Int?
+  input_tokens : Int32
+  output_tokens : Int32
+  total_tokens : Int32
+  cache_read_tokens : Int32?
 } derive(Eq, Show)
 ```
 

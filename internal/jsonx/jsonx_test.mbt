@@ -1,7 +1,7 @@
 ///|
 priv struct People {
   name : String
-  age : Int
+  age : Int32
   active : Bool
   /// Optional field for testing purposes
   nickname : String?
@@ -14,7 +14,7 @@ impl @json.FromJson for People with fn from_json(
 ) {
   let object = @jsonx.as_object(json, path~)
   let name : String = object.required("name", path~)
-  let age : Int = object.required("age", path~)
+  let age : Int32 = object.required("age", path~)
   let active : Bool = object.required("active", path~)
   let nickname : String? = object.optional("nickname", path~)
   { name, age, active, nickname, }

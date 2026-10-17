@@ -16,7 +16,7 @@ const MOONCODE_MUTATION_RECOVERY_READ_CHARS = 120000
 /// Return the largest valid UTF-8 prefix whose encoded byte length does not
 /// exceed `limit`. MoonBit string offsets are byte offsets, so direct slicing
 /// at an arbitrary output budget can bisect a multibyte scalar and abort.
-fn mooncode_utf8_prefix_within(text : String, limit : Int) -> String {
+fn mooncode_utf8_prefix_within(text : String, limit : Int32) -> String {
   if limit <= 0 {
     return ""
   }
@@ -38,7 +38,7 @@ fn mooncode_utf8_prefix_within(text : String, limit : Int) -> String {
 ///|
 /// Return the largest valid UTF-8 suffix whose encoded byte length does not
 /// exceed `limit`.
-fn mooncode_utf8_suffix_within(text : String, limit : Int) -> String {
+fn mooncode_utf8_suffix_within(text : String, limit : Int32) -> String {
   if limit <= 0 {
     return ""
   }
@@ -59,9 +59,9 @@ fn mooncode_utf8_suffix_within(text : String, limit : Int) -> String {
 
 ///|
 fn mooncode_normalize_tool_output_chars(
-  requested : Int,
-  maximum? : Int = MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS,
-) -> Int {
+  requested : Int32,
+  maximum~ : Int32 = MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS,
+) -> Int32 {
   let maximum = maximum.max(MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS)
   if requested <= 0 {
     MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS
@@ -71,7 +71,7 @@ fn mooncode_normalize_tool_output_chars(
 }
 
 ///|
-fn mooncode_tool_output_maximum(arguments : Json) -> Int {
+fn mooncode_tool_output_maximum(arguments : Json) -> Int32 {
   if mooncode_json_bool(
       arguments,
       "mooncode_large_output_enabled",
@@ -93,7 +93,7 @@ fn mooncode_runtime_turn_tool_supports_output_limit(tool : String) -> Bool {
 }
 
 ///|
-fn mooncode_runtime_turn_configured_output_chars(command : Json) -> Int? {
+fn mooncode_runtime_turn_configured_output_chars(command : Json) -> Int32? {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let requested = mooncode_json_int(
     payload,

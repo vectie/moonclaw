@@ -108,7 +108,7 @@ fn mooncode_latest_receipts_by_command_id(
 ///|
 fn mooncode_runtime_control_lifecycle_item(
   command_entry : Json,
-  index : Int,
+  index : Int32,
   receipt : Json?,
 ) -> Json {
   let command = mooncode_json_object_field_or_empty(command_entry, "command")
@@ -254,7 +254,7 @@ fn mooncode_runtime_control_decisions(
 
 ///|
 fn mooncode_runtime_control_turn_decision(
-  index : Int,
+  index : Int32,
   command : Json,
   status : String,
   active_turn_id : String,
@@ -345,7 +345,7 @@ fn mooncode_runtime_control_turn_decision(
 
 ///|
 fn mooncode_runtime_control_control_decision(
-  index : Int,
+  index : Int32,
   command : Json,
   action : String,
   status : String,
@@ -390,7 +390,7 @@ fn mooncode_runtime_control_control_decision(
 
 ///|
 fn mooncode_runtime_control_decision(
-  index : Int,
+  index : Int32,
   command_entry : Json,
   status : String,
   effect~ : String,

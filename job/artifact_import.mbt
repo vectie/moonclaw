@@ -7,7 +7,7 @@ pub struct ImportedArtifact {
   original_record_path : String
   original_record_sha256 : String
   content_sha256 : String
-  content_bytes : Int
+  content_bytes : Int32
 } derive(ToJson)
 
 ///|
@@ -15,7 +15,7 @@ pub struct ArtifactImport {
   schema : String
   source_manifest_sha256 : String
   artifacts : Array[ImportedArtifact]
-  total_content_bytes : Int
+  total_content_bytes : Int32
 } derive(ToJson)
 
 ///|
@@ -30,7 +30,7 @@ priv struct ArtifactImportSource {
 async fn import_packet_bytes(
   root : String,
   relative : String,
-  maximum : Int,
+  maximum : Int32,
 ) -> Bytes {
   let path = @fsx.resolve(@pathx.join(root, relative))
   guard path.has_prefix(root + "/") else {
@@ -40,7 +40,7 @@ async fn import_packet_bytes(
 }
 
 ///|
-fn import_integer(json : Json, key : String, expected : Int) -> Unit raise {
+fn import_integer(json : Json, key : String, expected : Int32) -> Unit raise {
   guard json.as_object() is Some(fields) &&
     fields.get(key) is Some(Number(number, ..)) &&
     number == expected.to_double() else {

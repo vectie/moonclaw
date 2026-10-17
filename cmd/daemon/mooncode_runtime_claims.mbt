@@ -236,7 +236,7 @@ fn mooncode_runtime_claim_state_from_logs(
 ///|
 fn mooncode_runtime_claim_item(
   command_entry : Json,
-  index : Int,
+  index : Int32,
   receipt : Json?,
   claim_status~ : String,
   order_blocked_by~ : String,

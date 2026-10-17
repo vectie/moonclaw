@@ -357,7 +357,7 @@ async fn resolve_adaptive_analysis_result(
   completed_result : Result[WorkflowStepResult, String],
   report_artifact_id : String,
   result_artifact_id : String,
-  now : () -> Int,
+  now : () -> Int32,
   next_run_id : () -> String,
 ) -> Result[WorkflowStepResult, String]? {
   let adaptive_envelope = resolved_adaptive_envelope(

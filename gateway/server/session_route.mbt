@@ -12,7 +12,7 @@ fn channel_session_key(
   account_id : String,
   chat_id : String,
   thread_id : String?,
-  dm_scope? : String = "per-account-channel-peer",
+  dm_scope~ : String = "per-account-channel-peer",
 ) -> String {
   let thread = thread_id.unwrap_or("")
   let base = match dm_scope {
@@ -32,7 +32,7 @@ fn message_session_key(
   channel_id : String,
   account_id : String,
   message : @channel.Message,
-  dm_scope? : String = "per-account-channel-peer",
+  dm_scope~ : String = "per-account-channel-peer",
 ) -> String {
   channel_session_key(
     channel_id,

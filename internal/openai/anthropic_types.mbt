@@ -1,7 +1,7 @@
 ///|
 pub struct AnthropicRequest {
   model : String
-  max_tokens : Int
+  max_tokens : Int32
   messages : Array[AnthropicMessage]
   system : String?
   tools : Array[AnthropicTool]?
@@ -56,14 +56,14 @@ pub struct AnthropicContentBlock {
 
 ///|
 pub struct AnthropicUsage {
-  input_tokens : Int
-  output_tokens : Int
+  input_tokens : Int32
+  output_tokens : Int32
 } derive(FromJson, Debug)
 
 ///|
 pub struct AnthropicStreamEvent {
   type_ : String
-  index : Int?
+  index : Int32?
   delta : AnthropicDelta?
   content_block : AnthropicContentBlock?
   message : AnthropicResponse?

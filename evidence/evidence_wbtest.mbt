@@ -1,7 +1,7 @@
 ///|
 fn evidence_dossier(
-  primary_artifact? : String = "raw/primary.md",
-  secondary_artifact? : String = "raw/secondary.md",
+  primary_artifact~ : String = "raw/primary.md",
+  secondary_artifact~ : String = "raw/secondary.md",
 ) -> EvidenceDossier {
   {
     contract_id: "moonsuite.evidence-dossier.v1",

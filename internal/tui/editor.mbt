@@ -1,9 +1,9 @@
 ///|
 pub(all) struct Editor {
   mut text : String
-  mut cursor : Int
+  mut cursor : Int32
   history : Array[String]
-  mut history_index : Int
+  mut history_index : Int32
   mut placeholder : String
   multiline : Bool
   mut on_submit : ((String) -> Unit)?
@@ -87,7 +87,7 @@ pub fn Editor::text(self : Editor) -> String {
 }
 
 ///|
-pub fn Editor::cursor(self : Editor) -> Int {
+pub fn Editor::cursor(self : Editor) -> Int32 {
   self.cursor
 }
 
@@ -108,7 +108,7 @@ pub fn Editor::clear(self : Editor) -> Unit {
 }
 
 ///|
-fn String::previous_char_offset(self : String, offset : Int) -> Int {
+fn String::previous_char_offset(self : String, offset : Int32) -> Int32 {
   let mut current = 0
   for c in self {
     let next = current + c.to_string().length()
@@ -121,7 +121,7 @@ fn String::previous_char_offset(self : String, offset : Int) -> Int {
 }
 
 ///|
-fn String::next_char_offset(self : String, offset : Int) -> Int {
+fn String::next_char_offset(self : String, offset : Int32) -> Int32 {
   let mut current = 0
   for c in self {
     let next = current + c.to_string().length()
@@ -182,7 +182,7 @@ pub fn Editor::add_to_history(self : Editor, text : String) -> Unit {
 }
 
 ///|
-pub fn Editor::get_preferred_height(self : Editor, _width : Int) -> Int {
+pub fn Editor::get_preferred_height(self : Editor, _width : Int32) -> Int32 {
   if self.multiline {
     let lines = self.text.split("\n").collect()
     lines.length() + 1
@@ -195,10 +195,10 @@ pub fn Editor::get_preferred_height(self : Editor, _width : Int) -> Int {
 pub fn Editor::render(
   self : Editor,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  _height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  _height : Int32,
 ) -> Unit {
   output.write(cursor_to(x, y))
   output.write(ClearLineRight)

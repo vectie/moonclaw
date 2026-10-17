@@ -1,5 +1,5 @@
 ///|
-fn readonly_intent_command(request : String, intent? : String = "") -> Json {
+fn readonly_intent_command(request : String, intent~ : String = "") -> Json {
   {
     "command": "prompt",
     "text": request,

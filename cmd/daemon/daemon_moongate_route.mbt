@@ -7,7 +7,7 @@ fn moonclaw_moongate_route_status_json(
   model_ids : Array[String],
   error : String,
   configured_default? : String,
-  catalog? : Array[@moongate.MoonGateModel] = [],
+  catalog~ : Array[@moongate.MoonGateModel] = [],
 ) -> Json {
   let models : Array[Json] = []
   let names : Array[String] = []

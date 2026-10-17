@@ -29,7 +29,7 @@ fn provider_task_single_response_requested(request : AnalysisRequest) -> Bool {
 }
 
 ///|
-fn analysis_request_timeout_ms(request : AnalysisRequest) -> Int? {
+fn analysis_request_timeout_ms(request : AnalysisRequest) -> Int32? {
   metadata_int_with_step_metadata_option(request.step_metadata, "timeout_ms")
 }
 

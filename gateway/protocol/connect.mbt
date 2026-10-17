@@ -29,8 +29,8 @@ pub(all) enum ClientRole {
 
 ///|
 pub(all) struct ConnectParams {
-  min_protocol : Int
-  max_protocol : Int
+  min_protocol : Int32
+  max_protocol : Int32
   client : ClientInfo
   auth : AuthCredentials
   role : ClientRole
@@ -39,7 +39,7 @@ pub(all) struct ConnectParams {
 
 ///|
 pub(all) struct HelloOk {
-  protocol : Int
+  protocol : Int32
   server : ServerInfo
   features : Features
   snapshot : Snapshot
@@ -69,7 +69,7 @@ pub(all) struct Snapshot {
 
 ///|
 pub(all) struct Policy {
-  max_payload : Int
-  max_buffered_bytes : Int
-  tick_interval_ms : Int
+  max_payload : Int32
+  max_buffered_bytes : Int32
+  tick_interval_ms : Int32
 } derive(ToJson, FromJson, Debug)

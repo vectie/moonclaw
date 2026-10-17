@@ -6,7 +6,7 @@ pub struct Model {
   model_type : Type
   api_key : String
   base_url : String
-  safe_zone_tokens : Int
+  safe_zone_tokens : Int32
   supports_anthropic_prompt_caching : Bool
   supports_apply_patch : Bool
   input_modalities : Array[String]
@@ -71,12 +71,12 @@ pub fn Model::new(
   api_key~ : String,
   base_url~ : String,
   name~ : String,
-  safe_zone_tokens~ : Int,
-  model_name? : String = name,
-  model_type? : Type = SaaS(OpenAI),
+  safe_zone_tokens~ : Int32,
+  model_name~ : String = name,
+  model_type~ : Type = SaaS(OpenAI),
   description? : String,
-  supports_anthropic_prompt_caching? : Bool = false,
-  input_modalities? : Array[String] = ["text"],
+  supports_anthropic_prompt_caching~ : Bool = false,
+  input_modalities~ : Array[String] = ["text"],
   access_token? : String,
   account_id? : String,
   refresh_token? : String,
@@ -231,7 +231,7 @@ pub impl Show for CommonModels with fn output(
 }
 
 ///|
-fn CommonModels::safe_zone_tokens(self : CommonModels) -> Int {
+fn CommonModels::safe_zone_tokens(self : CommonModels) -> Int32 {
   match self {
     Qwen3CoderPlus => 128_000
     Qwen3CoderFlash => 128_000
@@ -259,7 +259,7 @@ fn CommonModels::safe_zone_tokens(self : CommonModels) -> Int {
 /// for testing
 pub fn open_router_model(
   api_key~ : String,
-  name? : CommonModels = Qwen3CoderPlus,
+  name~ : CommonModels = Qwen3CoderPlus,
 ) -> Model {
   Model::new(
     api_key~,
@@ -289,7 +289,7 @@ pub impl Show for CodexModels with fn output(
 }
 
 ///|
-fn CodexModels::safe_zone_tokens(self : CodexModels) -> Int {
+fn CodexModels::safe_zone_tokens(self : CodexModels) -> Int32 {
   match self {
     Gpt5_6Sol => 400_000
     Gpt5_4 => 400_000
@@ -303,7 +303,7 @@ pub fn codex_oauth_model(
   account_id~ : String,
   refresh_token~ : String,
   id_token? : String,
-  name? : CodexModels = Gpt5_6Sol,
+  name~ : CodexModels = Gpt5_6Sol,
 ) -> Model {
   Model::new(
     api_key="", // Not used for CodexOAuth
@@ -418,7 +418,7 @@ pub impl Show for CopilotModels with fn output(
 }
 
 ///|
-fn CopilotModels::safe_zone_tokens(self : CopilotModels) -> Int {
+fn CopilotModels::safe_zone_tokens(self : CopilotModels) -> Int32 {
   match self {
     Gpt4_1 => 1_000_000
     Gpt4o => 128_000
@@ -454,7 +454,7 @@ fn CopilotModels::safe_zone_tokens(self : CopilotModels) -> Int {
 pub fn copilot_model(
   copilot_token~ : String,
   github_token~ : String,
-  name? : CopilotModels = Gpt4_1,
+  name~ : CopilotModels = Gpt4_1,
 ) -> Model {
   Model::new(
     api_key=copilot_token,
@@ -494,7 +494,7 @@ pub impl Show for QwenModels with fn output(self : QwenModels, logger : &Logger)
 }
 
 ///|
-fn QwenModels::safe_zone_tokens(self : QwenModels) -> Int {
+fn QwenModels::safe_zone_tokens(self : QwenModels) -> Int32 {
   match self {
     Qwen3CoderPlus => 128_000
     Qwen3CoderFlash => 128_000
@@ -510,7 +510,7 @@ fn QwenModels::safe_zone_tokens(self : QwenModels) -> Int {
 ///|
 pub fn qwen_model(
   api_key~ : String,
-  name? : QwenModels = Qwen3CoderPlus,
+  name~ : QwenModels = Qwen3CoderPlus,
 ) -> Model {
   Model::new(
     api_key~,
@@ -543,7 +543,7 @@ pub impl Show for KimiModels with fn output(self : KimiModels, logger : &Logger)
 }
 
 ///|
-fn KimiModels::safe_zone_tokens(self : KimiModels) -> Int {
+fn KimiModels::safe_zone_tokens(self : KimiModels) -> Int32 {
   match self {
     KimiK2_0905 => 262_144
     KimiK2P5 => 262_144
@@ -554,7 +554,7 @@ fn KimiModels::safe_zone_tokens(self : KimiModels) -> Int {
 }
 
 ///|
-pub fn kimi_model(api_key~ : String, name? : KimiModels = KimiK2P5) -> Model {
+pub fn kimi_model(api_key~ : String, name~ : KimiModels = KimiK2P5) -> Model {
   Model::new(
     api_key~,
     base_url="https://api.moonshot.cn/v1",
@@ -583,7 +583,7 @@ pub impl Show for KimiCodingModels with fn output(
 }
 
 ///|
-fn KimiCodingModels::safe_zone_tokens(self : KimiCodingModels) -> Int {
+fn KimiCodingModels::safe_zone_tokens(self : KimiCodingModels) -> Int32 {
   match self {
     K2P5 => 262_144
     K2_0905 => 262_144
@@ -593,7 +593,7 @@ fn KimiCodingModels::safe_zone_tokens(self : KimiCodingModels) -> Int {
 ///|
 pub fn kimi_coding_model(
   api_key~ : String,
-  name? : KimiCodingModels = K2P5,
+  name~ : KimiCodingModels = K2P5,
 ) -> Model {
   Model::new(
     api_key~,

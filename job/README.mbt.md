@@ -36,7 +36,7 @@ Unique identifier for jobs.
 
 ```moonbit nocheck
 ///|
-pub(all) struct Id(Int) derive(Hash, Eq)
+pub(all) struct Id(Int32) derive(Hash, Eq)
 ```
 
 ### `Manager`

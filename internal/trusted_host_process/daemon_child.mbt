@@ -11,7 +11,7 @@ pub struct DaemonChildManager {
 
 ///|
 pub struct DaemonChildProcess {
-  priv task : @async.Task[Int]
+  priv task : @async.Task[Int32]
 }
 
 ///|
@@ -68,7 +68,7 @@ pub async fn DaemonChildManager::start(self : DaemonChildManager) -> Unit {
 fn validate_daemon_data(
   label : String,
   value : String,
-  max_length : Int,
+  max_length : Int32,
 ) -> Unit raise TrustedHostProcessError {
   if value.is_blank() || value.length() > max_length || contains_nul(value) {
     raise InvalidParameter("invalid daemon child \{label}")
@@ -152,13 +152,13 @@ pub async fn DaemonChildManager::spawn_server(
   name? : String,
   model_selector? : String,
   model_workspace? : String,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   resume_id? : String,
   register_id~ : String,
-  register_port~ : Int,
+  register_port~ : Int32,
   register_token~ : String,
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
 ) -> DaemonChildProcess {
   guard self.executable is Some(executable) else {
     raise HostToolUnavailable(
@@ -238,6 +238,6 @@ pub fn DaemonChildProcess::pid_string(self : DaemonChildProcess) -> String {
 }
 
 ///|
-pub async fn DaemonChildProcess::wait(self : DaemonChildProcess) -> Int {
+pub async fn DaemonChildProcess::wait(self : DaemonChildProcess) -> Int32 {
   self.task.wait()
 }

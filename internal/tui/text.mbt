@@ -92,12 +92,12 @@ pub fn Text::set_style(self : Text, style : TextStyle) -> Unit {
 }
 
 ///|
-pub fn Text::line_count(self : Text) -> Int {
+pub fn Text::line_count(self : Text) -> Int32 {
   self.lines.length()
 }
 
 ///|
-pub fn Text::get_preferred_height(self : Text, _width : Int) -> Int {
+pub fn Text::get_preferred_height(self : Text, _width : Int32) -> Int32 {
   self.lines.length().max(1)
 }
 
@@ -105,10 +105,10 @@ pub fn Text::get_preferred_height(self : Text, _width : Int) -> Int {
 pub fn Text::render(
   self : Text,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let mut current_y = y
   let max_lines = height.min(self.lines.length())
@@ -148,7 +148,7 @@ pub fn Text::apply_style(self : Text, text : String) -> String {
 }
 
 ///|
-fn truncate_to_width(text : String, max_width : Int) -> String {
+fn truncate_to_width(text : String, max_width : Int32) -> String {
   let mut width = 0
   let mut result = ""
   for c in text {
@@ -163,7 +163,7 @@ fn truncate_to_width(text : String, max_width : Int) -> String {
 }
 
 ///|
-pub fn wrap_text(text : String, max_width : Int) -> Array[String] {
+pub fn wrap_text(text : String, max_width : Int32) -> Array[String] {
   let lines : Array[String] = []
   let max_width = max_width.max(1) // Ensure max_width is at least 1
   for line in text.split("\n") {
@@ -194,16 +194,16 @@ pub fn wrap_text(text : String, max_width : Int) -> Array[String] {
 
 ///|
 pub(all) struct Spacer {
-  height : Int
+  height : Int32
 }
 
 ///|
-pub fn Spacer::new(height? : Int = 1) -> Spacer {
+pub fn Spacer::new(height~ : Int32 = 1) -> Spacer {
   { height, }
 }
 
 ///|
-pub fn Spacer::get_preferred_height(self : Spacer, _width : Int) -> Int {
+pub fn Spacer::get_preferred_height(self : Spacer, _width : Int32) -> Int32 {
   self.height
 }
 
@@ -211,10 +211,10 @@ pub fn Spacer::get_preferred_height(self : Spacer, _width : Int) -> Int {
 pub fn Spacer::render(
   self : Spacer,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  _width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  _width : Int32,
+  height : Int32,
 ) -> Unit {
   for i in 0..<height.min(self.height) {
     output.write(cursor_to(x, y + i))
@@ -253,7 +253,7 @@ pub fn Box::set_content(self : Box, content : String) -> Unit {
 }
 
 ///|
-pub fn Box::get_preferred_height(self : Box, width : Int) -> Int {
+pub fn Box::get_preferred_height(self : Box, width : Int32) -> Int32 {
   let content_lines : Array[String] = self.content
     .split("\n")
     .map(fn(v) { v.to_owned() })
@@ -276,10 +276,10 @@ pub fn Box::get_preferred_height(self : Box, width : Int) -> Int {
 pub fn Box::render(
   self : Box,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   output.write(cursor_to(x, y))
   output.write(ClearLineRight)

@@ -9,7 +9,7 @@ fn abs_diff(left : Int64, right : Int64) -> Int64 {
 
 ///|
 fn unwrapped_epoch_ms_near(
-  timestamp_ms : Int,
+  timestamp_ms : Int32,
   reference_now_ms : Int64,
 ) -> Int64 {
   let cycle = 4_294_967_296L
@@ -49,8 +49,8 @@ fn compact_title_for_display(text : String) -> String {
 ///|
 fn slugify_id_segment(
   text : String,
-  max_words~ : Int,
-  max_chars~ : Int,
+  max_words~ : Int32,
+  max_chars~ : Int32,
 ) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
@@ -66,8 +66,8 @@ fn slugify_id_segment(
     }
     for c in word.to_lower().to_array() {
       let normalized = match c {
-        'a'..='z' => Some(c)
-        '0'..='9' => Some(c)
+        'a'..<='z' => Some(c)
+        '0'..<='9' => Some(c)
         _ => None
       }
       match normalized {
@@ -103,12 +103,12 @@ fn slugify_id_segment(
 }
 
 ///|
-fn short_id_suffix(seed : String, max_chars~ : Int) -> String {
+fn short_id_suffix(seed : String, max_chars~ : Int32) -> String {
   let buf = StringBuilder::new()
   let mut count = 0
   for c in seed.to_lower().to_array() {
     match c {
-      'a'..='z' | '0'..='9' => {
+      'a'..<='z' | '0'..<='9' => {
         buf.write_char(c)
         count += 1
         if count >= max_chars {
@@ -127,7 +127,7 @@ fn short_id_suffix(seed : String, max_chars~ : Int) -> String {
 }
 
 ///|
-fn formatted_timestamp_or_fallback(timestamp_ms : Int) -> String {
+fn formatted_timestamp_or_fallback(timestamp_ms : Int32) -> String {
   let normalized = unwrapped_epoch_ms_near(timestamp_ms, @async.now())
   let seconds = normalized / 1000L
   try @time.unix(seconds, zone=display_zone()) catch {
@@ -139,13 +139,13 @@ fn formatted_timestamp_or_fallback(timestamp_ms : Int) -> String {
 }
 
 ///|
-fn compact_timestamp(now_ms : Int) -> String {
+fn compact_timestamp(now_ms : Int32) -> String {
   let rendered = formatted_timestamp_or_fallback(now_ms)
   let buf = StringBuilder::new()
   let mut count = 0
   for c in rendered.to_array() {
     match c {
-      '0'..='9' => {
+      '0'..<='9' => {
         buf.write_char(c)
         count += 1
       }
@@ -171,14 +171,14 @@ fn compact_timestamp(now_ms : Int) -> String {
 ///|
 pub fn human_readable_proposal_id(
   request_text : String,
-  now_ms : Int,
+  now_ms : Int32,
   seed : String,
 ) -> String {
   "\{compact_timestamp(now_ms)}-\{slugify_id_segment(request_text, max_words=5, max_chars=32)}-\{short_id_suffix(seed, max_chars=6)}"
 }
 
 ///|
-pub fn human_readable_run_id(now_ms : Int, seed : String) -> String {
+pub fn human_readable_run_id(now_ms : Int32, seed : String) -> String {
   "run-\{compact_timestamp(now_ms)}-\{short_id_suffix(seed, max_chars=6)}"
 }
 
@@ -202,6 +202,6 @@ pub fn definition_display_title(definition : JobDefinition) -> String {
 }
 
 ///|
-pub fn format_job_timestamp(timestamp_ms : Int) -> String {
+pub fn format_job_timestamp(timestamp_ms : Int32) -> String {
   formatted_timestamp_or_fallback(timestamp_ms)
 }

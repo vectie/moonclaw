@@ -31,7 +31,7 @@ test "ordinary native service drains a second queued prompt" {
 }
 
 ///|
-async fn mooncode_service_queue_output_test(max_turns : Int?) -> Unit {
+async fn mooncode_service_queue_output_test(max_turns : Int32?) -> Unit {
   @fsx.with_temporary_directory("mooncode-service-output-XXXXXX", async fn(
     root,
   ) {

@@ -3,7 +3,7 @@ struct CoworkSessionSummary {
   session_key : String
   session_id : String
   title : String
-  updated_at : Int
+  updated_at : Int32
   state : String
   last_message_preview : String?
   channel : String?
@@ -22,7 +22,7 @@ struct CoworkProposalRef {
   summary : String
   status : String
   request_text : String
-  updated_at : Int
+  updated_at : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -130,7 +130,7 @@ async fn Gateway::write_json(
   self : Gateway,
   w : @httpx.ResponseWriter,
   payload : Json,
-  status? : Int = 200,
+  status~ : Int32 = 200,
 ) -> Unit {
   ignore(self)
   w.header().set("Content-Type", "application/json")
@@ -139,7 +139,7 @@ async fn Gateway::write_json(
 }
 
 ///|
-fn compact_cowork_preview(text : String, max_len : Int) -> String {
+fn compact_cowork_preview(text : String, max_len : Int32) -> String {
   let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed
@@ -347,7 +347,7 @@ fn Gateway::append_session_message(
   role : String,
   kind : String,
   content : String,
-  metadata? : Json = {},
+  metadata~ : Json = {},
 ) -> SessionEntry {
   {
     ..entry,
@@ -545,7 +545,7 @@ async fn Gateway::handle_update_cowork_config(
 }
 
 ///|
-fn cowork_trimmed_text(text : String, max_len : Int) -> String {
+fn cowork_trimmed_text(text : String, max_len : Int32) -> String {
   let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed

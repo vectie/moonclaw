@@ -47,7 +47,7 @@ pub struct Event {
 /// Returns a new `Event` instance.
 pub fn Event::new(
   id~ : @uuid.Uuid,
-  created? : @clock.Timestamp = @clock.epoch.now(),
+  created~ : @clock.Timestamp = @clock.epoch.now(),
   desc : EventDesc,
 ) -> Event {
   { id, created, desc, }
@@ -92,12 +92,12 @@ pub(all) enum EventDesc {
   ///    determine when to stop.
   ///
   /// FIXME: Currently this event is triggered multiple times in a row.
-  TokenCounted(Int)
+  TokenCounted(Int32)
   /// Event triggered when context pruning is performed.
   ///
   /// FIXME: Currently this event is triggered even if the context is with-in
   /// the limit and no pruning is performed.
-  ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
+  ContextPruned(origin_token_count~ : Int32, pruned_token_count~ : Int32)
   /// Event triggered when a assistant message is received from the model.
   AssistantMessageDelta(String)
   /// Ephemeral sandbox progress. Contains counts only, never command bytes.
@@ -253,7 +253,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
           (json_path, "TokenCounted event missing 'token_count' field"),
         )
       }
-      let token_count : Int = @json.from_json(
+      let token_count : Int32 = @json.from_json(
         token_count_json,
         path=json_path.add_key("token_count"),
       )
@@ -266,7 +266,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
           (json_path, "ContextPruned event missing 'origin_token_count' field"),
         )
       }
-      let origin_token_count : Int = @json.from_json(
+      let origin_token_count : Int32 = @json.from_json(
         origin_token_count_json,
         path=json_path.add_key("origin_token_count"),
       )
@@ -276,7 +276,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
           (json_path, "ContextPruned event missing 'pruned_token_count' field"),
         )
       }
-      let pruned_token_count : Int = @json.from_json(
+      let pruned_token_count : Int32 = @json.from_json(
         pruned_token_count_json,
         path=json_path.add_key("pruned_token_count"),
       )

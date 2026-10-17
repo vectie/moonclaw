@@ -1,7 +1,7 @@
 ///|
 fn mooncode_qualification_compaction_messages(
-  pairs : Int,
-  seed : Int,
+  pairs : Int32,
+  seed : Int32,
 ) -> Array[Json] {
   let messages : Array[Json] = [
     mooncode_runtime_context_text_message(

@@ -8,10 +8,10 @@ pub(all) struct RunExecutionHooks {
 
 ///|
 pub fn RunExecutionHooks::new(
-  on_started? : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
-  on_finished? : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
-  on_info? : async (String) -> Unit = _ => (),
-  on_warn? : async (String) -> Unit = _ => (),
+  on_started~ : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
+  on_finished~ : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
+  on_info~ : async (String) -> Unit = _ => (),
+  on_warn~ : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
   { on_started, on_finished, on_info, on_warn, }
 }
@@ -21,7 +21,7 @@ async fn notify_run_started(
   state : GatewayJobState,
   definition : JobDefinition,
   run : JobRun,
-  now_ms : Int,
+  now_ms : Int32,
   send : async (JobNotifyTarget, String) -> Unit,
 ) -> Unit {
   let existing_event_count = state
@@ -61,7 +61,7 @@ async fn notify_run_finished(
   state : GatewayJobState,
   definition : JobDefinition,
   run : JobRun,
-  now_ms : Int,
+  now_ms : Int32,
   send : async (JobNotifyTarget, String) -> Unit,
 ) -> Unit {
   ignore(
@@ -97,7 +97,7 @@ async fn notify_run_finished(
 async fn cleanup_run_execution_isolation_artifacts(
   runtime : RuntimeManager,
   run : JobRun,
-  now : () -> Int,
+  now : () -> Int32,
   hooks : RunExecutionHooks,
 ) -> Unit {
   let removed = cleanup_run_execution_isolations(runtime.store(), run)
@@ -124,10 +124,10 @@ async fn cleanup_run_execution_isolation_artifacts(
 ///|
 pub fn execution_notification_hooks(
   state : GatewayJobState,
-  now : () -> Int,
+  now : () -> Int32,
   send : async (JobNotifyTarget, String) -> Unit,
-  on_info? : async (String) -> Unit = _ => (),
-  on_warn? : async (String) -> Unit = _ => (),
+  on_info~ : async (String) -> Unit = _ => (),
+  on_warn~ : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
   RunExecutionHooks::new(
     on_started=async fn(definition, run) {
@@ -145,11 +145,11 @@ pub fn execution_notification_hooks(
 pub async fn execute_run_lifecycle(
   runtime : RuntimeManager,
   run_id : String,
-  now : () -> Int,
+  now : () -> Int32,
   engine_factory : () -> WorkflowEngine,
-  initial_input? : Json? = None,
-  control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
-  hooks? : RunExecutionHooks = RunExecutionHooks::new(),
+  initial_input~ : Json? = None,
+  control~ : WorkflowExecutionControl = WorkflowExecutionControl::new(),
+  hooks~ : RunExecutionHooks = RunExecutionHooks::new(),
 ) -> Unit {
   let run = match runtime.store().get_run(run_id) {
     Some(run) => run

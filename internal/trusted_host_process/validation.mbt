@@ -51,7 +51,7 @@ fn validate_ref(value : String) -> Unit raise TrustedHostProcessError {
     raise InvalidParameter("invalid Git ref")
   }
   for char in value {
-    guard char is ('a'..='z' | 'A'..='Z' | '0'..='9' | '/' | '-' | '_' | '.') else {
+    guard char is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '/' | '-' | '_' | '.') else {
       raise InvalidParameter("invalid character in Git ref")
     }
   }
@@ -63,7 +63,7 @@ fn validate_commit_id(value : String) -> Unit raise TrustedHostProcessError {
     raise InvalidParameter("invalid commit identifier")
   }
   for char in value {
-    guard char is ('a'..='f' | 'A'..='F' | '0'..='9') else {
+    guard char is ('a'..<='f' | 'A'..<='F' | '0'..<='9') else {
       raise InvalidParameter("commit identifier must be hexadecimal")
     }
   }

@@ -1,7 +1,7 @@
 ///|
 /// Streaming choice wrapper returned by the API.
 pub struct ChatCompletionChunkChoice {
-  index : Int
+  index : Int32
   delta : ChatCompletionChunkChoiceDelta
   finish_reason : ChatCompletionChoiceFinishReason?
 } derive(ToJson)

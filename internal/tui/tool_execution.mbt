@@ -13,7 +13,7 @@ pub(all) struct ToolExecution {
   mut result : String
   mut status : ToolStatus
   mut expanded : Bool
-  mut start_time : Int
+  mut start_time : Int32
 }
 
 ///|
@@ -37,7 +37,7 @@ pub fn ToolExecution::set_args(self : ToolExecution, args : String) -> Unit {
 pub fn ToolExecution::set_result(
   self : ToolExecution,
   result : String,
-  is_error? : Bool = false,
+  is_error~ : Bool = false,
 ) -> Unit {
   self.result = result
   self.status = if is_error { Error } else { Success }
@@ -68,7 +68,10 @@ pub fn ToolExecution::set_expanded(
 }
 
 ///|
-pub fn ToolExecution::set_start_time(self : ToolExecution, time : Int) -> Unit {
+pub fn ToolExecution::set_start_time(
+  self : ToolExecution,
+  time : Int32,
+) -> Unit {
   self.start_time = time
 }
 
@@ -100,8 +103,8 @@ pub fn ToolExecution::expanded(self : ToolExecution) -> Bool {
 ///|
 pub fn ToolExecution::get_preferred_height(
   self : ToolExecution,
-  width : Int,
-) -> Int {
+  width : Int32,
+) -> Int32 {
   let mut height = 3
   if self.expanded {
     let inner_width = width - 4
@@ -136,10 +139,10 @@ pub fn ToolExecution::get_preferred_height(
 pub fn ToolExecution::render(
   self : ToolExecution,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let theme = Theme::default()
   output.write(cursor_to(x, y))

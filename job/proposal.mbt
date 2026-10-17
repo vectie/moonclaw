@@ -24,7 +24,7 @@ fn compact_title(text : String) -> String {
 }
 
 ///|
-fn compact_preview(text : String, max_len : Int) -> String {
+fn compact_preview(text : String, max_len : Int32) -> String {
   let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed
@@ -156,7 +156,7 @@ struct ProposalPlanStepPayload {
   execution_mode : String?
   execution_target : String?
   include_parent_outputs : Bool?
-  max_depth : Int?
+  max_depth : Int32?
 } derive(ToJson, Debug)
 
 ///|
@@ -243,7 +243,7 @@ impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
     Some(False) => Some(false)
     _ => None
   }
-  let max_depth : Int? = match obj.get("max_depth") {
+  let max_depth : Int32? = match obj.get("max_depth") {
     Some(Number(value, ..)) => Some(value.to_int())
     _ => None
   }
@@ -312,7 +312,7 @@ impl @json.FromJson for ProposalPlanPayload with fn from_json(
 
 ///|
 fn normalize_proposal_step_id(
-  index : Int,
+  index : Int32,
   step : ProposalPlanStepPayload,
 ) -> String {
   match step.id {
@@ -503,12 +503,12 @@ fn proposal_payload_to_proposal(
   proposal_id : String,
   request_text : String,
   payload : ProposalPlanPayload,
-  now_ms : Int,
+  now_ms : Int32,
   channel_id : String?,
   account_id : String?,
   recipient : String?,
   thread_id : String?,
-  existing? : JobProposal? = None,
+  existing~ : JobProposal? = None,
 ) -> JobProposal {
   let fallback = match existing {
     Some(existing) => existing
@@ -671,8 +671,8 @@ fn planner_request_prompt(
   request_text : String,
   intake~ : Json?,
   skills_prompt~ : String,
-  revision? : String? = None,
-  existing? : JobProposal? = None,
+  revision~ : String? = None,
+  existing~ : JobProposal? = None,
   workspace~ : String?,
   memory_context~ : String?,
   e2e_mode~ : Bool,
@@ -784,7 +784,7 @@ fn with_e2e_pipeline(proposal : JobProposal) -> JobProposal {
 async fn plan_job_proposal_with_mode(
   proposal_id : String,
   request_text : String,
-  now_ms : Int,
+  now_ms : Int32,
   e2e_mode : Bool,
   executor~ : AnalysisExecutor,
   intake~ : Json?,
@@ -964,7 +964,7 @@ fn proposal_to_plan_preview(
 ///|
 pub fn plan_preview_from_proposal(
   proposal : JobProposal,
-  source? : String = "plan_mode",
+  source~ : String = "plan_mode",
 ) -> JobPlanPreview {
   proposal_to_plan_preview(proposal, source)
 }
@@ -972,18 +972,18 @@ pub fn plan_preview_from_proposal(
 ///|
 pub async fn plan_chat_mode(
   request_text : String,
-  now_ms : Int,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  cwd? : String = ".",
-  home? : String? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
+  now_ms : Int32,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
+  cwd~ : String = ".",
+  home~ : String? = None,
+  workspace~ : String? = None,
+  memory_context~ : String? = None,
 ) -> JobPlanPreview {
   let proposal = plan_job_proposal_with_mode(
     "plan-preview",
@@ -1010,11 +1010,11 @@ pub fn promote_plan_candidate(
   candidate : JobProposal,
   proposal_id : String,
   request_text : String,
-  now_ms : Int,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
+  now_ms : Int32,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
 ) -> JobProposal {
   {
     ..candidate,
@@ -1039,18 +1039,18 @@ pub fn promote_plan_candidate(
 pub async fn plan_job_proposal(
   proposal_id : String,
   request_text : String,
-  now_ms : Int,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  cwd? : String = ".",
-  home? : String? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
+  now_ms : Int32,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
+  cwd~ : String = ".",
+  home~ : String? = None,
+  workspace~ : String? = None,
+  memory_context~ : String? = None,
 ) -> JobProposal {
   plan_job_proposal_with_mode(
     proposal_id,
@@ -1075,18 +1075,18 @@ pub async fn plan_job_proposal(
 pub async fn plan_e2e_job_proposal(
   proposal_id : String,
   request_text : String,
-  now_ms : Int,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  cwd? : String = ".",
-  home? : String? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
+  now_ms : Int32,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
+  intake~ : Json? = None,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
+  model~ : String? = None,
+  cwd~ : String = ".",
+  home~ : String? = None,
+  workspace~ : String? = None,
+  memory_context~ : String? = None,
 ) -> JobProposal {
   with_e2e_pipeline(
     plan_job_proposal_with_mode(
@@ -1113,13 +1113,13 @@ pub async fn plan_e2e_job_proposal(
 pub async fn revise_job_proposal(
   proposal : JobProposal,
   revision : String,
-  now_ms : Int,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  model? : String? = None,
-  cwd? : String = ".",
-  home? : String? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
+  now_ms : Int32,
+  executor~ : AnalysisExecutor = default_analysis_executor(),
+  model~ : String? = None,
+  cwd~ : String = ".",
+  home~ : String? = None,
+  workspace~ : String? = None,
+  memory_context~ : String? = None,
 ) -> JobProposal {
   let preferred_skills = planner_preferred_skills()
   let loaded_skills = loaded_skills_prompt(cwd, home, preferred_skills)
@@ -1225,7 +1225,7 @@ pub async fn save_confirmed_job_proposal(
   proposal : JobProposal,
   compilation : ProposalCompilation,
   run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   store.save_job_proposal({
     ..proposal,
@@ -1242,7 +1242,7 @@ pub async fn save_confirmed_job_proposal(
 pub async fn save_rejected_job_proposal(
   store : SystemStore,
   proposal : JobProposal,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   store.save_job_proposal({ ..proposal, status: Rejected, updated_at: now_ms, })
 }
@@ -1251,11 +1251,11 @@ pub async fn save_rejected_job_proposal(
 pub fn draft_job_proposal(
   proposal_id : String,
   request_text : String,
-  now_ms : Int,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
+  now_ms : Int32,
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  thread_id~ : String? = None,
 ) -> JobProposal {
   let steps = generic_proposal_steps(request_text)
   let tags = infer_job_tags(request_text)
@@ -1290,10 +1290,10 @@ pub fn draft_job_proposal(
 ///|
 pub fn proposal_as_workflow(
   proposal : JobProposal,
-  now_ms : Int,
+  now_ms : Int32,
   cwd : String,
   home : String,
-  workspace_root? : String = cwd,
+  workspace_root~ : String = cwd,
 ) -> (JobDefinition, WorkflowDefinition) {
   let compilation = compile_job_proposal(
     proposal,

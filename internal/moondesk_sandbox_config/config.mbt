@@ -1,12 +1,12 @@
 ///|
-const MaxMoonDeskSandboxConfigBytes : Int = 65_536
+const MaxMoonDeskSandboxConfigBytes : Int32 = 65_536
 
 ///|
 const MoonDeskSandboxConfigEnv : String = "MOONDESK_EXECUTION_SANDBOX_CONFIG"
 
 ///|
 pub(all) struct Config {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   auth_token : String
   workspace_id : String
@@ -14,7 +14,7 @@ pub(all) struct Config {
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
-fn safe_hex(value : String, length : Int) -> Bool {
+fn safe_hex(value : String, length : Int32) -> Bool {
   value.length() == length &&
   value.all(character => {
     character.is_ascii_digit() || (character >= 'a' && character <= 'f')
@@ -88,7 +88,7 @@ async fn read_bounded_file(path : String) -> String {
 async fn load_from_path(
   path : String,
   control_root : String,
-  read_only? : Bool = false,
+  read_only~ : Bool = false,
 ) -> Config {
   guard control_root != "" &&
     @pathx.dirname(path).to_owned() == control_root &&
@@ -133,7 +133,7 @@ async fn load_from_path(
 }
 
 ///|
-pub async fn load(read_only? : Bool = false) -> Config? {
+pub async fn load(read_only~ : Bool = false) -> Config? {
   let configured = @os.getenv(MoonDeskSandboxConfigEnv) catch {
     _ => fail("MoonDesk sandbox config environment is unavailable")
   }

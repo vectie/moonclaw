@@ -37,9 +37,9 @@ pub fn render_jobs_command_reply(
 pub async fn render_job_status_command_reply(
   store : SystemStore,
   job_or_run_id : String,
-  now_ms : Int,
+  now_ms : Int32,
   prefix : String,
-  active_run_id? : String? = None,
+  active_run_id~ : String? = None,
 ) -> String? {
   match resolve_status_target(store, job_or_run_id, active_run_id~) {
     Some((definition, run)) =>
@@ -52,7 +52,7 @@ pub async fn render_job_status_command_reply(
 pub async fn render_job_workspace_command_reply(
   store : SystemStore,
   job_or_run_id : String,
-  active_run_id? : String? = None,
+  active_run_id~ : String? = None,
 ) -> String? {
   match resolve_status_target(store, job_or_run_id, active_run_id~) {
     Some((definition, run)) =>
@@ -66,8 +66,8 @@ pub async fn request_job_stop(
   store : SystemStore,
   job_or_run_id : String,
   cancel : async (String, Bool) -> Result[JobRun, String],
-  force? : Bool = false,
-  active_run_id? : String? = None,
+  force~ : Bool = false,
+  active_run_id~ : String? = None,
 ) -> Result[String, String] {
   let trimmed = job_or_run_id.trim().to_owned()
   let (definition, _run) = match

@@ -1,7 +1,7 @@
 ///|
 struct Counter {
   logger : @pino.Logger
-  overhead : Int
+  overhead : Int32
   // mut tools : Bool
   encoding : @tiktoken.Encoding
   /// Per-model calibration factors. Maps model name to calibration factor.
@@ -15,13 +15,13 @@ struct Counter {
 const DefaultCalibrationAlpha : Double = 0.3
 
 ///|
-const SystemOverhead : Int = 7
+const SystemOverhead : Int32 = 7
 
 ///|
-const ToolsOverhead : Int = 320
+const ToolsOverhead : Int32 = 320
 
 ///|
-const ToolOverhead : Int = 20
+const ToolOverhead : Int32 = 20
 
 ///|
 /// Creates a new token counter with the cl100k\_base encoding.
@@ -32,7 +32,7 @@ const ToolOverhead : Int = 20
 /// Throws an error if the cl100k\_base encoding cannot be initialized.
 pub fn Counter::new(
   logger~ : @pino.Logger,
-  calibration_alpha? : Double = DefaultCalibrationAlpha,
+  calibration_alpha~ : Double = DefaultCalibrationAlpha,
 ) -> Counter raise {
   {
     logger,
@@ -45,20 +45,20 @@ pub fn Counter::new(
 }
 
 ///|
-fn Counter::_count_string(self : Counter, text : String) -> Int {
+fn Counter::_count_string(self : Counter, text : String) -> Int32 {
   self.encoding.encode(text).length()
 }
 
 ///|
-pub fn Counter::count_string(self : Counter, text : String) -> Int {
+pub fn Counter::count_string(self : Counter, text : String) -> Int32 {
   self.overhead + self._count_string(text)
 }
 
 ///|
 fn Counter::decode_prefix(
   self : Counter,
-  tokens : Array[Int],
-  end : Int,
+  tokens : Array[Int32],
+  end : Int32,
 ) -> String {
   if end <= 0 {
     return ""
@@ -76,7 +76,7 @@ fn Counter::decode_prefix(
 pub fn Counter::truncate_string(
   self : Counter,
   text : String,
-  max_tokens : Int,
+  max_tokens : Int32,
 ) -> String {
   if max_tokens <= 0 {
     return ""
@@ -92,7 +92,7 @@ pub fn Counter::truncate_string(
 fn Counter::count_content_parts(
   self : Counter,
   parts : Array[@openai.ChatCompletionContentPartParam],
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for part in parts {
     match part {
@@ -107,7 +107,7 @@ fn Counter::count_content_parts(
 fn Counter::count_function(
   self : Counter,
   function : @openai.ChatCompletionMessageToolCallFunction,
-) -> Int {
+) -> Int32 {
   self._count_string(function.name) +
   (match function.arguments {
     Some(arguments) => self._count_string(arguments)
@@ -119,7 +119,7 @@ fn Counter::count_function(
 pub fn Counter::count_message(
   self : Counter,
   message : @openai.ChatCompletionMessageParam,
-) -> Int {
+) -> Int32 {
   match message {
     Assistant(assistant) => {
       let mut count = 0
@@ -140,7 +140,7 @@ pub fn Counter::count_message(
 fn Counter::count_messages(
   self : Counter,
   messages : Array[@openai.ChatCompletionMessageParam],
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for message in messages {
     count += self.count_message(message)
@@ -152,7 +152,7 @@ fn Counter::count_messages(
 fn Counter::count_tool(
   self : Counter,
   tool : @openai.ChatCompletionToolParam,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   count += ToolOverhead
   guard tool is Function(function)
@@ -195,8 +195,8 @@ fn Counter::add_tool(
 pub async fn Counter::count_param(
   self : Counter,
   messages~ : Array[@openai.ChatCompletionMessageParam],
-  tools? : Array[@openai.ChatCompletionToolParam] = [],
-) -> Int {
+  tools~ : Array[@openai.ChatCompletionToolParam] = [],
+) -> Int32 {
   let mut count = SystemOverhead
   if !tools.is_empty() {
     count += ToolsOverhead
@@ -221,8 +221,8 @@ pub async fn Counter::count_param(
 pub fn Counter::calibrate(
   self : Counter,
   model_name~ : String,
-  estimated_tokens~ : Int,
-  actual_tokens~ : Int,
+  estimated_tokens~ : Int32,
+  actual_tokens~ : Int32,
 ) -> Unit {
   // Avoid division by zero
   guard estimated_tokens > 0 && actual_tokens > 0 else { return }
@@ -249,8 +249,8 @@ pub fn Counter::calibrate(
 pub fn Counter::apply_calibration(
   self : Counter,
   model_name~ : String,
-  raw_count~ : Int,
-) -> Int {
+  raw_count~ : Int32,
+) -> Int32 {
   let factor = self.calibration.get(model_name).unwrap_or(1.0)
   (raw_count.to_double() * factor).to_int()
 }

@@ -61,7 +61,7 @@ async fn Gateway::save_plan_mode_session(
   session_key : String,
   session : SessionEntry?,
   state : PlanModeState?,
-  updated_at : Int,
+  updated_at : Int32,
 ) -> Unit {
   let existing = session.unwrap_or({
     session_id: session_key,
@@ -91,7 +91,7 @@ fn Gateway::waiting_job_scoped_match_score(
   channel_id : String,
   account_id : String,
   message : @channel.Message,
-) -> Int {
+) -> Int32 {
   guard run.status is WaitingForInput else { return 0 }
   let target = match self.job_notification_target(definition) {
     Some(target) => target
@@ -116,7 +116,7 @@ fn Gateway::latest_waiting_job_for_message(
   account_id : String,
   message : @channel.Message,
 ) -> (@job.JobDefinition, @job.JobRun)? {
-  let matches : Array[(Int, @job.JobDefinition, @job.JobRun)] = []
+  let matches : Array[(Int32, @job.JobDefinition, @job.JobRun)] = []
   for run in self.job_runtime().store().list_runs() {
     guard run.status is WaitingForInput else { continue }
     let definition = match
@@ -331,8 +331,8 @@ fn is_slash_resume_reply(message : @channel.Message) -> Bool {
 fn seed_resume_notification_cursor(
   state : @job.GatewayJobState,
   run_id : String,
-  existing_event_count : Int,
-  now_ms : Int,
+  existing_event_count : Int32,
+  now_ms : Int32,
 ) -> Unit {
   state.set_notification_runtime_state(
     run_id,
@@ -401,8 +401,8 @@ async fn Gateway::save_job_notification_preference(
   recipient : String,
   thread_id : String?,
   verbosity : @job.NotificationVerbosity,
-  heartbeat_interval_ms? : Int? = None,
-  warn_after_ms? : Int? = None,
+  heartbeat_interval_ms~ : Int32? = None,
+  warn_after_ms~ : Int32? = None,
 ) -> Unit {
   @job.save_job_notification_preference(
     self.job_runtime().store(),
@@ -503,7 +503,7 @@ async fn Gateway::handle_job_stop_command(
   account_id : String,
   message : @channel.Message,
   args : String,
-  force? : Bool = false,
+  force~ : Bool = false,
 ) -> @channel.Message {
   let trimmed = args.trim().to_owned()
   guard !trimmed.is_blank() else {

@@ -1,5 +1,5 @@
 ///|
-fn artifact_route_hex(byte : Byte) -> Int? {
+fn artifact_route_hex(byte : Byte) -> Int32? {
   let value = byte.to_int()
   if value >= 48 && value <= 57 {
     Some(value - 48)

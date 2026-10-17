@@ -1,8 +1,8 @@
 ///|
 pub(all) struct EvidencePolicy {
-  minimum_sources : Int
-  minimum_primary_sources : Int
-  minimum_evidence_per_claim : Int
+  minimum_sources : Int32
+  minimum_primary_sources : Int32
+  minimum_evidence_per_claim : Int32
   require_open_questions : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -40,9 +40,9 @@ pub(all) struct EvidenceQualityReceipt {
   contract_id : String
   task_id : String
   accepted : Bool
-  source_count : Int
-  primary_source_count : Int
-  claim_count : Int
+  source_count : Int32
+  primary_source_count : Int32
+  claim_count : Int32
   blockers : Array[String]
   output_artifacts : Array[String]
 } derive(Debug, Eq, ToJson, FromJson)

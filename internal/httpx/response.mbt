@@ -31,8 +31,8 @@ pub fn ResponseWriter::header(self : ResponseWriter) -> Header {
 /// * `reason` : Optional reason phrase, defaults to `httpx::reason(code)`.
 pub async fn ResponseWriter::write_header(
   self : ResponseWriter,
-  code : Int,
-  reason? : String = reason(code),
+  code : Int32,
+  reason~ : String = reason(code),
 ) -> Unit {
   guard self.sent is false else {
     println("@httpx.ResponseWriter::write_header called multiple times")
@@ -45,9 +45,9 @@ pub async fn ResponseWriter::write_header(
 pub impl @io.Writer for ResponseWriter with fn write_once(
   self : ResponseWriter,
   bytes : Bytes,
-  offset~ : Int,
-  len~ : Int,
-) -> Int {
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 {
   if !self.sent {
     self.write_header(@status.Ok)
     self.sent = true

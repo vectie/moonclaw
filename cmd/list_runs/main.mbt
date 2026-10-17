@@ -63,8 +63,8 @@ async fn run(args : Array[String]) -> Unit {
 fn parse_number(
   options : Map[String, String],
   name : String,
-  fallback : Int,
-) -> Int raise {
+  fallback : Int32,
+) -> Int32 raise {
   match options.get(name) {
     Some(value) =>
       @string.parse_int(value) catch {

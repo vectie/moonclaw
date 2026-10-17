@@ -5,16 +5,16 @@ const TASK_STREAM_CONTRACT : String = "moonclaw-task-stream.v2"
 const TASK_STREAM_START_CURSOR : String = "start"
 
 ///|
-const TASK_STREAM_DEFAULT_REPLAY_EVENTS : Int = 128
+const TASK_STREAM_DEFAULT_REPLAY_EVENTS : Int32 = 128
 
 ///|
-const TASK_STREAM_MAX_REPLAY_EVENTS : Int = 512
+const TASK_STREAM_MAX_REPLAY_EVENTS : Int32 = 512
 
 ///|
-const TASK_STREAM_CURSOR_MAX_CHARS : Int = 256
+const TASK_STREAM_CURSOR_MAX_CHARS : Int32 = 256
 
 ///|
-const TASK_STREAM_CONTENT_MAX_BYTES : Int = 200000
+const TASK_STREAM_CONTENT_MAX_BYTES : Int32 = 200000
 
 ///|
 let task_stream_cursor_secrets : Map[String, String] = Map([])
@@ -54,7 +54,7 @@ fn task_stream_constant_time_equal(left : String, right : String) -> Bool {
 fn Daemon::task_stream_cursor_mac(
   self : Daemon,
   task_id : String,
-  raw_sequence : Int,
+  raw_sequence : Int32,
 ) -> String {
   @crypto.bytes_to_hex_string(
     @crypto.hmac(
@@ -71,7 +71,7 @@ fn Daemon::task_stream_cursor_mac(
 fn Daemon::task_stream_cursor(
   self : Daemon,
   task_id : String,
-  raw_sequence : Int,
+  raw_sequence : Int32,
 ) -> String {
   "mct2." +
   raw_sequence.to_string() +
@@ -84,7 +84,7 @@ fn Daemon::task_stream_parse_cursor(
   self : Daemon,
   task_id : String,
   cursor : String,
-) -> Int? {
+) -> Int32? {
   if cursor == TASK_STREAM_START_CURSOR {
     return Some(0)
   }
@@ -207,7 +207,7 @@ async fn Daemon::task_stream_write(
   self : Daemon,
   writer : @httpx.EventStreamWriter,
   task_id : String,
-  raw_sequence : Int,
+  raw_sequence : Int32,
   event : Json,
 ) -> Unit {
   let cursor = self.task_stream_cursor(task_id, raw_sequence)

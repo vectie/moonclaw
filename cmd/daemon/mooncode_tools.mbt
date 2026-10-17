@@ -1085,7 +1085,7 @@ fn mooncode_tool_patch_file_target(target : String) -> String {
 }
 
 ///|
-fn mooncode_tool_patch_selected_hunk_index(arguments : Json) -> Int {
+fn mooncode_tool_patch_selected_hunk_index(arguments : Json) -> Int32 {
   let hunk_index = mooncode_json_int(arguments, "hunk_index", default=0)
   if hunk_index > 0 {
     return hunk_index
@@ -1132,7 +1132,7 @@ fn mooncode_tool_patch_selected_hunk_index(arguments : Json) -> Int {
 }
 
 ///|
-fn mooncode_tool_patch_hunk_index_from_target(target : String) -> Int {
+fn mooncode_tool_patch_hunk_index_from_target(target : String) -> Int32 {
   let mut seen_marker = false
   for piece in target.split("#hunk-") {
     if seen_marker {
@@ -1144,7 +1144,7 @@ fn mooncode_tool_patch_hunk_index_from_target(target : String) -> Int {
 }
 
 ///|
-fn mooncode_tool_patch_hunk_index_from_text(text : String) -> Int {
+fn mooncode_tool_patch_hunk_index_from_text(text : String) -> Int32 {
   let raw = if text.has_prefix("hunk-") {
     text[5:].to_owned()
   } else {
@@ -1158,7 +1158,7 @@ fn mooncode_tool_patch_hunk_index_from_text(text : String) -> Int {
 ///|
 fn mooncode_tool_patch_hunk_target(
   relative : String,
-  selected_hunk_index : Int,
+  selected_hunk_index : Int32,
 ) -> String {
   if selected_hunk_index > 0 {
     "\{relative}#hunk-\{selected_hunk_index}"
@@ -1841,11 +1841,11 @@ fn mooncode_tool_patch_verification_command(arguments : Json) -> String {
 fn mooncode_tool_patch_verification_result(
   tool : String,
   command : String,
-  status : Int,
-  elapsed_ms : Int,
+  status : Int32,
+  elapsed_ms : Int32,
   output : String,
-  max_output_chars : Int,
-  target? : String = "",
+  max_output_chars : Int32,
+  target~ : String = "",
 ) -> Json {
   let capped = mooncode_cap_tool_output(output, max_output_chars)
   {
@@ -2031,8 +2031,8 @@ fn mooncode_resolve_book_path(book_root : String, path : String) -> Json {
 ///|
 fn mooncode_cap_tool_output(
   text : String,
-  limit : Int,
-  maximum? : Int = MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS,
+  limit : Int32,
+  maximum~ : Int32 = MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS,
 ) -> Json {
   let limit = mooncode_normalize_tool_output_chars(limit, maximum~)
   if text.length() > limit {
@@ -2057,7 +2057,7 @@ fn mooncode_cap_tool_output(
 /// fails. Compiler and test runners commonly print warnings first and the
 /// actionable error last, so prefix-only truncation hides the reason for the
 /// failure and forces an agent to rerun the command.
-fn mooncode_cap_failed_process_output(text : String, limit : Int) -> Json {
+fn mooncode_cap_failed_process_output(text : String, limit : Int32) -> Json {
   let capped = mooncode_cap_tool_output(text, limit)
   if !mooncode_json_bool(capped, "truncated", default=false) {
     return capped
@@ -2165,8 +2165,8 @@ fn mooncode_tool_ok_result(
 fn mooncode_tool_error_result(
   tool : String,
   message~ : String,
-  output? : String = "",
-  metadata? : Json = {},
+  output~ : String = "",
+  metadata~ : Json = {},
 ) -> Json {
   {
     "tool": tool,
@@ -2263,7 +2263,7 @@ fn mooncode_tool_event_name(tool : String) -> String {
 }
 
 ///|
-fn mooncode_json_int(json : Json, key : String, default~ : Int) -> Int {
+fn mooncode_json_int(json : Json, key : String, default~ : Int32) -> Int32 {
   match json {
     Object(object) =>
       match object.get(key) {

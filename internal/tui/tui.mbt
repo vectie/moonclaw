@@ -17,13 +17,13 @@ pub(all) struct TUI {
   mut on_ctrl_o : (() -> Unit)?
   mut render_needed : Bool
   mut last_render_at : Int64
-  mut last_width : Int
-  mut last_height : Int
+  mut last_width : Int32
+  mut last_height : Int32
   mut needs_full_redraw : Bool
   mut last_body_frame : String
   mut last_editor_line : String
-  mut last_cursor_col : Int
-  mut last_cursor_row : Int
+  mut last_cursor_col : Int32
+  mut last_cursor_row : Int32
 }
 
 ///|
@@ -33,7 +33,7 @@ const EditorRenderIntervalMs : Int64 = 16L
 const BodyRenderIntervalMs : Int64 = 90L
 
 ///|
-fn spaces(count : Int) -> String {
+fn spaces(count : Int32) -> String {
   let mut result = ""
   for _ in 0..<count.max(0) {
     result = "\{result} "
@@ -42,13 +42,13 @@ fn spaces(count : Int) -> String {
 }
 
 ///|
-fn frame_line(text : String, width : Int) -> String {
+fn frame_line(text : String, width : Int32) -> String {
   let truncated = truncate_styled(text, width.max(0))
   "\{truncated}\{spaces((width.max(0) - visible_width(truncated)).max(0))}"
 }
 
 ///|
-fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
+fn editor_frame_line(editor : Editor, width : Int32) -> (String, Int32) {
   let prompt_text = editor.prompt_text()
   let prompt = colorize(prompt_text, BrightGreen)
   let display_text = if editor.text().length() == 0 {
@@ -70,7 +70,7 @@ fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
 ///|
 fn write_repainted_lines(
   output : RenderOutput,
-  start_row : Int,
+  start_row : Int32,
   lines : Array[String],
 ) -> Unit {
   for i in 0..<lines.length() {
@@ -83,7 +83,7 @@ fn write_repainted_lines(
 ///|
 fn write_changed_lines(
   output : RenderOutput,
-  start_row : Int,
+  start_row : Int32,
   current_lines : Array[String],
   previous_lines : Array[String],
 ) -> Unit {
@@ -102,9 +102,9 @@ fn write_changed_lines(
 ///|
 fn TUI::build_frame(
   self : TUI,
-  width : Int,
-  height : Int,
-) -> (String, String, Int, Int) {
+  width : Int32,
+  height : Int32,
+) -> (String, String, Int32, Int32) {
   let header_height = 1
   let footer_height = 1
   let status_height = 1
@@ -360,7 +360,7 @@ pub async fn TUI::render(self : TUI) -> Unit {
 }
 
 ///|
-async fn TUI::render_if_due(self : TUI, force? : Bool = false) -> Unit {
+async fn TUI::render_if_due(self : TUI, force~ : Bool = false) -> Unit {
   if !self.render_needed {
     return
   }

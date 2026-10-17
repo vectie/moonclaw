@@ -12,11 +12,11 @@ pub struct FeedPage {
   source : String
   title : String
   articles : Array[FeedArticle]
-  offset : Int
-  next_offset : Int?
+  offset : Int32
+  next_offset : Int32?
   next_url : String?
-  total_items : Int
-  matched_items : Int
+  total_items : Int32
+  matched_items : Int32
   format : String
   query : String
 } derive(Show)
@@ -77,9 +77,9 @@ fn text_field(value : Json, key : String) -> String? {
 pub fn parse_feed(
   body : String,
   source : String,
-  limit? : Int = 10,
-  offset? : Int = 0,
-  query? : String = "",
+  limit~ : Int32 = 10,
+  offset~ : Int32 = 0,
+  query~ : String = "",
 ) -> FeedPage raise {
   guard limit >= 1 && limit <= 50 && offset >= 0 else {
     fail("limit must be 1..50 and offset must be nonnegative")
@@ -99,8 +99,8 @@ pub fn parse_feed(
     .to_lower()
     .contains(needle)
   })
-  let start = Int::min(offset, matching.length())
-  let end = start + Int::min(limit, matching.length() - start)
+  let start = Int32::min(offset, matching.length())
+  let end = start + Int32::min(limit, matching.length() - start)
   {
     source,
     title: document.title,

@@ -7,7 +7,7 @@ pub(all) struct GoalRunRequirementResult {
 ///|
 pub(all) struct GoalRunResult {
   runner : String
-  checkpoint : Int
+  checkpoint : Int32
   completed : Bool
   verification_passed : Bool
   requirements : Array[GoalRunRequirementResult]
@@ -25,21 +25,21 @@ pub(all) enum GoalComparisonVerdict {
 
 ///|
 pub(all) struct GoalComparison {
-  checkpoint : Int
+  checkpoint : Int32
   verdict : GoalComparisonVerdict
   exact_invariants_match : Bool
-  lexical_similarity_bps : Int
+  lexical_similarity_bps : Int32
   mismatches : Array[String]
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct GoalComparisonTrend {
-  sample_count : Int
-  equivalent_count : Int
-  similar_count : Int
-  diverged_count : Int
-  insufficient_count : Int
-  average_similarity_bps : Int
+  sample_count : Int32
+  equivalent_count : Int32
+  similar_count : Int32
+  diverged_count : Int32
+  insufficient_count : Int32
+  average_similarity_bps : Int32
   stable : Bool
 } derive(Eq, Debug)
 
@@ -79,7 +79,10 @@ fn goal_comparison_unique_tokens(normalized : String) -> Array[String] {
 }
 
 ///|
-fn goal_comparison_lexical_similarity_bps(left : String, right : String) -> Int {
+fn goal_comparison_lexical_similarity_bps(
+  left : String,
+  right : String,
+) -> Int32 {
   let left_tokens = goal_comparison_unique_tokens(
     goal_comparison_normalize(left),
   )
@@ -158,7 +161,7 @@ fn goal_comparison_result_valid(result : GoalRunResult) -> Bool {
 pub fn goal_comparison_compare(
   reference : GoalRunResult,
   candidate : GoalRunResult,
-  similarity_threshold_bps : Int,
+  similarity_threshold_bps : Int32,
 ) -> GoalComparison {
   let mismatches : Array[String] = []
   let threshold_valid = similarity_threshold_bps >= 0 &&

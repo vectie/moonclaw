@@ -1,11 +1,11 @@
 ///|
 fn checkpoint_replay_envelope(
   id : String,
-  basis_sequence : Int,
-  goal_revision : Int,
-  current_goal_turn : Int,
+  basis_sequence : Int32,
+  goal_revision : Int32,
+  current_goal_turn : Int32,
   owner_id : String,
-  fence_token : Int,
+  fence_token : Int32,
   acquisition_event_id : String,
   expected_lease_expires_at : Int64,
   recorded_at : Int64,
@@ -29,11 +29,11 @@ fn checkpoint_replay_envelope(
 ///|
 fn checkpoint_replay_envelope_with_terminal(
   id : String,
-  basis_sequence : Int,
-  goal_revision : Int,
-  current_goal_turn : Int,
+  basis_sequence : Int32,
+  goal_revision : Int32,
+  current_goal_turn : Int32,
   owner_id : String,
-  fence_token : Int,
+  fence_token : Int32,
   acquisition_event_id : String,
   expected_lease_expires_at : Int64,
   recorded_at : Int64,
@@ -302,7 +302,7 @@ test "checkpoint decoder rejects inconsistent envelopes and payloads" {
 
 ///|
 fn checkpoint_constructor_is_invalid(
-  current_turn : Int,
+  current_turn : Int32,
   command : String?,
   claim : String?,
   receipt : String?,

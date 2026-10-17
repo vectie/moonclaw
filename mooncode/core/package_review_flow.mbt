@@ -408,8 +408,8 @@ fn package_review_flow_json_string(
 fn package_review_flow_json_int(
   json : Json,
   key : String,
-  default~ : Int,
-) -> Int {
+  default~ : Int32,
+) -> Int32 {
   match json {
     Object(object) =>
       match object.get(key) {

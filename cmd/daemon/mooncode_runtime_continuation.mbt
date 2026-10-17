@@ -90,9 +90,9 @@ fn mooncode_runtime_continuation_event(
   tool_results : Array[Json],
   step_results : Array[Json],
   approval : Json,
-  step_index~ : Int,
-  tool_index~ : Int,
-  planner_turn_end_step~ : Int,
+  step_index~ : Int32,
+  tool_index~ : Int32,
+  planner_turn_end_step~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_json_string(approval, "approval_id", default="")
@@ -156,7 +156,7 @@ fn mooncode_runtime_planner_continuation_event(
   planner_steps : Array[Json],
   tool_results : Array[Json],
   step_results : Array[Json],
-  next_step_index~ : Int,
+  next_step_index~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
   {
@@ -191,7 +191,7 @@ fn mooncode_runtime_planner_transport_continuation_event(
   step_results : Array[Json],
   pending_live_steering : Array[Json],
   resume_mode~ : String,
-  next_step_index~ : Int,
+  next_step_index~ : Int32,
   detail~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -229,8 +229,8 @@ fn mooncode_runtime_planner_replan_continuation_event(
   planner_steps : Array[Json],
   tool_results : Array[Json],
   step_results : Array[Json],
-  next_step_index~ : Int,
-  replan_count~ : Int,
+  next_step_index~ : Int32,
+  replan_count~ : Int32,
   guidance~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -343,7 +343,7 @@ fn mooncode_runtime_continuation_for_command(
     }
   }
   let matched_events : Map[String, Json] = Map([])
-  let match_counts : Map[String, Int] = Map([])
+  let match_counts : Map[String, Int32] = Map([])
   for projected_event in events {
     if mooncode_json_string(projected_event, "command_id", default="") !=
       command_id {

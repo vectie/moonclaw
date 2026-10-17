@@ -70,9 +70,9 @@ pub fn parse_patch(patch : String) -> ParsedPatch raise ParseError {
 ///|
 fn parse_one_hunk(
   lines : Array[String],
-  start : Int,
-  end : Int,
-) -> (Hunk, Int) raise ParseError {
+  start : Int32,
+  end : Int32,
+) -> (Hunk, Int32) raise ParseError {
   let first_line = lines[start].trim(chars=" \t").to_owned()
   let line_number = start + 1
   if first_line.has_prefix(ADD_FILE_MARKER) {
@@ -155,13 +155,13 @@ fn parse_one_hunk(
 ///|
 fn parse_update_chunk(
   lines : Array[String],
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
   allow_missing_context : Bool,
-) -> (UpdateFileChunk, Int) raise ParseError {
+) -> (UpdateFileChunk, Int32) raise ParseError {
   let first_line = lines[start].trim(chars=" \t").to_owned()
   let line_number = start + 1
-  let (change_context, start_index) : (String?, Int) = if first_line ==
+  let (change_context, start_index) : (String?, Int32) = if first_line ==
     EMPTY_CHANGE_CONTEXT_MARKER {
     (None, 1)
   } else if first_line.has_prefix(CHANGE_CONTEXT_MARKER) {

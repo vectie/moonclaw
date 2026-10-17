@@ -31,7 +31,7 @@ fn mooncode_runtime_turn_active_semantic_compaction_enabled(
 ///|
 fn mooncode_runtime_turn_semantic_compaction_target_pressure(
   command : Json,
-) -> Int {
+) -> Int32 {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let trigger = mooncode_json_int(
       payload,
@@ -167,23 +167,23 @@ fn mooncode_runtime_turn_semantic_compaction_lifecycle_metrics(
   eligible : Bool,
   applied : Bool,
   reason : String,
-  threshold : Int,
-  before_message_count : Int,
-  after_message_count : Int,
-  before_chars : Int,
-  after_chars : Int,
-  context_window_tokens : Int,
-  estimated_context_tokens : Int,
-  observed_context_tokens : Int,
+  threshold : Int32,
+  before_message_count : Int32,
+  after_message_count : Int32,
+  before_chars : Int32,
+  after_chars : Int32,
+  context_window_tokens : Int32,
+  estimated_context_tokens : Int32,
+  observed_context_tokens : Int32,
   context_usage_source : String,
-  context_pressure_ppm : Int,
-  pressure_threshold_ppm : Int,
-  target_pressure_ppm : Int,
-  target_tokens : Int,
-  before_tokens : Int,
-  after_tokens : Int,
-  redacted_tool_results : Int,
-  compacted_messages : Int,
+  context_pressure_ppm : Int32,
+  pressure_threshold_ppm : Int32,
+  target_pressure_ppm : Int32,
+  target_tokens : Int32,
+  before_tokens : Int32,
+  after_tokens : Int32,
+  redacted_tool_results : Int32,
+  compacted_messages : Int32,
   within_budget : Bool,
   invariants_preserved : Bool,
 ) -> Json {
@@ -236,7 +236,7 @@ fn mooncode_runtime_turn_semantic_compaction_trial_enabled(
 ///|
 fn mooncode_runtime_turn_semantic_compaction_trial_threshold(
   command : Json,
-) -> Int {
+) -> Int32 {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   mooncode_json_int(
     payload,
@@ -254,11 +254,11 @@ fn mooncode_runtime_turn_semantic_compaction_trial_threshold(
 /// short burst of oversized messages cannot accidentally opt in too early.
 fn mooncode_runtime_turn_semantic_compaction_pressure(
   command : Json,
-  previous_chars : Int,
-  previous_message_count : Int,
-  threshold : Int,
-  observed_context_tokens? : Int = 0,
-) -> (Int, Int, Int, Bool, String, String) {
+  previous_chars : Int32,
+  previous_message_count : Int32,
+  threshold : Int32,
+  observed_context_tokens~ : Int32 = 0,
+) -> (Int32, Int32, Int32, Bool, String, String) {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let context_window_tokens = mooncode_json_int(
     payload,
@@ -323,7 +323,7 @@ async fn mooncode_runtime_turn_active_semantic_compaction(
   previous_plan : Json,
   messages : Array[Json],
   tools : Array[@openai.ChatCompletionToolParam],
-  model_safe_zone_tokens : Int,
+  model_safe_zone_tokens : Int32,
 ) -> MoonCodeSemanticCompactionLifecycle {
   let enabled = mooncode_runtime_turn_active_semantic_compaction_enabled(
     command,

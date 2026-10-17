@@ -3,7 +3,7 @@
 /// Paths and checksums describe the export; no referenced file is read here.
 pub struct ReviewArtifact {
   source : String
-  index : Int
+  index : Int32
   entry : Json
 } derive(ToJson)
 
@@ -14,7 +14,7 @@ priv struct ReviewArtifactFields {
   record_sha256 : String
   content_path : String
   content_sha256 : String
-  content_bytes : Int
+  content_bytes : Int32
 } derive(FromJson)
 
 ///|
@@ -24,18 +24,18 @@ priv struct ReviewRecordFields {
   job_id : String
   artifact_type : String
   logical_key : String?
-  version : Int
+  version : Int32
   status : Json
   path : String
   content_type : String
   metadata : Json
-  created_at : Int
-  archived_at : Int?
+  created_at : Int32
+  archived_at : Int32?
   scope : Array[String]
 } derive(FromJson)
 
 ///|
-fn review_integer(json : Json, name : String, value : Int) -> Unit raise {
+fn review_integer(json : Json, name : String, value : Int32) -> Unit raise {
   guard json.as_object() is Some(fields) &&
     fields.get(name) is Some(Number(number, ..)) &&
     number == value.to_double() else {
@@ -49,7 +49,7 @@ fn review_digest(text : String) -> Bool {
     return false
   }
   for c in text[7:] {
-    if !(c is ('0'..='9' | 'a'..='f')) {
+    if !(c is ('0'..<='9' | 'a'..<='f')) {
       return false
     }
   }
@@ -57,7 +57,7 @@ fn review_digest(text : String) -> Bool {
 }
 
 ///|
-fn review_member_path(path : String, index : Int) -> Bool {
+fn review_member_path(path : String, index : Int32) -> Bool {
   let prefix = "files/\{index}-"
   if !path.has_prefix(prefix) ||
     path.length() <= prefix.length() ||
@@ -65,7 +65,7 @@ fn review_member_path(path : String, index : Int) -> Bool {
     return false
   }
   for c in path[prefix.length():] {
-    if !(c is ('a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '-' | '_')) {
+    if !(c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '.' | '-' | '_')) {
       return false
     }
   }

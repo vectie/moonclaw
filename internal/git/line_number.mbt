@@ -1,16 +1,16 @@
 ///|
 priv struct DiffLineNumberState {
-  original_start : Int
-  mut original_line : Int
-  original_count : Int
-  modified_start : Int
-  mut modified_line : Int
-  modified_count : Int
+  original_start : Int32
+  mut original_line : Int32
+  original_count : Int32
+  modified_start : Int32
+  mut modified_line : Int32
+  modified_count : Int32
   mut marker : Char
 }
 
 ///|
-fn parse_diff_span(token : String, prefix : String) -> (Int, Int)? {
+fn parse_diff_span(token : String, prefix : String) -> (Int32, Int32)? {
   guard token.has_prefix(prefix) else { return None }
   let body = token[1:].to_owned()
   let parts : Array[StringView] = body.split(",").collect()

@@ -5,7 +5,7 @@ pub struct WebSearchItem {
   snippet : String
   source : String
   domain : String?
-  rank : Int
+  rank : Int32
 } derive(ToJson, FromJson)
 
 ///|
@@ -64,7 +64,7 @@ fn domain_from_url(url : String) -> String? {
 }
 
 ///|
-fn hex_digit(value : Int) -> Char {
+fn hex_digit(value : Int32) -> Char {
   match value {
     0 => '0'
     1 => '1'
@@ -86,7 +86,7 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
-fn append_percent_encoded(buf : StringBuilder, code : Int) -> Unit {
+fn append_percent_encoded(buf : StringBuilder, code : Int32) -> Unit {
   let high = code / 16 % 16
   let low = code % 16
   buf.write_char('%')
@@ -99,7 +99,7 @@ fn url_encode_component(text : String) -> String {
   let buf = StringBuilder::new()
   for ch in text.to_array() {
     match ch {
-      'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' =>
+      'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
         buf.write_char(ch)
       ' ' => buf.write_char('+')
       _ => append_percent_encoded(buf, ch.to_int())
@@ -201,7 +201,7 @@ fn parse_duckduckgo_result(
   query : String,
   search_url : String,
   body : String,
-  max_results : Int,
+  max_results : Int32,
 ) -> WebSearchResult raise {
   let json = @json.parse(body) catch {
     error => fail("Invalid web search response: \{error}")
@@ -301,7 +301,7 @@ fn parse_bing_rss_result(
   query : String,
   search_url : String,
   body : String,
-  max_results : Int,
+  max_results : Int32,
 ) -> WebSearchResult {
   let items : Array[WebSearchItem] = []
   let seen : Map[String, Bool] = Map([])
@@ -346,7 +346,7 @@ fn site_domain_from_query(query : String) -> String? {
 fn limit_bing_results_for_query(
   query : String,
   result : WebSearchResult,
-  max_results : Int,
+  max_results : Int32,
 ) -> WebSearchResult {
   let site_domain = site_domain_from_query(query)
   let filtered = result.results.filter(fn(item) {
@@ -373,7 +373,7 @@ fn limit_bing_results_for_query(
 async fn perform_bing_rss_search(
   query : String,
   encoded : String,
-  max_results : Int,
+  max_results : Int32,
 ) -> WebSearchResult {
   let path = "/search?q=\{encoded}&format=rss"
   let search_url = "https://www.bing.com/search?q=\{encoded}"
@@ -384,7 +384,7 @@ async fn perform_bing_rss_search(
   })
   defer client.close()
   let response = client.get(path)
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_body = client.read_all().text()
     fail("web_search fallback HTTP \{response.code}: \{error_body}")
   }
@@ -398,7 +398,7 @@ async fn perform_bing_rss_search(
 ///|
 async fn perform_web_search(
   query : String,
-  max_results : Int,
+  max_results : Int32,
 ) -> WebSearchResult {
   let encoded = url_encode_component(query)
   let path = "/?q=\{encoded}&format=json&no_html=1&no_redirect=1&skip_disambig=0"
@@ -410,7 +410,7 @@ async fn perform_web_search(
   })
   defer client.close()
   let response = client.get(path)
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_body = client.read_all().text()
     fail("web_search HTTP \{response.code}: \{error_body}")
   }
@@ -454,7 +454,7 @@ pub fn new() -> @tool.Tool[WebSearchResult] {
       }
       let max_results = match args {
         { "max_results": Number(num, ..), .. } =>
-          Int::min(10, Int::max(1, num.to_int()))
+          Int32::min(10, Int32::max(1, num.to_int()))
         _ => 5
       }
       let result = perform_web_search(trimmed, max_results) catch {

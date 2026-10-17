@@ -21,7 +21,7 @@ fn browser_open_environment() -> Map[String, String] {
 /// directory. Failure is returned so OAuth may continue with a printed URL.
 pub async fn open_browser_url(
   url : String,
-  timeout_ms? : Int = 10000,
+  timeout_ms~ : Int32 = 10000,
 ) -> Bool raise TrustedHostProcessError {
   validate_browser_url(url)
   if timeout_ms < 1 || timeout_ms > 30000 {

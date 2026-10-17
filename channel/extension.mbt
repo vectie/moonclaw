@@ -37,12 +37,12 @@ pub(all) struct ExtensionContext {
 ///|
 pub fn ExtensionContext::new(
   gateway_url~ : String,
-  gateway_token? : String? = None,
+  gateway_token~ : String? = None,
   home_dir~ : String,
   cwd~ : String,
-  logger? : LoggerFuncs? = None,
-  websocket_connector? : WebSocketClientConnector? = None,
-  websocket_runtime? : WebSocketClientRuntime? = None,
+  logger~ : LoggerFuncs? = None,
+  websocket_connector~ : WebSocketClientConnector? = None,
+  websocket_runtime~ : WebSocketClientRuntime? = None,
 ) -> ExtensionContext {
   {
     gateway_url,
@@ -144,7 +144,7 @@ pub fn ExtensionRequest::new(
   path~ : String,
   headers~ : Map[String, String],
   body~ : Bytes,
-  query_params? : Map[String, String] = {},
+  query_params~ : Map[String, String] = {},
 ) -> ExtensionRequest {
   { http_method, path, headers, body, query_params, }
 }
@@ -207,22 +207,22 @@ pub fn ExtensionRequest::header(
 ///|
 /// Response structure for channel extensions
 pub(all) struct ExtensionResponse {
-  status_code : Int
+  status_code : Int32
   headers : Map[String, String]
   body : Bytes
 }
 
 ///|
 pub fn ExtensionResponse::new(
-  status_code? : Int = 200,
-  headers? : Map[String, String] = {},
-  body? : Bytes = b"",
+  status_code~ : Int32 = 200,
+  headers~ : Map[String, String] = {},
+  body~ : Bytes = b"",
 ) -> ExtensionResponse {
   { status_code, headers, body, }
 }
 
 ///|
-pub fn ExtensionResponse::status_code(self : ExtensionResponse) -> Int {
+pub fn ExtensionResponse::status_code(self : ExtensionResponse) -> Int32 {
   self.status_code
 }
 
@@ -241,7 +241,7 @@ pub fn ExtensionResponse::body(self : ExtensionResponse) -> Bytes {
 ///|
 pub fn ExtensionResponse::json(
   data : Json,
-  status_code? : Int = 200,
+  status_code~ : Int32 = 200,
 ) -> ExtensionResponse {
   let headers = { "Content-Type": "application/json" }
   ExtensionResponse::new(
@@ -254,7 +254,7 @@ pub fn ExtensionResponse::json(
 ///|
 pub fn ExtensionResponse::text(
   text : String,
-  status_code? : Int = 200,
+  status_code~ : Int32 = 200,
 ) -> ExtensionResponse {
   let headers = { "Content-Type": "text/plain" }
   ExtensionResponse::new(
@@ -276,21 +276,21 @@ pub fn ExtensionResponse::not_found() -> ExtensionResponse {
 
 ///|
 pub fn ExtensionResponse::bad_request(
-  message? : String = "Bad Request",
+  message~ : String = "Bad Request",
 ) -> ExtensionResponse {
   ExtensionResponse::new(status_code=400, body=@encoding/utf8.encode(message))
 }
 
 ///|
 pub fn ExtensionResponse::unauthorized(
-  message? : String = "Unauthorized",
+  message~ : String = "Unauthorized",
 ) -> ExtensionResponse {
   ExtensionResponse::new(status_code=401, body=@encoding/utf8.encode(message))
 }
 
 ///|
 pub fn ExtensionResponse::internal_error(
-  message? : String = "Internal Server Error",
+  message~ : String = "Internal Server Error",
 ) -> ExtensionResponse {
   ExtensionResponse::new(status_code=500, body=@encoding/utf8.encode(message))
 }
@@ -315,8 +315,8 @@ pub fn WebSocketConnection::new(
   id~ : String,
   send~ : (Bytes) -> Unit,
   close~ : () -> Unit,
-  on_message? : (async (Bytes) -> Unit) -> Unit = fn(_) {  },
-  on_close? : (() -> Unit) -> Unit = fn(_) {  },
+  on_message~ : (async (Bytes) -> Unit) -> Unit = fn(_) {  },
+  on_close~ : (() -> Unit) -> Unit = fn(_) {  },
 ) -> WebSocketConnection {
   { id, send, close, on_message, on_close, }
 }
@@ -366,7 +366,7 @@ pub(all) struct WebSocketDialRequest {
 pub fn WebSocketDialRequest::new(
   client_id~ : String,
   protocol~ : String,
-  metadata? : Json = Json::object({}),
+  metadata~ : Json = Json::object({}),
 ) -> WebSocketDialRequest {
   { client_id, protocol, metadata, }
 }
@@ -421,7 +421,7 @@ pub(all) struct WebSocketManagedConnection {
 ///|
 pub fn WebSocketManagedConnection::new(
   connection~ : WebSocketConnection,
-  wait_until_closed? : async () -> Unit = async fn() {
+  wait_until_closed~ : async () -> Unit = async fn() {
     for ;; {
       @async.sleep(100)
     }
@@ -448,14 +448,14 @@ pub async fn WebSocketManagedConnection::wait_until_closed(
 pub(all) struct WebSocketClientSpec {
   client_id : String
   label : String
-  reconnect_delay_ms : Int
+  reconnect_delay_ms : Int32
 }
 
 ///|
 pub fn WebSocketClientSpec::new(
   client_id~ : String,
-  label? : String = "",
-  reconnect_delay_ms? : Int = 2_000,
+  label~ : String = "",
+  reconnect_delay_ms~ : Int32 = 2_000,
 ) -> WebSocketClientSpec {
   {
     client_id,
@@ -481,7 +481,7 @@ pub fn WebSocketClientSpec::label(self : WebSocketClientSpec) -> String {
 ///|
 pub fn WebSocketClientSpec::reconnect_delay_ms(
   self : WebSocketClientSpec,
-) -> Int {
+) -> Int32 {
   self.reconnect_delay_ms
 }
 
@@ -498,7 +498,7 @@ pub fn WebSocketClientRegistration::new(
   spec~ : WebSocketClientSpec,
   connect~ : async () -> Result[WebSocketManagedConnection, String],
   on_connect~ : (WebSocketConnection) -> Unit,
-  logger? : LoggerFuncs? = None,
+  logger~ : LoggerFuncs? = None,
 ) -> WebSocketClientRegistration {
   { spec, connect, on_connect, logger, }
 }
@@ -686,7 +686,7 @@ pub fn ExtensionMeta::new(
   description~ : String,
   author? : String,
   webhook_path~ : String,
-  supported_events? : Array[String] = [],
+  supported_events~ : Array[String] = [],
 ) -> ExtensionMeta {
   { name, version, description, author, webhook_path, supported_events, }
 }

@@ -1,7 +1,7 @@
 ///|
 pub struct RegisterRequest {
   id : String
-  port : Int
+  port : Int32
   new_id : @uuid.Uuid
   cwd : String
   web_search : Bool
@@ -16,7 +16,7 @@ pub(all) struct RegisterResponse {} derive(ToJson, FromJson)
 /// `/v1/task/register`.
 async fn RegisterInfo::register(
   register : RegisterInfo,
-  port~ : Int,
+  port~ : Int32,
   new_id~ : @uuid.Uuid,
   web_search~ : Bool,
   cwd~ : String,
@@ -43,7 +43,7 @@ async fn RegisterInfo::register(
       "Content-Type": "application/json",
     },
   )
-  guard r.code is (200..=299) else {
+  guard r.code is (200..<=299) else {
     raise json_error(500, "InternalServerError", {
       "error": {
         "code": r.code,

@@ -230,13 +230,13 @@ fn mooncode_runtime_turn_commit_result(
   book_root : String,
   command : Json,
   accepted~ : Bool,
-  created? : Bool = false,
+  created~ : Bool = false,
   message~ : String,
   status_before~ : String,
   commit_sha~ : String,
-  changed_paths? : Array[String] = [],
-  commit_tree? : String = "",
-  status_after? : String = "",
+  changed_paths~ : Array[String] = [],
+  commit_tree~ : String = "",
+  status_after~ : String = "",
   detail~ : String,
   output~ : String,
   now~ : @clock.Timestamp,
@@ -359,8 +359,8 @@ fn mooncode_runtime_turn_commit_event(
 async fn mooncode_runtime_turn_git(
   book_root : String,
   operation : @trusted_host_process.GitOperation,
-  timeout_ms~ : Int,
-  max_output_chars~ : Int,
+  timeout_ms~ : Int32,
+  max_output_chars~ : Int32,
 ) -> Json {
   let process = @trusted_host_process.run_git(book_root, operation, timeout_ms~) catch {
     error =>

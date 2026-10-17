@@ -1,24 +1,24 @@
 ///|
 /// Aggregated usage information for a completion response.
 pub struct CompletionUsage {
-  completion_tokens : Int
+  completion_tokens : Int32
   completion_tokens_details : CompletionTokensDetails?
   cost : Double?
   cost_details : CostDetails?
-  prompt_tokens : Int
+  prompt_tokens : Int32
   prompt_tokens_details : PromptTokensDetails?
-  total_tokens : Int
+  total_tokens : Int32
 } derive(Debug, ToJson)
 
 ///|
 pub fn CompletionUsage::new(
-  completion_tokens~ : Int,
+  completion_tokens~ : Int32,
   completion_tokens_details? : CompletionTokensDetails,
   cost? : Double,
   cost_details? : CostDetails,
-  prompt_tokens~ : Int,
+  prompt_tokens~ : Int32,
   prompt_tokens_details? : PromptTokensDetails,
-  total_tokens~ : Int,
+  total_tokens~ : Int32,
 ) -> CompletionUsage {
   {
     completion_tokens,

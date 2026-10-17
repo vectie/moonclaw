@@ -1,6 +1,6 @@
 ///|
 fn supervisor_worker_test_request(
-  max_cost_micro_usd? : Int64 = 0L,
+  max_cost_micro_usd~ : Int64 = 0L,
 ) -> SupervisorDelegateIntentRequestV1 raise {
   {
     envelope: {

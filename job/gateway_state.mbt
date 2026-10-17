@@ -3,8 +3,8 @@ pub struct GatewayJobState {
   runtime : RuntimeManager
   cancel_requests : Map[String, Bool]
   force_stop_requests : Map[String, Bool]
-  status_last_sent_at : Map[String, Int]
-  last_notified_event_count : Map[String, Int]
+  status_last_sent_at : Map[String, Int32]
+  last_notified_event_count : Map[String, Int32]
   long_running_warned : Map[String, Bool]
 }
 
@@ -59,7 +59,7 @@ pub fn GatewayJobState::clear_control_requests(
 pub fn GatewayJobState::request_stop(
   self : GatewayJobState,
   run_id : String,
-  force? : Bool = false,
+  force~ : Bool = false,
 ) -> Unit {
   self.cancel_requests.set(run_id, true)
   if force {

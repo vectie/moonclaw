@@ -3,7 +3,7 @@ pub struct WebFetchResult {
   url : String
   final_url : String
   domain : String
-  status_code : Int
+  status_code : Int32
   content_type : String?
   title : String?
   text : String
@@ -158,7 +158,7 @@ fn strip_html_tags(text : String) -> String {
         }
       }
       '&' => {
-        let mut entity_end : Int? = None
+        let mut entity_end : Int32? = None
         let mut j = i + 1
         while j < chars.length() {
           if chars[j] == ';' {
@@ -201,7 +201,7 @@ fn strip_html_tags(text : String) -> String {
 }
 
 ///|
-fn truncate_text(text : String, max_chars : Int) -> (String, Bool) {
+fn truncate_text(text : String, max_chars : Int32) -> (String, Bool) {
   if max_chars <= 0 {
     return ("", !text.is_empty())
   }
@@ -235,7 +235,7 @@ fn content_type_is_pdf(content_type : String?) -> Bool {
 ///|
 async fn extracted_pdf_text(
   body : Bytes,
-  max_chars : Int,
+  max_chars : Int32,
 ) -> (String, Bool, String) {
   @fsx.with_temporary_directory("/tmp/moonclaw-web-fetch-pdf-XXXXXX", async fn(
     dir,
@@ -273,7 +273,7 @@ async fn extracted_pdf_text(
 }
 
 ///|
-async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
+async fn perform_web_fetch(url : String, max_chars : Int32) -> WebFetchResult {
   let uri = parse_fetch_uri(url) catch { error => fail("\{Repr(error)}") }
   let client = @http.Client("\{uri.scheme}://\{uri.host}", headers={
     "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
@@ -286,7 +286,7 @@ async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
   defer client.close()
   let response = client.get(uri.path)
   let body = client.read_all().binary()
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     fail(
       "web_fetch HTTP \{response.code}: \{@encoding/utf8.decode_lossy(body)}",
     )
@@ -362,7 +362,7 @@ pub fn new() -> @tool.Tool[WebFetchResult] {
       }
       let max_chars = match args {
         { "max_chars": Number(value, ..), .. } =>
-          Int::min(20000, Int::max(200, value.to_int()))
+          Int32::min(20000, Int32::max(200, value.to_int()))
         _ => 5000
       }
       // Public sources occasionally accept the connection but never finish a

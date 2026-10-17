@@ -144,7 +144,7 @@ pub fn Agent::add_tools(agent : Agent, tools : Array[@tool.AgentTool]) -> Unit {
 fn Agent::add_agent_tool(
   agent : Agent,
   tool : @tool.AgentTool,
-  enabled? : Bool = true,
+  enabled~ : Bool = true,
 ) -> Unit {
   let desc = tool.desc()
   agent.tools[desc.name] = Tool::new(tool, enabled~)
@@ -162,7 +162,7 @@ fn Agent::add_agent_tool(
 pub fn[Output : ToJson] Agent::add_tool(
   agent : Agent,
   tool : @tool.Tool[Output],
-  enabled? : Bool = true,
+  enabled~ : Bool = true,
 ) -> Unit {
   agent.add_agent_tool(tool.to_agent_tool(), enabled~)
 }

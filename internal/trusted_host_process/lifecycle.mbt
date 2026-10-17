@@ -1,6 +1,6 @@
 ///|
 /// Return MoonClaw's own PID for daemon status bookkeeping.
-pub fn current_process_id() -> Int {
+pub fn current_process_id() -> Int32 {
   trusted_getpid()
 }
 
@@ -21,7 +21,9 @@ pub fn suspend_parent_process() -> Unit raise TrustedHostProcessError {
 ///|
 /// Force-stop a stale MoonClaw daemon after the versioned shutdown handshake
 /// has failed. This is intentionally not a generic signal API.
-pub fn terminate_stale_daemon(pid : Int) -> Unit raise TrustedHostProcessError {
+pub fn terminate_stale_daemon(
+  pid : Int32,
+) -> Unit raise TrustedHostProcessError {
   if pid <= 1 {
     raise InvalidParameter("refusing to signal an invalid daemon pid")
   }
@@ -36,9 +38,9 @@ pub fn terminate_stale_daemon(pid : Int) -> Unit raise TrustedHostProcessError {
 /// subcommand are fixed; callers can only provide typed daemon configuration.
 pub async fn spawn_detached_daemon(
   server_exec_path? : String,
-  port? : Int,
+  port? : Int32,
   serve? : String,
-) -> Int {
+) -> Int32 {
   if port is Some(port) && (port < 0 || port > 65535) {
     raise InvalidParameter("invalid detached daemon port")
   }
@@ -72,7 +74,7 @@ pub async fn spawn_detached_proposal_run(
   home~ : String,
   cwd~ : String,
   initial_input_path? : String,
-) -> Int {
+) -> Int32 {
   validate_daemon_data("proposal run id", run_id, 256)
   let home = canonical_daemon_path("proposal home", home)
   let cwd = canonical_daemon_path("proposal working directory", cwd)

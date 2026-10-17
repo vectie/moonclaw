@@ -12,7 +12,7 @@ struct Daemon {
   by_id : Map[@uuid.Uuid, Task]
   rqs : Map[String, PendingTaskRegistration]
   httpx : @httpx.Server
-  port : Int
+  port : Int32
   events : @broadcast.Broadcast[Event]
   serve : String
   conversations : @conversation.Manager
@@ -37,7 +37,7 @@ priv struct PendingTaskRegistration {
 /// Returns the actual TCP port the daemon bound to after the HTTP server is
 /// created. This is useful when callers asked for `--port 0` (ephemeral port)
 /// and need to propagate the assigned value.
-pub fn Daemon::port(self : Daemon) -> Int {
+pub fn Daemon::port(self : Daemon) -> Int32 {
   self.port
 }
 
@@ -63,11 +63,11 @@ priv struct PendingCodexAuth {
 pub async fn Daemon::new(
   uuid? : @uuid.Generator,
   exec_path~ : String,
-  port~ : Int,
+  port~ : Int32,
   serve~ : String,
   cwd? : StringView,
   home? : StringView,
-  lock? : Bool = true,
+  lock~ : Bool = true,
 ) -> Daemon? {
   let home = match home {
     None => @os.home()

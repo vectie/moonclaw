@@ -152,7 +152,7 @@ fn GitOperation::arguments(
 pub async fn run_git(
   workspace_root : String,
   operation : GitOperation,
-  timeout_ms? : Int = 10000,
+  timeout_ms~ : Int32 = 10000,
 ) -> GitResult {
   if !@fsx.exists(git_executable) {
     raise HostToolUnavailable(git_executable)

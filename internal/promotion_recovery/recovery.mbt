@@ -1,6 +1,6 @@
 ///|
 priv struct MoonDeskRecoveryRequest {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   workspace_id : String
   retention_id : String
@@ -10,7 +10,7 @@ priv struct MoonDeskRecoveryRequest {
 
 ///|
 priv struct MoonFortRecoveryResponse {
-  protocol_version : Int
+  protocol_version : Int32
   retention_id : String
   workspace_id : String
   profile_digest : String
@@ -58,7 +58,7 @@ fn moondesk_recovery_parse_request(
 async fn moondesk_recovery_pending(
   path : String,
   request : MoonDeskRecoveryRequest,
-  discover_attempt? : Bool = false,
+  discover_attempt~ : Bool = false,
 ) -> MoonDeskPromotionRequest {
   guard @fs.kind(path, follow_symlink=false) is Regular &&
     @fs.realpath(path) == path else {

@@ -86,7 +86,7 @@ fn resolve_cwd(args : Array[String]) -> String {
 }
 
 ///|
-fn parse_int_arg(args : Array[String], flag : String) -> Int? {
+fn parse_int_arg(args : Array[String], flag : String) -> Int32? {
   match parse_string_arg(args, flag) {
     Some(raw) => Some(@string.parse_int(raw[:], base=10)) catch { _ => None }
     None => None

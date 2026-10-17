@@ -19,7 +19,7 @@ fn proposal_for_run(store : SystemStore, run : JobRun) -> JobProposal? {
 }
 
 ///|
-fn timeline_entry_id(run_id : String, index : Int) -> String {
+fn timeline_entry_id(run_id : String, index : Int32) -> String {
   "\{run_id}:event:\{index}"
 }
 
@@ -32,7 +32,7 @@ fn timeline_title(event : JobRunEvent) -> String {
 }
 
 ///|
-fn remote_link_timestamp(link : JobUiRemoteLink) -> Int {
+fn remote_link_timestamp(link : JobUiRemoteLink) -> Int32 {
   match link.metadata {
     { "updated_at": Number(ts, ..), .. } => ts.to_int()
     { "created_at": Number(ts, ..), .. } => ts.to_int()
@@ -102,7 +102,7 @@ fn timeline_from_events(
 }
 
 ///|
-fn node_updated_at(started_at : Int?, finished_at : Int?) -> Int? {
+fn node_updated_at(started_at : Int32?, finished_at : Int32?) -> Int32? {
   match finished_at {
     Some(value) => Some(value)
     None => started_at
@@ -753,8 +753,8 @@ pub fn current_step_id_for_ui(
 pub async fn build_job_ui_snapshot(
   store : SystemStore,
   run_id : String,
-  linked_remote? : Array[JobUiRemoteLink] = [],
-  handoffs? : Array[JobUiHandoff] = [],
+  linked_remote~ : Array[JobUiRemoteLink] = [],
+  handoffs~ : Array[JobUiHandoff] = [],
 ) -> JobUiSnapshot? {
   let run = match store.get_run(run_id) {
     Some(run) => run

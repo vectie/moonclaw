@@ -1,8 +1,8 @@
 ///|
 pub struct CommandOutput {
   text : String
-  truncated_lines : Int
-  original_lines : Int
+  truncated_lines : Int32
+  original_lines : Int32
 } derive(ToJson, @json.FromJson)
 
 ///|
@@ -16,30 +16,30 @@ pub enum CommandResult {
   Blocked(command~ : String, assessment~ : @security.CommandAssessment)
   Completed(
     command~ : String,
-    status~ : Int,
+    status~ : Int32,
     stdout~ : String,
     stderr~ : String,
-    max_output_lines~ : Int,
+    max_output_lines~ : Int32,
     receipt~ : @execution_sandbox.MoonFortReceipt,
     audit_id~ : String
   )
   TimedOut(
     command~ : String,
-    timeout~ : Int,
+    timeout~ : Int32,
     stdout~ : String,
     stderr~ : String,
-    max_output_lines~ : Int,
+    max_output_lines~ : Int32,
     receipt~ : @execution_sandbox.MoonFortReceipt,
     audit_id~ : String
   )
-  Background(command~ : String, job_id~ : Int)
+  Background(command~ : String, job_id~ : Int32)
 } derive(@json.FromJson, ToJson)
 
 ///|
 fn render_output(
   name~ : String,
   output : String,
-  max_output_lines~ : Int,
+  max_output_lines~ : Int32,
 ) -> String {
   let formatted = StringBuilder::new()
   let lines = output.split("\n").collect()

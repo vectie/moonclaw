@@ -382,7 +382,7 @@ fn mooncode_shell_leading_static_cd_cwd(
 }
 
 ///|
-fn mooncode_shell_max_parent_hops(cmd : String) -> Int {
+fn mooncode_shell_max_parent_hops(cmd : String) -> Int32 {
   let mut maximum = 0
   let mut current = 0
   let mut index = 0
@@ -1274,13 +1274,13 @@ fn mooncode_moon_check_state(
   target : String,
   key : String,
   watcher : String,
-  seq : Int,
-  restart_count : Int,
-  exit_code : Int,
-  elapsed_ms : Int,
+  seq : Int32,
+  restart_count : Int32,
+  exit_code : Int32,
+  elapsed_ms : Int32,
   output : String,
   truncated : Bool,
-  max_output_chars : Int,
+  max_output_chars : Int32,
 ) -> Json {
   let status = if exit_code == 0 { "running" } else { "stopped" }
   {
@@ -1326,6 +1326,6 @@ fn mooncode_moon_check_message(prefix : String, state : Json) -> String {
 
 ///|
 #warnings("-unused_value")
-fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int) -> Bool {
+fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int32) -> Bool {
   status == mooncode_json_int(arguments, "expected_exit_code", default=0)
 }

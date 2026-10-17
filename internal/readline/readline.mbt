@@ -1,7 +1,7 @@
 ///|
 priv struct Edit {
   text : BytesView
-  cursor : Int
+  cursor : Int32
 }
 
 ///|
@@ -79,21 +79,21 @@ struct Interface {
   mut is_multiline : Bool
   mut prompt : Bytes
   mut old_prompt : Bytes
-  tab_size : Int
-  mut cursor : Int
-  mut previous_cursor : Int
-  mut previous_cursor_cols : Int
-  mut prev_rows : Int
-  mut previous_prev_rows : Int
+  tab_size : Int32
+  mut cursor : Int32
+  mut previous_cursor : Int32
+  mut previous_cursor_cols : Int32
+  mut prev_rows : Int32
+  mut previous_prev_rows : Int32
   mut previous_key : Key?
   undo_stack : @deque.Deque[Edit]
   redo_stack : @deque.Deque[Edit]
   kill_ring : @deque.Deque[BytesView]
-  mut kill_ring_cursor : Int
+  mut kill_ring_cursor : Int32
   mut yanking : Bool
   mut substring_search : BytesView?
   history : @deque.Deque[Bytes]
-  mut history_index : Int
+  mut history_index : Int32
   events : Events
   history_manager : HistoryManager
   mut saw_return_at : UInt64
@@ -108,7 +108,7 @@ struct Interface {
 /// Puts the input into raw mode and initializes internal state.
 pub fn interface(
   input~ : @stdio.Input,
-  output? : @stdio.Output = @stdio.stdout,
+  output~ : @stdio.Output = @stdio.stdout,
 ) -> Interface raise {
   @tty.set_raw_mode(input.fd())
   {
@@ -170,8 +170,8 @@ pub fn Interface::set_line(self : Interface, line : BytesView) -> Unit {
 ///|
 async fn Interface::write_move_cursor(
   self : Interface,
-  dx : Int,
-  dy : Int,
+  dx : Int32,
+  dy : Int32,
 ) -> Unit {
   let buffer = Buffer()
   if dx < 0 {
@@ -202,8 +202,8 @@ async fn Interface::write_move_cursor(
 ///|
 async fn @stdio.Output::cursor_to(
   self : @stdio.Output,
-  col~ : Int,
-  row? : Int,
+  col~ : Int32,
+  row? : Int32,
 ) -> Unit {
   match row {
     None => {
@@ -282,12 +282,12 @@ async fn Interface::refresh_line(self : Interface) -> Unit {
 
 ///|
 priv struct Position {
-  cols : Int
-  rows : Int
+  cols : Int32
+  rows : Int32
 }
 
 ///|
-fn Interface::columns(_ : Interface) -> Int raise {
+fn Interface::columns(_ : Interface) -> Int32 raise {
   @tty.window_size().col
 }
 
@@ -297,9 +297,9 @@ const MultilinePrompt = "| "
 ///|
 fn display_position(
   str : Bytes,
-  col~ : Int,
+  col~ : Int32,
   is_multiline~ : Bool,
-  tab_size~ : Int,
+  tab_size~ : Int32,
 ) -> Position {
   let mut offset = 0
   let mut rows = 0
@@ -315,21 +315,21 @@ fn display_position(
         offset += tab_size - offset % tab_size
         continue rest
       }
-      [0x00..=0x7F, .. rest] => {
+      [0x00..<=0x7F, .. rest] => {
         offset += 1
         continue rest
       }
-      [0xC2..=0xDF as b0, 0x80..=0xBF as b1, .. rest] => {
+      [0xC2..<=0xDF as b0, 0x80..<=0xBF as b1, .. rest] => {
         let b0 = b0.to_int()
         let b1 = b1.to_int()
         let char = (((b0 & 0x1F) << 6) | (b1 & 0x3F)).unsafe_to_char()
         offset += @unicode/width.char(char).unwrap_or(1)
         continue rest
       }
-      [0xE0 as b0, 0xA0..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
-      | [0xE1..=0xEC as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
-      | [0xED as b0, 0x80..=0x9F as b1, 0x80..=0xBF as b2, .. rest]
-      | [0xEE..=0xEF as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest] => {
+      [0xE0 as b0, 0xA0..<=0xBF as b1, 0x80..<=0xBF as b2, .. rest]
+      | [0xE1..<=0xEC as b0, 0x80..<=0xBF as b1, 0x80..<=0xBF as b2, .. rest]
+      | [0xED as b0, 0x80..<=0x9F as b1, 0x80..<=0xBF as b2, .. rest]
+      | [0xEE..<=0xEF as b0, 0x80..<=0xBF as b1, 0x80..<=0xBF as b2, .. rest] => {
         let b0 = b0.to_int()
         let b1 = b1.to_int()
         let b2 = b2.to_int()
@@ -339,23 +339,23 @@ fn display_position(
       }
       [
         0xF0 as b0,
-        0x90..=0xBF as b1,
-        0x80..=0xBF as b2,
-        0x80..=0xBF as b3,
+        0x90..<=0xBF as b1,
+        0x80..<=0xBF as b2,
+        0x80..<=0xBF as b3,
         .. rest,
       ]
       | [
-        0xF1..=0xF3 as b0,
-        0x80..=0xBF as b1,
-        0x80..=0xBF as b2,
-        0x80..=0xBF as b3,
+        0xF1..<=0xF3 as b0,
+        0x80..<=0xBF as b1,
+        0x80..<=0xBF as b2,
+        0x80..<=0xBF as b3,
         .. rest,
       ]
       | [
         0xF4 as b0,
-        0x80..=0x8F as b1,
-        0x80..=0xBF as b2,
-        0x80..=0xBF as b3,
+        0x80..<=0x8F as b1,
+        0x80..<=0xBF as b2,
+        0x80..<=0xBF as b3,
         .. rest,
       ] => {
         let b0 = b0.to_int()
@@ -389,7 +389,7 @@ fn Interface::get_cursor_pos(self : Interface) -> Position raise {
 }
 
 ///|
-async fn Interface::move_cursor(self : Interface, dx : Int) -> Unit {
+async fn Interface::move_cursor(self : Interface, dx : Int32) -> Unit {
   if dx == 0 {
     return
   }
@@ -426,7 +426,7 @@ fn Interface::get_display_position(
 fn Interface::push_to_undo_stack(
   self : Interface,
   text : BytesView,
-  cursor : Int,
+  cursor : Int32,
 ) -> Unit {
   self.undo_stack.push_back({ text, cursor, })
   if self.undo_stack.length() > 2048 {
@@ -438,7 +438,7 @@ fn Interface::push_to_undo_stack(
 fn Interface::before_edit(
   self : Interface,
   old_text : BytesView,
-  old_cursor : Int,
+  old_cursor : Int32,
 ) -> Unit {
   self.push_to_undo_stack(old_text, old_cursor)
 }
@@ -596,16 +596,16 @@ async fn Interface::yank_pop(self : Interface) -> Unit {
 }
 
 ///|
-fn word_byte_class(byte : Byte) -> Int {
+fn word_byte_class(byte : Byte) -> Int32 {
   match byte {
     b' ' | b'\t' | b'\n' | b'\r' | 11 | 12 => 0
-    b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' => 1
+    b'a'..<=b'z' | b'A'..<=b'Z' | b'0'..<=b'9' | b'_' => 1
     _ => 2
   }
 }
 
 ///|
-fn word_size_left(string : BytesView, index : Int) -> Int {
+fn word_size_left(string : BytesView, index : Int32) -> Int32 {
   if index == 0 {
     return 0
   }
@@ -623,7 +623,7 @@ fn word_size_left(string : BytesView, index : Int) -> Int {
 }
 
 ///|
-fn word_right_left(string : BytesView, index : Int) -> Int {
+fn word_right_left(string : BytesView, index : Int32) -> Int32 {
   if index >= string.length() {
     return 0
   }
@@ -781,7 +781,7 @@ fn BytesView::split(self : BytesView, sep : Byte) -> Array[BytesView] {
 ///|
 async fn Interface::multiline_move(
   self : Interface,
-  direction : Int,
+  direction : Int32,
   split_lines : Array[BytesView],
   cursor_pos : Position,
 ) -> Unit {
@@ -894,7 +894,7 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       // ESC O modifier letter
       ch = self.read_byte()
       s.write_byte(ch)
-      if ch is (b'0'..=b'9') {
+      if ch is (b'0'..<=b'9') {
         modifier = ch.to_int() - '0' - 1
         ch = self.read_byte()
         s.write_byte(ch)
@@ -913,15 +913,15 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       let cmd = Buffer()
 
       // Skip one or two leading digits
-      if ch is (b'0'..=b'9') {
+      if ch is (b'0'..<=b'9') {
         ch = self.read_byte()
         s.write_byte(ch)
         cmd.write_byte(ch)
-        if ch is (b'0'..=b'9') {
+        if ch is (b'0'..<=b'9') {
           ch = self.read_byte()
           s.write_byte(ch)
           cmd.write_byte(ch)
-          if ch is (b'0'..=b'9') {
+          if ch is (b'0'..<=b'9') {
             ch = self.read_byte()
             s.write_byte(ch)
             cmd.write_byte(ch)
@@ -934,7 +934,7 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
         ch = self.read_byte()
         s.write_byte(ch)
         cmd.write_byte(ch)
-        if ch is (b'0'..=b'9') {
+        if ch is (b'0'..<=b'9') {
           let ch = self.read_byte()
           s.write_byte(ch)
           cmd.write_byte(ch)
@@ -944,10 +944,10 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       match cmd {
         // (\d\d?)(;(\d))?([~^$])
         [
-          b'0'..=b'9' as d0,
-          b'0'..=b'9' as d1,
+          b'0'..<=b'9' as d0,
+          b'0'..<=b'9' as d1,
           b';',
-          b'0'..=b'9' as m0,
+          b'0'..<=b'9' as m0,
           b'~'
           | b'^'
           | b'$' as s0,
@@ -957,32 +957,38 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
           code.write_byte(s0)
           modifier = m0.to_int() - '0' - 1
         }
-        [b'0'..=b'9' as d0, b'0'..=b'9' as d1, b'~' | b'^' | b'$' as s0] => {
+        [b'0'..<=b'9' as d0, b'0'..<=b'9' as d1, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(d1)
           code.write_byte(s0)
           modifier = 0
         }
-        [b'0'..=b'9' as d0, b';', b'0'..=b'9' as m0, b'~' | b'^' | b'$' as s0] => {
+        [b'0'..<=b'9' as d0, b';', b'0'..<=b'9' as m0, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(s0)
           modifier = m0.to_int() - '0' - 1
         }
-        [b'0'..=b'9' as d0, b'~' | b'^' | b'$' as s0] => {
+        [b'0'..<=b'9' as d0, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(s0)
           modifier = 0
         }
         // (\d{3}~)
-        [b'0'..=b'9', b'0'..=b'9', b'0'..=b'9', b'~'] =>
+        [b'0'..<=b'9', b'0'..<=b'9', b'0'..<=b'9', b'~'] =>
           code.write_bytesview(cmd)
         // ((\d;)?(\d))?([A-Za-z])
-        [b'0'..=b'9', b';', b'0'..=b'9' as m0, b'a'..=b'z' | b'A'..=b'z' as c0]
-        | [b'0'..=b'9' as m0, b'a'..=b'z' | b'A'..=b'z' as c0] => {
+        [
+          b'0'..<=b'9',
+          b';',
+          b'0'..<=b'9' as m0,
+          b'a'..<=b'z'
+          | b'A'..<=b'z' as c0,
+        ]
+        | [b'0'..<=b'9' as m0, b'a'..<=b'z' | b'A'..<=b'z' as c0] => {
           code.write_byte(c0)
           modifier = m0.to_int() - '0' - 1
         }
-        [b'a'..=b'z' | b'A'..=b'z' as c0] => {
+        [b'a'..<=b'z' | b'A'..<=b'z' as c0] => {
           code.write_byte(c0)
           modifier = 0
         }
@@ -1185,16 +1191,16 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
         key.name = Space
         key.meta = escaped
       }
-      0x00..=0x1a if !escaped => {
+      0x00..<=0x1a if !escaped => {
         key.name = Byte((ch.to_int() + b'a'.to_int() - 1).to_byte())
         key.ctrl = true
       }
-      b'A'..=b'Z' => {
+      b'A'..<=b'Z' => {
         key.name = Byte((ch.to_int() + b'a'.to_int() - b'A'.to_int()).to_byte())
         key.shift = true
         key.meta = escaped
       }
-      b'0'..=b'9' | b'a'..=b'z' => {
+      b'0'..<=b'9' | b'a'..<=b'z' => {
         key.name = Byte(ch)
         key.shift = false
         key.meta = escaped
@@ -1515,7 +1521,7 @@ pub async fn Interface::question(
 /// When `preserve_cursor` is false, the cursor resets to the start.
 pub async fn Interface::prompt(
   self : Interface,
-  preserve_cursor? : Bool = false,
+  preserve_cursor~ : Bool = false,
 ) -> Unit {
   if !preserve_cursor {
     self.cursor = 0

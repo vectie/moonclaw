@@ -232,9 +232,9 @@ pub fn runtime_evidence_required_outputs(
 
 ///|
 pub fn runtime_evidence_status_for_required_events(
-  required_event_count : Int,
-  missing_count : Int,
-  failed_count : Int,
+  required_event_count : Int32,
+  missing_count : Int32,
+  failed_count : Int32,
 ) -> String {
   if required_event_count == 0 {
     runtime_evidence_status_no_required_events()
@@ -249,18 +249,18 @@ pub fn runtime_evidence_status_for_required_events(
 
 ///|
 pub fn runtime_evidence_is_proven(
-  required_event_count : Int,
-  missing_count : Int,
-  failed_count : Int,
+  required_event_count : Int32,
+  missing_count : Int32,
+  failed_count : Int32,
 ) -> Bool {
   required_event_count > 0 && missing_count == 0 && failed_count == 0
 }
 
 ///|
 pub fn tool_harness_status_for_counts(
-  expected_tool_count : Int,
-  failed_tool_count : Int,
-  missing_tool_count : Int,
+  expected_tool_count : Int32,
+  failed_tool_count : Int32,
+  missing_tool_count : Int32,
 ) -> String {
   if expected_tool_count == 0 {
     tool_harness_status_no_tools()
@@ -275,9 +275,9 @@ pub fn tool_harness_status_for_counts(
 
 ///|
 pub fn tool_harness_is_proven(
-  expected_tool_count : Int,
-  failed_tool_count : Int,
-  missing_tool_count : Int,
+  expected_tool_count : Int32,
+  failed_tool_count : Int32,
+  missing_tool_count : Int32,
 ) -> Bool {
   expected_tool_count > 0 && failed_tool_count == 0 && missing_tool_count == 0
 }
@@ -311,12 +311,12 @@ pub fn tool_harness_case_status(
 
 ///|
 pub fn session_runtime_evidence_status_for_counts(
-  command_count : Int,
-  failed_count : Int,
-  failed_required_event_count : Int,
-  missing_count : Int,
-  missing_runtime_command_count : Int,
-  missing_required_event_count : Int,
+  command_count : Int32,
+  failed_count : Int32,
+  failed_required_event_count : Int32,
+  missing_count : Int32,
+  missing_runtime_command_count : Int32,
+  missing_required_event_count : Int32,
 ) -> String {
   if command_count == 0 {
     runtime_evidence_status_no_commands()
@@ -432,7 +432,7 @@ pub fn runtime_completion_requires_proof(action : String) -> Bool {
 ///|
 pub fn runtime_completion_tool_harness_blocked(
   proof_required : Bool,
-  expected_tool_count : Int,
+  expected_tool_count : Int32,
   tool_harness_status : String,
 ) -> Bool {
   proof_required &&
@@ -482,8 +482,8 @@ pub fn runtime_replay_ack_effective_status(
 pub fn runtime_completion_proof_gate(
   action : String,
   evidence : Json,
-  prior_event_count : Int,
-  submitted_event_count : Int,
+  prior_event_count : Int32,
+  submitted_event_count : Int32,
   missing_required_events : Array[Json],
   failed_required_events : Array[Json],
 ) -> Json {
@@ -567,12 +567,12 @@ pub fn runtime_completion_proof_gate(
 
 ///|
 pub fn action_plan_status_for_counts(
-  pending_runtime_count : Int,
-  running_count : Int,
-  blocked_count : Int,
-  ready_for_review_count : Int,
-  completed_count : Int,
-  action_count : Int,
+  pending_runtime_count : Int32,
+  running_count : Int32,
+  blocked_count : Int32,
+  ready_for_review_count : Int32,
+  completed_count : Int32,
+  action_count : Int32,
 ) -> String {
   if blocked_count > 0 {
     action_plan_status_blocked()
@@ -613,7 +613,7 @@ pub fn action_plan_state_with_tool_harness(
   action : String,
   runtime_state : String,
   state : String,
-  expected_tool_count : Int,
+  expected_tool_count : Int32,
   tool_harness_status : String,
 ) -> String {
   if runtime_state != runtime_claim_status_delivered() ||
@@ -749,7 +749,11 @@ fn runtime_evidence_json_string(
 }
 
 ///|
-fn runtime_evidence_json_int(json : Json, key : String, default~ : Int) -> Int {
+fn runtime_evidence_json_int(
+  json : Json,
+  key : String,
+  default~ : Int32,
+) -> Int32 {
   match json {
     Object(object) =>
       match object.get(key) {

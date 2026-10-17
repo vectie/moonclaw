@@ -13,7 +13,7 @@ pub struct PatchEditResult {
   added : Array[String]
   modified : Array[String]
   deleted : Array[String]
-  file_count : Int
+  file_count : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|

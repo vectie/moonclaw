@@ -2,8 +2,8 @@
 priv struct ReadFileResult {
   path : String
   content : String
-  start_line : Int
-  end_line : Int
+  start_line : Int32
+  end_line : Int32
 } derive(ToJson, @json.FromJson)
 
 ///|
@@ -62,11 +62,11 @@ async fn execute_read_file_tool(
   guard args is { "path": String(path), .. } else {
     return @tool.error("Error: 'path' parameter is required")
   }
-  let start_line : Int? = match args {
+  let start_line : Int32? = match args {
     { "start_line": Number(n, ..), .. } => Some(n.to_int())
     _ => None
   }
-  let end_line : Int? = match args {
+  let end_line : Int32? = match args {
     { "end_line": Number(n, ..), .. } => Some(n.to_int())
     _ => None
   }

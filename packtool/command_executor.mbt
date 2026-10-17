@@ -9,7 +9,7 @@ pub(all) struct PackToolCommandConfig {
   executable : String
   input : String
   arguments : Array[String]
-  timeout_ms : Int?
+  timeout_ms : Int32?
 } derive(Debug, ToJson, FromJson)
 
 ///|
@@ -61,8 +61,8 @@ fn require_installed_artifact(
 ///|
 fn command_timeout(
   config : PackToolCommandConfig,
-  max_timeout_ms : Int,
-) -> Result[Int, String] {
+  max_timeout_ms : Int32,
+) -> Result[Int32, String] {
   if max_timeout_ms <= 0 {
     return Err("pack tool command host timeout must be positive")
   }
@@ -77,7 +77,7 @@ fn command_timeout(
 ///|
 fn validate_installed_pack_command(
   installed : InstalledPackWorkflow,
-  max_timeout_ms : Int,
+  max_timeout_ms : Int32,
   request : PackToolExecutionRequest,
 ) -> Result[Unit, String] {
   let config : PackToolCommandConfig = @json.from_json(request.config) catch {
@@ -113,7 +113,7 @@ fn validate_installed_pack_command(
 /// pack workflow.
 pub fn installed_pack_command_executor(
   installed : InstalledPackWorkflow,
-  max_timeout_ms~ : Int,
+  max_timeout_ms~ : Int32,
 ) -> PackToolExecutor {
   PackToolExecutor::new(run=request => {
     match validate_installed_pack_command(installed, max_timeout_ms, request) {

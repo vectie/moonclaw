@@ -105,12 +105,14 @@ fn ChatCompletionMessageBuilder::to_message(
 ///|
 priv struct ChatCompletionChoiceBuilder {
   mut finish_reason : ChatCompletionChoiceFinishReason?
-  index : Int
+  index : Int32
   message : ChatCompletionMessageBuilder
 }
 
 ///|
-fn ChatCompletionChoiceBuilder::new(index : Int) -> ChatCompletionChoiceBuilder {
+fn ChatCompletionChoiceBuilder::new(
+  index : Int32,
+) -> ChatCompletionChoiceBuilder {
   { finish_reason: None, index, message: ChatCompletionMessageBuilder::new(), }
 }
 
@@ -140,7 +142,7 @@ fn ChatCompletionChoiceBuilder::to_choice(
 priv struct ChatCompletionBuilder {
   mut id : String?
   choices : Array[ChatCompletionChoiceBuilder?]
-  mut created : Int?
+  mut created : Int32?
   mut model : String?
   mut usage : CompletionUsage?
   mut system_fingerprint : String?

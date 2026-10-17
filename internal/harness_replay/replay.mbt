@@ -86,10 +86,10 @@ fn harness_replay_observation_summary(observations : ArrayView[Json]) -> Json {
   let mut safety_recovery_success_count = 0
   let mut total_prompt_tokens = 0L
   let mut total_cache_read_tokens = 0L
-  let fresh_input_tokens : Array[Int] = []
-  let request_chars : Array[Int] = []
-  let latencies : Array[Int] = []
-  let outcomes : Map[String, Int] = Map([])
+  let fresh_input_tokens : Array[Int32] = []
+  let request_chars : Array[Int32] = []
+  let latencies : Array[Int32] = []
+  let outcomes : Map[String, Int32] = Map([])
   for outcome in harness_replay_known_outcomes() {
     outcomes[outcome] = 0
   }
@@ -154,7 +154,7 @@ fn harness_replay_summary_percentile(
   summary : Json,
   metric : String,
   percentile : String,
-) -> Int {
+) -> Int32 {
   harness_replay_int(harness_replay_object(summary, metric), percentile).unwrap_or(
     0,
   )
@@ -162,9 +162,9 @@ fn harness_replay_summary_percentile(
 
 ///|
 fn harness_replay_within_regression_ppm(
-  variant : Int,
-  baseline : Int,
-  allowed_ppm : Int,
+  variant : Int32,
+  baseline : Int32,
+  allowed_ppm : Int32,
 ) -> Bool {
   if baseline == 0 {
     return variant == 0

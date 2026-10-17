@@ -16,17 +16,23 @@ priv suberror InvalidGoalRequest {
 ///|
 /// Transport-neutral response shared by the internal goal logic and HTTP adapter.
 priv struct MoonCodeGoalApiResponse {
-  status_code : Int
+  status_code : Int32
   body : Json
 }
 
 ///|
-fn goal_api_response(status_code : Int, body : Json) -> MoonCodeGoalApiResponse {
+fn goal_api_response(
+  status_code : Int32,
+  body : Json,
+) -> MoonCodeGoalApiResponse {
   { status_code, body, }
 }
 
 ///|
-fn goal_api_error(status_code : Int, code : String) -> MoonCodeGoalApiResponse {
+fn goal_api_error(
+  status_code : Int32,
+  code : String,
+) -> MoonCodeGoalApiResponse {
   goal_api_response(status_code, {
     "kind": "mooncode-goal-error",
     "protocol": "mooncode.v1",
@@ -128,7 +134,7 @@ fn goal_api_text(
 }
 
 ///|
-fn goal_api_turn_limit(json : Json) -> Int? raise InvalidGoalRequest {
+fn goal_api_turn_limit(json : Json) -> Int32? raise InvalidGoalRequest {
   match json {
     Null => None
     Number(value, ..) => {

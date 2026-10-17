@@ -21,8 +21,8 @@ pub(all) struct RunInfo {
   run_id : String
   session_key : String
   status : String
-  created_at : Int
-  finished_at : Int?
+  created_at : Int32
+  finished_at : Int32?
   result : Json?
   error : @protocol.ErrorShape?
 } derive(ToJson, FromJson, Debug)
@@ -255,7 +255,7 @@ pub async fn Client::agent(
 pub async fn Client::wait_agent(
   self : Client,
   run_id~ : String,
-  timeout_ms? : Int = 60000,
+  timeout_ms~ : Int32 = 60000,
 ) -> Result[Json, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
@@ -579,7 +579,7 @@ pub async fn Client::create_acp_session(
   target_id~ : String,
   session_key~ : String,
   session_id? : String,
-  metadata? : Json = {},
+  metadata~ : Json = {},
 ) -> Result[AcpSessionMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
@@ -793,7 +793,7 @@ pub async fn Client::search_memories(
   self : Client,
   question~ : String,
   query? : @job.MemoryQuery,
-  max_hits? : Int = 5,
+  max_hits~ : Int32 = 5,
 ) -> Result[MemorySearchPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),

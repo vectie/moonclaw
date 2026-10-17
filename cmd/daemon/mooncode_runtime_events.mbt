@@ -262,7 +262,7 @@ fn mooncode_runtime_event_record(
   session_id : String,
   book_root : String,
   raw : Json,
-  index~ : Int,
+  index~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
   let raw_kind = mooncode_runtime_event_kind(raw)
@@ -294,7 +294,7 @@ fn mooncode_runtime_event_id(
   session_id : String,
   command_id : String,
   kind : String,
-  index : Int,
+  index : Int32,
   now : @clock.Timestamp,
 ) -> String {
   "moonclaw-\{mooncode_safe_session_id(session_id)}-\{if command_id == "" { "event" } else { command_id }}-\{kind.replace_all(old="/", new="_")}-\{index}-\{now}"

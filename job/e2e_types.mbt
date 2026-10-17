@@ -4,7 +4,7 @@ pub struct E2EStarterAttachment {
   mime_type : String
   url : String
   filename : String?
-  size : Int?
+  size : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -12,8 +12,8 @@ pub fn E2EStarterAttachment::new(
   id~ : String,
   mime_type~ : String,
   url~ : String,
-  filename? : String? = None,
-  size? : Int? = None,
+  filename~ : String? = None,
+  size~ : Int32? = None,
 ) -> E2EStarterAttachment {
   { id, mime_type, url, filename, size, }
 }
@@ -34,14 +34,14 @@ pub struct E2EJobIntake {
 ///|
 pub fn E2EJobIntake::new(
   request_text~ : String,
-  requested_output_format? : String? = None,
-  starter_attachments? : Array[E2EStarterAttachment] = [],
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  message_id? : String? = None,
-  thread_id? : String? = None,
-  content_type? : String? = None,
+  requested_output_format~ : String? = None,
+  starter_attachments~ : Array[E2EStarterAttachment] = [],
+  channel_id~ : String? = None,
+  account_id~ : String? = None,
+  recipient~ : String? = None,
+  message_id~ : String? = None,
+  thread_id~ : String? = None,
+  content_type~ : String? = None,
 ) -> E2EJobIntake {
   {
     request_text,

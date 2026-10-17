@@ -1,16 +1,16 @@
 ///|
 /// Token usage details for the prompt segment.
 pub struct PromptTokensDetails {
-  cached_tokens : Int?
-  cache_write_tokens : Int?
-  audio_tokens : Int?
+  cached_tokens : Int32?
+  cache_write_tokens : Int32?
+  audio_tokens : Int32?
 } derive(Debug, ToJson)
 
 ///|
 pub fn PromptTokensDetails::new(
-  cached_tokens? : Int,
-  cache_write_tokens? : Int,
-  audio_tokens? : Int,
+  cached_tokens? : Int32,
+  cache_write_tokens? : Int32,
+  audio_tokens? : Int32,
 ) -> PromptTokensDetails {
   { cached_tokens, cache_write_tokens, audio_tokens, }
 }

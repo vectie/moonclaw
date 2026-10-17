@@ -209,7 +209,7 @@ pub async fn ensure_controller_records_for_run(
   store : SystemStore,
   definition : JobDefinition,
   run : JobRun,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   guard is_controller_definition(definition) else { return () }
   guard store.get_controller_state(run.id) is None else { return () }
@@ -253,7 +253,7 @@ pub async fn ensure_controller_iteration_for_step(
   store : SystemStore,
   run : JobRun,
   step : WorkflowStepDefinition,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   let state = match store.get_controller_state(run.id) {
     Some(state) => state
@@ -311,7 +311,7 @@ pub async fn record_controller_child_run(
   child_job_id : String,
   child_run_id : String,
   child_family : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   guard store.get_controller_state(parent_run.id) is Some(_) else { return () }
   ensure_controller_iteration_for_step(store, parent_run, step, now_ms)
@@ -473,7 +473,7 @@ fn decision_next_iteration(decision : Json) -> Json? {
 fn mapped_object_string(
   object : Json,
   primary : String,
-  secondary? : String? = None,
+  secondary~ : String? = None,
 ) -> String? {
   match object {
     Object(fields) =>
@@ -502,7 +502,7 @@ pub async fn record_controller_decision_from_output(
   run : JobRun,
   step : WorkflowStepDefinition,
   output : Json,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   guard store.get_controller_state(run.id) is Some(state) else { return () }
   guard controller_accepts_step_output(definition) else { return () }
@@ -634,7 +634,7 @@ pub async fn complete_controller_iteration_for_step(
   run : JobRun,
   step : WorkflowStepDefinition,
   status : RunStatus,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   let state = match store.get_controller_state(run.id) {
     Some(state) => state
@@ -685,7 +685,7 @@ pub async fn complete_controller_run(
   store : SystemStore,
   run : JobRun,
   status : RunStatus,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   let state = match store.get_controller_state(run.id) {
     Some(state) => state

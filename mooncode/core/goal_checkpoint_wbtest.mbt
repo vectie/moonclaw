@@ -2,7 +2,7 @@
 fn checkpoint(
   producer : String,
   id : String,
-  epoch : Int,
+  epoch : Int32,
   key : String,
   source : String,
 ) -> GoalCheckpointSnapshot {

@@ -2,8 +2,8 @@
 async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   self : Daemon,
   command : Json,
-  live_steering? : Array[Json] = [],
-  remaining_steps? : Int = -1,
+  live_steering~ : Array[Json] = [],
+  remaining_steps~ : Int32 = -1,
   now~ : @clock.Timestamp,
 ) -> Json {
   // Treat the provider catalog selector as opaque. Availability is checked
@@ -208,7 +208,7 @@ async fn mooncode_runtime_turn_resolve_model(
   home : StringView,
   command : Json,
   selector : String,
-  legacy_source_fallback? : Bool = true,
+  legacy_source_fallback~ : Bool = true,
 ) -> @model.Model? {
   mooncode_resolve_model_workspace(
     command,
@@ -250,7 +250,7 @@ fn mooncode_runtime_turn_requested_model(command : Json) -> String {
 }
 
 ///|
-fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int {
+fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int32 {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   // Direct reasoning models can legitimately need more than 30 seconds once a
   // coding turn reaches edit/verification. Keep the timeout bounded, but do
@@ -269,7 +269,7 @@ fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int {
 fn mooncode_runtime_turn_model_timeout_for_provider(
   model : @model.Model,
   command : Json,
-) -> Int? {
+) -> Int32? {
   match model.model_type {
     SaaS(CodexOAuth) => None
     _ =>
@@ -312,7 +312,7 @@ async fn mooncode_runtime_turn_model_chat(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
-  source_messages? : Array[Json] = [],
+  source_messages~ : Array[Json] = [],
 ) -> (@openai.ChatCompletion, Array[Json], String) {
   let mut retry_count = 0
   let mut active_request = request
@@ -409,11 +409,11 @@ fn mooncode_runtime_turn_model_retries_until_cancelled(
 
 ///|
 fn mooncode_runtime_turn_model_retry_delay_ms(
-  retry_count : Int,
-  summary? : String = "",
-  retry_after_ms? : Int? = None,
-  entropy? : String = "",
-) -> Int {
+  retry_count : Int32,
+  summary~ : String = "",
+  retry_after_ms~ : Int32? = None,
+  entropy~ : String = "",
+) -> Int32 {
   let rate_limited = summary.contains("HTTP 429")
   let mut delay = if rate_limited { 30000 } else { 1000 }
   let exponent_cap = if rate_limited { 4 } else { 5 }
@@ -435,7 +435,7 @@ fn mooncode_runtime_turn_model_retry_delay_ms(
 ///|
 /// Stable ±15% jitter prevents synchronized MoonCode workers from retrying an
 /// overloaded provider together while keeping replay tests deterministic.
-fn mooncode_runtime_turn_model_retry_jitter_percent(seed : String) -> Int {
+fn mooncode_runtime_turn_model_retry_jitter_percent(seed : String) -> Int32 {
   let mut hash = 5381
   for ch in seed {
     hash = (hash * 33 + ch.to_int()) % 1000003
@@ -447,7 +447,7 @@ fn mooncode_runtime_turn_model_retry_jitter_percent(seed : String) -> Int {
 }
 
 ///|
-fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
+fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int32 {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   // Planner work is milestone-driven by default. Zero means there is no
   // command-wide planner-step ceiling; each model request remains bounded by
@@ -481,8 +481,8 @@ fn mooncode_runtime_turn_model_reasoning_effort(
 fn mooncode_runtime_turn_model_plan_request_from_messages(
   model_name : String,
   message_jsons : Array[Json],
-  tools? : Array[@openai.ChatCompletionToolParam] = mooncode_runtime_turn_model_tools(),
-  reasoning_effort? : @openai.ChatCompletionReasoningEffort = None_,
+  tools~ : Array[@openai.ChatCompletionToolParam] = mooncode_runtime_turn_model_tools(),
+  reasoning_effort~ : @openai.ChatCompletionReasoningEffort = None_,
 ) -> @openai.Request raise {
   let messages : Array[@openai.ChatCompletionMessageParam] = @json.from_json(
     Json::array(message_jsons),
@@ -501,7 +501,7 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
 }
 
 ///|
-fn mooncode_runtime_turn_model_max_tokens(model_name : String) -> Int {
+fn mooncode_runtime_turn_model_max_tokens(model_name : String) -> Int32 {
   if mooncode_runtime_turn_model_name_uses_patient_transport(model_name) {
     2000
   } else {
@@ -928,7 +928,7 @@ fn mooncode_runtime_turn_completion_verdict_json(
 fn mooncode_runtime_turn_completion_verdict(
   command : Json,
   results : Array[Json],
-  require_horizon? : Bool = false,
+  require_horizon~ : Bool = false,
 ) -> MoonCodeCompletionVerdict {
   if results.is_empty() {
     return { accepted: false, reason: "no MoonCode tool result was recorded", }
@@ -1100,7 +1100,7 @@ fn mooncode_runtime_turn_completion_verdict(
 fn mooncode_runtime_turn_model_execution_accepted(
   command : Json,
   results : Array[Json],
-  require_horizon? : Bool = false,
+  require_horizon~ : Bool = false,
 ) -> Bool {
   mooncode_runtime_turn_completion_verdict(command, results, require_horizon~).accepted
 }
@@ -1229,7 +1229,7 @@ fn mooncode_runtime_turn_kimi_messages(
 ///|
 fn mooncode_runtime_turn_model_initial_messages(
   command : Json,
-  skill_catalog? : String = "",
+  skill_catalog~ : String = "",
 ) -> Array[Json] {
   let messages : Array[Json] = [
     mooncode_runtime_context_message(
@@ -1309,8 +1309,8 @@ fn mooncode_runtime_turn_model_followup_base_messages(
   command : Json,
   previous_plan : Json,
   tool_results : Array[Json],
-  all_tool_results? : Array[Json] = [],
-  skill_catalog? : String = "",
+  all_tool_results~ : Array[Json] = [],
+  skill_catalog~ : String = "",
 ) -> Array[Json] {
   ignore(tool_results)
   let previous = mooncode_json_array_items(previous_plan, "model_messages")
@@ -1400,7 +1400,7 @@ fn mooncode_runtime_turn_model_followup_base_messages(
 /// restart checkpoint stay bounded during long autonomous runs.
 fn mooncode_runtime_turn_compact_followup_transcript(
   previous : Array[Json],
-  task_contract? : String = "",
+  task_contract~ : String = "",
 ) -> Array[Json] {
   let previous = mooncode_runtime_turn_compact_provider_tool_evidence(previous)
   // Keep enough raw evidence for roughly eight recent tool quanta. Older raw
@@ -1657,8 +1657,8 @@ fn mooncode_runtime_turn_durable_model_messages(
 fn mooncode_runtime_turn_model_messages(
   command : Json,
   live_steering : Array[Json],
-  remaining_steps : Int,
-  skill_catalog? : String = "",
+  remaining_steps : Int32,
+  skill_catalog~ : String = "",
 ) -> Array[Json] {
   let messages = mooncode_runtime_turn_model_initial_messages(
     command,
@@ -1806,8 +1806,8 @@ fn mooncode_runtime_turn_model_finish_parameters(
 
 ///|
 fn mooncode_runtime_turn_model_tools(
-  active_goal_runtime? : Bool = false,
-  no_change? : Bool = false,
+  active_goal_runtime~ : Bool = false,
+  no_change~ : Bool = false,
 ) -> Array[@openai.ChatCompletionToolParam] {
   let finish_description = if active_goal_runtime {
     "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. The active long-running goal may be settled only when all criteria are achieved or a genuine external blocker prevents progress."
@@ -2467,9 +2467,9 @@ async fn mooncode_runtime_turn_model_followup_messages(
   tool_results : Array[Json],
   all_tool_results : Array[Json],
   live_steering : Array[Json],
-  remaining_steps : Int,
-  patient_replan_guidance? : String = "",
-  skill_catalog? : String = "",
+  remaining_steps : Int32,
+  patient_replan_guidance~ : String = "",
+  skill_catalog~ : String = "",
 ) -> Array[Json] {
   let messages = mooncode_runtime_turn_model_followup_base_messages(
     command,
@@ -2693,9 +2693,9 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   tool_calls : Array[Json],
   tool_results : Array[Json],
   all_tool_results : Array[Json],
-  live_steering? : Array[Json] = [],
-  remaining_steps? : Int = -1,
-  patient_replan_guidance? : String = "",
+  live_steering~ : Array[Json] = [],
+  remaining_steps~ : Int32 = -1,
+  patient_replan_guidance~ : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let model_name = mooncode_json_string(previous_plan, "model", default="")
@@ -3043,7 +3043,7 @@ fn mooncode_runtime_turn_recovery_plan(
 ///|
 fn mooncode_runtime_turn_model_response_message(
   response : Json,
-  normalized_tool_calls? : Array[Json] = [],
+  normalized_tool_calls~ : Array[Json] = [],
 ) -> Json {
   let choices = match response {
     { "choices": Array(items), .. } => items
@@ -3205,7 +3205,7 @@ fn mooncode_runtime_turn_model_plan_request(
 
 ///|
 #warnings("-unused_value")
-fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int {
+fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int32 {
   let mut count = 0
   for message in messages {
     if mooncode_json_string(message, "role", default="") == "assistant" &&

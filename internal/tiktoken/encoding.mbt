@@ -1,9 +1,9 @@
 ///|
 struct Encoding {
-  encoder : Map[Bytes, Int]
+  encoder : Map[Bytes, Int32]
   decoder : FixedArray[Bytes]
-  special_encoder : Map[String, Int]
-  special_decoder : Map[Int, Bytes]
+  special_encoder : Map[String, Int32]
+  special_decoder : Map[Int32, Bytes]
   pattern : Pattern
 }
 
@@ -19,18 +19,18 @@ pub fn Pattern::cl100k_base() -> Pattern {
 
 ///|
 pub fn Encoding::new(
-  mergeable_ranks~ : Map[Bytes, Int],
-  special_tokens~ : Map[String, Int],
+  mergeable_ranks~ : Map[Bytes, Int32],
+  special_tokens~ : Map[String, Int32],
   pattern~ : Pattern,
 ) -> Encoding {
-  let encoder : Map[Bytes, Int] = Map([])
+  let encoder : Map[Bytes, Int32] = Map([])
   let decoder = FixedArray::make(mergeable_ranks.length(), b"")
   for piece, rank in mergeable_ranks {
     encoder[piece] = rank
     decoder[rank] = piece
   }
-  let special_encoder : Map[String, Int] = Map([])
-  let special_decoder : Map[Int, Bytes] = Map([])
+  let special_encoder : Map[String, Int32] = Map([])
+  let special_decoder : Map[Int32, Bytes] = Map([])
   for token, rank in special_tokens {
     special_encoder[token] = rank
     special_decoder[rank] = @encoding/utf8.encode(token)
@@ -39,12 +39,12 @@ pub fn Encoding::new(
 }
 
 ///|
-pub fn Encoding::special_tokens(self : Encoding, piece : String) -> Int? {
+pub fn Encoding::special_tokens(self : Encoding, piece : String) -> Int32? {
   self.special_encoder.get(piece)
 }
 
 ///|
-fn arg_min(vec : Array[Int]) -> Int {
+fn arg_min(vec : Array[Int32]) -> Int32 {
   let mut value = @int.MAX_VALUE
   let mut index = -1
   let mut i = 0
@@ -62,7 +62,7 @@ fn arg_min(vec : Array[Int]) -> Int {
 fn Encoding::lookup(
   self : Encoding,
   piece : Bytes,
-  tokens : Array[Int],
+  tokens : Array[Int32],
 ) -> Unit {
   for b in piece {
     let token = match self.encoder.get([b]) {
@@ -74,7 +74,7 @@ fn Encoding::lookup(
 }
 
 ///|
-fn Encoding::merge(self : Encoding, tokens : Array[Int]) -> Unit {
+fn Encoding::merge(self : Encoding, tokens : Array[Int32]) -> Unit {
   let pieces = tokens.map(t => self.decoder[t])
   let rank = Array::make(pieces.length() - 1, @int.MAX_VALUE)
   let mut i = 0
@@ -122,7 +122,7 @@ fn Encoding::merge(self : Encoding, tokens : Array[Int]) -> Unit {
 ///|
 fn Encoding::encode_piece(
   self : Encoding,
-  tokens : Array[Int],
+  tokens : Array[Int32],
   piece : StringView,
 ) -> Unit {
   let piece = @encoding/utf8.encode(piece)
@@ -206,7 +206,7 @@ let o200k_base_regex : @regexp.Regexp = try! @regexp.compile(
 )
 
 ///|
-pub fn Encoding::encode(self : Encoding, piece : StringView) -> Array[Int] {
+pub fn Encoding::encode(self : Encoding, piece : StringView) -> Array[Int32] {
   let tokens = []
   match self.pattern {
     Cl100kBase =>
@@ -219,14 +219,14 @@ pub fn Encoding::encode(self : Encoding, piece : StringView) -> Array[Int] {
 
 ///|
 suberror DecodingError {
-  InvalidToken(Int)
+  InvalidToken(Int32)
   MalformedUtf8(Bytes)
 } derive(Debug)
 
 ///|
 pub fn Encoding::decode(
   self : Encoding,
-  tokens : ArrayView[Int],
+  tokens : ArrayView[Int32],
 ) -> String raise DecodingError {
   let buffer = Buffer()
   for token in tokens {

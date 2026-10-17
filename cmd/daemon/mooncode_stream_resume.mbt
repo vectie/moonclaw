@@ -5,16 +5,16 @@ const MOONCODE_STREAM_RESUME_CONTRACT : String = "mooncode-stream-resume.v1"
 const MOONCODE_STREAM_RESUME_START : String = "start"
 
 ///|
-const MOONCODE_STREAM_RESUME_DEFAULT_REPLAY_EVENTS : Int = 128
+const MOONCODE_STREAM_RESUME_DEFAULT_REPLAY_EVENTS : Int32 = 128
 
 ///|
-const MOONCODE_STREAM_RESUME_MAX_REPLAY_EVENTS : Int = 512
+const MOONCODE_STREAM_RESUME_MAX_REPLAY_EVENTS : Int32 = 512
 
 ///|
-const MOONCODE_STREAM_RESUME_CURSOR_PART_HEX_CHARS : Int = 24
+const MOONCODE_STREAM_RESUME_CURSOR_PART_HEX_CHARS : Int32 = 24
 
 ///|
-const MOONCODE_STREAM_RESUME_CURSOR_MAX_CHARS : Int = 1024
+const MOONCODE_STREAM_RESUME_CURSOR_MAX_CHARS : Int32 = 1024
 
 ///|
 priv struct MoonCodeStreamResumeCursor {
@@ -26,13 +26,13 @@ priv struct MoonCodeStreamResumeCursor {
 
 ///|
 priv struct MoonCodeStreamResumeSummary {
-  scanned_record_count : Int
-  durable_event_count : Int
-  visible_event_count : Int
-  filtered_event_count : Int
-  filtered_reasoning_count : Int
-  eligible_event_count : Int
-  replayed_event_count : Int
+  scanned_record_count : Int32
+  durable_event_count : Int32
+  visible_event_count : Int32
+  filtered_event_count : Int32
+  filtered_reasoning_count : Int32
+  eligible_event_count : Int32
+  replayed_event_count : Int32
   latest_sequence : MoonCodeJournalSequence
   epoch : String
   journal_size : Int64
@@ -165,7 +165,7 @@ fn mooncode_stream_resume_cursor_parse(
 }
 
 ///|
-fn mooncode_stream_resume_replay_limit(requested : Int) -> Int {
+fn mooncode_stream_resume_replay_limit(requested : Int32) -> Int32 {
   if requested <= 0 {
     MOONCODE_STREAM_RESUME_DEFAULT_REPLAY_EVENTS
   } else {
@@ -377,7 +377,7 @@ async fn mooncode_stream_resume_scan_locked(
   session_id : String,
   book_root : String,
   requested : MoonCodeStreamResumeCursor,
-  replay_limit : Int,
+  replay_limit : Int32,
 ) -> MoonCodeStreamResumeSummary {
   let mut cursor = MoonCodeJournalSequence::zero()
   let mut epoch = mooncode_stream_resume_empty_epoch()
@@ -460,9 +460,9 @@ async fn mooncode_stream_resume_scan(
   book_root : String,
   session_id : String,
   requested : MoonCodeStreamResumeCursor,
-  replay_limit : Int,
+  replay_limit : Int32,
   writer? : @fs.File,
-  format? : String = "jsonl",
+  format~ : String = "jsonl",
 ) -> MoonCodeStreamResumeSummary {
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
@@ -497,7 +497,7 @@ async fn mooncode_stream_resume_scan(
 fn mooncode_stream_resume_status(
   requested : MoonCodeStreamResumeCursor,
   summary : MoonCodeStreamResumeSummary,
-  replay_limit : Int,
+  replay_limit : Int32,
 ) -> String {
   if requested.sequence.compare(summary.latest_sequence) > 0 {
     return "future"
@@ -516,7 +516,7 @@ fn mooncode_stream_resume_status(
 ///|
 fn mooncode_stream_resume_metrics(
   summary : MoonCodeStreamResumeSummary,
-  replay_limit : Int,
+  replay_limit : Int32,
   status : String,
   wait : MoonCodeStreamWait,
 ) -> Json {
@@ -546,7 +546,7 @@ fn mooncode_stream_resume_meta_record(
   book_root : String,
   requested : MoonCodeStreamResumeCursor,
   summary : MoonCodeStreamResumeSummary,
-  replay_limit : Int,
+  replay_limit : Int32,
   wait : MoonCodeStreamWait,
 ) -> Json {
   {
@@ -575,7 +575,7 @@ fn mooncode_stream_resume_done_record(
   book_root : String,
   requested : MoonCodeStreamResumeCursor,
   summary : MoonCodeStreamResumeSummary,
-  replay_limit : Int,
+  replay_limit : Int32,
   wait : MoonCodeStreamWait,
 ) -> Json {
   {
@@ -613,7 +613,7 @@ async fn mooncode_stream_resume_create_spool(
   book_root : String,
   session_id : String,
   requested : MoonCodeStreamResumeCursor,
-  replay_limit : Int,
+  replay_limit : Int32,
 ) -> MoonCodeStreamResumeSpool {
   let directory = @fs.tmpdir(prefix="mooncode-resume-stream")
   let path = @pathx.join(directory, "events.spool")

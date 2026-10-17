@@ -20,7 +20,7 @@ pub fn AgentGoalRuntimeTransport::new(
 fn agent_goal_string(
   fields : Map[String, Json],
   key : String,
-  default? : String = "",
+  default~ : String = "",
 ) -> String {
   match fields.get(key) {
     Some(String(value)) => value
@@ -32,8 +32,8 @@ fn agent_goal_string(
 fn agent_goal_int(
   fields : Map[String, Json],
   key : String,
-  default~ : Int,
-) -> Int {
+  default~ : Int32,
+) -> Int32 {
   match fields.get(key) {
     Some(Number(value, ..)) => value.to_int()
     _ => default
@@ -602,8 +602,8 @@ fn agent_goal_action_endpoint(
 ///|
 fn agent_goal_http_observation(
   goal_response : Json,
-  service_id? : String = "",
-  message? : String = "",
+  service_id~ : String = "",
+  message~ : String = "",
 ) -> Json {
   let (terminal, phase, outcome) = match goal_response {
     Object(fields) => {

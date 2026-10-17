@@ -10,7 +10,7 @@ priv enum WriteResultOperation {
 struct WriteResult {
   path : String
   operation : WriteResultOperation
-  bytes_written : Int
+  bytes_written : Int32
   search_used : Bool
   message : String
   content : String

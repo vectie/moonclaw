@@ -1,13 +1,13 @@
 ///|
 fn output_artifact_test_reference(
-  run_id? : String = "run-output-artifact",
-  artifact_id? : String = "0123456789abcdef0123456789abcdef",
-  sha256? : String = "d".repeat(64),
-  size_bytes? : Int64 = 128L,
-  media_type? : String = "text/plain; charset=utf-8",
-  expires_at_ms? : Int64 = 4_102_444_800_000L,
-  key_id? : String = "artifact-key-1",
-  signature? : String = "e".repeat(64),
+  run_id~ : String = "run-output-artifact",
+  artifact_id~ : String = "0123456789abcdef0123456789abcdef",
+  sha256~ : String = "d".repeat(64),
+  size_bytes~ : Int64 = 128L,
+  media_type~ : String = "text/plain; charset=utf-8",
+  expires_at_ms~ : Int64 = 4_102_444_800_000L,
+  key_id~ : String = "artifact-key-1",
+  signature~ : String = "e".repeat(64),
 ) -> @execution_sandbox.MoonFortCommandOutputArtifactRef {
   {
     artifact_id,
@@ -23,9 +23,9 @@ fn output_artifact_test_reference(
 
 ///|
 fn output_artifact_test_receipt(
-  status? : @execution_sandbox.MoonFortRunStatus = Exited,
-  output? : String = "bounded inline output",
-  output_truncated? : Bool = false,
+  status~ : @execution_sandbox.MoonFortRunStatus = Exited,
+  output~ : String = "bounded inline output",
+  output_truncated~ : Bool = false,
   output_artifact? : @execution_sandbox.MoonFortCommandOutputArtifactRef,
 ) -> @execution_sandbox.MoonFortReceipt {
   {
@@ -54,10 +54,10 @@ fn output_artifact_test_receipt(
 
 ///|
 fn live_output_test_reference(
-  run_id? : String = "run-output-artifact",
-  status? : String = "exited",
-  size_bytes? : Int64 = 128L,
-  expires_at_ms? : Int64 = 4_102_444_800_000L,
+  run_id~ : String = "run-output-artifact",
+  status~ : String = "exited",
+  size_bytes~ : Int64 = 128L,
+  expires_at_ms~ : Int64 = 4_102_444_800_000L,
 ) -> @execution_sandbox.MoonFortLiveOutputReference {
   {
     stream_id: "0123456789abcdef0123456789abcdef",

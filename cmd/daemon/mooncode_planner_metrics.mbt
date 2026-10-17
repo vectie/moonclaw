@@ -1,5 +1,5 @@
 ///|
-fn mooncode_runtime_turn_message_content_chars(message : Json) -> Int {
+fn mooncode_runtime_turn_message_content_chars(message : Json) -> Int32 {
   let content = match message {
     Object(object) => object.get("content")
     _ => None
@@ -12,7 +12,7 @@ fn mooncode_runtime_turn_message_content_chars(message : Json) -> Int {
 }
 
 ///|
-fn mooncode_runtime_turn_system_prompt_chars(messages : Array[Json]) -> Int {
+fn mooncode_runtime_turn_system_prompt_chars(messages : Array[Json]) -> Int32 {
   let mut chars = 0
   for message in messages {
     if mooncode_json_string(message, "role", default="") == "system" {
@@ -39,7 +39,7 @@ fn mooncode_runtime_turn_planner_metrics(
   response : Json,
   effective_messages : Array[Json],
   tool_calls : Array[Json],
-  model_transport? : String = "chat_completions",
+  model_transport~ : String = "chat_completions",
 ) -> Json {
   let configured_messages = mooncode_json_array_items(
     configured_request, "messages",

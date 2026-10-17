@@ -3,7 +3,7 @@
 pub struct ChatCompletion {
   id : String
   choices : Array[ChatCompletionChoice]
-  created : Int
+  created : Int32
   model : String
   usage : CompletionUsage?
   system_fingerprint : String?
@@ -14,7 +14,7 @@ pub struct ChatCompletion {
 pub fn ChatCompletion::new(
   id~ : String,
   choices~ : Array[ChatCompletionChoice],
-  created~ : Int,
+  created~ : Int32,
   model~ : String,
   usage? : CompletionUsage,
   system_fingerprint? : String,

@@ -29,7 +29,7 @@ fn delegation_claim_ceiling_from_id(
 }
 
 ///|
-fn delegation_claim_rank(value : DelegationClaimCeilingV1) -> Int {
+fn delegation_claim_rank(value : DelegationClaimCeilingV1) -> Int32 {
   match value {
     EvidenceOnly => 0
     Draft => 1
@@ -108,7 +108,7 @@ priv struct ChildDelegationPayloadWireV1 {
   max_cost_micro_usd : Int64?
   max_runtime_ms : Int64?
   max_tokens : Int64?
-  max_artifacts : Int?
+  max_artifacts : Int32?
   authority : Json
   issued_at : String
   expires_at : String
@@ -243,8 +243,8 @@ pub struct ChildDelegationConsumptionV1 {
   requested_runtime_ms : Int64?
   accumulated_tokens : Int64?
   requested_tokens : Int64?
-  accumulated_artifacts : Int?
-  requested_artifacts : Int?
+  accumulated_artifacts : Int32?
+  requested_artifacts : Int32?
   evidence : @capability.ContentAddressedEvidenceRefV1
 } derive(Debug, Eq)
 
@@ -256,8 +256,8 @@ pub fn child_delegation_consumption_v1(
   requested_runtime_ms? : Int64,
   accumulated_tokens? : Int64,
   requested_tokens? : Int64,
-  accumulated_artifacts? : Int,
-  requested_artifacts? : Int,
+  accumulated_artifacts? : Int32,
+  requested_artifacts? : Int32,
   evidence : @capability.ContentAddressedEvidenceRefV1,
 ) -> ChildDelegationConsumptionV1 raise {
   let i64_values = [
@@ -298,9 +298,9 @@ fn i64_consumption_within_ceiling(
 
 ///|
 fn int_consumption_within_ceiling(
-  ceiling : Int?,
-  accumulated : Int?,
-  requested : Int?,
+  ceiling : Int32?,
+  accumulated : Int32?,
+  requested : Int32?,
 ) -> Bool {
   match (ceiling, accumulated, requested) {
     (Some(limit), Some(before), Some(next)) =>
@@ -404,7 +404,7 @@ fn optional_i64_is_narrower(child : Int64?, parent : Int64?) -> Bool {
 }
 
 ///|
-fn optional_int_is_narrower(child : Int?, parent : Int?) -> Bool {
+fn optional_int_is_narrower(child : Int32?, parent : Int32?) -> Bool {
   match (child, parent) {
     (None, _) => true
     (Some(_), None) => false

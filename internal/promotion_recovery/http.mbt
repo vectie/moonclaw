@@ -12,7 +12,7 @@ fn token_equal(left : String, right : String) -> Bool {
 }
 
 ///|
-async fn reply(w : @httpx.ResponseWriter, status : Int, value : Json) -> Unit {
+async fn reply(w : @httpx.ResponseWriter, status : Int32, value : Json) -> Unit {
   w.header().set("Content-Type", "application/json")
   w.header().set("Cache-Control", "no-store")
   w.write_header(status)

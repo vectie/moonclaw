@@ -62,15 +62,15 @@ pub(all) struct RoleHandoffPacket {
 ///|
 pub fn RoleRuntimeContract::new(
   role_id~ : String,
-  planning_layer? : RolePlanningLayer = Execution,
-  runtime_mode? : RoleRuntimeMode = Executor,
-  tool_access? : RoleToolAccess = Full,
-  memory_scope? : RoleMemoryScope = Workspace,
-  allow_delegate? : Bool = false,
-  allow_workspace_write? : Bool = true,
-  allow_execution_tools? : Bool = true,
-  output_contract? : String? = None,
-  metadata? : Json = {},
+  planning_layer~ : RolePlanningLayer = Execution,
+  runtime_mode~ : RoleRuntimeMode = Executor,
+  tool_access~ : RoleToolAccess = Full,
+  memory_scope~ : RoleMemoryScope = Workspace,
+  allow_delegate~ : Bool = false,
+  allow_workspace_write~ : Bool = true,
+  allow_execution_tools~ : Bool = true,
+  output_contract~ : String? = None,
+  metadata~ : Json = {},
 ) -> RoleRuntimeContract {
   {
     role_id,
@@ -91,10 +91,10 @@ pub fn RoleHandoffPacket::new(
   kind~ : RoleHandoffKind,
   objective~ : String,
   scope_summary~ : String,
-  constraints? : Array[String] = [],
-  output_contract? : String? = None,
-  review_required? : Bool = false,
-  metadata? : Json = {},
+  constraints~ : Array[String] = [],
+  output_contract~ : String? = None,
+  review_required~ : Bool = false,
+  metadata~ : Json = {},
 ) -> RoleHandoffPacket {
   {
     kind,

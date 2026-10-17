@@ -68,7 +68,7 @@ priv suberror ToolFailure {
 #as_free_fn
 pub fn[Output] ToolResult::error(
   output : String,
-  error? : Error = ToolFailure(output),
+  error~ : Error = ToolFailure(output),
 ) -> ToolResult[Output] {
   Error(error, output)
 }

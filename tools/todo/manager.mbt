@@ -56,7 +56,7 @@ fn Todo::now(self : Todo) -> String {
 ///|
 pub fn new(
   uuid~ : @uuid.Generator,
-  clock? : &@clock.Clock = @clock.epoch,
+  clock~ : &@clock.Clock = @clock.epoch,
   cwd~ : StringView,
 ) -> Todo {
   {
@@ -174,13 +174,13 @@ fn Todo::add_task(
 }
 
 ///|
-fn Todo::update_task(self : Todo, index : Int, item : Item) -> Unit {
+fn Todo::update_task(self : Todo, index : Int32, item : Item) -> Unit {
   self.items.todos[index] = item
   self.items.updated_at = self.config.now()
 }
 
 ///|
-fn Todo::find(self : Todo, id : String) -> Int? {
+fn Todo::find(self : Todo, id : String) -> Int32? {
   for i, todo in self.items.todos {
     if todo.id == id {
       return Some(i)
@@ -190,7 +190,7 @@ fn Todo::find(self : Todo, id : String) -> Int? {
 }
 
 ///|
-fn Todo::get(self : Todo, index : Int) -> Item {
+fn Todo::get(self : Todo, index : Int32) -> Item {
   self.items.todos[index]
 }
 
@@ -204,7 +204,7 @@ fn remove_list_prefixes(line : StringView) -> StringView {
   let mut index = 0
   for char in text {
     match char {
-      '0'..='9' => index += 1
+      '0'..<='9' => index += 1
       _ => break
     }
   }

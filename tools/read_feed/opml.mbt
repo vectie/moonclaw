@@ -4,8 +4,8 @@
 pub struct FeedCollection {
   title : String
   providers : Array[Json]
-  duplicate_feeds : Int
-  skipped_outlines : Int
+  duplicate_feeds : Int32
+  skipped_outlines : Int32
   warnings : Array[String]
 } derive(Show, ToJson)
 
@@ -15,8 +15,8 @@ priv struct OpmlImport {
   seen : Map[String, Bool]
   warnings : Array[String]
   prefix : String
-  mut duplicates : Int
-  mut skipped : Int
+  mut duplicates : Int32
+  mut skipped : Int32
 }
 
 ///|
@@ -101,9 +101,9 @@ fn opml_http_url(url : String) -> Bool {
     }
   }
   // Keep credential-bearing subscription URLs out of generated registries.
-  let end = Int::min(
+  let end = Int32::min(
     rest.find("/").unwrap_or(rest.length()),
-    Int::min(
+    Int32::min(
       rest.find("?").unwrap_or(rest.length()),
       rest.find("#").unwrap_or(rest.length()),
     ),
@@ -117,7 +117,7 @@ fn opml_http_url(url : String) -> Bool {
 /// Exact decoded URLs are deduplicated in document order (first entry wins).
 pub fn parse_opml(
   body : String,
-  prefix? : String = "opml",
+  prefix~ : String = "opml",
 ) -> FeedCollection raise {
   guard !prefix.is_empty() && prefix.length() <= 64 else {
     fail(
@@ -125,7 +125,7 @@ pub fn parse_opml(
     )
   }
   for c in prefix.to_array() {
-    guard c is ('a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_') else {
+    guard c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | '_') else {
       fail(
         "prefix must contain 1..64 ASCII letters, digits, hyphens or underscores",
       )

@@ -799,7 +799,7 @@ fn proposal_with_external_packet(
   proposal_id : String,
   packet : ExternalProposalPacket,
   packet_file_path : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobProposal {
   let draft = draft_job_proposal(proposal_id, packet.request_text, now_ms)
   let title = packet.title.unwrap_or(compact_title(packet.request_text))
@@ -827,9 +827,9 @@ fn proposal_with_external_packet(
 pub async fn GatewayJobApp::execute_definition(
   self : GatewayJobApp,
   job_id : String,
-  initial_input? : Json? = None,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  initial_input~ : Json? = None,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[JobRun, String] {
   let run = match
     self
@@ -857,9 +857,9 @@ pub async fn GatewayJobApp::execute_definition(
 pub async fn GatewayJobApp::execute_existing_run(
   self : GatewayJobApp,
   run_id : String,
-  initial_input? : Json? = None,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  initial_input~ : Json? = None,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[JobRun, String] {
   let existing = match self.runtime().store().get_run(run_id) {
     Some(run) => run
@@ -939,7 +939,7 @@ pub async fn GatewayJobApp::ensure_existing_run_definition(
 pub async fn GatewayJobApp::launch_definition_detached(
   self : GatewayJobApp,
   job_id : String,
-  initial_input? : Json? = None,
+  initial_input~ : Json? = None,
   spawn_runner? : async (String, Array[String]) -> Unit,
   detached_exec_path? : String,
 ) -> Result[JobRun, String] {
@@ -1017,8 +1017,8 @@ pub async fn GatewayJobApp::confirm_proposal_and_execute(
   self : GatewayJobApp,
   proposal : JobProposal,
   proposal_id : String,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[ConfirmProposalResult, String] {
   self.confirm_proposal(proposal, proposal_id, async fn(job_id, initial_input) {
     self.execute_definition(
@@ -1058,9 +1058,9 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
   self : GatewayJobApp,
   packet : ExternalProposalPacket,
   packet_file_path : String,
-  confirm? : Bool = false,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  confirm~ : Bool = false,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[ExternalProposalImportResult, String] {
   let profile = match load_job_profile(self.home, self.cwd, packet.profile) {
     Some(profile) => profile
@@ -1133,9 +1133,9 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
 pub async fn GatewayJobApp::import_external_proposal_packet_file(
   self : GatewayJobApp,
   path : String,
-  confirm? : Bool = false,
-  child_executor? : ChildRunExecutor? = None,
-  analysis_executor? : AnalysisExecutor? = None,
+  confirm~ : Bool = false,
+  child_executor~ : ChildRunExecutor? = None,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[ExternalProposalImportResult, String] {
   let text = @fsx.read_file(path) catch {
     error =>

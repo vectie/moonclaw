@@ -367,7 +367,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     })
     let captured_family : Ref[String] = { val: "", }
     let captured_profile_id : Ref[String] = { val: "", }
-    let captured_step_count : Ref[Int] = { val: 0, }
+    let captured_step_count : Ref[Int32] = { val: 0, }
     let captured_step_title : Ref[String] = { val: "", }
     let captured_skill_present : Ref[Bool] = { val: false, }
     let captured_execution_mode : Ref[String] = { val: "", }

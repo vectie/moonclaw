@@ -21,8 +21,8 @@ fn mooncode_request_string(
 fn mooncode_request_int(
   r : @httpx.RequestReader,
   key : String,
-  default~ : Int,
-) -> Int {
+  default~ : Int32,
+) -> Int32 {
   let value = mooncode_request_string(r, key, default="")
   if value == "" {
     return default

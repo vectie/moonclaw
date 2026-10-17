@@ -21,7 +21,7 @@ fn nochange_test_policy() -> Json {
 }
 
 ///|
-fn nochange_test_command(policy? : Json = nochange_test_policy()) -> Json {
+fn nochange_test_command(policy~ : Json = nochange_test_policy()) -> Json {
   {
     "protocol": "mooncode.v1",
     "command": "prompt",
@@ -126,7 +126,7 @@ fn nochange_test_checkpoint_arguments() -> Json {
 fn nochange_test_checkpoint(
   command : Json,
   evidence : Array[Json],
-  arguments? : Json = nochange_test_checkpoint_arguments(),
+  arguments~ : Json = nochange_test_checkpoint_arguments(),
 ) -> Json {
   mooncode_runtime_horizon_checkpoint_execution(
     command,

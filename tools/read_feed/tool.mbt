@@ -18,7 +18,7 @@ async fn load_feed(cwd : String, source : String) -> String {
   }
   let scheme_end = source.find("://").unwrap() + 3
   let rest = source[scheme_end:].to_owned()
-  let split = Int::min(
+  let split = Int32::min(
     rest.find("/").unwrap_or(rest.length()),
     rest.find("?").unwrap_or(rest.length()),
   )
@@ -36,7 +36,7 @@ async fn load_feed(cwd : String, source : String) -> String {
   })
   defer client.close()
   let response = client.get(path)
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     fail("Feed HTTP status \{response.code}")
   }
   @utf8.decode_lossy(client.read_all().binary())
@@ -46,7 +46,7 @@ async fn load_feed(cwd : String, source : String) -> String {
 pub fn new(
   cwd : String,
   home? : String?,
-  allow_files? : Bool = true,
+  allow_files~ : Bool = true,
 ) -> @tool.Tool[FeedPage] {
   @tool.new(
     name="read_feed",

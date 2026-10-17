@@ -5,7 +5,7 @@ pub struct UnlimitedOcrResult {
   output_dir : String
   infer_script : String
   command : String
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
 } derive(ToJson, FromJson)

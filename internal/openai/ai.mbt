@@ -1,6 +1,6 @@
 ///|
 priv suberror HttpError {
-  HttpError(code~ : Int, body~ : String)
+  HttpError(code~ : Int32, body~ : String)
 } derive(Debug, ToJson)
 
 ///|
@@ -8,7 +8,7 @@ priv suberror HttpError {
 /// forwards only safe retry/rate-limit headers, so callers can pace a durable
 /// retry loop without guessing or immediately bursting again.
 priv suberror HttpRetryError {
-  HttpRetryError(code~ : Int, body~ : String, retry_after_ms~ : Int?)
+  HttpRetryError(code~ : Int32, body~ : String, retry_after_ms~ : Int32?)
 } derive(Debug, ToJson)
 
 ///|
@@ -21,7 +21,7 @@ pub fn error_summary(error : Error) -> String {
 }
 
 ///|
-fn http_error_summary(code : Int, body : String) -> String {
+fn http_error_summary(code : Int32, body : String) -> String {
   let body = body.trim().to_owned()
   if body == "" {
     "HTTP \{code}"
@@ -44,7 +44,7 @@ pub fn error_class(error : Error) -> String {
 }
 
 ///|
-pub fn error_retry_after_ms(error : Error) -> Int? {
+pub fn error_retry_after_ms(error : Error) -> Int32? {
   match error {
     HttpRetryError(retry_after_ms~, ..) => retry_after_ms
     _ => None
@@ -66,7 +66,7 @@ pub fn error_is_transient(error : Error) -> Bool {
 }
 
 ///|
-fn http_error_class(code : Int, body : String) -> String {
+fn http_error_class(code : Int32, body : String) -> String {
   let normalized = body.to_lower()
   if normalized.contains("serveroverloaded") ||
     normalized.contains("server overloaded") {
@@ -93,7 +93,7 @@ fn http_error_class(code : Int, body : String) -> String {
 }
 
 ///|
-fn response_retry_after_ms(headers : Map[String, String]) -> Int? {
+fn response_retry_after_ms(headers : Map[String, String]) -> Int32? {
   let mut raw : String? = None
   for key, value in headers {
     if key.to_lower() == "retry-after" {
@@ -127,9 +127,9 @@ fn response_retry_after_ms(headers : Map[String, String]) -> Int? {
 pub async fn chat(
   model~ : @model.Model,
   request : Request,
-  logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
-  extra_body? : Map[String, Json] = {},
-  timeout_ms? : Int? = None,
+  logger~ : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
+  extra_body~ : Map[String, Json] = {},
+  timeout_ms~ : Int32? = None,
   transport? : ChatTransport,
 ) -> ChatCompletion {
   chat_with_text_deltas(
@@ -146,10 +146,10 @@ pub async fn chat(
 pub async fn chat_with_text_deltas(
   model~ : @model.Model,
   request : Request,
-  logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
-  extra_body? : Map[String, Json] = {},
-  on_text_delta? : (String) -> Unit = _ => (),
-  timeout_ms? : Int? = None,
+  logger~ : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
+  extra_body~ : Map[String, Json] = {},
+  on_text_delta~ : (String) -> Unit = _ => (),
+  timeout_ms~ : Int32? = None,
   transport? : ChatTransport,
 ) -> ChatCompletion {
   if transport is Some(_) {
@@ -203,8 +203,8 @@ pub async fn responses_chat(
   prompt_cache_key? : String,
   prompt_cache_mode? : String,
   prompt_cache_ttl? : String,
-  reasoning_context? : String = "current_turn",
-  timeout_ms? : Int? = None,
+  reasoning_context~ : String = "current_turn",
+  timeout_ms~ : Int32? = None,
 ) -> ChatCompletion {
   responses_chat_with_text_deltas(
     model~,
@@ -224,9 +224,9 @@ pub async fn responses_chat_with_text_deltas(
   prompt_cache_key? : String,
   prompt_cache_mode? : String,
   prompt_cache_ttl? : String,
-  reasoning_context? : String = "current_turn",
-  on_text_delta? : (String) -> Unit = _ => (),
-  timeout_ms? : Int? = None,
+  reasoning_context~ : String = "current_turn",
+  on_text_delta~ : (String) -> Unit = _ => (),
+  timeout_ms~ : Int32? = None,
 ) -> ChatCompletion {
   let run = async fn() {
     let responses_request = openai_responses_request(
@@ -265,7 +265,7 @@ fn openai_responses_request(
   prompt_cache_key? : String,
   prompt_cache_mode? : String,
   prompt_cache_ttl? : String,
-  reasoning_context? : String = "current_turn",
+  reasoning_context~ : String = "current_turn",
 ) -> @responses.ResponsesRequest {
   @responses.ResponsesRequest::new(
     model=model.model_name,
@@ -415,7 +415,7 @@ async fn chat_anthropic(
       defer client.close()
       let body = anthropic_request.to_json()
       let response = client.post(uri.path, body)
-      guard response.code is (200..=299) else {
+      guard response.code is (200..<=299) else {
         raise HttpError(code=response.code, body=client.read_all().text())
       }
       if request.stream is Some(true) {
@@ -633,7 +633,7 @@ async fn chat_copilot(
       defer client.close()
       let body = request.to_json()
       let response = client.post(uri.path, body)
-      guard response.code is (200..=299) else {
+      guard response.code is (200..<=299) else {
         let error_body = client.read_all().text()
         // Try to refresh token on 401
         if response.code == 401 && !has_refreshed.val {
@@ -690,7 +690,7 @@ async fn chat_copilot(
 }
 
 ///|
-fn codex_http_status_is_fatal(code : Int) -> Bool {
+fn codex_http_status_is_fatal(code : Int32) -> Bool {
   code >= 400 && code < 500 && code != 401 && code != 408 && code != 429
 }
 
@@ -740,7 +740,7 @@ async fn do_codex_stream_request(
     "/backend-api/codex/responses",
     Json::object(body_obj),
   )
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_text = client.read_all().text()
     raise HttpError(
       code=response.code,
@@ -863,7 +863,7 @@ async fn do_openai_responses_stream_request(
   )
   defer client.close()
   let response = client.post(uri.path, request.to_json())
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     raise HttpRetryError(
       code=response.code,
       body=client.read_all().text(),

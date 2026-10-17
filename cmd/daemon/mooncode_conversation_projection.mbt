@@ -330,7 +330,7 @@ fn mooncode_conversation_turn_visible(
 ///|
 fn mooncode_conversation_turn_json(
   turn : MoonCodeConversationTurnDraft,
-  ordinal~ : Int,
+  ordinal~ : Int32,
 ) -> Json {
   let assistant = if mooncode_conversation_message_content(turn.assistant) != "" {
     turn.assistant
@@ -681,7 +681,7 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
 ///|
 fn mooncode_conversation_sandbox_string_array(
   items : Array[Json],
-  relative_paths? : Bool = false,
+  relative_paths~ : Bool = false,
 ) -> Array[String] {
   let output : Array[String] = []
   guard items.length() <= 256 else { return output }
@@ -1045,7 +1045,7 @@ fn mooncode_conversation_work_step_index(
   steps : Array[Json],
   step : Json,
   event : Json,
-) -> Int {
+) -> Int32 {
   let item_id = mooncode_json_string(step, "item_id", default="")
   for index, existing in steps {
     if item_id != "" &&
@@ -1511,7 +1511,7 @@ fn mooncode_conversation_tool_detail(
 fn mooncode_conversation_turn_index(
   turns : Array[MoonCodeConversationTurnDraft],
   command_id : String,
-) -> Int {
+) -> Int32 {
   if command_id == "" {
     return -1
   }

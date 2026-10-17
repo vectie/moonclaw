@@ -6,8 +6,8 @@ pub(all) struct WorkflowExecutionControl {
 
 ///|
 pub fn WorkflowExecutionControl::new(
-  should_cancel? : () -> Bool = fn() { false },
-  should_force_stop? : () -> Bool = fn() { false },
+  should_cancel~ : () -> Bool = fn() { false },
+  should_force_stop~ : () -> Bool = fn() { false },
 ) -> WorkflowExecutionControl {
   { should_cancel, should_force_stop, }
 }
@@ -25,9 +25,9 @@ pub(all) struct WorkflowStepContext {
 pub fn WorkflowStepContext::new(
   run~ : JobRun,
   step~ : WorkflowStepDefinition,
-  initial_input? : Json? = None,
-  outputs? : Map[String, Json] = {},
-  control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
+  initial_input~ : Json? = None,
+  outputs~ : Map[String, Json] = {},
+  control~ : WorkflowExecutionControl = WorkflowExecutionControl::new(),
 ) -> WorkflowStepContext {
   { run, step, initial_input, outputs, control, }
 }
@@ -51,9 +51,9 @@ pub(all) struct WorkflowStepResult {
 ///|
 pub fn WorkflowStepResult::new(
   output~ : Json,
-  summary? : String? = None,
-  metrics? : Json = {},
-  logs? : Array[String] = [],
+  summary~ : String? = None,
+  metrics~ : Json = {},
+  logs~ : Array[String] = [],
 ) -> WorkflowStepResult {
   { output, summary, metrics, logs, }
 }
@@ -104,11 +104,11 @@ async fn WorkflowEngine::log_run_event(
   self : WorkflowEngine,
   run : JobRun,
   event_type : String,
-  now_ms : Int,
+  now_ms : Int32,
   message : String,
-  step_id? : String? = None,
+  step_id~ : String? = None,
   status~ : RunStatus?,
-  data? : Json = {},
+  data~ : Json = {},
 ) -> Unit {
   self.runtime
   .store()
@@ -144,14 +144,14 @@ fn WorkflowEngine::step_run_record(
   run_id : String,
   step : WorkflowStepDefinition,
   status : RunStatus,
-  started_at : Int?,
-  finished_at : Int?,
-  retry_count : Int,
+  started_at : Int32?,
+  finished_at : Int32?,
+  retry_count : Int32,
   logs : Array[String],
-  metrics? : Json = {},
-  summary? : String? = None,
-  output? : Json? = None,
-  error? : String? = None,
+  metrics~ : Json = {},
+  summary~ : String? = None,
+  output~ : Json? = None,
+  error~ : String? = None,
 ) -> JobStepRun {
   {
     id: "\{run_id}:\{step.id}",
@@ -287,9 +287,9 @@ fn best_effort_waiting_output(
 pub async fn WorkflowEngine::execute_run(
   self : WorkflowEngine,
   run_id : String,
-  now : () -> Int,
-  initial_input? : Json? = None,
-  control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
+  now : () -> Int32,
+  initial_input~ : Json? = None,
+  control~ : WorkflowExecutionControl = WorkflowExecutionControl::new(),
 ) -> Result[WorkflowExecutionResult, String] {
   let store = self.runtime.store()
   let initial_run = match store.get_run(run_id) {

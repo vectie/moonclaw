@@ -17,17 +17,17 @@ pub struct PipelineStage {
   status : PipelineStatus
   result : Json?
   error : String?
-  started_at : Int?
-  completed_at : Int?
+  started_at : Int32?
+  completed_at : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn pipeline_stage(
   name~ : String,
   message~ : String,
-  model? : String? = None,
-  cwd? : String? = None,
-  input_template? : String? = None,
+  model~ : String? = None,
+  cwd~ : String? = None,
+  input_template~ : String? = None,
 ) -> PipelineStage {
   {
     name,
@@ -114,12 +114,12 @@ pub struct Pipeline {
   pipeline_id : String
   name : String
   stages : Array[PipelineStage]
-  current_stage : Int
+  current_stage : Int32
   status : PipelineStatus
   results : Map[String, Json]
-  created_at : Int
-  started_at : Int?
-  completed_at : Int?
+  created_at : Int32
+  started_at : Int32?
+  completed_at : Int32?
   metadata : Map[String, Json]
 } derive(ToJson, FromJson, Debug)
 
@@ -128,7 +128,7 @@ pub fn pipeline(
   pipeline_id~ : String,
   name~ : String,
   stages~ : Array[PipelineStage],
-  metadata? : Map[String, Json] = Map([]),
+  metadata~ : Map[String, Json] = Map([]),
 ) -> Pipeline {
   {
     pipeline_id,
@@ -276,12 +276,12 @@ pub fn Pipeline::get_next_task(self : Pipeline) -> (String, String)? {
 }
 
 ///|
-pub fn Pipeline::completed_stages(self : Pipeline) -> Int {
+pub fn Pipeline::completed_stages(self : Pipeline) -> Int32 {
   self.stages.iter().filter(fn(s) { s.status is Completed }).count()
 }
 
 ///|
-pub fn Pipeline::total_stages(self : Pipeline) -> Int {
+pub fn Pipeline::total_stages(self : Pipeline) -> Int32 {
   self.stages.length()
 }
 

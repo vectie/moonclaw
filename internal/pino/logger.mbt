@@ -22,7 +22,7 @@ struct Logger {
 /// ```
 pub fn logger(
   tag : String,
-  level? : Level = Info,
+  level~ : Level = Info,
   transport : Transport,
 ) -> Logger {
   { properties: { "tag": tag }, level, transport, }

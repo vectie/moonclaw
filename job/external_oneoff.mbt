@@ -31,8 +31,8 @@ fn oneoff_safe_id(value : String) -> Bool {
 pub async fn GatewayJobApp::start_external_oneoff_file(
   self : GatewayJobApp,
   packet_path : String,
-  execute? : Bool = true,
-  analysis_executor? : AnalysisExecutor? = None,
+  execute~ : Bool = true,
+  analysis_executor~ : AnalysisExecutor? = None,
 ) -> Result[ExternalOneoffReceipt, String] {
   let text = @fsx.read_file(packet_path)
   guard text.length() <= 2097152 else {

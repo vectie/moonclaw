@@ -69,7 +69,7 @@ pub(all) struct Agent {
   priv rules : @rules.Loader
   priv skills : @skills.Loader
   mut web_search : Bool
-  request_timeout_ms : Int?
+  request_timeout_ms : Int32?
   /// Queue for receiving external events from the environment.
   priv external_events : @event.ExternalEventQueue
 }
@@ -88,7 +88,7 @@ priv suberror EmptyChoices
 pub fn Agent::queue_message(
   agent : Agent,
   message : @ai.Message,
-  web_search? : Bool = agent.web_search,
+  web_search~ : Bool = agent.web_search,
   optional_context? : OptionalInputContext,
 ) -> @uuid.Uuid {
   let id = agent.uuid.v4()
@@ -134,7 +134,7 @@ pub fn Agent::close(_ : Agent) -> Unit {
 async fn Agent::prepare_messages_for_request(
   agent : Agent,
   tools~ : Array[@tool.ToolDesc],
-) -> (Array[@openai.ChatCompletionMessageParam], Int) {
+) -> (Array[@openai.ChatCompletionMessageParam], Int32) {
   let tools_openai = tools.map(x => x.to_openai())
 
   // Compile the actual request once, after all prompt injections. This avoids
@@ -401,7 +401,7 @@ pub async fn new(
   name? : String,
   model : @model.Model,
   uuid? : @uuid.Generator,
-  logger? : @pino.Logger = @pino.logger(
+  logger~ : @pino.Logger = @pino.logger(
     "agent",
     try! @pino.Transport::parse("file:\{default_agent_log_path()}"),
   ),
@@ -409,12 +409,12 @@ pub async fn new(
   user_message? : String,
   home? : StringView,
   cwd~ : StringView,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   external_events? : @event.ExternalEventQueue,
   history? : @conversation.Conversation,
-  request_timeout_ms? : Int? = None,
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  request_timeout_ms~ : Int32? = None,
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
   chat_transport? : @openai.ChatTransport,
 ) -> Agent {
   let home = match home {
@@ -534,9 +534,9 @@ pub async fn load(
   logger? : @pino.Logger,
   home? : StringView,
   user_message? : String,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   external_events? : @event.ExternalEventQueue,
-  request_timeout_ms? : Int? = None,
+  request_timeout_ms~ : Int32? = None,
   chat_transport? : @openai.ChatTransport,
 ) -> Agent {
   new(

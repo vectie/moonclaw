@@ -1,7 +1,7 @@
 ///|
 struct RecordingHandler {
   handled_message_ids : Array[String]
-  attachment_counts : Array[Int]
+  attachment_counts : Array[Int32]
   event_types : Array[String]
 }
 
@@ -865,7 +865,7 @@ async test "Feishu websocket monitor connections receive ready and status update
   })
 
   let sent : Array[String] = []
-  let close_calls : Array[Int] = []
+  let close_calls : Array[Int32] = []
   let mut on_close : (() -> Unit)? = None
   let conn = @channel.WebSocketConnection::new(
     id="monitor-1",

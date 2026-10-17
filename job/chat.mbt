@@ -121,7 +121,7 @@ fn score_artifact(
   artifact : ArtifactRecord,
   content : String,
   terms : Array[String],
-) -> Int {
+) -> Int32 {
   let haystack = "\{artifact.metadata.stringify()} \{content}".to_lower()
   terms.fold(init=0, fn(score, term) {
     if haystack.contains(term) {
@@ -136,8 +136,8 @@ fn score_artifact(
 pub async fn ChatService::retrieve(
   self : ChatService,
   question : String,
-  query? : ArtifactQuery = ArtifactQuery::new(status=Some(Active)),
-  max_hits? : Int = 5,
+  query~ : ArtifactQuery = ArtifactQuery::new(status=Some(Active)),
+  max_hits~ : Int32 = 5,
 ) -> Array[RetrievalHit] {
   self.retrieve_merged(question, Some(query), None, max_hits)
 }
@@ -148,7 +148,7 @@ async fn ChatService::retrieve_merged(
   question : String,
   request_query : ArtifactQuery?,
   binding_query : ArtifactQuery?,
-  max_hits : Int,
+  max_hits : Int32,
 ) -> Array[RetrievalHit] {
   let terms = tokenize_question(question)
   let hits : Array[RetrievalHit] = []

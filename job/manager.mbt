@@ -10,17 +10,17 @@ pub struct Job {
   cwd : String
   stdout : String
   stderr : String
-  priv exit_status : Int?
+  priv exit_status : Int32?
 }
 
 ///|
-pub fn Job::status(self : Job) -> Int? {
+pub fn Job::status(self : Job) -> Int32? {
   self.exit_status
 }
 
 ///|
 #warnings("-unused_async")
-pub async fn Job::wait(self : Job) -> Int {
+pub async fn Job::wait(self : Job) -> Int32 {
   match self.exit_status {
     Some(status) => status
     None => raise ExecutionSandboxRequired(self.command)
@@ -50,7 +50,7 @@ pub struct Manager {
 }
 
 ///|
-pub(all) struct Id(Int) derive(Hash, Eq)
+pub(all) struct Id(Int32) derive(Hash, Eq)
 
 ///|
 pub impl Show for Id with fn output(self : Id, logger : &Logger) -> Unit {
@@ -67,7 +67,7 @@ pub impl @json.FromJson for Id with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Id {
-  let value : Int = @json.FromJson::from_json(json, json_path)
+  let value : Int32 = @json.FromJson::from_json(json, json_path)
   Id(value)
 }
 
@@ -129,7 +129,7 @@ pub suberror InvalidJobId {
 }
 
 ///|
-pub async fn Manager::wait(self : Manager, id : Id) -> Int {
+pub async fn Manager::wait(self : Manager, id : Id) -> Int32 {
   guard self.jobs.get(id) is Some(job) else { raise InvalidJobId(id) }
   job.wait()
 }

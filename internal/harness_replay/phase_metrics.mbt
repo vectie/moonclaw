@@ -30,7 +30,10 @@ fn harness_phase_metrics_validate(
 }
 
 ///|
-fn harness_replay_percentile(values : Array[Int], percentile : Int) -> Int {
+fn harness_replay_percentile(
+  values : Array[Int32],
+  percentile : Int32,
+) -> Int32 {
   if values.is_empty() {
     return 0
   }

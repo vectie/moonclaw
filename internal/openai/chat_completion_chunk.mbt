@@ -2,7 +2,7 @@
 pub struct ChatCompletionChunk {
   id : String
   choices : Array[ChatCompletionChunkChoice]
-  created : Int
+  created : Int32
   model : String
   usage : CompletionUsage?
   system_fingerprint : String?

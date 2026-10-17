@@ -24,7 +24,7 @@ pub(all) struct Response {
 pub(all) struct EventFrame {
   event : String
   payload : Json?
-  seq : Int?
+  seq : Int32?
   state_version : StateVersion?
 } derive(ToJson, FromJson, Debug)
 
@@ -34,11 +34,11 @@ pub(all) struct ErrorShape {
   message : String
   details : Json?
   retryable : Bool?
-  retry_after_ms : Int?
+  retry_after_ms : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct StateVersion {
-  presence : Int?
-  health : Int?
+  presence : Int32?
+  health : Int32?
 } derive(ToJson, FromJson, Debug)

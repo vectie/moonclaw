@@ -8,13 +8,13 @@ priv struct MoonCodeGoalRuntimePutRequest {
 
 ///|
 priv struct MoonCodeGoalRuntimeApiResponse {
-  status_code : Int
+  status_code : Int32
   body : Json
 }
 
 ///|
 fn mooncode_goal_runtime_api_response(
-  status_code : Int,
+  status_code : Int32,
   body : Json,
 ) -> MoonCodeGoalRuntimeApiResponse {
   { status_code, body, }
@@ -22,7 +22,7 @@ fn mooncode_goal_runtime_api_response(
 
 ///|
 fn mooncode_goal_runtime_api_error(
-  status_code : Int,
+  status_code : Int32,
   code : String,
 ) -> MoonCodeGoalRuntimeApiResponse {
   mooncode_goal_runtime_api_response(status_code, {
@@ -140,7 +140,7 @@ fn mooncode_goal_runtime_state_from_scan(
 #warnings("-unused_value")
 fn mooncode_goal_runtime_status_response(
   scan : MoonCodeGoalRuntimeScan,
-  status_code? : Int = 200,
+  status_code~ : Int32 = 200,
 ) -> MoonCodeGoalRuntimeApiResponse raise {
   guard scan.genesis is Some(entry) else {
     return mooncode_goal_runtime_api_error(404, "goal_runtime_not_found")

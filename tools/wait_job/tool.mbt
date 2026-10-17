@@ -1,12 +1,12 @@
 ///|
 priv struct Params {
-  job_id : Int
-  timeout : Int
-  max_output_lines : Int
+  job_id : Int32
+  timeout : Int32
+  max_output_lines : Int32
 } derive(@json.FromJson)
 
 ///|
-fn truncate_output(output : String, max_output_lines~ : Int) -> String {
+fn truncate_output(output : String, max_output_lines~ : Int32) -> String {
   let lines = output.split("\n").collect()
   if lines.length() <= max_output_lines {
     output

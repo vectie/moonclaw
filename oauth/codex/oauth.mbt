@@ -65,7 +65,7 @@ fn url_encode(s : String) -> String {
   let buf = StringBuilder::new()
   for c in s {
     match c {
-      'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' =>
+      'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
         buf.write_char(c)
       _ => {
         let bytes = @encoding/utf8.encode(c.to_string())
@@ -73,7 +73,7 @@ fn url_encode(s : String) -> String {
           let hex = b.to_int()
           let high = (hex >> 4) & 0xF
           let low = hex & 0xF
-          let hex_char = fn(n : Int) -> Char {
+          let hex_char = fn(n : Int32) -> Char {
             if n < 10 {
               ('0'.to_int() + n).unsafe_to_char()
             } else {
@@ -112,7 +112,7 @@ pub async fn exchange_code_for_tokens(
   let (response, data) = @http.post("\{OAUTH_ISSUER}/oauth/token", body, headers={
     "Content-Type": "application/x-www-form-urlencoded",
   })
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_text = data.text()
     raise OAuthError("Token exchange failed: \{response.code} - \{error_text}")
   }
@@ -129,11 +129,11 @@ fn url_decode(s : StringView) -> String {
     if c == '%' && i + 2 < chars.length() {
       let hex1 = chars[i + 1]
       let hex2 = chars[i + 2]
-      fn hex_val(c : Char) -> Int? {
+      fn hex_val(c : Char) -> Int32? {
         match c {
-          '0'..='9' => Some(c.to_int() - '0'.to_int())
-          'A'..='F' => Some(c.to_int() - 'A'.to_int() + 10)
-          'a'..='f' => Some(c.to_int() - 'a'.to_int() + 10)
+          '0'..<='9' => Some(c.to_int() - '0'.to_int())
+          'A'..<='F' => Some(c.to_int() - 'A'.to_int() + 10)
+          'a'..<='f' => Some(c.to_int() - 'a'.to_int() + 10)
           _ => None
         }
       }

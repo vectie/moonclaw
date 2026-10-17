@@ -7,7 +7,7 @@ pub struct FeishuClient {
 pub struct FeishuStreamingCardSession {
   card_id : String
   message_id : String
-  sequence : Int
+  sequence : Int32
   current_text : String
 } derive(Debug)
 
@@ -59,7 +59,7 @@ pub async fn FeishuClient::download_message_resource(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let body_text = @encoding/utf8.decode_lossy(body)
     return Err(
       ConnectionFailed(
@@ -121,7 +121,7 @@ fn parse_feishu_websocket_endpoint_data(
 }
 
 ///|
-fn parse_json_int(json : Json) -> Int? {
+fn parse_json_int(json : Json) -> Int32? {
   match json {
     Number(number, ..) => Some(number.to_int())
     String(number) => Some(@string.parse_int(number) catch { _ => return None })
@@ -191,7 +191,7 @@ fn build_streaming_card_json(initial_text : String) -> Json {
 }
 
 ///|
-fn truncate_stream_summary(text : String, max_chars? : Int = 50) -> String {
+fn truncate_stream_summary(text : String, max_chars~ : Int32 = 50) -> String {
   let clean = text.replace(old="\n", new=" ").trim().to_owned()
   if clean.is_blank() {
     "[Generating...]"
@@ -206,7 +206,7 @@ fn truncate_stream_summary(text : String, max_chars? : Int = 50) -> String {
 fn parse_json_code_msg(
   response_json : Json,
   error_prefix : String,
-) -> Result[(Int, String), @channel.ChannelError] {
+) -> Result[(Int32, String), @channel.ChannelError] {
   let code = match response_json {
     { "code": Number(code, ..), .. } => code.to_int()
     { "code": String(code), .. } =>
@@ -314,7 +314,7 @@ async fn parse_send_response(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu API error \{response.code}: \{body_text}",
@@ -359,7 +359,7 @@ async fn parse_lookup_response(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu lookup API error \{response.code}: \{body_text}",
@@ -399,7 +399,7 @@ async fn parse_lookup_items_response(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu lookup API error \{response.code}: \{body_text}",
@@ -439,7 +439,7 @@ async fn parse_user_lookup_response(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu user lookup API error \{response.code}: \{body_text}",
@@ -495,7 +495,7 @@ pub async fn resolve_websocket_endpoint(
       )
   }
   let body_text = data.text()
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu websocket endpoint API error \{response.code}: \{body_text}",
@@ -558,7 +558,7 @@ async fn parse_user_batch_lookup_response(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu user batch lookup API error \{response.code}: \{body_text}",
@@ -616,7 +616,7 @@ async fn FeishuClient::load_tenant_access_token(
         ConnectionFailed(message="Failed to load Feishu access token: \{error}"),
       )
   }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Feishu auth failed: \{response.code} - \{data.text()}",
@@ -684,7 +684,7 @@ pub async fn FeishuClient::add_message_reaction(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu reaction API error \{response.code}: \{body_text}",
@@ -763,7 +763,7 @@ pub async fn FeishuClient::remove_message_reaction(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu reaction removal API error \{response.code}: \{body_text}",
@@ -796,8 +796,8 @@ pub async fn FeishuClient::send_text_message(
   self : FeishuClient,
   receive_id : String,
   text : String,
-  reply_to? : String? = None,
-  reply_in_thread? : Bool = false,
+  reply_to~ : String? = None,
+  reply_in_thread~ : Bool = false,
 ) -> Result[@channel.SendResult, @channel.ChannelError] {
   let token = match self.load_tenant_access_token() {
     Ok(token) => token
@@ -859,8 +859,8 @@ pub async fn FeishuClient::start_streaming_card(
   self : FeishuClient,
   receive_id : String,
   initial_text : String,
-  reply_to? : String? = None,
-  reply_in_thread? : Bool = false,
+  reply_to~ : String? = None,
+  reply_in_thread~ : Bool = false,
 ) -> Result[FeishuStreamingCardSession, @channel.ChannelError] {
   let client = match authed_feishu_http_client(self.config) {
     Ok(client) => client
@@ -890,7 +890,7 @@ pub async fn FeishuClient::start_streaming_card(
           ),
         )
     }
-  guard card_response.code is (200..=299) else {
+  guard card_response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu streaming card API error \{card_response.code}: \{card_body_text}",
@@ -1007,7 +1007,7 @@ pub async fn FeishuClient::update_streaming_card(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu streaming card update API error \{response.code}: \{body_text}",
@@ -1090,7 +1090,7 @@ pub async fn FeishuClient::close_streaming_card(
           ),
         )
     }
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Feishu streaming card close API error \{response.code}: \{body_text}",

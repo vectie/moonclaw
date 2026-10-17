@@ -1,6 +1,6 @@
 ///|
 priv struct AdapterProcessResult {
-  status : Int
+  status : Int32
   stdout : Bytes
 }
 
@@ -9,10 +9,10 @@ async fn run_adapter_process_bytes(
   executable : String,
   arguments : Array[String],
   stdin~ : String,
-  timeout~ : Int,
+  timeout~ : Int32,
   cwd~ : String,
   env~ : Map[String, String],
-  stdout_limit? : Int = 16 * 1024 * 1024,
+  stdout_limit~ : Int32 = 16 * 1024 * 1024,
 ) -> AdapterProcessResult {
   guard stdout_limit > 0 && stdout_limit <= 64 * 1024 * 1024 else {
     fail("MoonFort adapter output limit is invalid")
@@ -62,10 +62,10 @@ async fn run_adapter_process(
   executable : String,
   arguments : Array[String],
   stdin~ : String,
-  timeout~ : Int,
+  timeout~ : Int32,
   cwd~ : String,
   env~ : Map[String, String],
-  stdout_limit? : Int = 16 * 1024 * 1024,
+  stdout_limit~ : Int32 = 16 * 1024 * 1024,
 ) -> ProcessResponse {
   let result = run_adapter_process_bytes(
     executable,

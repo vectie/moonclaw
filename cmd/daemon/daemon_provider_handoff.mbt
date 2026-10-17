@@ -1,8 +1,8 @@
 ///|
-const LUNANEXA_HANDOFF_REQUEST_BYTES : Int = 2_048
+const LUNANEXA_HANDOFF_REQUEST_BYTES : Int32 = 2_048
 
 ///|
-const LUNANEXA_HANDOFF_RESPONSE_BYTES : Int = 65_536
+const LUNANEXA_HANDOFF_RESPONSE_BYTES : Int32 = 65_536
 
 ///|
 priv struct LunaProviderHandoffRequest {
@@ -23,7 +23,7 @@ priv struct LunaProviderHandoffRedemption {
 } derive(FromJson)
 
 ///|
-fn lunanexa_identifier(value : String, maximum : Int) -> Bool {
+fn lunanexa_identifier(value : String, maximum : Int32) -> Bool {
   value.length() > 0 &&
   value.length() <= maximum &&
   value.all(character => {
@@ -59,7 +59,7 @@ fn lunanexa_loopback_authority(authority : String) -> Bool {
 fn lunanexa_url_origin(
   value : String,
   origin_only : Bool,
-  allow_public_http? : Bool = false,
+  allow_public_http~ : Bool = false,
 ) -> String? {
   if value == "" ||
     value.length() > 2_048 ||

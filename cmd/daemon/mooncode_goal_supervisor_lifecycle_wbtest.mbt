@@ -14,7 +14,7 @@ fn lifecycle_lease(
   owner : String,
   recorded_at : Int64,
   expires_at : Int64,
-  fence : Int,
+  fence : Int32,
 ) -> Json raise {
   supervisor_lease_test_envelope(
     id,
@@ -39,7 +39,7 @@ fn lifecycle_renewal(
   recorded_at : Int64,
   expected_expiry : Int64,
   expires_at : Int64,
-  fence : Int,
+  fence : Int32,
   acquisition_id : String,
 ) -> Json raise {
   supervisor_lease_test_envelope(

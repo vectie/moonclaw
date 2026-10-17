@@ -214,7 +214,7 @@ fn compiled_job_config(
 pub fn compile_workflow_job(
   projection : @host.HostActivationProjection,
   declaration : PackWorkflowDeclaration,
-  now_ms : Int,
+  now_ms : Int32,
   schedule_id? : String,
 ) -> PackJobCompilation raise {
   require_pack_projection(projection)
@@ -285,8 +285,8 @@ pub async fn intake_workflow_run(
   projection : @host.HostActivationProjection,
   declaration : PackWorkflowDeclaration,
   run_id : String,
-  now_ms : Int,
-  trigger? : @job.TriggerSource = Manual,
+  now_ms : Int32,
+  trigger~ : @job.TriggerSource = Manual,
   schedule_id? : String,
 ) -> Result[PackJobIntake, String] {
   if !@pack.safe_identifier(run_id) {

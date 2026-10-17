@@ -82,7 +82,7 @@ pub async fn ArtifactStore::save_human_revision(
   save_id : String,
   expected_parent_digest : String,
   content : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactRecord {
   guard save_id.length() >= 8 &&
     save_id.length() <= 128 &&

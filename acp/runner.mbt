@@ -42,7 +42,7 @@ fn launch_env(
 pub fn process_output_summary(
   stdout : String,
   stderr : String,
-  status : Int,
+  status : Int32,
 ) -> String {
   let stdout = stdout.trim().to_owned()
   let stderr = stderr.trim().to_owned()

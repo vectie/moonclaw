@@ -3,7 +3,7 @@
 /// preserve hostile journal bytes and assert parser precedence before any store access.
 fn goal_adversarial_assert_error(
   response : MoonCodeGoalApiResponse,
-  status : Int,
+  status : Int32,
   code : String,
 ) -> Unit raise {
   assert_eq(response.status_code, status)

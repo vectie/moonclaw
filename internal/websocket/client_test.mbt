@@ -46,7 +46,7 @@ async test "internal websocket client close callback fires once" {
     let client = Client::connect(
       ClientConfig::new(url="ws://127.0.0.1:10082/ws"),
     )
-    let close_calls : Array[Int] = []
+    let close_calls : Array[Int32] = []
     client.set_on_close(fn() { close_calls.push(1) })
     group.spawn_bg(() => client.run(), no_wait=true, allow_failure=true)
     @async.sleep(50)

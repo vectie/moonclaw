@@ -182,8 +182,8 @@ fn safe_step_file_segment(step_id : String) -> String {
   let mut last_dash = true
   for c in step_id.to_lower() {
     let normalized = match c {
-      'a'..='z' => Some(c)
-      '0'..='9' => Some(c)
+      'a'..<='z' => Some(c)
+      '0'..<='9' => Some(c)
       _ => None
     }
     match normalized {
@@ -247,7 +247,7 @@ pub fn SystemStore::artifact_dir(
 pub fn SystemStore::artifact_content_file(
   self : SystemStore,
   artifact_id : String,
-  file_name? : String = "content.bin",
+  file_name~ : String = "content.bin",
 ) -> String {
   self.artifact_dir(artifact_id) |> @pathx.join(file_name)
 }
@@ -1555,7 +1555,7 @@ pub fn SystemStore::list_controller_states(
 ///|
 pub fn SystemStore::list_controller_iterations(
   self : SystemStore,
-  controller_run_id? : String? = None,
+  controller_run_id~ : String? = None,
 ) -> Array[JobControllerIteration] {
   match controller_run_id {
     Some(controller_run_id) =>
@@ -1570,7 +1570,7 @@ pub fn SystemStore::list_controller_iterations(
 ///|
 pub fn SystemStore::list_controller_lineage_edges(
   self : SystemStore,
-  controller_job_id? : String? = None,
+  controller_job_id~ : String? = None,
 ) -> Array[JobControllerLineageEdge] {
   match controller_job_id {
     Some(controller_job_id) =>
@@ -1585,7 +1585,7 @@ pub fn SystemStore::list_controller_lineage_edges(
 ///|
 pub fn SystemStore::list_controller_decisions(
   self : SystemStore,
-  controller_run_id? : String? = None,
+  controller_run_id~ : String? = None,
 ) -> Array[JobControllerDecision] {
   match controller_run_id {
     Some(controller_run_id) =>

@@ -9,8 +9,8 @@ fn tokenize_markdown_with_yaml_front_matter(
   content : StringView,
 ) -> (StringView, StringView) {
   let lines = content.split("\n").collect()
-  let mut open_index : Int? = None
-  let mut close_index : Int? = None
+  let mut open_index : Int32? = None
+  let mut close_index : Int32? = None
   let mut i = 0
   while i < lines.length() {
     let line = lines[i].trim()

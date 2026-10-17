@@ -7,8 +7,8 @@ fn select_journal_entries(
   step_id? : String,
   event_type? : String,
   query? : String,
-  since? : Int,
-  until? : Int,
+  since? : Int32,
+  until? : Int32,
 ) -> Array[JournalEntry] raise {
   guard entries.length() <= 10000 else {
     fail("Combined journals exceed 10000 events")
@@ -19,7 +19,7 @@ fn select_journal_entries(
     _ => ()
   }
   let needle = query.map(text => text.to_lower())
-  let matched : Array[(JournalEntry, Int, Int)] = []
+  let matched : Array[(JournalEntry, Int32, Int32)] = []
   for position, entry in entries {
     let event = event_fields(entry)
     if run_id is Some(id) && event.run_id != id {
@@ -58,7 +58,7 @@ fn select_journal_entries(
 /// The record includes unknown fields unchanged and is never executed.
 pub struct JournalEntry {
   source : String
-  line : Int
+  line : Int32
   record : Json
 } derive(ToJson)
 
@@ -66,11 +66,11 @@ pub struct JournalEntry {
 /// An offline view of saved observations, not a live runtime status projection.
 pub struct JournalPage {
   schema : String
-  total_events : Int
-  matched_events : Int
-  returned_events : Int
-  offset : Int
-  next_offset : Int?
+  total_events : Int32
+  matched_events : Int32
+  returned_events : Int32
+  offset : Int32
+  next_offset : Int32?
   entries : Array[JournalEntry]
 } derive(ToJson)
 
@@ -81,7 +81,7 @@ priv struct EventFields {
   run_id : String
   job_id : String
   event_type : String
-  timestamp : Int
+  timestamp : Int32
   step_id : String?
   status : Json?
   message : String
@@ -162,10 +162,10 @@ pub fn explore_journal(
   step_id? : String,
   event_type? : String,
   query? : String,
-  since? : Int,
-  until? : Int,
-  offset? : Int = 0,
-  limit? : Int = 100,
+  since? : Int32,
+  until? : Int32,
+  offset~ : Int32 = 0,
+  limit~ : Int32 = 100,
 ) -> JournalPage raise {
   guard offset >= 0 else { fail("Offset must be nonnegative") }
   guard limit >= 1 && limit <= 1000 else {

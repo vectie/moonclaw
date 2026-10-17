@@ -126,7 +126,7 @@ fn live_acp_session_node(
 fn live_acp_output_timeline_entry(
   run : @acp.AcpRun,
   stdio : Json,
-  timestamp : Int,
+  timestamp : Int32,
 ) -> @acp.AcpUiTimelineEntry? {
   let preview = match stdio_content_preview(stdio) {
     Some(preview) => preview
@@ -221,7 +221,7 @@ async fn Gateway::finalize_acp_session_after_run(
   self : Gateway,
   session_id : String,
   outcome_status : String,
-  now : Int,
+  now : Int32,
   error? : String?,
 ) -> Unit {
   let session = match self.acp_runtime().get_session(session_id) {

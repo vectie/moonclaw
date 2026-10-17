@@ -12,7 +12,7 @@ fn report_escape(text : String) -> String {
 // Keep all output buffered and bounded before a caller writes any HTML.
 fn report_append(
   parts : Array[String],
-  units : Ref[Int],
+  units : Ref[Int32],
   text : String,
 ) -> Unit raise {
   guard text.length() <= 8388608 - units.val else {
@@ -25,7 +25,7 @@ fn report_append(
 ///|
 fn report_group_row(
   label : String,
-  indices : Array[Int],
+  indices : Array[Int32],
   entries : Array[JournalEntry],
 ) -> String raise {
   let first_index = indices[0]
@@ -73,8 +73,8 @@ pub fn journal_run_html(
   guard !selected.is_empty() else {
     fail("No observations for the exact job/run pair")
   }
-  let run_level : Array[Int] = []
-  let steps : Map[String, Array[Int]] = Map([])
+  let run_level : Array[Int32] = []
+  let steps : Map[String, Array[Int32]] = Map([])
   for index, entry in selected {
     match event_fields(entry).step_id {
       None => run_level.push(index)
@@ -82,7 +82,7 @@ pub fn journal_run_html(
         let indices = steps
           .get(step)
           .unwrap_or_else(() => {
-            let indices : Array[Int] = []
+            let indices : Array[Int32] = []
             steps[step] = indices
             indices
           })

@@ -399,7 +399,7 @@ fn mooncode_session_management_result(
 
 ///|
 fn mooncode_session_management_error(
-  code : Int,
+  code : Int32,
   reason : String,
   message : String,
   session_id : String,

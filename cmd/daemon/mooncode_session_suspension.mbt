@@ -2,10 +2,10 @@
 const MOONCODE_SESSION_SUSPENSION_CONTRACT : String = "mooncode.session-suspension.v1"
 
 ///|
-const MOONCODE_SESSION_SUSPENSION_MAX_DEPTH : Int = 32
+const MOONCODE_SESSION_SUSPENSION_MAX_DEPTH : Int32 = 32
 
 ///|
-const MOONCODE_SESSION_SUSPENSION_MAX_SESSIONS : Int = 256
+const MOONCODE_SESSION_SUSPENSION_MAX_SESSIONS : Int32 = 256
 
 ///|
 let mooncode_session_suspension_requests : Map[String, Bool] = Map([])
@@ -32,7 +32,7 @@ fn mooncode_session_suspension_requested(
 async fn mooncode_collect_session_descendants(
   book_root : String,
   session_id : String,
-  depth : Int,
+  depth : Int32,
   visited : Map[String, Bool],
   sessions : Array[Json],
 ) -> Unit {
@@ -123,7 +123,7 @@ async fn Daemon::mooncode_suspend_session_node(
   self : Daemon,
   session : Json,
   operation_id : String,
-  descendant_count : Int,
+  descendant_count : Int32,
 ) -> Json {
   let session_id = mooncode_json_string(session, "session_id", default="")
   let book_root = mooncode_json_string(session, "book_root", default="")

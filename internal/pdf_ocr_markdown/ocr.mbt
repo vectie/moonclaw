@@ -2,17 +2,17 @@
 #warnings("-deprecated-deprecated_syntax")
 pub struct OcrMarkdownOptions {
   language : String?
-  dpi : Int
-  timeout_ms : Int?
-  page_segmentation_mode : Int?
+  dpi : Int32
+  timeout_ms : Int32?
+  page_segmentation_mode : Int32?
 } derive(Show, Eq)
 
 ///|
 pub fn OcrMarkdownOptions::new(
-  language? : String? = None,
-  dpi? : Int = 200,
-  timeout_ms? : Int? = Some(120_000),
-  page_segmentation_mode? : Int? = None,
+  language~ : String? = None,
+  dpi~ : Int32 = 200,
+  timeout_ms~ : Int32? = Some(120_000),
+  page_segmentation_mode~ : Int32? = None,
 ) -> OcrMarkdownOptions {
   { language, dpi, timeout_ms, page_segmentation_mode, }
 }
@@ -20,7 +20,7 @@ pub fn OcrMarkdownOptions::new(
 ///|
 #warnings("-deprecated-deprecated_syntax")
 pub struct OcrMarkdownPage {
-  page_number : Int
+  page_number : Int32
   text : String
   markdown : String
 } derive(Show, Eq)
@@ -41,7 +41,7 @@ pub(all) struct CommandRequest {
   command : String
   arguments : Array[String]
   cwd : String?
-  timeout_ms : Int?
+  timeout_ms : Int32?
 } derive(Show, Eq)
 
 ///|
@@ -49,11 +49,11 @@ pub(all) struct CommandRequest {
 pub(all) struct CommandResult {
   command : String
   arguments : Array[String]
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
-  elapsed_ms : Int
-  timeout_ms : Int?
+  elapsed_ms : Int32
+  timeout_ms : Int32?
 } derive(Show, Eq)
 
 ///|
@@ -89,12 +89,12 @@ pub suberror PdfOcrMarkdownError {
 
 ///|
 priv struct RasterizedPage {
-  page_number : Int
+  page_number : Int32
   path : String
 }
 
 ///|
-fn parse_positive_int(text : StringView) -> Int? {
+fn parse_positive_int(text : StringView) -> Int32? {
   guard !text.is_blank() else { return None }
   let mut value = 0
   for ch in text.to_owned().to_array() {
@@ -105,7 +105,7 @@ fn parse_positive_int(text : StringView) -> Int? {
 }
 
 ///|
-fn parse_page_number(name : String) -> Int? {
+fn parse_page_number(name : String) -> Int32? {
   let stem = @pathx.stem(name).to_owned()
   guard stem.has_prefix("page-") else { return None }
   parse_positive_int(stem[5:])
@@ -228,7 +228,7 @@ fn render_paragraph(lines : Array[String]) -> String {
 }
 
 ///|
-fn render_page_markdown(page_number : Int, text : String) -> String {
+fn render_page_markdown(page_number : Int32, text : String) -> String {
   let lines = normalized_ocr_lines(text)
   let sections = ["## Page \{page_number}"]
   if lines.is_empty() {
@@ -350,8 +350,8 @@ fn ocr_command(
 ///|
 pub async fn convert_pdf_to_markdown(
   pdf_path : String,
-  options? : OcrMarkdownOptions = OcrMarkdownOptions::new(),
-  executor? : CommandExecutor = default_command_executor(),
+  options~ : OcrMarkdownOptions = OcrMarkdownOptions::new(),
+  executor~ : CommandExecutor = default_command_executor(),
 ) -> OcrMarkdownDocument raise PdfOcrMarkdownError {
   let exists = @fsx.exists(pdf_path) catch { _ => false }
   guard exists else { raise FileNotFound(pdf_path) }

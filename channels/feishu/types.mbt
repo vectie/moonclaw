@@ -70,7 +70,7 @@ pub struct FeishuSendMessageRequest {
 
 ///|
 pub struct FeishuSendMessageResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuMessageData?
 } derive(ToJson, FromJson, Debug)
@@ -82,7 +82,7 @@ pub struct FeishuMessageData {
 
 ///|
 pub struct FeishuMessageLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuMessageLookupData?
 } derive(ToJson, FromJson, Debug)
@@ -118,7 +118,7 @@ pub struct FeishuMessageLookupSender {
 
 ///|
 pub struct FeishuUserLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuUserLookupData?
 } derive(ToJson, FromJson, Debug)
@@ -130,7 +130,7 @@ pub struct FeishuUserLookupData {
 
 ///|
 pub struct FeishuUserBatchLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuUserBatchLookupData?
 } derive(ToJson, FromJson, Debug)
@@ -151,16 +151,16 @@ pub struct FeishuUser {
 
 ///|
 pub struct FeishuAccessTokenResponse {
-  code : Int
+  code : Int32
   msg : String
   tenant_access_token : String?
   app_access_token : String?
-  expire : Int?
+  expire : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuWebSocketEndpointResponse {
-  code : Int
+  code : Int32
   msg : String
   data : Json?
 } derive(ToJson, FromJson, Debug)
@@ -173,8 +173,8 @@ pub struct FeishuWebSocketEndpointData {
 
 ///|
 pub struct FeishuWebSocketClientConfig {
-  ping_interval : Int?
-  reconnect_count : Int?
-  reconnect_interval : Int?
-  reconnect_nonce : Int?
+  ping_interval : Int32?
+  reconnect_count : Int32?
+  reconnect_interval : Int32?
+  reconnect_nonce : Int32?
 } derive(ToJson, Debug)

@@ -7,7 +7,7 @@ pub struct JsonRequestReader(RequestReader)
 
 ///|
 pub suberror JsonError {
-  JsonError(code~ : Int, error~ : Error, message~ : String, data~ : Json)
+  JsonError(code~ : Int32, error~ : Error, message~ : String, data~ : Json)
 }
 
 ///|
@@ -20,10 +20,10 @@ pub suberror JsonError {
 /// * `message` : Optional human-friendly error message.
 /// * `data` : Optional structured error payload.
 pub fn JsonError::new(
-  code : Int,
+  code : Int32,
   error : Error,
-  message? : String = error.to_string(),
-  data? : Json = error.to_json(),
+  message~ : String = error.to_string(),
+  data~ : Json = error.to_json(),
 ) -> JsonError {
   JsonError(code~, error~, message~, data~)
 }
@@ -91,7 +91,7 @@ pub fn JsonResponseWriter::new(w : ResponseWriter) -> JsonResponseWriter {
 /// Writes only the status line and headers for a JSON response.
 pub async fn JsonResponseWriter::write_header(
   self : JsonResponseWriter,
-  code : Int,
+  code : Int32,
 ) -> Unit {
   self.0.write_header(code)
 }

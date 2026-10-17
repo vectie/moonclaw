@@ -114,7 +114,7 @@ pub async fn loaded_skills_prompt(
 }
 
 ///|
-fn starter_attachment_artifact_priority(artifact_id : String) -> Int {
+fn starter_attachment_artifact_priority(artifact_id : String) -> Int32 {
   if artifact_id.has_suffix("-summary") {
     0
   } else if artifact_id.has_suffix("-text") {

@@ -88,7 +88,7 @@ async fn mooncode_goal_identity_check_and_add(
 ///|
 fn mooncode_goal_record_with_sequence(
   record : Json,
-  sequence : Int,
+  sequence : Int32,
 ) -> Json raise MoonCodeGoalRuntimeStoreError {
   guard record is Object(fields) else {
     mooncode_goal_runtime_store_corrupt("journal record is not an object")
@@ -221,7 +221,7 @@ async fn mooncode_goal_runtime_apply_projected_event(
 async fn mooncode_goal_authority_project_file(
   file : @fs.File,
   expected_session_id : String,
-  target_runtime_id? : String? = None,
+  target_runtime_id~ : String? = None,
 ) -> MoonCodeGoalAuthorityProjection {
   @moonclaw_fsx.with_temporary_directory("moonclaw-goal-projection-XXXXXX", async fn(
     ledger_root,
@@ -304,7 +304,7 @@ async fn mooncode_goal_authority_project_file(
 async fn mooncode_goal_authority_project_locked(
   book_root : String,
   session_id : String,
-  target_runtime_id? : String? = None,
+  target_runtime_id~ : String? = None,
 ) -> MoonCodeGoalAuthorityProjection {
   let path = mooncode_session_journal_path(book_root, session_id)
   if !(@fsx.exists(path) catch { _ => false }) {
@@ -330,7 +330,7 @@ fn mooncode_goal_runtime_projection_count_json(
 ///|
 fn mooncode_goal_runtime_projection_status_response(
   projection : MoonCodeGoalRuntimeProjection,
-  status_code? : Int = 200,
+  status_code~ : Int32 = 200,
 ) -> MoonCodeGoalRuntimeApiResponse raise {
   guard projection.genesis is Some(entry) &&
     entry.carrier.record is Genesis(genesis) else {

@@ -2,7 +2,7 @@
 /// Search result structure matching Python version
 priv struct SearchResult {
   context : String
-  line_number : Int
+  line_number : Int32
   match_line : String
   path : String
 } derive(ToJson, FromJson)
@@ -105,7 +105,7 @@ fn matches_pattern(filename : String, pattern : String) -> Bool {
 async fn search_in_file(
   file_path : String,
   regex : @regexp.Regexp,
-  context_lines : Int,
+  context_lines : Int32,
   base_dir : String,
 ) -> Array[SearchResult] raise SearchError {
   let content = @fsx.read_file(file_path) catch {
@@ -123,8 +123,8 @@ async fn search_in_file(
     let match_result = regex.execute(line)
     if match_result.matched() { // Use execute and check matched()
       // Generate context
-      let context_start = Int::max(0, i - context_lines)
-      let context_end = Int::min(lines.length(), i + context_lines + 1)
+      let context_start = Int32::max(0, i - context_lines)
+      let context_end = Int32::min(lines.length(), i + context_lines + 1)
       let context_lines_arr = []
       let mut j = context_start
       while j < context_end {
@@ -165,8 +165,8 @@ priv struct SearchResultData {
   query : String
   path : String
   file_pattern : String
-  context_lines : Int
-  total_matches : Int
+  context_lines : Int32
+  total_matches : Int32
   results : Array[SearchResult]
   truncated : Bool
   message : String
@@ -243,7 +243,7 @@ async fn search_files_impl(
     )
   }
   let context_lines = match args {
-    { "context_lines": Number(cl, ..), .. } => Int::max(0, cl.to_int())
+    { "context_lines": Number(cl, ..), .. } => Int32::max(0, cl.to_int())
     _ => 2
   }
   let file_pattern = match args {

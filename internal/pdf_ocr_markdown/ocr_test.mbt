@@ -2,9 +2,9 @@
 fn fake_process(
   exec : String,
   args : Array[String],
-  stdout? : String = "",
-  stderr? : String = "",
-  status? : Int = 0,
+  stdout~ : String = "",
+  stderr~ : String = "",
+  status~ : Int32 = 0,
 ) -> CommandResult {
   {
     command: exec,

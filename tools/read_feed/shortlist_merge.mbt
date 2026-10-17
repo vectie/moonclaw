@@ -47,13 +47,13 @@ pub fn ReadingShortlist::preview_merge(
 pub fn ReadingShortlist::merge(
   self : ReadingShortlist,
   incoming : ReadingShortlist,
-  conflict? : String = "error",
+  conflict~ : String = "error",
 ) -> ReadingShortlist raise {
   guard conflict is ("error" | "keep-existing" | "use-incoming") else {
     fail("Merge conflict policy must be error, keep-existing or use-incoming")
   }
   let entries = self.entries.copy()
-  let positions : Map[String, Int] = Map([])
+  let positions : Map[String, Int32] = Map([])
   for index, entry in entries {
     positions[entry.entry_id] = index
   }

@@ -71,7 +71,7 @@ pub async fn WeixinClient::load_access_token(
       )
   }
   let body_text = data.text()
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       ConnectionFailed(
         message="Weixin access token API error \{response.code}: \{body_text}",
@@ -135,7 +135,7 @@ pub async fn WeixinClient::send_text_message(
       )
   }
   let body_text = data.text()
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     return Err(
       SendMessageFailed(
         message="Weixin send API error \{response.code}: \{body_text}",

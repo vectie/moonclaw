@@ -28,12 +28,12 @@ async fn Daemon::spawn_task(
   name? : String,
   model? : @model.Model,
   model_workspace? : String,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   resume_id? : @uuid.Uuid,
   cwd~ : String,
-  broadcast? : @broadcast.Broadcast[@server.ServerStreamEvent] = @broadcast.Broadcast::new(),
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  broadcast~ : @broadcast.Broadcast[@server.ServerStreamEvent] = @broadcast.Broadcast::new(),
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
 ) -> Running {
   let id = self.uuid.v4()
   let registration_token = self.uuid.v4().to_string() +

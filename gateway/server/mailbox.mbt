@@ -2,17 +2,17 @@
 pub struct AgentMailbox {
   agent_id : String
   config : AgentMailboxConfig
-  created_at : Int
-  mut last_read_at : Int?
-  mut message_count : Int
+  created_at : Int32
+  mut last_read_at : Int32?
+  mut message_count : Int32
   priv queue : @aqueue.Queue[AgentMessage]
 }
 
 ///|
 pub fn agent_mailbox(
   agent_id~ : String,
-  config? : AgentMailboxConfig = agent_mailbox_config(),
-  timestamp? : Int = 0,
+  config~ : AgentMailboxConfig = agent_mailbox_config(),
+  timestamp~ : Int32 = 0,
 ) -> AgentMailbox {
   let kind = match config.max_size {
     0 => @aqueue.Unbounded
@@ -77,7 +77,7 @@ pub fn AgentMailbox::try_get(self : AgentMailbox) -> AgentMessage? {
 }
 
 ///|
-pub fn AgentMailbox::message_count(self : AgentMailbox) -> Int {
+pub fn AgentMailbox::message_count(self : AgentMailbox) -> Int32 {
   self.message_count
 }
 
@@ -105,7 +105,7 @@ pub struct MailboxManager {
 
 ///|
 pub fn mailbox_manager(
-  config? : AgentMailboxConfig = agent_mailbox_config(),
+  config~ : AgentMailboxConfig = agent_mailbox_config(),
 ) -> MailboxManager {
   { mailboxes: Map([]), config, }
 }
@@ -114,7 +114,7 @@ pub fn mailbox_manager(
 pub fn MailboxManager::create(
   self : MailboxManager,
   agent_id : String,
-  timestamp? : Int = 0,
+  timestamp~ : Int32 = 0,
 ) -> AgentMailbox {
   let mailbox = agent_mailbox(agent_id~, config=self.config, timestamp~)
   self.mailboxes.set(agent_id, mailbox)
@@ -156,7 +156,7 @@ pub fn MailboxManager::list(self : MailboxManager) -> Array[String] {
 }
 
 ///|
-pub fn MailboxManager::size(self : MailboxManager) -> Int {
+pub fn MailboxManager::size(self : MailboxManager) -> Int32 {
   self.mailboxes.length()
 }
 
@@ -184,7 +184,7 @@ pub async fn MailboxManager::deliver(
 pub fn MailboxManager::deliver_sync(
   self : MailboxManager,
   message : AgentMessage,
-) -> Int {
+) -> Int32 {
   let mut delivered = 0
   match message.to_agent {
     Some(target_id) =>

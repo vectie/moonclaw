@@ -61,7 +61,7 @@ pub async fn initialize_analysis_tool_journal(
 }
 
 ///|
-fn compact_tool_journal_text(text : String, limit~ : Int) -> String {
+fn compact_tool_journal_text(text : String, limit~ : Int32) -> String {
   let normalized = text.trim().to_owned()
   if normalized.is_blank() {
     return ""

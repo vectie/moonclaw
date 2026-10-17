@@ -89,7 +89,7 @@ async test "WorkflowEngine executes steps in order and passes outputs" {
         let previous = context
           .output("fetch")
           .map(fn(output) {
-            let data : Map[String, Int] = @json.from_json(output) catch {
+            let data : Map[String, Int32] = @json.from_json(output) catch {
               _ => {}
             }
             data.get("value").unwrap_or(0)
@@ -144,7 +144,7 @@ async test "WorkflowEngine retries a failing step and persists retry count" {
       output_bindings: ["unstable"],
     }
     let engine = workflow_test_engine(root, workflow)
-    let attempts : Ref[Int] = { val: 0, }
+    let attempts : Ref[Int32] = { val: 0, }
     engine.register_handler(
       WorkflowStepHandler::new(kind="test.unstable", run=fn(_context) {
         attempts.val = attempts.val + 1
@@ -760,7 +760,7 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
         let prior = context
           .output("preprocess")
           .map(fn(output) {
-            let data : Map[String, Int] = @json.from_json(output) catch {
+            let data : Map[String, Int32] = @json.from_json(output) catch {
               _ => {}
             }
             data.get("seed").unwrap_or(0)
@@ -923,7 +923,7 @@ async test "WorkflowEngine cancels before the next step when control requests st
       output_bindings: [],
     }
     let engine = workflow_test_engine(root, workflow)
-    let calls : Ref[Int] = { val: 0, }
+    let calls : Ref[Int32] = { val: 0, }
     engine.register_handler(
       WorkflowStepHandler::new(kind="test.first", run=fn(_context) {
         calls.val = calls.val + 1

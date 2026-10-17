@@ -112,7 +112,7 @@ fn mooncode_goal_genesis(
 }
 
 ///|
-fn goal_checked_int(n : Double, key : String) -> Int raise {
+fn goal_checked_int(n : Double, key : String) -> Int32 raise {
   // Check the value in floating point before the deliberately-last conversion:
   // Number::to_int truncates and saturates, which is not valid journal decoding.
   // NaN fails equality; infinities necessarily fail the bounded-range checks.
@@ -157,7 +157,7 @@ fn goal_json_int64(json : Json, key : String) -> Int64 raise {
 }
 
 ///|
-fn goal_json_int(json : Json, key : String) -> Int raise {
+fn goal_json_int(json : Json, key : String) -> Int32 raise {
   match mooncode_journal_json_field(json, key) {
     Some(Number(n, ..)) => goal_checked_int(n, key)
     _ => raise InvalidGoalGenesis("missing integer `\{key}`")
@@ -165,7 +165,7 @@ fn goal_json_int(json : Json, key : String) -> Int raise {
 }
 
 ///|
-fn goal_json_optional_int(json : Json, key : String) -> Int? raise {
+fn goal_json_optional_int(json : Json, key : String) -> Int32? raise {
   match mooncode_journal_json_field(json, key) {
     Some(Null) => None
     Some(Number(n, ..)) => Some(goal_checked_int(n, key))
@@ -213,7 +213,7 @@ priv struct MoonCodeGoalReplayState {
 fn mooncode_replay_goal_records_detailed(
   records : Array[Json],
   session_id : String,
-  expected_goal_id? : String? = None,
+  expected_goal_id~ : String? = None,
 ) -> MoonCodeGoalReplayState? raise {
   mooncode_goal_require_canonical_identity("session_id", session_id)
   // Reduce ordinary Goal state first. Supervisor records are validated against
@@ -452,7 +452,7 @@ fn mooncode_replay_goal_records_detailed(
 fn mooncode_replay_goal_records(
   records : Array[Json],
   session_id : String,
-  expected_goal_id? : String? = None,
+  expected_goal_id~ : String? = None,
 ) -> @mooncode_core.Goal? raise {
   mooncode_replay_goal_records_detailed(records, session_id, expected_goal_id~).map(fn(
       state,

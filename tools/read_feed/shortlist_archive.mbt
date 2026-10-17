@@ -31,7 +31,7 @@ fn shortlist_optional_text(
 }
 
 ///|
-fn shortlist_integer(fields : Map[String, Json], key : String) -> Int raise {
+fn shortlist_integer(fields : Map[String, Json], key : String) -> Int32 raise {
   match fields.get(key) {
     Some(Number(n, ..)) if n >= 0 &&
       n <= 2147483647.0 &&
@@ -82,7 +82,7 @@ fn shortlist_snapshot(value : Json) -> ShortlistSnapshot raise {
   }
   let body_sha256 = shortlist_text(fields, "body_sha256")
   guard body_sha256.length() == 64 &&
-    body_sha256.to_array().all(c => c is ('0'..='9' | 'a'..='f')) else {
+    body_sha256.to_array().all(c => c is ('0'..<='9' | 'a'..<='f')) else {
     fail("body_sha256 must be a lowercase SHA-256 digest")
   }
   let article_fields = shortlist_object(

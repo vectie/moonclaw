@@ -26,7 +26,7 @@ pub struct ParsedPatch {
 ///|
 pub(all) suberror ParseError {
   InvalidPatch(String)
-  InvalidHunk(message~ : String, line_number~ : Int)
+  InvalidHunk(message~ : String, line_number~ : Int32)
 } derive(Debug)
 
 ///|

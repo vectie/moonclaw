@@ -5,11 +5,11 @@ pub struct JournalRunCard {
   job_id : String
   run_id : String
   ambiguous_run_id : Bool
-  events : Int
-  steps : Int
+  events : Int32
+  steps : Int32
   sources : Array[String]
-  first_timestamp : Int
-  last_timestamp : Int
+  first_timestamp : Int32
+  last_timestamp : Int32
   last_event : JournalEntry
   last_run_status : Json?
   status_source : JournalEntry?
@@ -18,11 +18,11 @@ pub struct JournalRunCard {
 ///|
 pub struct JournalRunDirectory {
   schema : String
-  total_events : Int
-  total_runs : Int
-  matched_runs : Int
-  offset : Int
-  next_offset : Int?
+  total_events : Int32
+  total_runs : Int32
+  matched_runs : Int32
+  offset : Int32
+  next_offset : Int32?
   runs : Array[JournalRunCard]
 } derive(ToJson)
 
@@ -34,8 +34,8 @@ pub fn journal_run_directory(
   entries : Array[JournalEntry],
   job_id? : String,
   query? : String,
-  offset? : Int = 0,
-  limit? : Int = 50,
+  offset~ : Int32 = 0,
+  limit~ : Int32 = 50,
 ) -> JournalRunDirectory raise {
   guard offset >= 0 else { fail("Offset must be nonnegative") }
   guard limit >= 1 && limit <= 100 else {

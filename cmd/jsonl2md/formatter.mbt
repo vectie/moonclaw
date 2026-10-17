@@ -6,7 +6,7 @@ priv struct Formatter {
   /// Tool ID if this is a sub-formatter.
   id : String?
   /// Number of messages in this log.
-  mut count : Int
+  mut count : Int32
   /// Formatted lines.
   lines : Array[String]
   /// Tool-specific logs are formatted using sub-formatters.
@@ -19,7 +19,7 @@ priv struct Formatter {
 ///|
 fn Formatter::new(
   path : String,
-  recover_diagnostics? : Bool = false,
+  recover_diagnostics~ : Bool = false,
 ) -> Formatter {
   {
     recover_diagnostics,
@@ -48,8 +48,8 @@ fn Formatter::to_string(self : Formatter) -> String raise {
 fn Formatter::push_title(
   self : Formatter,
   title : String,
-  level? : Int,
-  numbered? : Bool = false,
+  level? : Int32,
+  numbered~ : Bool = false,
   timestamp? : @clock.Timestamp,
 ) -> Unit raise {
   let prefix = "#".repeat(level.unwrap_or(1))

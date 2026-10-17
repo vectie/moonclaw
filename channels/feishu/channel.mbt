@@ -1529,7 +1529,7 @@ async fn FeishuChannel::parse_merge_forward_content(
 fn format_merge_forward_items(
   root_message_id : String,
   items : Array[FeishuMessageLookupItem],
-  sender_names? : Map[String, String] = {},
+  sender_names~ : Map[String, String] = {},
 ) -> String {
   let children : Map[String, Array[FeishuMessageLookupItem]] = Map([])
   for item in items {
@@ -1801,7 +1801,7 @@ async fn FeishuChannel::handle_monitor_event_frame(
 ) -> Unit {
   let response = self.dispatch_feishu_event_frame(event_json)
   let body_text = @encoding/utf8.decode(response.body()) catch { _ => "" }
-  if response.status_code() is (200..=299) {
+  if response.status_code() is (200..<=299) {
     self.send_monitor_frame(connection_id, {
       "type": "feishu.monitor.ack",
       "status": "ok",
@@ -1836,7 +1836,7 @@ fn FeishuChannel::send_monitor_error(
   connection_id : String,
   code : String,
   message : String,
-  status_code? : Int = 400,
+  status_code~ : Int32 = 400,
 ) -> Unit {
   self.send_monitor_frame(connection_id, {
     "type": "feishu.monitor.error",
@@ -1890,7 +1890,7 @@ fn platform_chunk_key(account_id : String, message_id : String) -> String {
 fn parse_feishu_ws_header_int(
   frame : FeishuWebSocketFrame,
   key : String,
-) -> Int? {
+) -> Int32? {
   match feishu_ws_header(frame, key) {
     Some(value) => Some(@string.parse_int(value) catch { _ => return None })
     None => None
@@ -1941,7 +1941,7 @@ fn FeishuChannel::merge_platform_event_chunks(
 
 ///|
 fn ack_response_payload(response : @channel.ExtensionResponse) -> Bytes {
-  let status_code = if response.status_code() is (200..=299) {
+  let status_code = if response.status_code() is (200..<=299) {
     200
   } else {
     500

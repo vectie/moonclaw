@@ -28,7 +28,7 @@ fn compiled_job_template(definition : JobDefinition) -> String? {
 ///|
 fn compiled_job_memory_scope(
   definition : JobDefinition,
-  extra_scope? : Array[String] = [],
+  extra_scope~ : Array[String] = [],
 ) -> Array[String] {
   let scope = ["jobs", "job:\{definition.id}"]
   match compiled_job_family(definition) {
@@ -48,7 +48,7 @@ fn compiled_job_memory_scope(
 }
 
 ///|
-fn summarize_memory_content(content : String, max_chars~ : Int) -> String {
+fn summarize_memory_content(content : String, max_chars~ : Int32) -> String {
   let trimmed = content.trim().to_owned()
   if trimmed.length() <= max_chars {
     trimmed
@@ -77,7 +77,7 @@ pub async fn capture_successful_run_memories(
   store : SystemStore,
   definition : JobDefinition,
   run : JobRun,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Array[MemoryRecord] {
   guard run.status is Succeeded else { return [] }
   let target = parse_job_notify_target(definition.config)

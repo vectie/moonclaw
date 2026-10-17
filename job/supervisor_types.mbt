@@ -50,7 +50,7 @@ pub(all) struct SupervisorProfileActivationV1 {
   contract_id : String
   supervisor_id : String
   profile_id : String
-  profile_version : Int
+  profile_version : Int32
   profile_digest : String
   source_product : String
   runtime_profile : Json
@@ -67,7 +67,7 @@ pub(all) struct SupervisorCommandEnvelopeV1 {
   request_digest : String
   issued_at : SupervisorEpochMsV1
   evaluated_at : String
-  expected_cursor : Int?
+  expected_cursor : Int32?
   authority : Json
 } derive(ToJson, FromJson, Debug, Eq)
 
@@ -114,7 +114,7 @@ pub(all) struct SupervisorStateV1 {
   profile : SupervisorProfileActivationV1
   lifecycle : SupervisorLifecycleV1
   active_run_id : String?
-  cursor : Int
+  cursor : Int32
   updated_at : SupervisorEpochMsV1
   last_error : String?
 } derive(ToJson, FromJson, Debug, Eq)
@@ -125,7 +125,7 @@ pub(all) struct SupervisorCommandReceiptV1 {
   command_id : String
   request_digest : String
   supervisor_id : String
-  cursor : Int
+  cursor : Int32
   event_id : String
   status : String
   duplicate : Bool
@@ -178,7 +178,7 @@ pub(all) struct SupervisorMailboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
-  max_messages : Int
+  max_messages : Int32
   lease_expires_at : SupervisorEpochMsV1
 } derive(ToJson, FromJson, Debug, Eq)
 
@@ -218,7 +218,7 @@ pub(all) struct SupervisorWorkerLineageV1 {
   parent_step_id : String
   worker_run_id : String
   worker_job_id : String
-  depth : Int
+  depth : Int32
   delegation_ref : Json
   recorded_at : SupervisorEpochMsV1
 } derive(ToJson, FromJson, Debug, Eq)
@@ -274,7 +274,7 @@ pub(all) struct SupervisorEvidenceRefV1 {
 ///|
 pub(all) struct SupervisorGapStatementV1 {
   present : Bool
-  severity : Int
+  severity : Int32
   summary : String
   evidence_refs : Array[String]
 } derive(ToJson, FromJson, Debug, Eq)
@@ -293,8 +293,8 @@ pub(all) struct SupervisorBookkeeperOutcomeEvidenceV1 {
   evidence_refs : Array[SupervisorEvidenceRefV1]
   decision_evidence_id : String
   // MoonBook owns this wire shape and currently requires JSON integers.
-  observed_at : Int
-  recorded_at : Int
+  observed_at : Int32
+  recorded_at : Int32
   information_gap : SupervisorGapStatementV1
   recognition_gap : SupervisorGapStatementV1
   decisiveness_gap : SupervisorGapStatementV1
@@ -317,7 +317,7 @@ pub(all) struct SupervisorOutcomeOutboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
-  max_items : Int
+  max_items : Int32
   lease_expires_at : SupervisorEpochMsV1
 } derive(ToJson, FromJson, Debug, Eq)
 
@@ -335,7 +335,7 @@ pub(all) struct SupervisorJournalEventV1 {
   contract_id : String
   event_id : String
   supervisor_id : String
-  cursor : Int
+  cursor : Int32
   command_id : String
   command_digest : String
   event_type : String
@@ -356,7 +356,7 @@ pub(all) struct SupervisorJournalEventV1 {
 pub(all) struct SupervisorStatusProjectionV1 {
   contract_id : String
   state : SupervisorStateV1
-  pending_message_count : Int
+  pending_message_count : Int32
   worker_lineage : Array[SupervisorWorkerLineageV1]
   workers : Array[SupervisorWorkerStatusV1]
   latest_event : SupervisorJournalEventV1?
@@ -366,8 +366,8 @@ pub(all) struct SupervisorStatusProjectionV1 {
 pub(all) struct SupervisorReplayResponseV1 {
   contract_id : String
   supervisor_id : String
-  after_cursor : Int
-  next_cursor : Int
+  after_cursor : Int32
+  next_cursor : Int32
   has_more : Bool
   events : Array[SupervisorJournalEventV1]
 } derive(ToJson, FromJson, Debug, Eq)

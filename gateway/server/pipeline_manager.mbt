@@ -14,7 +14,7 @@ pub fn PipelineManager::create(
   self : PipelineManager,
   name~ : String,
   stages~ : Array[PipelineStage],
-  metadata? : Map[String, Json] = Map([]),
+  metadata~ : Map[String, Json] = Map([]),
 ) -> Pipeline {
   let pipeline_id = self.uuid.v4().to_string()
   let p = pipeline(pipeline_id~, name~, stages~, metadata~)
@@ -127,12 +127,12 @@ pub fn PipelineManager::cancel_pipeline(
 }
 
 ///|
-pub fn PipelineManager::size(self : PipelineManager) -> Int {
+pub fn PipelineManager::size(self : PipelineManager) -> Int32 {
   self.pipelines.length()
 }
 
 ///|
-pub fn PipelineManager::running_count(self : PipelineManager) -> Int {
+pub fn PipelineManager::running_count(self : PipelineManager) -> Int32 {
   self.pipelines.values().filter(fn(p) { p.status is Running }).count()
 }
 

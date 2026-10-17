@@ -1,19 +1,19 @@
 ///|
 /// HTTP error wrapper used to bubble failures to the HTTP layer.
 priv suberror HttpError {
-  HttpError(code~ : Int, reason~ : String, body~ : String)
+  HttpError(code~ : Int32, reason~ : String, body~ : String)
 }
 
 ///|
 /// Constructs an `HttpError` carrying a JSON body that will be stringified.
 /// Use for structured error responses in handlers.
-fn json_error(code : Int, reason : String, body : Json) -> HttpError {
+fn json_error(code : Int32, reason : String, body : Json) -> HttpError {
   HttpError(code~, reason~, body=body.stringify())
 }
 
 ///|
 /// Constructs an `HttpError` with a plain-text body.
-fn text_error(code : Int, reason : String, body : String) -> HttpError {
+fn text_error(code : Int32, reason : String, body : String) -> HttpError {
   HttpError(code~, reason~, body~)
 }
 

@@ -38,7 +38,7 @@ pub fn string() -> Schema {
 ///|
 pub fn object(
   object : Map[String, Schema],
-  additional_properties? : Bool = true,
+  additional_properties~ : Bool = true,
   required? : Array[String],
 ) -> Schema {
   Object(object, required~, additional_properties~)

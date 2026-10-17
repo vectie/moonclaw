@@ -1,6 +1,6 @@
 ///|
 priv struct AcpSandboxProcessResult {
-  status : Int
+  status : Int32
   output : String
   changed_paths : Array[String]
 }

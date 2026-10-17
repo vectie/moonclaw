@@ -5,8 +5,8 @@ fn workspace_output_slug(text : String) -> String {
   let mut last_dash = true
   for c in text.to_lower() {
     let normalized = match c {
-      'a'..='z' => Some(c)
-      '0'..='9' => Some(c)
+      'a'..<='z' => Some(c)
+      '0'..<='9' => Some(c)
       _ => None
     }
     match normalized {

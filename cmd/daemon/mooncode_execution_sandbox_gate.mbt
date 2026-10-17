@@ -47,7 +47,7 @@ async fn mooncode_fixture_sandbox_config(
 ///|
 async fn mooncode_execution_sandbox_config(
   tool : String,
-  book_root? : String = "",
+  book_root~ : String = "",
 ) -> Result[@execution_sandbox.SandboxExecutorConfig, Json] {
   match mooncode_fixture_sandbox_config(book_root) {
     Some(config) => return Ok(config)
@@ -121,8 +121,8 @@ fn mooncode_sandbox_evidence(
 fn mooncode_sandbox_terminal_result(
   tool : String,
   execution : @execution_sandbox.SandboxExecution,
-  expected_exit_code : Int,
-  max_output_chars : Int,
+  expected_exit_code : Int32,
+  max_output_chars : Int32,
   metadata : Json,
 ) -> Json {
   let receipt = execution.receipt

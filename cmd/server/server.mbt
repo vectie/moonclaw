@@ -18,7 +18,7 @@ struct Server {
   /// Directory served as static assets (usually `cmd/server`).
   serve : String
   /// TCP port bound by the underlying HTTP server.
-  port : Int
+  port : Int32
   /// Underlying HTTP listener that dispatches all endpoints.
   http_server : @httpx.Server
 }
@@ -32,7 +32,7 @@ fn Server::status(self : Server) -> Status {
 }
 
 ///|
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   self.port
 }
 
@@ -46,13 +46,13 @@ pub async fn Server::new(
   model_workspace? : String,
   register? : RegisterInfo,
   serve~ : String,
-  port~ : Int,
+  port~ : Int32,
   home? : String,
   cwd? : String,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   resume_id? : @uuid.Uuid,
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
 ) -> Server {
   let home = match home {
     Some(home) => home
@@ -244,7 +244,7 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
 ///|
 async fn @httpx.ResponseWriter::send_json(
   self : Self,
-  code~ : Int,
+  code~ : Int32,
   json : Json,
 ) -> Unit {
   self.header().set("Content-Type", "application/json")

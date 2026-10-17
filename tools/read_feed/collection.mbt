@@ -13,8 +13,8 @@ pub struct CollectionSource {
   label : String
   title : String
   format : String
-  total_items : Int
-  matched_items : Int
+  total_items : Int32
+  matched_items : Int32
   next_url : String?
 }
 
@@ -41,7 +41,7 @@ pub struct CollectionArticle {
   source : String
   label : String
   source_title : String
-  article_index : Int
+  article_index : Int32
   article : FeedArticle
 } derive(ToJson)
 
@@ -53,10 +53,10 @@ pub struct FeedCollectionPage {
   title : String
   sources : Array[CollectionSource]
   articles : Array[CollectionArticle]
-  total_items : Int
-  matched_items : Int
-  offset : Int
-  next_offset : Int?
+  total_items : Int32
+  matched_items : Int32
+  offset : Int32
+  next_offset : Int32?
   query : String
   source_filter : String
 }
@@ -90,7 +90,7 @@ pub impl ToJson for FeedCollectionPage with fn to_json(
 }
 
 ///|
-fn check_collection_options(limit : Int, offset : Int) -> Unit raise {
+fn check_collection_options(limit : Int32, offset : Int32) -> Unit raise {
   guard limit >= 1 && limit <= 50 && offset >= 0 else {
     fail("limit must be 1..50 and offset must be nonnegative")
   }
@@ -117,11 +117,11 @@ fn check_collection_options(limit : Int, offset : Int) -> Unit raise {
 /// ```
 pub fn collect_feeds(
   snapshots : Array[FeedSnapshot],
-  title? : String = "Feed collection",
-  query? : String = "",
-  source? : String = "",
-  limit? : Int = 50,
-  offset? : Int = 0,
+  title~ : String = "Feed collection",
+  query~ : String = "",
+  source~ : String = "",
+  limit~ : Int32 = 50,
+  offset~ : Int32 = 0,
 ) -> FeedCollectionPage raise {
   check_collection_options(limit, offset)
   guard snapshots.length() <= 32 else {
@@ -182,8 +182,8 @@ pub fn collect_feeds(
       next_url: document.next_url,
     })
   }
-  let start = Int::min(offset, matching.length())
-  let end = start + Int::min(limit, matching.length() - start)
+  let start = Int32::min(offset, matching.length())
+  let end = start + Int32::min(limit, matching.length() - start)
   {
     title,
     sources,

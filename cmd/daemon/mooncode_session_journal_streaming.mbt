@@ -1,5 +1,5 @@
 ///|
-let mooncode_journal_read_chunk_size : Int = 64 * 1024
+let mooncode_journal_read_chunk_size : Int32 = 64 * 1024
 
 ///|
 async fn mooncode_journal_read_lines(
@@ -126,7 +126,7 @@ let mooncode_journal_append_states : Map[String, MoonCodeJournalAppendState] = M
 )
 
 ///|
-let mooncode_journal_append_scan_counts : Map[String, Int] = Map([])
+let mooncode_journal_append_scan_counts : Map[String, Int32] = Map([])
 
 ///|
 async fn mooncode_journal_boundary_fingerprint(
@@ -166,7 +166,7 @@ fn mooncode_journal_identity_key(
 }
 
 ///|
-fn mooncode_journal_append_scan_count_get(path : String) -> Int {
+fn mooncode_journal_append_scan_count_get(path : String) -> Int32 {
   mooncode_journal_append_scan_counts.get_or_default(path, 0)
 }
 

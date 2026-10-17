@@ -616,7 +616,7 @@ async test "plan_job_proposal accepts draft_plan as steps alias" {
 
 ///|
 async test "plan_job_proposal retries under-decomposed analytical plan" {
-  let calls : Ref[Int] = { val: 0, }
+  let calls : Ref[Int32] = { val: 0, }
   let proposal = plan_job_proposal(
     "proposal-repair-1",
     "Land acquisition estimation",
@@ -645,7 +645,7 @@ async test "plan_job_proposal retries under-decomposed analytical plan" {
 
 ///|
 async test "plan_job_proposal reports under-decomposed plan after repair" {
-  let calls : Ref[Int] = { val: 0, }
+  let calls : Ref[Int32] = { val: 0, }
   let proposal = plan_job_proposal(
     "proposal-repair-fail-1",
     "Land acquisition estimation",

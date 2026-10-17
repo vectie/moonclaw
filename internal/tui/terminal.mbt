@@ -2,10 +2,10 @@
 pub(all) struct Terminal {
   input : @stdio.Input
   output : @stdio.Output
-  mut width : Int
-  mut height : Int
-  mut cursor_x : Int
-  mut cursor_y : Int
+  mut width : Int32
+  mut height : Int32
+  mut cursor_x : Int32
+  mut cursor_y : Int32
   mut running : Bool
   mut in_alt_screen : Bool
 }
@@ -122,38 +122,42 @@ pub async fn Terminal::show_cursor(self : Terminal) -> Unit {
 }
 
 ///|
-pub async fn Terminal::move_to(self : Terminal, col : Int, row : Int) -> Unit {
+pub async fn Terminal::move_to(
+  self : Terminal,
+  col : Int32,
+  row : Int32,
+) -> Unit {
   write_string_with_retry(self.output, cursor_to(col, row))
   self.cursor_x = col
   self.cursor_y = row
 }
 
 ///|
-pub async fn Terminal::move_to_col(self : Terminal, col : Int) -> Unit {
+pub async fn Terminal::move_to_col(self : Terminal, col : Int32) -> Unit {
   write_string_with_retry(self.output, cursor_to_col(col))
   self.cursor_x = col
 }
 
 ///|
-pub async fn Terminal::move_up(self : Terminal, n : Int) -> Unit {
+pub async fn Terminal::move_up(self : Terminal, n : Int32) -> Unit {
   write_string_with_retry(self.output, cursor_up(n))
   self.cursor_y = self.cursor_y - n
 }
 
 ///|
-pub async fn Terminal::move_down(self : Terminal, n : Int) -> Unit {
+pub async fn Terminal::move_down(self : Terminal, n : Int32) -> Unit {
   write_string_with_retry(self.output, cursor_down(n))
   self.cursor_y = self.cursor_y + n
 }
 
 ///|
-pub async fn Terminal::move_left(self : Terminal, n : Int) -> Unit {
+pub async fn Terminal::move_left(self : Terminal, n : Int32) -> Unit {
   write_string_with_retry(self.output, cursor_left(n))
   self.cursor_x = self.cursor_x - n
 }
 
 ///|
-pub async fn Terminal::move_right(self : Terminal, n : Int) -> Unit {
+pub async fn Terminal::move_right(self : Terminal, n : Int32) -> Unit {
   write_string_with_retry(self.output, cursor_right(n))
   self.cursor_x = self.cursor_x + n
 }
@@ -178,8 +182,8 @@ pub async fn Terminal::write_line(self : Terminal, text : String) -> Unit {
 ///|
 pub async fn Terminal::write_at(
   self : Terminal,
-  col : Int,
-  row : Int,
+  col : Int32,
+  row : Int32,
   text : String,
 ) -> Unit {
   self.move_to(col, row)
@@ -192,7 +196,7 @@ pub async fn Terminal::flush(self : Terminal) -> Unit {
 }
 
 ///|
-pub fn Terminal::size(self : Terminal) -> (Int, Int) {
+pub fn Terminal::size(self : Terminal) -> (Int32, Int32) {
   (self.width, self.height)
 }
 
@@ -204,12 +208,12 @@ pub fn Terminal::update_size(self : Terminal) -> Unit raise {
 }
 
 ///|
-pub fn Terminal::width(self : Terminal) -> Int {
+pub fn Terminal::width(self : Terminal) -> Int32 {
   self.width
 }
 
 ///|
-pub fn Terminal::height(self : Terminal) -> Int {
+pub fn Terminal::height(self : Terminal) -> Int32 {
   self.height
 }
 

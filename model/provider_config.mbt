@@ -5,8 +5,8 @@ pub struct ModelConfig {
   reasoning : Bool?
   input : Array[String]?
   cost : CostConfig?
-  contextWindow : Int?
-  maxTokens : Int?
+  contextWindow : Int32?
+  maxTokens : Int32?
 } derive(ToJson, Debug)
 
 ///|

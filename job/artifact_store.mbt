@@ -92,7 +92,7 @@ fn ArtifactStore::matches_query(
 fn ArtifactStore::latest_bytes_version(
   self : ArtifactStore,
   request : ArtifactBytesWriteRequest,
-) -> Int {
+) -> Int32 {
   self.store
   .list_artifacts()
   .filter(fn(artifact) {
@@ -133,7 +133,7 @@ fn ArtifactStore::existing_mutable_bytes_record(
 ///|
 pub fn ArtifactStore::list(
   self : ArtifactStore,
-  query? : ArtifactQuery = ArtifactQuery::new(),
+  query~ : ArtifactQuery = ArtifactQuery::new(),
 ) -> Array[ArtifactRecord] {
   let artifacts = self.store
     .list_artifacts()
@@ -169,7 +169,7 @@ pub async fn ArtifactStore::write(
   self : ArtifactStore,
   request : ArtifactWriteRequest,
   artifact_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactRecord {
   self.write_bytes(
     ArtifactBytesWriteRequest::from_text(request),
@@ -183,7 +183,7 @@ pub async fn ArtifactStore::write_bytes(
   self : ArtifactStore,
   request : ArtifactBytesWriteRequest,
   artifact_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactRecord {
   self.store.with_store_lock(async fn() {
     self.store.reload_artifacts_unlocked()
@@ -196,7 +196,7 @@ async fn ArtifactStore::write_bytes_unlocked(
   self : ArtifactStore,
   request : ArtifactBytesWriteRequest,
   artifact_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactRecord {
   let existing = self.existing_mutable_bytes_record(request)
   let id = match existing {
@@ -264,7 +264,7 @@ async fn ArtifactStore::write_bytes_unlocked(
 pub async fn ArtifactStore::archive(
   self : ArtifactStore,
   artifact_id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactRecord? {
   self.store.with_store_lock(async fn() {
     self.store.reload_artifacts_unlocked()
@@ -302,7 +302,7 @@ fn ArtifactStore::retention_matches(
 pub async fn ArtifactStore::apply_retention(
   self : ArtifactStore,
   policy : ArtifactRetentionPolicy,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> ArtifactCleanupReport {
   let candidates = self
     .list(query=ArtifactQuery::new(status=Some(Active)))

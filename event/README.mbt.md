@@ -33,8 +33,8 @@ pub(all) enum EventDesc {
   ToolAdded(@tool.ToolDesc)
   PreToolCall(@ai.ToolCall)
   PostToolCall(@ai.ToolCall, result~ : Result[Json, Json], rendered~ : String)
-  TokenCounted(Int)
-  ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
+  TokenCounted(Int32)
+  ContextPruned(origin_token_count~ : Int32, pruned_token_count~ : Int32)
   AssistantMessage(
     usage~ : @ai.Usage?,
     tool_calls~ : Array[@ai.ToolCall],

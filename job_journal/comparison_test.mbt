@@ -1,12 +1,12 @@
 ///|
 fn comparison_event(
   run : String,
-  timestamp : Int,
+  timestamp : Int32,
   step? : String,
   status? : Json,
-  kind? : String = "step.observed",
-  message? : String = "observation",
-  job? : String = "job",
+  kind~ : String = "step.observed",
+  message~ : String = "observation",
+  job~ : String = "job",
 ) -> String {
   let fields : Map[String, Json] = {
     "run_id": run.to_json(),

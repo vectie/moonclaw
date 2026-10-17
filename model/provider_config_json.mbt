@@ -59,11 +59,11 @@ pub impl @json.FromJson for ModelConfig with fn from_json(
     guard obj.get("cost") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("cost")))
   }
-  let contextWindow : Int? = {
+  let contextWindow : Int32? = {
     guard obj.get("contextWindow") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("contextWindow")))
   }
-  let maxTokens : Int? = {
+  let maxTokens : Int32? = {
     guard obj.get("maxTokens") is Some(v) else { None }
     Some(@json.from_json(v, path=json_path.add_key("maxTokens")))
   }

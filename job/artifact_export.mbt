@@ -7,14 +7,14 @@ pub struct ExportedArtifact {
   record_sha256 : String
   content_path : String
   content_sha256 : String
-  content_bytes : Int
+  content_bytes : Int32
 } derive(ToJson, FromJson)
 
 ///|
 pub struct ArtifactExport {
   schema : String
   artifacts : Array[ExportedArtifact]
-  total_content_bytes : Int
+  total_content_bytes : Int32
 } derive(ToJson, FromJson)
 
 ///|
@@ -33,7 +33,7 @@ fn export_file_name(path : String) -> String {
       break
     }
     length += 1
-    if c is ('a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '-' | '_') {
+    if c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '.' | '-' | '_') {
       name.write_char(c)
     } else {
       name.write_char('_')
@@ -80,8 +80,8 @@ async fn retained_artifact_record(
 async fn export_source(
   store : SystemStore,
   id : String,
-  index : Int,
-  remaining : Int,
+  index : Int32,
+  remaining : Int32,
 ) -> ArtifactExportSource {
   let (record, record_bytes) = retained_artifact_record(store, id)
   let maximum = if remaining < 16777216 { remaining } else { 16777216 }

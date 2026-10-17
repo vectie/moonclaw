@@ -1,6 +1,6 @@
 ///|
 pub(all) struct PdfOcrProcess {
-  status : Int
+  status : Int32
 }
 
 ///|
@@ -8,7 +8,7 @@ pub(all) struct PdfOcrProcess {
 pub async fn run_process(
   command : String,
   arguments : Array[String],
-  cwd? : String? = None,
+  cwd~ : String? = None,
 ) -> Result[PdfOcrProcess, String] {
   ignore(command)
   ignore(arguments)

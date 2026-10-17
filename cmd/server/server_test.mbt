@@ -46,7 +46,7 @@ async fn configure_server(
   mock : @mock.Context,
   register? : @server.RegisterInfo,
   serve? : StringView,
-  model? : String = "mock:claude-haiku-4.5",
+  model~ : String = "mock:claude-haiku-4.5",
 ) -> @server.Server {
   let cwd = @os.cwd()
   let serve = match serve {

@@ -25,7 +25,7 @@ fn goal_api_body(turn_limit : Json) -> Json {
 }
 
 ///|
-fn goal_api_rejected(body : Json, path? : String = "session") -> Bool {
+fn goal_api_rejected(body : Json, path~ : String = "session") -> Bool {
   try {
     ignore(mooncode_parse_goal_put_request(body, path))
     false
@@ -247,7 +247,7 @@ async fn goal_gate_write_snapshot(
 }
 
 ///|
-async fn goal_gate_path_observation(path : String) -> (Bool, Int) {
+async fn goal_gate_path_observation(path : String) -> (Bool, Int32) {
   let exists = @fsx.exists(path)
   let count = if exists { @fsx.list_directory(path).length() } else { 0 }
   (exists, count)
@@ -256,7 +256,7 @@ async fn goal_gate_path_observation(path : String) -> (Bool, Int) {
 ///|
 async fn assert_goal_gate_path_observation(
   path : String,
-  before : (Bool, Int),
+  before : (Bool, Int32),
 ) -> Unit {
   assert_eq(@fsx.exists(path), before.0)
   if before.0 {
@@ -321,7 +321,7 @@ async fn goal_gate_assert_fixture_unchanged(
   root : String,
   id : String,
   archived : Bool,
-  expected_count : Int,
+  expected_count : Int32,
   expected_bytes : String,
 ) -> Unit {
   let dir = goal_gate_dir(root, id, archived)

@@ -51,7 +51,7 @@ pub(all) struct ChannelMeta {
   docs_path : String
   docs_label : String?
   blurb : String
-  order : Int?
+  order : Int32?
   aliases : Array[String]
 } derive(ToJson, FromJson, Debug)
 
@@ -61,7 +61,7 @@ pub(all) struct Attachment {
   mime_type : String
   url : String
   filename : String?
-  size : Int?
+  size : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -72,7 +72,7 @@ pub(all) struct Message {
   to : String
   content : String
   content_type : String
-  timestamp : Int
+  timestamp : Int32
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
@@ -82,7 +82,7 @@ pub(all) struct Message {
 pub(all) struct SendResult {
   channel : ChannelId
   message_id : String
-  timestamp : Int
+  timestamp : Int32
   status : String
 } derive(ToJson, FromJson, Debug)
 
@@ -92,7 +92,7 @@ pub(all) enum ChannelError {
   ConnectionFailed(message~ : String)
   SendMessageFailed(message~ : String)
   InvalidRecipient(message~ : String)
-  RateLimited(message~ : String, retry_after_ms~ : Int?)
+  RateLimited(message~ : String, retry_after_ms~ : Int32?)
   Unknown(message~ : String)
 } derive(ToJson, FromJson, Debug)
 
@@ -134,7 +134,7 @@ pub(all) struct ChannelEvent {
   account_id : String
   event_type : String
   payload : Json
-  timestamp : Int
+  timestamp : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -187,12 +187,12 @@ pub(all) struct ChannelDock {
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
-  text_chunk_limit : Int
+  text_chunk_limit : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct StreamingConfig {
   enabled : Bool
-  chunk_size : Int
-  chunk_delay_ms : Int
+  chunk_size : Int32
+  chunk_delay_ms : Int32
 } derive(ToJson, FromJson, Debug)

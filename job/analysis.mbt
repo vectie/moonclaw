@@ -1,15 +1,15 @@
 ///|
 pub(all) struct AnalysisPolicy {
-  timeout_ms : Int?
-  max_total_tokens : Int?
+  timeout_ms : Int32?
+  max_total_tokens : Int32?
   skip_if_artifact_exists : Bool
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn AnalysisPolicy::new(
-  timeout_ms? : Int? = None,
-  max_total_tokens? : Int? = None,
-  skip_if_artifact_exists? : Bool = false,
+  timeout_ms~ : Int32? = None,
+  max_total_tokens~ : Int32? = None,
+  skip_if_artifact_exists~ : Bool = false,
 ) -> AnalysisPolicy {
   { timeout_ms, max_total_tokens, skip_if_artifact_exists, }
 }
@@ -27,13 +27,13 @@ pub(all) struct AnalysisArtifactConfig {
 
 ///|
 pub fn AnalysisArtifactConfig::new(
-  report_artifact_type? : String = "analysis.report",
-  result_artifact_type? : String = "analysis.result",
-  logical_key? : String? = None,
-  report_file_name? : String? = None,
-  result_file_name? : String? = None,
-  scope? : Array[String] = [],
-  append_only? : Bool = true,
+  report_artifact_type~ : String = "analysis.report",
+  result_artifact_type~ : String = "analysis.result",
+  logical_key~ : String? = None,
+  report_file_name~ : String? = None,
+  result_file_name~ : String? = None,
+  scope~ : Array[String] = [],
+  append_only~ : Bool = true,
 ) -> AnalysisArtifactConfig {
   {
     report_artifact_type,
@@ -67,19 +67,19 @@ pub(all) struct AnalysisStepConfig {
 ///|
 pub fn AnalysisStepConfig::new(
   prompt~ : String,
-  model? : String? = None,
-  cwd? : String? = None,
-  home? : String? = None,
-  workspace? : String? = None,
-  execution_mode? : String? = None,
-  execution_target? : String? = None,
-  system_prompt? : String? = None,
-  preferred_skills? : Array[String] = [],
-  enable_tools? : Bool = true,
-  web_search? : Bool = false,
-  policy? : AnalysisPolicy = AnalysisPolicy::new(),
-  artifacts? : AnalysisArtifactConfig = AnalysisArtifactConfig::new(),
-  metadata? : Json = {},
+  model~ : String? = None,
+  cwd~ : String? = None,
+  home~ : String? = None,
+  workspace~ : String? = None,
+  execution_mode~ : String? = None,
+  execution_target~ : String? = None,
+  system_prompt~ : String? = None,
+  preferred_skills~ : Array[String] = [],
+  enable_tools~ : Bool = true,
+  web_search~ : Bool = false,
+  policy~ : AnalysisPolicy = AnalysisPolicy::new(),
+  artifacts~ : AnalysisArtifactConfig = AnalysisArtifactConfig::new(),
+  metadata~ : Json = {},
 ) -> AnalysisStepConfig {
   {
     prompt,
@@ -232,7 +232,7 @@ fn policy_budget_exceeded(
 }
 
 ///|
-fn timeout_error_message(step_id : String, timeout_ms : Int) -> String {
+fn timeout_error_message(step_id : String, timeout_ms : Int32) -> String {
   "Analysis step \{step_id} timed out after \{timeout_ms}ms"
 }
 
@@ -279,13 +279,13 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
 ///|
 pub fn analysis_step_handler(
   runtime~ : RuntimeManager,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  compiler? : ProposalCompiler? = None,
-  engine_factory? : (() -> WorkflowEngine)? = None,
-  child_executor? : ChildRunExecutor? = None,
-  now? : () -> Int = fn() { @async.now().to_int() },
-  next_run_id? : () -> String = fn() { "run.\{now()}" },
-  kind? : String = "job.analysis",
+  executor~ : AnalysisExecutor = default_analysis_executor(),
+  compiler~ : ProposalCompiler? = None,
+  engine_factory~ : (() -> WorkflowEngine)? = None,
+  child_executor~ : ChildRunExecutor? = None,
+  now~ : () -> Int32 = fn() { @async.now().to_int() },
+  next_run_id~ : () -> String = fn() { "run.\{now()}" },
+  kind~ : String = "job.analysis",
 ) -> WorkflowStepHandler {
   let store = runtime.store()
   let artifacts = ArtifactStore::new(store~)

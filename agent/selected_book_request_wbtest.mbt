@@ -14,7 +14,7 @@ fn selected_book_completion(content : String) -> @openai.ChatCompletion raise {
 }
 
 ///|
-fn selected_book_fixture_block(repeat : Int) -> String {
+fn selected_book_fixture_block(repeat : Int32) -> String {
   let text = StringBuilder()
   text.write_string(
     "[Selected Book accepted learning: historical context only]\n",

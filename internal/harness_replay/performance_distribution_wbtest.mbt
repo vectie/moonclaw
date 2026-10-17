@@ -21,7 +21,7 @@ async fn harness_replay_qualification_expanded_fixture() -> Json {
 ///|
 fn harness_replay_qualification_set_variant_latency(
   case : Json,
-  latency_ms : Int,
+  latency_ms : Int32,
 ) -> Bool {
   match case {
     Object(case_fields) =>

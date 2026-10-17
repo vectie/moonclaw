@@ -68,7 +68,7 @@ fn metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
-fn metadata_int(metadata : Json, key : String) -> Int? {
+fn metadata_int(metadata : Json, key : String) -> Int32? {
   match metadata {
     Object(obj) =>
       match obj.get(key) {
@@ -398,10 +398,10 @@ fn workflow_steps_for_proposal(
 ///|
 pub fn compile_job_proposal(
   proposal : JobProposal,
-  now_ms : Int,
+  now_ms : Int32,
   cwd : String,
   home : String,
-  workspace_root? : String = cwd,
+  workspace_root~ : String = cwd,
 ) -> ProposalCompilation {
   let family = proposal_family(proposal)
   let job_id = "job.proposal.\{proposal.id}"

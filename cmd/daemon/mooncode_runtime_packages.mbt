@@ -467,7 +467,7 @@ async fn mooncode_runtime_turn_promote_source(
 }
 
 ///|
-fn mooncode_runtime_turn_source_present_count(inventory : Array[Json]) -> Int {
+fn mooncode_runtime_turn_source_present_count(inventory : Array[Json]) -> Int32 {
   let mut count = 0
   for record in inventory {
     if mooncode_json_bool(record, "package_ready", default=false) {
@@ -478,7 +478,9 @@ fn mooncode_runtime_turn_source_present_count(inventory : Array[Json]) -> Int {
 }
 
 ///|
-fn mooncode_runtime_turn_source_promoted_count(inventory : Array[Json]) -> Int {
+fn mooncode_runtime_turn_source_promoted_count(
+  inventory : Array[Json],
+) -> Int32 {
   let mut count = 0
   for record in inventory {
     if mooncode_json_bool(record, "promoted", default=false) {

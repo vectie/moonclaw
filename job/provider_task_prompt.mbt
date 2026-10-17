@@ -12,7 +12,7 @@ fn join_bullets(items : Array[String]) -> String {
 }
 
 ///|
-fn compact_provider_prompt_text(text : String, max_chars~ : Int) -> String {
+fn compact_provider_prompt_text(text : String, max_chars~ : Int32) -> String {
   let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return ""
@@ -45,7 +45,7 @@ fn provider_task_request_excerpt(
 ///|
 fn provider_task_preferred_skills(
   request : AnalysisRequest,
-  repair? : Bool = false,
+  repair~ : Bool = false,
 ) -> Array[String] {
   let skills : Array[String] = []
   skills.push(
@@ -141,7 +141,7 @@ async fn provider_task_loaded_skill_section(
     }
     let content = @fsx.read_file(absolute) catch { _ => continue }
     let trimmed = content.trim().to_owned()
-    let budget = Int::min(3000, 12000 - total_chars)
+    let budget = Int32::min(3000, 12000 - total_chars)
     let excerpt = if trimmed.length() <= budget {
       trimmed
     } else {

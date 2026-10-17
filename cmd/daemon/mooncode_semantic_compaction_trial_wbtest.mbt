@@ -1,5 +1,5 @@
 ///|
-fn semantic_compaction_trial_plan(count : Int) -> Json {
+fn semantic_compaction_trial_plan(count : Int32) -> Json {
   let messages : Array[Json] = []
   for index in 0..<count {
     messages.push({ "role": "assistant", "content": "message-\{index}" })

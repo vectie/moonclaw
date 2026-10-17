@@ -1,6 +1,6 @@
 ///|
 pub struct OpenRouterErrorResponse {
-  code : Int
+  code : Int32
   message : String
   metadata : Json
 } derive(ToJson)

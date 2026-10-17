@@ -20,8 +20,8 @@ fn worktree_slug(text : String) -> String {
   let mut last_dash = true
   for c in text.to_lower().to_array() {
     let normalized = match c {
-      'a'..='z' => Some(c)
-      '0'..='9' => Some(c)
+      'a'..<='z' => Some(c)
+      '0'..<='9' => Some(c)
       _ => None
     }
     match normalized {
@@ -116,8 +116,8 @@ fn parse_worktree_list_output(
 pub async fn plan_worktree(
   cwd : String,
   task_key : String,
-  base_dir? : String? = None,
-  branch_name? : String? = None,
+  base_dir~ : String? = None,
+  branch_name~ : String? = None,
 ) -> WorktreeHandle {
   let repo_root = match @git.find_repo_root(cwd) {
     Some(repo_root) => repo_root
@@ -133,7 +133,7 @@ pub async fn plan_worktree(
 ///|
 pub async fn list_worktrees(
   cwd : String,
-  base_dir? : String? = None,
+  base_dir~ : String? = None,
 ) -> WorktreeList {
   let repo_root = match @git.find_repo_root(cwd) {
     Some(repo_root) => repo_root
@@ -152,8 +152,8 @@ pub async fn list_worktrees(
 ///|
 pub async fn create_worktree(
   handle : WorktreeHandle,
-  commit? : String? = None,
-  force_new_branch? : Bool = false,
+  commit~ : String? = None,
+  force_new_branch~ : Bool = false,
 ) -> WorktreeHandle {
   @fsx.make_directory(
     @pathx.dirname(handle.path),
@@ -173,7 +173,7 @@ pub async fn create_worktree(
 ///|
 pub async fn remove_worktree(
   handle : WorktreeHandle,
-  force? : Bool = true,
+  force~ : Bool = true,
 ) -> Unit {
   @git.remove_worktree(handle.path, force~, cwd=handle.repo_root)
 }
@@ -182,8 +182,8 @@ pub async fn remove_worktree(
 pub async fn remove_worktree_path(
   cwd : String,
   path : String,
-  repo_root? : String? = None,
-  force? : Bool = true,
+  repo_root~ : String? = None,
+  force~ : Bool = true,
 ) -> Unit {
   let repo_root = match repo_root {
     Some(repo_root) => repo_root
@@ -200,10 +200,10 @@ pub async fn remove_worktree_path(
 pub async fn[T] with_worktree(
   cwd : String,
   task_key : String,
-  base_dir? : String? = None,
-  branch_name? : String? = None,
-  commit? : String? = None,
-  force_new_branch? : Bool = false,
+  base_dir~ : String? = None,
+  branch_name~ : String? = None,
+  commit~ : String? = None,
+  force_new_branch~ : Bool = false,
   f : async (WorktreeHandle) -> T,
 ) -> T {
   let handle = plan_worktree(cwd, task_key, base_dir~, branch_name~)

@@ -2,7 +2,7 @@
 /// A one-based line number and bounded Unicode-safe excerpt. Excerpts are
 /// evidence for inspection, never rendered as commands or markup.
 pub struct ArtifactSearchLine {
-  line : Int
+  line : Int32
   excerpt : String
 } derive(ToJson)
 
@@ -11,8 +11,8 @@ pub struct ArtifactSearchMatch {
   record : ArtifactRecord
   record_sha256 : String
   content_sha256 : String
-  content_bytes : Int
-  matching_lines : Int
+  content_bytes : Int32
+  matching_lines : Int32
   lines : Array[ArtifactSearchLine]
 } derive(ToJson)
 
@@ -28,10 +28,10 @@ pub struct ArtifactSearch {
   store_root : String
   query : ArtifactQuery
   text : String?
-  scanned_records : Int
-  excluded_nontext : Int
-  deleted_records : Int
-  matching_artifacts : Int
+  scanned_records : Int32
+  excluded_nontext : Int32
+  deleted_records : Int32
+  matching_artifacts : Int32
   truncated : Bool
   matches : Array[ArtifactSearchMatch]
   issues : Array[ArtifactSearchIssue]
@@ -41,7 +41,7 @@ pub struct ArtifactSearch {
 fn search_lines(
   content : String,
   needle : String,
-) -> (Int, Array[ArtifactSearchLine]) {
+) -> (Int32, Array[ArtifactSearchLine]) {
   let lines : Array[ArtifactSearchLine] = []
   let mut count = 0
   let mut line_number = 0
@@ -82,9 +82,9 @@ fn search_lines(
 /// searched unless status is filtered. Results are ordered by artifact ID.
 pub async fn search_retained_artifacts(
   root : String,
-  query? : ArtifactQuery = ArtifactQuery::new(),
-  text? : String? = None,
-  limit? : Int = 32,
+  query~ : ArtifactQuery = ArtifactQuery::new(),
+  text~ : String? = None,
+  limit~ : Int32 = 32,
 ) -> ArtifactSearch {
   guard limit >= 1 && limit <= 32 else {
     fail("Search limit must be between 1 and 32")

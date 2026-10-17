@@ -3,7 +3,7 @@
 ///
 /// This package is used by gateway startup and remains a small optional bridge
 /// for callers that want moongate health, routing, and usage data.
-pub const DEFAULT_PORT : Int = 15721
+pub const DEFAULT_PORT : Int32 = 15721
 
 ///|
 pub const DEFAULT_HOST : String = "127.0.0.1"
@@ -28,7 +28,7 @@ const MOONGATE_CONTROL_TOKEN_HEADER : String = "x-moongate-control-token"
 
 ///|
 fn moongate_request_headers(
-  content_type? : Bool = false,
+  content_type~ : Bool = false,
 ) -> Map[String, String] {
   let headers : Map[String, String] = Map([])
   if content_type {
@@ -52,7 +52,7 @@ pub struct Client {
 pub struct MoonGateModel {
   id : String
   owner : String?
-  context_window : Int?
+  context_window : Int32?
   input_modalities : Array[String]
 }
 
@@ -67,7 +67,7 @@ pub fn MoonGateModel::owner(self : MoonGateModel) -> String? {
 }
 
 ///|
-pub fn MoonGateModel::context_window(self : MoonGateModel) -> Int? {
+pub fn MoonGateModel::context_window(self : MoonGateModel) -> Int32? {
   self.context_window
 }
 
@@ -78,7 +78,7 @@ pub fn MoonGateModel::input_modalities(self : MoonGateModel) -> Array[String] {
 
 ///|
 pub struct MoonGateUsageSummary {
-  total_requests : Int
+  total_requests : Int32
   total_cost : String
   total_input_tokens : Int64
   total_output_tokens : Int64
@@ -546,7 +546,7 @@ fn moongate_json_double_field(obj : Map[String, Json], key : String) -> Double? 
 }
 
 ///|
-fn moongate_json_int_field(obj : Map[String, Json], key : String) -> Int? {
+fn moongate_json_int_field(obj : Map[String, Json], key : String) -> Int32? {
   match moongate_json_double_field(obj, key) {
     Some(value) => Some(value.trunc().to_int())
     None => None

@@ -13,13 +13,13 @@ pub struct RegisteredResourceProvider {
 ///|
 pub fn RegisteredResourceProvider::new(
   name~ : String,
-  title? : String = name,
-  description? : String = "",
-  kind? : String = "generic",
-  endpoint? : String? = None,
-  docs_uri? : String? = None,
-  capabilities? : Array[String] = [],
-  metadata? : Json = {},
+  title~ : String = name,
+  description~ : String = "",
+  kind~ : String = "generic",
+  endpoint~ : String? = None,
+  docs_uri~ : String? = None,
+  capabilities~ : Array[String] = [],
+  metadata~ : Json = {},
 ) -> RegisteredResourceProvider {
   {
     name: name.trim().to_owned(),

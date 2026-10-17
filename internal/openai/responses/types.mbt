@@ -19,7 +19,7 @@ pub struct ResponsesRequest {
   prompt_cache_key : String?
   prompt_cache_mode : String?
   prompt_cache_ttl : String?
-  max_output_tokens : Int?
+  max_output_tokens : Int32?
   parallel_tool_calls : Bool?
 } derive(Debug)
 
@@ -98,8 +98,8 @@ pub fn ResponsesRequest::new(
   model~ : String,
   input~ : Array[ResponseInputItem],
   instructions~ : String,
-  tools? : Array[Json] = [],
-  tool_choice? : String = "auto",
+  tools~ : Array[Json] = [],
+  tool_choice~ : String = "auto",
   reasoning_effort? : String,
   reasoning_context? : String,
   stream? : Bool,
@@ -108,7 +108,7 @@ pub fn ResponsesRequest::new(
   prompt_cache_key? : String,
   prompt_cache_mode? : String,
   prompt_cache_ttl? : String,
-  max_output_tokens? : Int,
+  max_output_tokens? : Int32,
   parallel_tool_calls? : Bool,
 ) -> ResponsesRequest {
   {

@@ -14,7 +14,7 @@ fn mooncode_deferred_test_tool_names(
 ///|
 fn mooncode_deferred_test_command(
   enabled : Bool,
-  allowed? : Json = null,
+  allowed~ : Json = null,
 ) -> Json {
   let payload : Map[String, Json] = {
     "task_intent": "workspace_change",
@@ -33,7 +33,7 @@ fn mooncode_deferred_test_command(
 ///|
 fn mooncode_deferred_test_execution(
   result : Json,
-  accepted? : Bool = true,
+  accepted~ : Bool = true,
 ) -> Json {
   { "tool": "tool_search", "accepted": accepted, "result": result }
 }

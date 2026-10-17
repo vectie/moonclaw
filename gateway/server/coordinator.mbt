@@ -2,13 +2,13 @@
 pub struct Coordinator {
   uuid : @uuid.Generator
   tasks : Map[String, CoordinationTask]
-  max_concurrent : Int
+  max_concurrent : Int32
 }
 
 ///|
 pub fn coordinator(
   uuid~ : @uuid.Generator,
-  max_concurrent? : Int = 10,
+  max_concurrent~ : Int32 = 10,
 ) -> Coordinator {
   { uuid, tasks: Map([]), max_concurrent, }
 }
@@ -18,7 +18,7 @@ pub fn Coordinator::create(
   self : Coordinator,
   parent_agent~ : String,
   subtasks~ : Array[SubTask],
-  metadata? : Map[String, Json] = Map([]),
+  metadata~ : Map[String, Json] = Map([]),
 ) -> CoordinationTask {
   let coordination_id = self.uuid.v4().to_string()
   let task = coordination_task(
@@ -100,8 +100,8 @@ pub fn Coordinator::update_subtask_status(
   coordination_id : String,
   task_id : String,
   status : CoordinationStatus,
-  result? : Json? = None,
-  error? : String? = None,
+  result~ : Json? = None,
+  error~ : String? = None,
 ) -> CoordinationTask? {
   let task = self.tasks.get(coordination_id)
   match task {
@@ -140,12 +140,12 @@ pub fn Coordinator::cancel_task(
 }
 
 ///|
-pub fn Coordinator::size(self : Coordinator) -> Int {
+pub fn Coordinator::size(self : Coordinator) -> Int32 {
   self.tasks.length()
 }
 
 ///|
-pub fn Coordinator::active_count(self : Coordinator) -> Int {
+pub fn Coordinator::active_count(self : Coordinator) -> Int32 {
   self.tasks.values().filter(fn(t) { t.status is Running }).count()
 }
 

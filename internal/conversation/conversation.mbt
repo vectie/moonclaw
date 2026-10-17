@@ -89,8 +89,8 @@ pub fn Conversation::updated(self : Conversation) -> @clock.Timestamp {
 /// messages.
 pub fn Conversation::messages(
   self : Conversation,
-  include_system? : Bool = true,
-  user_message_overrides? : Map[@uuid.Uuid, String] = {},
+  include_system~ : Bool = true,
+  user_message_overrides~ : Map[@uuid.Uuid, String] = {},
 ) -> Array[@ai.Message] {
   // First pass: collect pruned event IDs
   let pruned_ids : Set[@uuid.Uuid] = Set([])

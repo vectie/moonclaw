@@ -1,15 +1,15 @@
 ///|
 priv suberror HttpError {
-  HttpError(code~ : Int, reason~ : String, body~ : String)
+  HttpError(code~ : Int32, reason~ : String, body~ : String)
 } derive(Debug, ToJson)
 
 ///|
-fn json_error(code : Int, reason : String, body : Json) -> HttpError {
+fn json_error(code : Int32, reason : String, body : Json) -> HttpError {
   HttpError(code~, reason~, body=body.stringify())
 }
 
 ///|
-fn text_error(code : Int, reason : String, body : String) -> HttpError {
+fn text_error(code : Int32, reason : String, body : String) -> HttpError {
   HttpError(code~, reason~, body~)
 }
 
@@ -17,7 +17,7 @@ fn text_error(code : Int, reason : String, body : String) -> HttpError {
 /// Connection details used to register the local server with a daemon.
 pub(all) struct RegisterInfo {
   host : String
-  port : Int
+  port : Int32
   id : String
   instance_id : String
   token : String

@@ -124,8 +124,8 @@ pub async fn intake_installed_workflow(
   pack_id~ : String,
   workflow_id~ : String,
   run_id~ : String,
-  now_ms~ : Int,
-  trigger? : @job.TriggerSource = Manual,
+  now_ms~ : Int32,
+  trigger~ : @job.TriggerSource = Manual,
   schedule_id? : String,
 ) -> InstalledPackWorkflowIntake {
   let installed = load_installed_workflow(workspace~, pack_id~, workflow_id~)
@@ -167,7 +167,7 @@ pub async fn advance_pack_workflow_run(
   run_id~ : String,
   executor~ : PackToolExecutor,
   policy~ : InvocationPolicy,
-  now~ : () -> Int,
+  now~ : () -> Int32,
   initial_input? : Json,
 ) -> @job.WorkflowExecutionResult {
   let engine = @job.WorkflowEngine::new(runtime~)
@@ -192,7 +192,7 @@ pub async fn run_installed_workflow(
   run_id~ : String,
   executor~ : PackToolExecutor,
   policy~ : InvocationPolicy,
-  now~ : () -> Int,
+  now~ : () -> Int32,
   initial_input? : Json,
   schedule_id? : String,
 ) -> InstalledPackWorkflowRun {
@@ -248,7 +248,7 @@ pub async fn run_installed_command_workflow(
   workflow_id~ : String,
   run_id~ : String,
   policy~ : InvocationPolicy,
-  now~ : () -> Int,
+  now~ : () -> Int32,
   initial_input? : Json,
   schedule_id? : String,
 ) -> InstalledPackWorkflowRun {

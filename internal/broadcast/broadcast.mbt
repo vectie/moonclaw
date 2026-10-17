@@ -18,7 +18,7 @@ struct Broadcast[T] {
 
 ///|
 priv struct Reader[T] {
-  mut index : Int
+  mut index : Int32
   f : async (T) -> Unit
 }
 
@@ -46,7 +46,7 @@ pub fn[T] Broadcast::put(self : Broadcast[T], data : T) -> Unit {
 /// * `index` : The zero-based position in the broadcast history to read from.
 ///
 /// Returns the value at the specified index in the broadcast history.
-pub async fn[T] Broadcast::read(self : Broadcast[T], index : Int) -> T {
+pub async fn[T] Broadcast::read(self : Broadcast[T], index : Int32) -> T {
   while true {
     match self.values.get(index) {
       Some(value) => return value
@@ -69,7 +69,7 @@ pub async fn[T] Broadcast::read(self : Broadcast[T], index : Int) -> T {
 ///   broadcasted values before receiving new ones. Defaults to `true`.
 pub fn[T] Broadcast::add_listener(
   self : Broadcast[T],
-  include_history? : Bool = true,
+  include_history~ : Bool = true,
   f : async (T) -> Unit,
 ) -> Unit {
   let initial = if include_history { 0 } else { self.values.length() }
@@ -114,13 +114,13 @@ pub fn Session::stop(self : Session) -> Unit {
 /// A simple barrier synchronization primitive that allows multiple tasks to
 /// wait until a specified number of arrivals have occurred.
 priv struct Barrier {
-  mut count : Int
-  target : Int
+  mut count : Int32
+  target : Int32
   cond : @cond_var.Cond
 }
 
 ///|
-fn Barrier::new(target : Int) -> Barrier {
+fn Barrier::new(target : Int32) -> Barrier {
   { count: 0, target, cond: Cond(), }
 }
 
@@ -253,7 +253,7 @@ pub async fn[T] Broadcast::flush(self : Broadcast[T]) -> Unit {
 /// Never returns. Note that calling `Session::stop` WON'T stop this listener.
 pub async fn[T] Broadcast::listen_forever(
   self : Broadcast[T],
-  include_history? : Bool = true,
+  include_history~ : Bool = true,
   f : async (T) -> Unit,
 ) -> Unit {
   let mut i = if include_history { 0 } else { self.values.length() }
@@ -273,7 +273,7 @@ pub async fn[T] Broadcast::listen_forever(
 /// `include_history=false`.
 pub async fn[T] Broadcast::listen_from(
   self : Broadcast[T],
-  index : Int,
+  index : Int32,
   f : async (T) -> Unit,
 ) -> Unit {
   let mut next = index.max(0)

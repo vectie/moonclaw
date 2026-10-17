@@ -28,7 +28,7 @@ impl @clock.Clock for MoonCodeServiceGoalWakeClock with fn now_str(self) {
 async fn mooncode_service_goal_queue_command(
   root : String,
   session_id : String,
-  index : Int,
+  index : Int32,
   tools : Array[Json],
 ) -> Unit {
   let command_id = "goal-queue-" + index.to_string()
@@ -62,10 +62,10 @@ fn mooncode_service_goal_queue_write(path : String) -> Json {
 
 ///|
 async fn mooncode_service_goal_queue_test(
-  max_turns : Int?,
-  blocked? : Bool = false,
-  wake_on_finish? : Bool = false,
-  run_later_ordinary? : Bool = false,
+  max_turns : Int32?,
+  blocked~ : Bool = false,
+  wake_on_finish~ : Bool = false,
+  run_later_ordinary~ : Bool = false,
 ) -> Unit {
   @fsx.with_temporary_directory("mooncode-service-goal-queue-XXXXXX", async fn(
     root,

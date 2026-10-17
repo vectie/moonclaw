@@ -16,9 +16,9 @@ pub struct SubTask {
   status : CoordinationStatus
   result : Json?
   error : String?
-  created_at : Int
-  started_at : Int?
-  completed_at : Int?
+  created_at : Int32
+  started_at : Int32?
+  completed_at : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -84,9 +84,9 @@ pub struct CoordinationTask {
   subtasks : Array[SubTask]
   status : CoordinationStatus
   results : Map[String, Json]
-  created_at : Int
-  started_at : Int?
-  completed_at : Int?
+  created_at : Int32
+  started_at : Int32?
+  completed_at : Int32?
   metadata : Map[String, Json]
 } derive(ToJson, FromJson, Debug)
 
@@ -95,7 +95,7 @@ pub fn coordination_task(
   coordination_id~ : String,
   parent_agent~ : String,
   subtasks~ : Array[SubTask],
-  metadata? : Map[String, Json] = Map([]),
+  metadata~ : Map[String, Json] = Map([]),
 ) -> CoordinationTask {
   {
     coordination_id,
@@ -141,17 +141,17 @@ pub fn CoordinationTask::is_done(self : CoordinationTask) -> Bool {
 }
 
 ///|
-pub fn CoordinationTask::pending_count(self : CoordinationTask) -> Int {
+pub fn CoordinationTask::pending_count(self : CoordinationTask) -> Int32 {
   self.subtasks.iter().filter(fn(t) { t.status is Pending }).count()
 }
 
 ///|
-pub fn CoordinationTask::completed_count(self : CoordinationTask) -> Int {
+pub fn CoordinationTask::completed_count(self : CoordinationTask) -> Int32 {
   self.subtasks.iter().filter(fn(t) { t.status is Completed }).count()
 }
 
 ///|
-pub fn CoordinationTask::failed_count(self : CoordinationTask) -> Int {
+pub fn CoordinationTask::failed_count(self : CoordinationTask) -> Int32 {
   self.subtasks.iter().filter(fn(t) { t.status is Failed }).count()
 }
 
@@ -168,8 +168,8 @@ pub fn CoordinationTask::update_subtask(
   self : CoordinationTask,
   task_id : String,
   status : CoordinationStatus,
-  result? : Json? = None,
-  error? : String? = None,
+  result~ : Json? = None,
+  error~ : String? = None,
 ) -> CoordinationTask {
   let new_subtasks = self.subtasks.map(fn(t) {
     if t.task_id == task_id {

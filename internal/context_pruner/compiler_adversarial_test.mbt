@@ -375,7 +375,7 @@ async test "compile_messages/already_cleared_outputs_are_idempotent" (
 
 ///|
 fn generated_adversarial_history(
-  case_index : Int,
+  case_index : Int32,
 ) -> Array[@openai.ChatCompletionMessageParam] {
   let messages : Array[@openai.ChatCompletionMessageParam] = [
     @openai.system_message(content="GENERATED-SYSTEM-\{case_index}"),

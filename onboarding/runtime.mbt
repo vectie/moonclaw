@@ -3,7 +3,7 @@ pub struct OnboardingOptions {
   primary_model : String?
   working_directory : String?
   workspace_root : String?
-  gateway_port : Int?
+  gateway_port : Int32?
   gateway_token : String?
   feishu_enabled : Bool?
   feishu_app_id : String?
@@ -37,14 +37,14 @@ pub struct OnboardingStatus {
   workspace_configured_from : String
   workspace_files : Array[String]
   primary_model : String?
-  provider_count : Int
-  gateway_port : Int?
+  provider_count : Int32
+  gateway_port : Int32?
   has_gateway_token : Bool
   feishu_enabled : Bool
   feishu_ready : Bool
   available_models : Array[String]
   auth : OnboardingAuthStatus
-  plugin_count : Int
+  plugin_count : Int32
   issues : Array[String]
   next_steps : Array[String]
 } derive(ToJson, FromJson, Debug)
@@ -75,14 +75,14 @@ fn default_onboarding_options() -> OnboardingOptions {
 
 ///|
 pub fn onboarding_options(
-  primary_model? : String? = None,
-  working_directory? : String? = None,
-  workspace_root? : String? = None,
-  gateway_port? : Int? = None,
-  gateway_token? : String? = None,
-  feishu_enabled? : Bool? = None,
-  feishu_app_id? : String? = None,
-  feishu_app_secret? : String? = None,
+  primary_model~ : String? = None,
+  working_directory~ : String? = None,
+  workspace_root~ : String? = None,
+  gateway_port~ : Int32? = None,
+  gateway_token~ : String? = None,
+  feishu_enabled~ : Bool? = None,
+  feishu_app_id~ : String? = None,
+  feishu_app_secret~ : String? = None,
 ) -> OnboardingOptions {
   {
     primary_model,
@@ -318,7 +318,7 @@ async fn copilot_auth_provider_status(
 }
 
 ///|
-fn provider_count(json : Json?) -> Int {
+fn provider_count(json : Json?) -> Int32 {
   match json {
     Some(Object(root)) =>
       match root.get("models") {
@@ -334,7 +334,7 @@ fn provider_count(json : Json?) -> Int {
 }
 
 ///|
-fn gateway_port(json : Json?) -> Int? {
+fn gateway_port(json : Json?) -> Int32? {
   match json {
     Some(Object(root)) =>
       match root.get("gateway") {

@@ -18,17 +18,17 @@ pub(all) struct InvocationRequest {
   input_schema_id : String
   output_schema_id : String
   evidence_path : String
-  attempt : Int
-  estimated_cost_micros : Int
+  attempt : Int32
+  estimated_cost_micros : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct InvocationPolicy {
   granted_authorities : Array[@pack.AuthorityClass]
   reviewed_tool_ids : Array[String]
-  max_attempts : Int
-  timeout_ms : Int
-  remaining_budget_micros : Int
+  max_attempts : Int32
+  timeout_ms : Int32
+  remaining_budget_micros : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|

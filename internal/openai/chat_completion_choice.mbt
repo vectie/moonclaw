@@ -2,14 +2,14 @@
 /// Single choice returned in a chat completion response.
 pub struct ChatCompletionChoice {
   finish_reason : ChatCompletionChoiceFinishReason?
-  index : Int
+  index : Int32
   message : ChatCompletionMessage
 } derive(Debug)
 
 ///|
 pub fn ChatCompletionChoice::new(
   finish_reason? : ChatCompletionChoiceFinishReason,
-  index~ : Int,
+  index~ : Int32,
   message~ : ChatCompletionMessage,
 ) -> ChatCompletionChoice {
   { finish_reason, index, message, }

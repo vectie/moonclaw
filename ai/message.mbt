@@ -19,7 +19,7 @@ pub fn system_message(content~ : String) -> Message {
 ///|
 pub fn assistant_message(
   content~ : String,
-  tool_calls? : Array[ToolCall] = [],
+  tool_calls~ : Array[ToolCall] = [],
 ) -> Message {
   Assistant(content, tool_calls~)
 }
@@ -53,18 +53,18 @@ pub fn tool_call(id~ : String, name~ : String, arguments? : String) -> ToolCall 
 
 ///|
 pub struct Usage {
-  input_tokens : Int
-  output_tokens : Int
-  total_tokens : Int
-  cache_read_tokens : Int?
+  input_tokens : Int32
+  output_tokens : Int32
+  total_tokens : Int32
+  cache_read_tokens : Int32?
 } derive(Eq, Debug)
 
 ///|
 pub fn usage(
-  input_tokens~ : Int,
-  output_tokens~ : Int,
-  total_tokens? : Int = input_tokens + output_tokens,
-  cache_read_tokens? : Int,
+  input_tokens~ : Int32,
+  output_tokens~ : Int32,
+  total_tokens~ : Int32 = input_tokens + output_tokens,
+  cache_read_tokens? : Int32,
 ) -> Usage {
   { input_tokens, output_tokens, total_tokens, cache_read_tokens, }
 }

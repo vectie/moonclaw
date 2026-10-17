@@ -1,18 +1,18 @@
 ///|
 /// Controller-owned comparison contract, version 2.
-pub let goal_checkpoint_contract_version : Int = 2
+pub let goal_checkpoint_contract_version : Int32 = 2
 
 ///|
 pub(all) struct CheckpointProducerIdentity {
   producer_id : String
   producer_version : String
-  contract_version : Int
+  contract_version : Int32
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct CheckpointIdentity {
   checkpoint_id : String
-  comparison_epoch : Int
+  comparison_epoch : Int32
   checkpoint_key : String
   parent_checkpoint_id : String?
 } derive(Eq, Debug)
@@ -39,10 +39,10 @@ pub(all) struct ComparisonCheckDefinition {
 ///|
 /// Versioned, controller-owned basis and acceptance policy.
 pub(all) struct ComparisonBasis {
-  version : Int
+  version : Int32
   basis_digest : String
   policy_digest : String
-  comparison_epoch : Int
+  comparison_epoch : Int32
   checkpoint_key : String
   required_requirements : Array[ComparisonRequirementDefinition]
   required_outputs : Array[ComparisonOutputDefinition]
@@ -109,17 +109,17 @@ pub(all) struct CheckpointVerificationManifest {
 
 ///|
 pub(all) struct CheckpointBudget {
-  token_limit : Int?
-  turn_limit : Int?
-  wall_time_limit : Int?
-  tokens_used : Int
-  turns_used : Int
-  wall_time_used : Int
+  token_limit : Int32?
+  turn_limit : Int32?
+  wall_time_limit : Int32?
+  tokens_used : Int32
+  turns_used : Int32
+  wall_time_used : Int32
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct GoalCheckpointSnapshot {
-  contract_version : Int
+  contract_version : Int32
   producer : CheckpointProducerIdentity
   identity : CheckpointIdentity
   basis : ComparisonBasis
@@ -185,7 +185,7 @@ pub(all) struct CheckpointDelta {
 
 ///|
 pub(all) struct CheckpointComparisonReport {
-  contract_version : Int
+  contract_version : Int32
   left_checkpoint_id : String
   right_checkpoint_id : String
   agreement_outcome : CheckpointComparisonOutcome
@@ -560,7 +560,7 @@ pub fn compare_goal_checkpoints(
 ///|
 fn duplicate_key(
   xs : Array[GoalCheckpointSnapshot],
-  epoch : Int,
+  epoch : Int32,
   key : String,
 ) -> Bool {
   let mut n = 0
@@ -575,7 +575,7 @@ fn duplicate_key(
 ///|
 fn by_key(
   xs : Array[GoalCheckpointSnapshot],
-  epoch : Int,
+  epoch : Int32,
   key : String,
 ) -> GoalCheckpointSnapshot? {
   for x in xs {
@@ -591,8 +591,8 @@ fn by_key(
 fn sequence_keys(
   left : Array[GoalCheckpointSnapshot],
   right : Array[GoalCheckpointSnapshot],
-) -> Array[(Int, String)] {
-  let keys : Array[(Int, String)] = []
+) -> Array[(Int32, String)] {
+  let keys : Array[(Int32, String)] = []
   for checkpoint in left {
     let key = (
       checkpoint.identity.comparison_epoch,

@@ -5,8 +5,8 @@ pub struct FeedDiscovery {
   page_url : String
   base_url : String?
   providers : Array[Json]
-  duplicate_links : Int
-  rejected_links : Int
+  duplicate_links : Int32
+  rejected_links : Int32
   warnings : Array[String]
 } derive(Show, ToJson)
 
@@ -18,7 +18,7 @@ pub struct FeedDiscovery {
 pub fn discover_feeds(
   body : String,
   page_url : String,
-  prefix? : String = "html",
+  prefix~ : String = "html",
 ) -> FeedDiscovery raise {
   guard body.length() <= 4194304 else {
     fail("HTML document exceeds 4 Mi UTF-16 code units")
@@ -29,7 +29,7 @@ pub fn discover_feeds(
     )
   }
   for c in prefix.to_array() {
-    guard c is ('a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_') else {
+    guard c is ('a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | '_') else {
       fail(
         "prefix must contain 1..64 ASCII letters, digits, hyphens or underscores",
       )
@@ -47,7 +47,7 @@ pub fn discover_feeds(
   while cursor.next() is Some(tag) {
     if tag.name == "template" {
       if tag.closing {
-        inert_depth = Int::max(0, inert_depth - 1)
+        inert_depth = Int32::max(0, inert_depth - 1)
       } else {
         inert_depth += 1
       }

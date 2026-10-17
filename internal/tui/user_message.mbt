@@ -21,8 +21,8 @@ pub fn UserMessage::text(self : UserMessage) -> String {
 ///|
 pub fn UserMessage::get_preferred_height(
   self : UserMessage,
-  width : Int,
-) -> Int {
+  width : Int32,
+) -> Int32 {
   let inner_width = width - 4
   wrap_text(self.text, inner_width.max(1)).length() + 2
 }
@@ -31,10 +31,10 @@ pub fn UserMessage::get_preferred_height(
 pub fn UserMessage::render(
   self : UserMessage,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let theme = Theme::default()
   output.write(cursor_to(x, y))

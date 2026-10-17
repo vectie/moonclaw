@@ -41,10 +41,10 @@ pub fn stream_options(
 pub fn chat_completion(
   model~ : String,
   messages~ : Array[ChatCompletionMessageParam],
-  tools? : Array[ChatCompletionToolParam] = [],
+  tools~ : Array[ChatCompletionToolParam] = [],
   usage? : CompletionUsageParam,
   user? : String,
-  max_tokens? : Int,
+  max_tokens? : Int32,
   temperature? : Double,
   reasoning_effort? : ChatCompletionReasoningEffort,
   response_format? : ResponseFormat,
@@ -236,7 +236,7 @@ pub fn tool(
 /// Returns a ChatCompletionMessageParam with role "assistant".
 pub fn[T : ToChatCompletionMessageParamContent] assistant_message(
   content? : T,
-  tool_calls? : Array[ChatCompletionMessageToolCall] = [],
+  tool_calls~ : Array[ChatCompletionMessageToolCall] = [],
   name? : String,
 ) -> ChatCompletionMessageParam {
   let content = match content {
@@ -282,7 +282,7 @@ pub fn tool_call(
 pub fn chunk(
   id~ : String,
   choices~ : Array[ChatCompletionChunkChoice],
-  created~ : Int,
+  created~ : Int32,
   model~ : String,
   usage? : CompletionUsage,
   system_fingerprint? : String,
@@ -311,7 +311,7 @@ pub fn chunk_choice_delta_tool_call_function(
 
 ///|
 pub fn chunk_choice_delta_tool_call(
-  index~ : Int,
+  index~ : Int32,
   id? : String,
   function~ : ChatCompletionChunkChoiceDeltaToolCallFunction,
 ) -> ChatCompletionChunkChoiceDeltaToolCall {
@@ -330,7 +330,7 @@ pub fn chunk_choice_delta(
 
 ///|
 pub fn chunk_choice(
-  index~ : Int,
+  index~ : Int32,
   delta~ : ChatCompletionChunkChoiceDelta,
   finish_reason? : ChatCompletionChoiceFinishReason,
 ) -> ChatCompletionChunkChoice {

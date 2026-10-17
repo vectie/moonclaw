@@ -101,7 +101,10 @@ fn provider_task_trim_research_clause(text : String) -> String {
 }
 
 ///|
-fn provider_task_first_nonblank_lines(content : String, limit : Int) -> String {
+fn provider_task_first_nonblank_lines(
+  content : String,
+  limit : Int32,
+) -> String {
   let lines : Array[String] = []
   for line in content.split("\n") {
     let trimmed = line.trim()
@@ -169,7 +172,7 @@ async fn provider_task_local_source_notes(
 ///|
 fn provider_task_limited_strings(
   items : Array[String],
-  limit : Int,
+  limit : Int32,
 ) -> Array[String] {
   let limited : Array[String] = []
   let mut i = 0

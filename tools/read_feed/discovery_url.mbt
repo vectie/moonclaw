@@ -35,7 +35,7 @@ fn discovery_absolute(value : String) -> String? {
     return None
   }
   let rest = value[scheme_end:]
-  let authority_end = Int::min(
+  let authority_end = Int32::min(
     rest.find("/").unwrap_or(rest.length()),
     rest.find("?").unwrap_or(rest.length()),
   )
@@ -85,7 +85,7 @@ fn discovery_resolve(reference : String, base : String) -> String? {
     let scheme_end = base.find(":").unwrap_or(0)
     return discovery_absolute(base[:scheme_end + 1].to_owned() + reference)
   }
-  let first_end = Int::min(
+  let first_end = Int32::min(
     reference.find("/").unwrap_or(reference.length()),
     reference.find("?").unwrap_or(reference.length()),
   )

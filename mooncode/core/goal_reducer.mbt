@@ -1,23 +1,33 @@
 ///|
 pub(all) enum GoalEvent {
-  ContinuationAccepted(String, Int64, Int, Int)
-  TurnFinished(String, Int64, Int, Int, BlockerIdentity?, Bool)
+  ContinuationAccepted(String, Int64, Int32, Int32)
+  TurnFinished(String, Int64, Int32, Int32, BlockerIdentity?, Bool)
   RequirementUpdated(String, Int64, String, RequirementState, Array[String])
   AwaitingApproval(String, Int64, Array[String])
   ApprovalSettled(String, Int64, Array[String], ApprovalOutcome)
-  BudgetUsageRecorded(String, Int64, Int, Int, Int)
+  BudgetUsageRecorded(String, Int64, Int32, Int32, Int32)
   BudgetExhausted(String, Int64)
-  BudgetExtended(String, Int64, Int?, Int?, Int?)
+  BudgetExtended(String, Int64, Int32?, Int32?, Int32?)
   EvaluationStarted(String, Int64, String, String)
-  Evaluated(String, Int64, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int64, String, Int, Int, String, Int, String, Int64)
-  EvaluationRetryDue(String, Int64, String, Int, Int)
+  Evaluated(String, Int64, String, Int32, String, ConvergenceReport)
+  EvaluationFailed(
+    String,
+    Int64,
+    String,
+    Int32,
+    Int32,
+    String,
+    Int32,
+    String,
+    Int64
+  )
+  EvaluationRetryDue(String, Int64, String, Int32, Int32)
   CompleteRequested(String, Int64, CompletionProof)
   Resume(String, Int64)
 } derive(Eq, Debug)
 
 ///|
-fn valid_limit(limit : Int?) -> Bool {
+fn valid_limit(limit : Int32?) -> Bool {
   match limit {
     Some(value) => value >= 0
     None => true
@@ -30,7 +40,7 @@ fn nonempty(value : String) -> Bool {
 }
 
 ///|
-fn limit_covers_usage(limit : Int?, usage : Int) -> Bool {
+fn limit_covers_usage(limit : Int32?, usage : Int32) -> Bool {
   match limit {
     Some(value) => value >= usage
     None => true

@@ -2,8 +2,8 @@
 #borrow(path)
 extern "c" fn private_control_path(
   path : Bytes,
-  length : Int,
-  directory : Int,
+  length : Int32,
+  directory : Int32,
 ) -> Bool = "moonclaw_private_control_path"
 
 ///|

@@ -29,7 +29,7 @@ fn provider_task_followup_execution_tasks(
   current_task : ProviderTaskSpec,
 ) -> Array[ProviderTaskSpec] {
   let execution_tasks = provider_task_execution_tasks(batch.tasks)
-  let mut selected_index : Int? = None
+  let mut selected_index : Int32? = None
   let mut index = 0
   while index < execution_tasks.length() {
     if execution_tasks[index].id == current_task.id {
@@ -225,7 +225,7 @@ fn provider_task_markdown_bullet_section(
 ///|
 fn provider_task_chunk_strings(
   items : Array[String],
-  chunk_size : Int,
+  chunk_size : Int32,
 ) -> Array[Array[String]] {
   if items.is_empty() || chunk_size <= 0 {
     return []
@@ -233,7 +233,7 @@ fn provider_task_chunk_strings(
   let chunks : Array[Array[String]] = []
   let mut start = 0
   while start < items.length() {
-    let end_ = Int::min(start + chunk_size, items.length())
+    let end_ = Int32::min(start + chunk_size, items.length())
     chunks.push(items[start:end_].to_owned())
     start = end_
   }
@@ -381,7 +381,7 @@ async fn provider_task_research_bootstrap_substeps(
 ///|
 fn provider_task_bootstrap_packet_slug(
   first_path : String,
-  index : Int,
+  index : Int32,
 ) -> String {
   let stem = @pathx.basename(first_path)
     .to_owned()
@@ -758,8 +758,8 @@ fn provider_task_wiki_page_slug(text : String) -> String {
   let mut last_dash = true
   for c in text.to_lower().to_array() {
     let normalized = match c {
-      'a'..='z' => Some(c)
-      '0'..='9' => Some(c)
+      'a'..<='z' => Some(c)
+      '0'..<='9' => Some(c)
       _ => None
     }
     match normalized {
@@ -815,7 +815,7 @@ fn provider_task_entity_page_from_context(
 ///|
 fn provider_task_bounded_pages(
   pages : Array[String],
-  limit : Int,
+  limit : Int32,
 ) -> Array[String] {
   let bounded : Array[String] = []
   let mut i = 0

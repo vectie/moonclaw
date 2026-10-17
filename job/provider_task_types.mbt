@@ -10,7 +10,7 @@ pub(all) struct ProviderTaskSpec {
   title : String
   kind : String
   prompt : String
-  priority : Int
+  priority : Int32
   requires_review : Bool
   target_pages : Array[String]
 } derive(Debug, ToJson, FromJson)

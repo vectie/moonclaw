@@ -7,7 +7,7 @@ priv struct MoonCodeSessionBinding {
   mut workspace_name : String
   mut model : String
   mut model_workspace : String
-  mut command_count : Int
+  mut command_count : Int32
   mut first_user_prompt : String
   mut custom_title : String
   mut last_command_id : String

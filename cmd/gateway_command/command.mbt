@@ -689,7 +689,7 @@ fn configured_primary_model(json : Json?) -> String? {
 }
 
 ///|
-fn configured_gateway_port(json : Json?) -> Int? {
+fn configured_gateway_port(json : Json?) -> Int32? {
   match json {
     Some(Object(root)) =>
       match root.get("gateway") {
@@ -763,7 +763,11 @@ fn parse_string_arg(args : Array[String], name : String) -> String? {
 }
 
 ///|
-fn parse_int_arg(args : Array[String], name : String, default~ : Int) -> Int {
+fn parse_int_arg(
+  args : Array[String],
+  name : String,
+  default~ : Int32,
+) -> Int32 {
   match parse_string_arg(args, name) {
     Some(s) =>
       try @string.parse_int(s[:], base=10) catch {

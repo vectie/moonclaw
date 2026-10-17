@@ -18,7 +18,7 @@ pub(all) struct SupervisorWorkerBudgetV1 {
   max_cost_micro_usd : Int64
   max_runtime_ms : Int64
   max_tokens : Int64
-  max_artifacts : Int
+  max_artifacts : Int32
 } derive(ToJson, FromJson, Debug, Eq)
 
 ///|
@@ -89,10 +89,10 @@ pub(all) struct SupervisorWorkerStatusV1 {
   provider_task_id : String
   run_status : RunStatus
   execution_status : String
-  attempt : Int
+  attempt : Int32
   accounting_mode : String
-  started_at : Int?
-  finished_at : Int?
+  started_at : Int32?
+  finished_at : Int32?
   delegation : Json
   authorization : Json
   summary : String?

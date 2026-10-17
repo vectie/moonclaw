@@ -3,14 +3,14 @@
 fn cowork_recovery_projection(
   session_key : String,
   cwd : String,
-  message_count : Int,
+  message_count : Int32,
   resume_receipt : Json,
   launch_pending : Bool,
   run : @job.JobRun,
   steps : Array[@job.JobStepRun],
   artifacts : Array[@job.ArtifactRecord],
-  event_count : Int,
-  observed_at : Int,
+  event_count : Int32,
+  observed_at : Int32,
 ) -> Json {
   let waiting = steps.filter(step => step.status is WaitingForInput)
   let can_resume = !launch_pending &&
@@ -75,7 +75,7 @@ async fn Gateway::cowork_recovery_snapshot(
   self : Gateway,
   session_key : String,
   run_id : String,
-  lookup_checkpoint? : String? = None,
+  lookup_checkpoint~ : String? = None,
 ) -> Json {
   // Do asynchronous reads first, then take the in-memory state together.
   let event_count = self.job_runtime().store().list_run_events(run_id).length()

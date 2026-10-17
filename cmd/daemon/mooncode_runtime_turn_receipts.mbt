@@ -3,9 +3,9 @@ fn mooncode_runtime_turn_finished_event(
   session_id : String,
   command_id : String,
   accepted~ : Bool,
-  tool_count~ : Int,
-  completion_reason? : String = "",
-  completion_verdict? : Json = Json::null(),
+  tool_count~ : Int32,
+  completion_reason~ : String = "",
+  completion_verdict~ : Json = Json::null(),
   now~ : @clock.Timestamp,
 ) -> Json {
   let event = mooncode_event(

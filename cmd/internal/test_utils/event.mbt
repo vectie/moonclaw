@@ -21,7 +21,7 @@ pub impl @httpx.FromEvent for ServerEvent with fn from_event(
 ///|
 pub async fn ServerEvent::collect_events(
   s : @http.Client,
-  stop_at_cancel? : Bool = true,
+  stop_at_cancel~ : Bool = true,
 ) -> Array[ServerEvent] {
   collect_events(s, stop_at=event => {
     if event is Moonclaw(event) {

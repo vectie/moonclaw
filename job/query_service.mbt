@@ -1,5 +1,5 @@
 ///|
-fn run_elapsed_ms(run : JobRun, now_ms : Int) -> Int {
+fn run_elapsed_ms(run : JobRun, now_ms : Int32) -> Int32 {
   match run.started_at {
     Some(started_at) => now_ms - started_at
     None => 0
@@ -139,7 +139,7 @@ pub async fn render_status_text(
   definition : JobDefinition,
   run : JobRun,
   prefix : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> String {
   let steps = store.list_step_runs(run.id)
   let total_steps = match definition.workflow_id {
@@ -237,7 +237,7 @@ pub fn render_active_runs(store : SystemStore, runs : Array[JobRun]) -> String {
 pub fn resolve_status_target(
   store : SystemStore,
   job_or_run_id : String,
-  active_run_id? : String? = None,
+  active_run_id~ : String? = None,
 ) -> (JobDefinition, JobRun)? {
   let trimmed = job_or_run_id.trim().to_owned()
   match store.get_definition(trimmed) {

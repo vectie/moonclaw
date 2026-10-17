@@ -19,7 +19,7 @@ fn gen_byte(randomer : @random.Rand) -> Byte {
 }
 
 ///|
-fn generate_random_bytes(length : Int) -> Bytes {
+fn generate_random_bytes(length : Int32) -> Bytes {
   let randomer = @rand.chacha8() catch {
     _ => abort("Failed to create random generator")
   }

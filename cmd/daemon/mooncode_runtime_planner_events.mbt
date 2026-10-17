@@ -4,7 +4,7 @@ fn mooncode_runtime_turn_planner_progress_events(
   command_id : String,
   plan : Json,
   tool_calls : Array[Json],
-  step_index~ : Int,
+  step_index~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Array[Json] {
   let step = step_index + 1
@@ -68,10 +68,10 @@ fn mooncode_runtime_turn_planner_progress_events(
 fn mooncode_runtime_turn_reasoning_event(
   session_id : String,
   command_id : String,
-  step~ : Int,
+  step~ : Int32,
   mode~ : String,
   model~ : String,
-  tool_count~ : Int,
+  tool_count~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
   let model_detail = if model == "" { "" } else { " with model `\{model}`" }
@@ -101,7 +101,7 @@ fn mooncode_runtime_turn_reasoning_event(
 fn mooncode_runtime_turn_assistant_event(
   session_id : String,
   command_id : String,
-  step~ : Int,
+  step~ : Int32,
   content~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -128,8 +128,8 @@ fn mooncode_runtime_turn_tool_call_event(
   session_id : String,
   command_id : String,
   tool_call : Json,
-  step~ : Int,
-  index~ : Int,
+  step~ : Int32,
+  index~ : Int32,
   mode~ : String,
   model~ : String,
   now~ : @clock.Timestamp,
@@ -175,8 +175,8 @@ fn mooncode_runtime_turn_tool_call_event(
 ///|
 fn mooncode_runtime_turn_tool_call_id(
   tool_call : Json,
-  step~ : Int,
-  index~ : Int,
+  step~ : Int32,
+  index~ : Int32,
 ) -> String {
   let id = mooncode_json_string(tool_call, "tool_call_id", default="")
   if id != "" {

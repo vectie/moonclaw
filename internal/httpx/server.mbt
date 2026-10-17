@@ -5,7 +5,7 @@
 /// the bound port and running a `httpx` handler loop.
 struct Server {
   server : @http.Server
-  port : Int
+  port : Int32
 }
 
 ///|
@@ -27,9 +27,9 @@ pub fn Server::close(self : Server) -> Unit {
 /// The actual bound port can be retrieved via `Server::port`.
 pub async fn Server::new(
   host : String,
-  port : Int,
-  dual_stack? : Bool = true,
-  reuse_addr? : Bool = false,
+  port : Int32,
+  dual_stack~ : Bool = true,
+  reuse_addr~ : Bool = false,
 ) -> Server {
   let server = @http.Server(
     @socket.Addr::parse("\{host}:\{port}"),
@@ -42,7 +42,7 @@ pub async fn Server::new(
 
 ///|
 /// Returns the TCP port the server is currently listening on.
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   self.port
 }
 

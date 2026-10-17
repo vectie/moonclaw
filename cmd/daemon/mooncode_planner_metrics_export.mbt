@@ -2,7 +2,7 @@
 const MOONCODE_PLANNER_METRICS_EXPORT_ENV : String = "MOONCLAW_PLANNER_METRICS_EXPORT"
 
 ///|
-const MOONCODE_PLANNER_METRICS_EXPORT_TIMEOUT_MS : Int = 300
+const MOONCODE_PLANNER_METRICS_EXPORT_TIMEOUT_MS : Int32 = 300
 
 ///|
 fn mooncode_planner_metrics_export_enabled_from_value(value : String?) -> Bool {
@@ -33,7 +33,7 @@ fn mooncode_planner_metrics_export_enabled() -> Bool {
 /// arguments never cross the MoonClaw-to-MoonGate metrics boundary.
 fn mooncode_planner_metrics_export_payload(
   metrics : Json,
-  planner_latency_ms? : Int = 0,
+  planner_latency_ms~ : Int32 = 0,
 ) -> Json {
   let tool_call_count = mooncode_json_int(metrics, "tool_call_count", default=0).max(
     0,
@@ -141,7 +141,7 @@ fn mooncode_planner_metrics_export_payload(
 async fn mooncode_export_planner_metrics(
   workspace_root : String,
   metrics : Json,
-  planner_latency_ms? : Int = 0,
+  planner_latency_ms~ : Int32 = 0,
 ) -> Bool {
   mooncode_export_planner_metrics_if_enabled(
     mooncode_planner_metrics_export_enabled(),
@@ -156,7 +156,7 @@ async fn mooncode_export_planner_metrics_if_enabled(
   enabled : Bool,
   workspace_root : String,
   metrics : Json,
-  planner_latency_ms? : Int = 0,
+  planner_latency_ms~ : Int32 = 0,
 ) -> Bool {
   if !enabled {
     return false
@@ -181,7 +181,7 @@ async fn mooncode_export_planner_metrics_if_enabled(
 async fn mooncode_export_planner_metrics_for_plan(
   workspace_root : String,
   plan : Json,
-  planner_latency_ms : Int,
+  planner_latency_ms : Int32,
 ) -> Bool {
   let metrics = mooncode_json_object_field_or_empty(plan, "planner_metrics")
   if mooncode_json_string(metrics, "contract", default="") !=

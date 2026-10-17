@@ -1,8 +1,8 @@
 ///|
 fn mooncode_stream_resume_test_cursor_rejected(
   value : String,
-  session_id? : String = "session-resume",
-  book_root? : String = "/tmp/book",
+  session_id~ : String = "session-resume",
+  book_root~ : String = "/tmp/book",
 ) -> Bool {
   try {
     ignore(mooncode_stream_resume_cursor_parse(value, session_id, book_root))

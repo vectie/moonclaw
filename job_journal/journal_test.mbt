@@ -1,7 +1,7 @@
 ///|
 fn fixture(
   run : String,
-  timestamp : Int,
+  timestamp : Int32,
   message : String,
   step? : String,
 ) -> Json {

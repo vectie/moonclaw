@@ -18,7 +18,7 @@ pub struct ResourceSummary {
 ///|
 pub struct ListResourcesResult {
   resources : Array[ResourceSummary]
-  total_resources : Int
+  total_resources : Int32
   truncated : Bool
 } derive(ToJson, FromJson)
 
@@ -114,7 +114,7 @@ async fn list_file_resources(
   cwd : String,
   path : String,
   pattern : String,
-  max_results : Int,
+  max_results : Int32,
   include_hidden : Bool,
 ) -> ListResourcesResult {
   let result = @glob_files.new(cwd).call({
@@ -140,7 +140,7 @@ async fn list_file_resources(
 async fn list_skill_resources(
   cwd : String,
   home : String?,
-  max_results : Int,
+  max_results : Int32,
 ) -> ListResourcesResult {
   let loader = @skills.Loader::new(
     home?,
@@ -169,7 +169,7 @@ async fn list_skill_resources(
 async fn list_worktree_resources(
   cwd : String,
   base_dir : String?,
-  max_results : Int,
+  max_results : Int32,
 ) -> ListResourcesResult {
   let result = @worktree.list_worktrees(cwd, base_dir~)
   let resources : Array[ResourceSummary] = []
@@ -190,7 +190,7 @@ async fn list_worktree_resources(
 async fn list_provider_resources(
   cwd : String,
   home : String?,
-  max_results : Int,
+  max_results : Int32,
 ) -> ListResourcesResult {
   let providers = @resource_providers.load_resource_providers(cwd, home~)
   let resources : Array[ResourceSummary] = []
@@ -250,7 +250,8 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
         return @tool.error("Error: 'kind' parameter is required")
       }
       let max_results = match args {
-        { "max_results": Number(value, ..), .. } => Int::max(1, value.to_int())
+        { "max_results": Number(value, ..), .. } =>
+          Int32::max(1, value.to_int())
         _ => 100
       }
       let result = match kind {

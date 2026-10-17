@@ -2,7 +2,7 @@
 async fn goal_projection_write_record(
   writer : @fs.File,
   carrier : MoonCodeGoalRuntimeCarrier,
-  sequence : Int,
+  sequence : Int32,
 ) -> Unit {
   writer.write(
     scan_test_record_v2(carrier, sequence.to_string()).stringify() + "\n",

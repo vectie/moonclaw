@@ -39,7 +39,7 @@ async fn refresh_tokens(refresh_token : String) -> RefreshResponse raise Error {
   let (response, data) = @http.post(REFRESH_TOKEN_URL, body, headers={
     "Content-Type": "application/json",
   })
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     let error_text = data.text()
     raise OAuthError("Token refresh failed: \{response.code} - \{error_text}")
   }

@@ -11,7 +11,7 @@ priv struct FeedXml {
 ///|
 priv struct XmlCursor {
   body : String
-  mut pos : Int
+  mut pos : Int32
 }
 
 ///|
@@ -116,7 +116,7 @@ fn xml_entities(text : String) -> String raise {
 fn XmlCursor::element(
   self : XmlCursor,
   inherited : Map[String, String],
-  depth : Int,
+  depth : Int32,
 ) -> FeedXml raise {
   guard depth < 64 else { fail("XML nesting exceeds feed limit") }
   guard self.starts("<") && !self.starts("<!") && !self.starts("</") else {
@@ -236,7 +236,7 @@ fn read_feed_xml(body : String) -> FeedXml raise {
 fn FeedXml::child(
   self : FeedXml,
   name : String,
-  ns? : String = self.ns,
+  ns~ : String = self.ns,
 ) -> FeedXml? {
   for child in self.children {
     if child.name == name && child.ns == ns {
@@ -250,7 +250,7 @@ fn FeedXml::child(
 fn FeedXml::value(
   self : FeedXml,
   name : String,
-  ns? : String = self.ns,
+  ns~ : String = self.ns,
 ) -> String? {
   match self.child(name, ns~) {
     Some(child) if !child.text.trim().is_empty() =>

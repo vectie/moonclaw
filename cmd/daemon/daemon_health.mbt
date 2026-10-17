@@ -7,7 +7,7 @@ async fn Daemon::health(self : Daemon, w : @httpx.ResponseWriter) -> Unit {
 }
 
 ///|
-fn moonclaw_health_json(port : Int) -> Json {
+fn moonclaw_health_json(port : Int32) -> Json {
   {
     "ok": true,
     "status": "ready",

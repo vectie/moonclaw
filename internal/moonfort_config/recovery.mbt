@@ -1,6 +1,6 @@
 ///|
 pub(all) struct RecoveryInspectionConfig {
-  protocol_version : Int
+  protocol_version : Int32
   inspector_path : String
   inspector_args : Array[String]
   executor_config_path : String

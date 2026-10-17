@@ -88,7 +88,7 @@ fn mooncode_journal_model_workspace(
 async fn[T] mooncode_resolve_model_workspace(
   command : Json,
   selector : String,
-  legacy_source_fallback? : Bool = true,
+  legacy_source_fallback~ : Bool = true,
   owner_lookup~ : async (String, String) -> T?,
   daemon_lookup~ : async (String) -> T?,
   source_lookup~ : async (String, String) -> T?,

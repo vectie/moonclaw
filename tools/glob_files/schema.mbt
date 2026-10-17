@@ -35,7 +35,7 @@ let schema : @tool.JsonSchema = {
 priv struct GlobFilesInput {
   path : String?
   pattern : String
-  max_results : Int?
+  max_results : Int32?
   respect_gitignore : Bool?
   include_hidden : Bool?
   include_directories : Bool?

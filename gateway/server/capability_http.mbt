@@ -11,7 +11,7 @@ priv struct CapabilityHttpRouteV1 {
   submit_url : String?
   reconcile_url : String?
   base_url : String?
-  estimated_cost_micros : Int
+  estimated_cost_micros : Int32
   provider_route_ref : String?
 } derive(FromJson)
 
@@ -23,9 +23,9 @@ priv struct CapabilityHttpPolicyV1 {
   catalog_ref : String
   granted_authorities : Array[String]
   reviewed_operation_refs : Array[String]
-  max_attempts : Int
-  timeout_ms : Int
-  remaining_budget_micros : Int
+  max_attempts : Int32
+  timeout_ms : Int32
+  remaining_budget_micros : Int32
   approved_provider_route_refs : Array[String]
   routes : Array[CapabilityHttpRouteV1]
 } derive(FromJson)
@@ -120,7 +120,7 @@ fn capability_http_identity(
 
 ///|
 fn capability_http_json_error(
-  code : Int,
+  code : Int32,
   reason : String,
   error_code : String,
   message : String,
@@ -136,7 +136,7 @@ fn capability_http_json_error(
 }
 
 ///|
-fn capability_http_host_allowed(host : String, port : Int) -> Bool {
+fn capability_http_host_allowed(host : String, port : Int32) -> Bool {
   let normalized = host.trim().to_lower()
   normalized == "127.0.0.1:\{port}" || normalized == "localhost:\{port}"
 }
@@ -144,7 +144,7 @@ fn capability_http_host_allowed(host : String, port : Int) -> Bool {
 ///|
 fn capability_http_request_allowed(
   headers : Map[String, String],
-  port : Int,
+  port : Int32,
   token : String?,
 ) -> Result[Unit, String] {
   guard headers.get("host") is Some(host) &&
@@ -245,7 +245,7 @@ fn capability_http_route(
 async fn capability_http_post_json(
   url : String,
   body : Json,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> Result[Json, String] {
   let request = async fn() {
     @http.post(url, body.stringify(), headers={
@@ -304,7 +304,7 @@ fn capability_http_decode_reconciliation(
 ///|
 fn capability_http_pack_executor(
   route : CapabilityHttpRouteV1,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> @packtool.PackToolExecutor raise {
   guard route.transport == "moonclaw.pack-tool-http.v1" &&
     route.submit_url is Some(submit_url) &&

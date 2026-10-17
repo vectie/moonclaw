@@ -1,6 +1,6 @@
 ///|
 fn terminal_boundary_command(
-  sequence : Int,
+  sequence : Int32,
   session_id : String,
   command_id : String,
 ) -> Json {
@@ -23,7 +23,7 @@ fn terminal_boundary_command(
 
 ///|
 fn terminal_boundary_receipt(
-  sequence : Int,
+  sequence : Int32,
   session_id : String,
   command_id : String,
   status : String,

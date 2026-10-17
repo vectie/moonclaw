@@ -17,13 +17,13 @@ pub(all) struct ExecutionIsolationSpec {
 
 ///|
 pub fn ExecutionIsolationSpec::new(
-  mode? : ExecutionIsolationMode = SharedWorkspace,
-  task_key? : String = "",
-  base_dir? : String? = None,
-  branch_name? : String? = None,
-  commit? : String? = None,
-  cleanup_policy? : String? = None,
-  force_new_branch? : Bool = false,
+  mode~ : ExecutionIsolationMode = SharedWorkspace,
+  task_key~ : String = "",
+  base_dir~ : String? = None,
+  branch_name~ : String? = None,
+  commit~ : String? = None,
+  cleanup_policy~ : String? = None,
+  force_new_branch~ : Bool = false,
 ) -> ExecutionIsolationSpec {
   {
     mode,
@@ -45,7 +45,7 @@ pub(all) struct ExecutionIsolationResolution {
 ///|
 pub fn ExecutionIsolationResolution::new(
   cwd~ : String,
-  metadata? : Json? = None,
+  metadata~ : Json? = None,
 ) -> ExecutionIsolationResolution {
   { cwd, metadata, }
 }

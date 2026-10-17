@@ -12,7 +12,7 @@ pub(all) enum GitOperation {
   StatusPorcelain
   StatusProductPorcelain
   StatusShort
-  RecentLog(Int)
+  RecentLog(Int32)
   RevListCount
   Head
   HeadTree
@@ -41,14 +41,14 @@ pub(all) enum GitOperation {
 
 ///|
 pub struct GitResult {
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
-  elapsed : Int
+  elapsed : Int32
 }
 
 ///|
-pub fn GitResult::status(self : GitResult) -> Int {
+pub fn GitResult::status(self : GitResult) -> Int32 {
   self.status
 }
 
@@ -63,7 +63,7 @@ pub fn GitResult::stderr(self : GitResult) -> String {
 }
 
 ///|
-pub fn GitResult::elapsed(self : GitResult) -> Int {
+pub fn GitResult::elapsed(self : GitResult) -> Int32 {
   self.elapsed
 }
 

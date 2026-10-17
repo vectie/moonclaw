@@ -30,7 +30,7 @@ async fn Running::sync_status(task : Running) -> Unit {
       raise error
     }
   }
-  guard r.code is (200..=299) else {
+  guard r.code is (200..<=299) else {
     logger.warn(
       "Failed to sync status from task \{task.id}: \{r.code} \{r.reason}",
     )
@@ -77,7 +77,7 @@ async fn Running::sync_queued_messages(task : Running) -> Unit {
         },
       })
   }
-  guard r.code is (200..=299) else {
+  guard r.code is (200..<=299) else {
     raise json_error(500, "Internal Server Error", {
       "error": {
         "code": r.code,

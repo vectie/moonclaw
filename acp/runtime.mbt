@@ -20,8 +20,8 @@ pub struct AcpSession {
   status : String
   cwd : String?
   workspace : String?
-  created_at : Int
-  updated_at : Int
+  created_at : Int32
+  updated_at : Int32
   last_error : String?
   metadata : Json
 } derive(ToJson, FromJson, Debug)
@@ -34,8 +34,8 @@ pub struct AcpRun {
   target_id : String
   backend : String
   status : String
-  created_at : Int
-  updated_at : Int
+  created_at : Int32
+  updated_at : Int32
   request : Json
   plan : Json
   result : Json?
@@ -352,7 +352,7 @@ pub async fn AcpRuntime::start_run(
   target : AcpTarget,
   request : Json,
   plan : Json,
-  now : Int,
+  now : Int32,
 ) -> AcpRun {
   let run = AcpRun::{
     id: run_id,
@@ -378,7 +378,7 @@ pub async fn AcpRuntime::finish_run(
   self : AcpRuntime,
   run_id : String,
   status : String,
-  now : Int,
+  now : Int32,
   result? : Json?,
   error? : String?,
 ) -> Result[AcpRun, String] {
@@ -425,8 +425,8 @@ pub async fn AcpRuntime::open_session(
   session_id : String,
   target_id : String,
   session_key : String,
-  now : Int,
-  metadata? : Json = {},
+  now : Int32,
+  metadata~ : Json = {},
 ) -> Result[AcpSession, String] {
   let target = match self.targets.get(target_id) {
     Some(target) => target
@@ -471,7 +471,7 @@ pub async fn AcpRuntime::open_session(
 pub async fn AcpRuntime::reset_session(
   self : AcpRuntime,
   session_id : String,
-  now : Int,
+  now : Int32,
 ) -> Result[AcpSession, String] {
   match self.sessions.get(session_id) {
     Some(session) => {
@@ -494,8 +494,8 @@ pub async fn AcpRuntime::set_session_status(
   self : AcpRuntime,
   session_id : String,
   status : String,
-  now : Int,
-  last_error? : String? = None,
+  now : Int32,
+  last_error~ : String? = None,
 ) -> Result[AcpSession, String] {
   match self.sessions.get(session_id) {
     Some(session) => {

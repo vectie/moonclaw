@@ -38,14 +38,14 @@ fn recovery_test_step(id : String, status : @job.RunStatus) -> @job.JobStepRun {
 
 ///|
 fn recovery_test_project(
-  run? : @job.JobRun = recovery_test_run(),
-  steps? : Array[@job.JobStepRun] = [
+  run~ : @job.JobRun = recovery_test_run(),
+  steps~ : Array[@job.JobStepRun] = [
     recovery_test_step("done", Succeeded),
     recovery_test_step("input", WaitingForInput),
   ],
-  messages? : Int = 2,
-  events? : Int = 3,
-  observed? : Int = 1000,
+  messages~ : Int32 = 2,
+  events~ : Int32 = 3,
+  observed~ : Int32 = 1000,
 ) -> Json {
   cowork_recovery_projection(
     "work:fixture",

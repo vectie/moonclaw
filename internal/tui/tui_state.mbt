@@ -9,7 +9,7 @@ pub(all) struct TuiState {
   mut session_key : String
   mut tools_expanded : Bool
   mut show_thinking : Bool
-  mut last_ctrl_c_at : Int
+  mut last_ctrl_c_at : Int32
 }
 
 ///|
@@ -124,11 +124,11 @@ pub fn TuiState::show_thinking(self : TuiState) -> Bool {
 }
 
 ///|
-pub fn TuiState::update_last_ctrl_c(self : TuiState, time : Int) -> Unit {
+pub fn TuiState::update_last_ctrl_c(self : TuiState, time : Int32) -> Unit {
   self.last_ctrl_c_at = time
 }
 
 ///|
-pub fn TuiState::last_ctrl_c_at(self : TuiState) -> Int {
+pub fn TuiState::last_ctrl_c_at(self : TuiState) -> Int32 {
   self.last_ctrl_c_at
 }

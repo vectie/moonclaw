@@ -25,8 +25,8 @@ priv struct StartCodexAuthResponse {
 priv struct StartCopilotAuthResponse {
   user_code : String
   verification_uri : String
-  expires_in : Int
-  interval : Int
+  expires_in : Int32
+  interval : Int32
 } derive(ToJson)
 
 ///|

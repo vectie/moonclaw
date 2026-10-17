@@ -50,7 +50,7 @@ fn semantic_compaction_lifecycle_test_messages() -> Array[Json] {
 
 ///|
 fn semantic_compaction_lifecycle_active_command(
-  context_window_tokens? : Int = 1000,
+  context_window_tokens~ : Int32 = 1000,
 ) -> Json {
   {
     "payload": {
@@ -65,7 +65,7 @@ fn semantic_compaction_lifecycle_active_command(
 
 ///|
 fn semantic_compaction_lifecycle_previous_plan(
-  prompt_tokens? : Int = 800,
+  prompt_tokens~ : Int32 = 800,
 ) -> Json {
   { "planner_metrics": { "prompt_tokens": prompt_tokens } }
 }

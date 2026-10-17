@@ -25,7 +25,7 @@ fn parse_user(
 ) -> User raise @json.JsonDecodeError {
   let object = @jsonx.as_object(json, path~)
   let name : String = object.required("name", path~)
-  let age : Int = object.required("age", path~)
+  let age : Int32 = object.required("age", path~)
   let nickname : String? = object.optional("nickname", path~)
   User::{ name, age, nickname, }
 }

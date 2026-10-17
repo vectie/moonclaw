@@ -2,7 +2,7 @@
 const MOONCODE_DEFERRED_TOOL_CATALOG_CONTRACT : String = "moonclaw.deferred-tool-catalog.v1"
 
 ///|
-const MOONCODE_DEFERRED_TOOL_SEARCH_MAX_RESULTS : Int = 5
+const MOONCODE_DEFERRED_TOOL_SEARCH_MAX_RESULTS : Int32 = 5
 
 ///|
 fn mooncode_runtime_turn_deferred_tool_search_spec() -> @openai.ChatCompletionToolParam {
@@ -128,7 +128,7 @@ fn mooncode_runtime_turn_deferred_tool_catalog() -> Array[Json] {
 fn mooncode_runtime_turn_deferred_tool_match_score(
   query : String,
   entry : Json,
-) -> Int {
+) -> Int32 {
   let name = mooncode_json_string(entry, "name", default="")
   let normalized_query = mooncode_runtime_turn_deferred_tool_words(query).join(
     " ",
@@ -167,8 +167,8 @@ fn mooncode_runtime_turn_deferred_tool_match_score(
 ///|
 fn mooncode_runtime_turn_deferred_tool_matches(
   query : String,
-  max_results : Int,
-  excluded_names? : Array[String] = [],
+  max_results : Int32,
+  excluded_names~ : Array[String] = [],
 ) -> Array[Json] {
   mooncode_runtime_turn_deferred_tool_matches_in_catalog(
     mooncode_runtime_turn_deferred_tool_catalog(),
@@ -182,13 +182,13 @@ fn mooncode_runtime_turn_deferred_tool_matches(
 fn mooncode_runtime_turn_deferred_tool_matches_in_catalog(
   catalog : Array[Json],
   query : String,
-  max_results : Int,
-  excluded_names? : Array[String] = [],
+  max_results : Int32,
+  excluded_names~ : Array[String] = [],
 ) -> Array[Json] {
   let scores = catalog.map(entry => {
     mooncode_runtime_turn_deferred_tool_match_score(query, entry)
   })
-  let selected_indices : Array[Int] = []
+  let selected_indices : Array[Int32] = []
   let matches : Array[Json] = []
   for _ in 0..<max_results {
     let mut best_index = -1
@@ -219,7 +219,7 @@ fn mooncode_runtime_turn_deferred_tool_matches_in_catalog(
 ///|
 fn mooncode_runtime_turn_deferred_tool_search_result(
   arguments : Json,
-  excluded_names? : Array[String] = [],
+  excluded_names~ : Array[String] = [],
 ) -> Json {
   let query = mooncode_json_string(arguments, "query", default="")
     .trim()

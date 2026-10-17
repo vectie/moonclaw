@@ -5,7 +5,7 @@ priv struct ShortlistSnapshot {
   source_title : String
   format : String
   body_sha256 : String
-  article_index : Int
+  article_index : Int32
   article : FeedArticle
 } derive(ToJson)
 
@@ -65,7 +65,7 @@ pub impl ToJson for ReadingShortlist with fn to_json(self : ReadingShortlist) ->
 /// Nothing is selected initially. Publisher IDs/URLs are not identity keys.
 pub fn capture_reading_shortlist(
   snapshots : Array[FeedSnapshot],
-  title? : String = "Reading shortlist",
+  title~ : String = "Reading shortlist",
 ) -> ReadingShortlist raise {
   // Reuse the collection's whole-input and source-identity validation.
   let page = collect_feeds(snapshots)
@@ -126,10 +126,10 @@ pub fn ReadingShortlist::to_archive(self : ReadingShortlist) -> String raise {
 /// Return a fresh, searchable overview with stable IDs for explicit selection.
 pub fn ReadingShortlist::catalog(
   self : ReadingShortlist,
-  query? : String = "",
+  query~ : String = "",
 ) -> Json {
   let needle = query.trim().to_owned().to_lower()
-  let selected : Map[String, Int] = Map([])
+  let selected : Map[String, Int32] = Map([])
   for index, id in self.order {
     selected[id] = index + 1
   }

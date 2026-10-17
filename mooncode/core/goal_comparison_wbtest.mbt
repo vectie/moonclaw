@@ -1,10 +1,10 @@
 ///|
 fn goal_comparison_fixture(
-  summary? : String = "alpha beta gamma delta",
-  checkpoint? : Int = 7,
-  artifact_digest? : String = "artifact",
-  verification_passed? : Bool = true,
-  requirements? : Array[GoalRunRequirementResult] = [
+  summary~ : String = "alpha beta gamma delta",
+  checkpoint~ : Int32 = 7,
+  artifact_digest~ : String = "artifact",
+  verification_passed~ : Bool = true,
+  requirements~ : Array[GoalRunRequirementResult] = [
     { id: "r1", passed: true, },
     { id: "r2", passed: false, },
   ],

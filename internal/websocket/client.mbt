@@ -7,7 +7,7 @@ pub struct ClientConfig {
 ///|
 pub fn ClientConfig::new(
   url~ : String,
-  headers? : Map[String, String] = {},
+  headers~ : Map[String, String] = {},
 ) -> ClientConfig {
   { url, headers, }
 }

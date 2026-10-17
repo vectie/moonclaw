@@ -1,5 +1,5 @@
 ///|
-const MoonDeskPromotionRequestBytes : Int = 65_536
+const MoonDeskPromotionRequestBytes : Int32 = 65_536
 
 ///|
 priv struct MoonDeskPromotionItem {
@@ -10,7 +10,7 @@ priv struct MoonDeskPromotionItem {
 ///|
 #warnings("-unused_value")
 priv struct MoonDeskPromotionRequest {
-  protocol_version : Int
+  protocol_version : Int32
   instance_id : String
   request_id : String
   workspace_id : String
@@ -29,7 +29,7 @@ priv struct MoonFortPromotionError {
 ///|
 #warnings("-unused_value")
 priv struct MoonFortPromotionResponse {
-  protocol_version : Int
+  protocol_version : Int32
   retention_id : String
   workspace_id : String
   approval_digest : String
@@ -251,7 +251,7 @@ async fn Daemon::moondesk_promote_retention(
   self : Daemon,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
-  read_receipt? : Bool = false,
+  read_receipt~ : Bool = false,
 ) -> Unit {
   ignore(self)
   let route_config = @moondesk_sandbox_config.load() catch {

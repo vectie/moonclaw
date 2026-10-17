@@ -143,7 +143,7 @@ pub async fn[T] with_home(directory : Directory, f : async () -> T) -> T {
 pub async fn Directory::add_file(
   self : Directory,
   name : String,
-  content? : String = "",
+  content~ : String = "",
 ) -> File {
   let path = @pathx.join(self.0, name)
   @fs.write_file(path, content, create_mode=CreateOrTruncate, permission=0o644)
@@ -297,7 +297,7 @@ let os_args : Array[String] = @os.args()
 pub fn Context::getenv(
   self : Context,
   key : String,
-  allow_empty? : Bool = false,
+  allow_empty~ : Bool = false,
 ) -> String raise {
   guard @os.getenv(key) is Some(value) else {
     fail("Environment variable '\{key}' not set")
@@ -312,7 +312,7 @@ pub fn Context::getenv(
 ///|
 pub fn Context::model(
   self : Context,
-  name? : @model.CommonModels = Qwen3CoderPlus,
+  name~ : @model.CommonModels = Qwen3CoderPlus,
 ) -> @model.Model raise {
   @model.open_router_model(api_key=self.getenv("OPENROUTER_API_KEY"), name~)
 }
@@ -374,8 +374,8 @@ fn init {
 /// ```
 pub async fn run(
   t : @test.Test,
-  timeout? : Int = 600_000,
-  retry? : Int,
+  timeout~ : Int32 = 600_000,
+  retry? : Int32,
   action : async (Context) -> Unit,
 ) -> Unit {
   semaphore.acquire()

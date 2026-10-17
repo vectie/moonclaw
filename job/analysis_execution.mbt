@@ -69,7 +69,7 @@ fn analysis_best_effort_on_timeout(request : AnalysisRequest) -> Bool {
 fn best_effort_timeout_analysis_execution(
   request : AnalysisRequest,
   step_id : String,
-  timeout_ms : Int,
+  timeout_ms : Int32,
 ) -> AnalysisExecution {
   let message = "\{timeout_error_message(step_id, timeout_ms)}; continuing because `best_effort_on_timeout` is enabled. Inspect workspace artifacts and blockers for the bounded result."
   {
@@ -95,7 +95,7 @@ pub async fn persist_analysis_execution(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
-  now : () -> Int,
+  now : () -> Int32,
 ) -> PersistedAnalysisExecution {
   let execution_isolation = analysis_execution_isolation_metadata(execution)
   let step_key = safe_step_file_segment(context.step.id)

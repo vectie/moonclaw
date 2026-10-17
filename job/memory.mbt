@@ -95,7 +95,7 @@ fn memory_snippet(content : String, terms : Array[String]) -> String {
 }
 
 ///|
-fn memory_score(memory : MemoryRecord, terms : Array[String]) -> Int {
+fn memory_score(memory : MemoryRecord, terms : Array[String]) -> Int32 {
   let title = memory.title.unwrap_or("")
   let tags = memory.tags.join(" ")
   let haystack = "\{title} \{memory.content} \{tags} \{memory.metadata.stringify()}".to_lower()
@@ -113,7 +113,7 @@ pub async fn MemoryService::remember(
   self : MemoryService,
   request : MemoryWriteRequest,
   id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> MemoryRecord {
   let memory = MemoryRecord::{
     id,
@@ -143,7 +143,7 @@ pub async fn MemoryService::remember(
 pub async fn MemoryService::archive(
   self : MemoryService,
   id : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Bool {
   match self.store.get_memory(id) {
     Some(memory) => {
@@ -167,7 +167,7 @@ pub fn MemoryService::get(self : MemoryService, id : String) -> MemoryRecord? {
 ///|
 pub fn MemoryService::list(
   self : MemoryService,
-  query? : MemoryQuery = MemoryQuery::new(status=Some(Active)),
+  query~ : MemoryQuery = MemoryQuery::new(status=Some(Active)),
 ) -> Array[MemoryRecord] {
   self.store
   .list_memories()
@@ -178,8 +178,8 @@ pub fn MemoryService::list(
 pub fn MemoryService::search(
   self : MemoryService,
   question : String,
-  query? : MemoryQuery = MemoryQuery::new(status=Some(Active)),
-  max_hits? : Int = 5,
+  query~ : MemoryQuery = MemoryQuery::new(status=Some(Active)),
+  max_hits~ : Int32 = 5,
 ) -> Array[MemorySearchHit] {
   let terms = tokenize_memory_query(question)
   let hits : Array[MemorySearchHit] = []
@@ -221,7 +221,7 @@ pub fn MemoryService::search(
 ///|
 pub fn render_memory_hits_prompt(
   hits : Array[MemorySearchHit],
-  header? : String = "Relevant long-term memory",
+  header~ : String = "Relevant long-term memory",
 ) -> String {
   if hits.is_empty() {
     return ""
@@ -242,7 +242,7 @@ pub fn render_memory_hits_prompt(
 ///|
 pub fn render_memory_records_prompt(
   records : Array[MemoryRecord],
-  header? : String = "Relevant long-term memory",
+  header~ : String = "Relevant long-term memory",
 ) -> String {
   if records.is_empty() {
     return ""

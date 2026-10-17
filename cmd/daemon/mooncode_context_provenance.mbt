@@ -65,7 +65,7 @@ fn mooncode_runtime_context_kind_is_closed(kind : MoonCodeContextKind) -> Bool {
 }
 
 ///|
-fn mooncode_runtime_context_content_item_count(message : Json) -> Int {
+fn mooncode_runtime_context_content_item_count(message : Json) -> Int32 {
   match message {
     Object(fields) =>
       match fields.get("content") {
@@ -96,7 +96,7 @@ fn mooncode_runtime_context_item_metadata(
 ///|
 fn mooncode_runtime_context_token_valid(
   value : String,
-  max_chars : Int,
+  max_chars : Int32,
 ) -> Bool {
   if value == "" || value.length() > max_chars {
     return false
@@ -178,7 +178,7 @@ fn mooncode_runtime_context_metadata(
   message : Json,
   kind : MoonCodeContextKind,
   source : String,
-  requires_separate_message? : Bool = false,
+  requires_separate_message~ : Bool = false,
 ) -> Json {
   {
     "contract": MOONCODE_CONTEXT_PROVENANCE_CONTRACT,
@@ -287,7 +287,7 @@ fn mooncode_runtime_context_inferred_kind(
 fn mooncode_runtime_context_normalize_message(
   message : Json,
   fallback_kind? : MoonCodeContextKind,
-  fallback_source? : String = "legacy.inferred",
+  fallback_source~ : String = "legacy.inferred",
 ) -> Json {
   if mooncode_runtime_context_message_provenance_valid(message) {
     return message
@@ -327,9 +327,9 @@ fn mooncode_runtime_context_tool_call_id(message : Json) -> String {
 fn mooncode_runtime_context_exact_alignment_index(
   provider_message : Json,
   source_messages : Array[Json],
-  start : Int,
-  used : Array[Int],
-) -> Int {
+  start : Int32,
+  used : Array[Int32],
+) -> Int32 {
   let visible = mooncode_runtime_context_visible_message(provider_message).stringify()
   for index in start..<source_messages.length() {
     if !used.contains(index) &&
@@ -345,9 +345,9 @@ fn mooncode_runtime_context_exact_alignment_index(
 fn mooncode_runtime_context_tool_alignment_index(
   provider_message : Json,
   source_messages : Array[Json],
-  start : Int,
-  used : Array[Int],
-) -> Int {
+  start : Int32,
+  used : Array[Int32],
+) -> Int32 {
   let tool_call_id = mooncode_runtime_context_tool_call_id(provider_message)
   if tool_call_id == "" {
     return -1
@@ -378,7 +378,7 @@ fn mooncode_runtime_context_merge_messages(
     })
   }
   let merged : Array[Json] = []
-  let used : Array[Int] = []
+  let used : Array[Int32] = []
   let mut source_cursor = 0
   for provider_message in provider_messages {
     let mut match_index = mooncode_runtime_context_exact_alignment_index(

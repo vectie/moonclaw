@@ -17,7 +17,7 @@ pub struct Request {
   tools : Array[ChatCompletionToolParam]
   usage : CompletionUsageParam?
   user : String?
-  max_tokens : Int?
+  max_tokens : Int32?
   temperature : Double?
   reasoning_effort : ChatCompletionReasoningEffort?
   response_format : ResponseFormat?
@@ -33,7 +33,7 @@ pub struct Request {
 /// and a recovered provider still receives the complete task contract plus a
 /// valid assistant/tool transcript. Only previously consumed tool evidence and
 /// redundant tool schemas are reduced.
-pub fn Request::compact_for_overload(self : Request, tier : Int) -> Request {
+pub fn Request::compact_for_overload(self : Request, tier : Int32) -> Request {
   if tier <= 0 {
     return self
   }
@@ -126,7 +126,7 @@ pub fn Request::compact_for_overload(self : Request, tier : Int) -> Request {
 /// batches can make stronger retry tiers larger than weaker ones.
 fn overload_recent_read_tool_ids(
   messages : Array[ChatCompletionMessageParam],
-  batch_count : Int,
+  batch_count : Int32,
 ) -> Map[String, Bool] {
   let batches : Array[Array[String]] = []
   for message in messages {
@@ -157,10 +157,10 @@ fn overload_recent_read_tool_ids(
 /// Prefer the active source batch over older evidence without letting it defeat
 /// stronger overload tiers. Even the emergency tier retains enough head/tail
 /// context to identify the file and current edit site.
-const OVERLOAD_TIER_ONE_RECENT_READ_CHARS : Int = 12000
+const OVERLOAD_TIER_ONE_RECENT_READ_CHARS : Int32 = 12000
 
 ///|
-fn overload_recent_read_evidence_limit(tier : Int) -> Int {
+fn overload_recent_read_evidence_limit(tier : Int32) -> Int32 {
   match tier {
     1 => OVERLOAD_TIER_ONE_RECENT_READ_CHARS
     2 => 8000
@@ -173,7 +173,7 @@ fn overload_recent_read_evidence_limit(tier : Int) -> Int {
 }
 
 ///|
-fn overload_tool_evidence_limit(tool_name : String, tier : Int) -> Int {
+fn overload_tool_evidence_limit(tool_name : String, tier : Int32) -> Int32 {
   match tier {
     1 =>
       if tool_name == "read_skill" {
@@ -224,7 +224,7 @@ fn overload_tool_evidence_limit(tool_name : String, tier : Int) -> Int {
 /// turn; this is transport shaping, not task-state mutation.
 fn overload_compact_transcript(
   messages : Array[ChatCompletionMessageParam],
-  tier : Int,
+  tier : Int32,
 ) -> Array[ChatCompletionMessageParam] {
   if tier < 4 {
     return messages
@@ -288,7 +288,7 @@ fn overload_compact_transcript(
 ///|
 fn overload_compact_text(
   text : String,
-  limit : Int,
+  limit : Int32,
   tool_name : String,
 ) -> String {
   if text.length() <= limit {
@@ -305,7 +305,7 @@ fn overload_compact_text(
 }
 
 ///|
-fn openai_utf8_prefix_within(text : String, limit : Int) -> String {
+fn openai_utf8_prefix_within(text : String, limit : Int32) -> String {
   if limit <= 0 {
     return ""
   }
@@ -325,7 +325,7 @@ fn openai_utf8_prefix_within(text : String, limit : Int) -> String {
 }
 
 ///|
-fn openai_utf8_suffix_within(text : String, limit : Int) -> String {
+fn openai_utf8_suffix_within(text : String, limit : Int32) -> String {
   if limit <= 0 {
     return ""
   }

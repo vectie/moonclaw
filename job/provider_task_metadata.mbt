@@ -49,7 +49,7 @@ fn provider_task_child_proposal(
   batch : ProviderTaskBatch,
   command : ProviderTaskCommand,
   config : SubjobStepConfig,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobProposal {
   let execution_tasks = provider_task_execution_tasks(batch.tasks)
   let deferred_tasks = batch.tasks.length() - execution_tasks.length()
@@ -140,7 +140,7 @@ fn provider_task_execution_tasks(
   } else {
     bootstrap_execution
   }
-  let indexed : Array[(Int, Int, Int, ProviderTaskSpec)] = []
+  let indexed : Array[(Int32, Int32, Int32, ProviderTaskSpec)] = []
   let mut i = 0
   while i < selected.length() {
     let task = selected[i]
@@ -164,7 +164,7 @@ fn provider_task_execution_tasks(
 }
 
 ///|
-fn provider_task_phase_rank(kind : String) -> Int {
+fn provider_task_phase_rank(kind : String) -> Int32 {
   match kind.trim().to_lower() {
     "bootstrap_gather" => 0
     "source_materialize" => 1
@@ -194,7 +194,7 @@ fn metadata_bool_value(metadata : Json, key : String) -> Bool? {
 }
 
 ///|
-fn metadata_int_value(metadata : Json, key : String) -> Int? {
+fn metadata_int_value(metadata : Json, key : String) -> Int32? {
   match metadata_with_step_metadata(metadata, key) {
     Some(Number(value, ..)) => Some(value.to_int())
     _ => None

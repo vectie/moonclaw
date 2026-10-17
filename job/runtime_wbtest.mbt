@@ -1,6 +1,6 @@
 ///|
 fn runtime_definition(
-  schedule? : SchedulePolicy? = Some({
+  schedule~ : SchedulePolicy? = Some({
     kind: "interval",
     interval_minutes: Some(60),
     timezone: Some("Asia/Shanghai"),

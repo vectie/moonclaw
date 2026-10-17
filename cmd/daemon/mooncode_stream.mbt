@@ -5,8 +5,8 @@ let mooncode_stream_contract_id : String = "mooncode-stream.v2"
 /// Scalar result used by production stream scans so waiting never retains
 /// journal payloads in memory.
 priv struct MoonCodeStreamSummary {
-  event_count : Int
-  eligible_event_count : Int
+  event_count : Int32
+  eligible_event_count : Int32
   latest_event_sequence : MoonCodeJournalSequence
   journal_size : Int64
 }
@@ -15,8 +15,8 @@ priv struct MoonCodeStreamSummary {
 /// Scalar wait receipt. The scan summary stays local to the wait loop; the
 /// post-wait spool is the authoritative response snapshot.
 priv struct MoonCodeStreamWait {
-  wait_elapsed_ms : Int
-  wait_attempt_count : Int
+  wait_elapsed_ms : Int32
+  wait_attempt_count : Int32
 }
 
 ///|
@@ -199,8 +199,8 @@ async fn Daemon::mooncode_stream_wait_for_summary(
   session_id : String,
   book_root : String,
   since : MoonCodeJournalSequence,
-  wait_ms : Int,
-  poll_ms : Int,
+  wait_ms : Int32,
+  poll_ms : Int32,
 ) -> MoonCodeStreamWait {
   ignore(self)
   let mut elapsed_ms = 0
@@ -246,10 +246,10 @@ fn mooncode_stream_records(
   book_root : String,
   events : Array[Json],
   since~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
+  wait_ms~ : Int32,
+  poll_ms~ : Int32,
+  wait_elapsed_ms~ : Int32,
+  wait_attempt_count~ : Int32,
 ) -> Array[Json] raise MoonCodeGoalRuntimeStoreError {
   let latest_sequence = mooncode_stream_latest_sequence(events)
   let next_since = if since.compare(latest_sequence) >= 0 {
@@ -305,7 +305,7 @@ fn mooncode_stream_records(
 ///|
 fn mooncode_stream_event_sequence(
   event : Json,
-  index : Int,
+  index : Int32,
 ) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
   let value = match event {
     Object(fields) => fields.get("journal_sequence")
@@ -342,7 +342,7 @@ fn mooncode_stream_latest_sequence(
 fn mooncode_stream_event_count_after(
   events : Array[Json],
   since : MoonCodeJournalSequence,
-) -> Int raise MoonCodeGoalRuntimeStoreError {
+) -> Int32 raise MoonCodeGoalRuntimeStoreError {
   let mut count = 0
   for index, event in events {
     if mooncode_stream_event_sequence(event, index).compare(since) > 0 {
@@ -356,14 +356,14 @@ fn mooncode_stream_event_count_after(
 fn mooncode_stream_meta_record(
   session_id : String,
   book_root : String,
-  event_count~ : Int,
+  event_count~ : Int32,
   since~ : MoonCodeJournalSequence,
-  emitted_count~ : Int,
+  emitted_count~ : Int32,
   latest_sequence~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
+  wait_ms~ : Int32,
+  poll_ms~ : Int32,
+  wait_elapsed_ms~ : Int32,
+  wait_attempt_count~ : Int32,
 ) -> Json {
   let next_sequence = if latest_sequence.compare(since) >= 0 {
     latest_sequence
@@ -423,11 +423,11 @@ fn mooncode_stream_done_record(
   book_root : String,
   latest_sequence~ : MoonCodeJournalSequence,
   since~ : MoonCodeJournalSequence,
-  emitted_count~ : Int,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
+  emitted_count~ : Int32,
+  wait_ms~ : Int32,
+  poll_ms~ : Int32,
+  wait_elapsed_ms~ : Int32,
+  wait_attempt_count~ : Int32,
 ) -> Json {
   let next_sequence = if latest_sequence.compare(since) >= 0 {
     latest_sequence
@@ -455,7 +455,7 @@ fn mooncode_stream_done_record(
 }
 
 ///|
-fn mooncode_stream_wait_ms_value(requested : Int) -> Int {
+fn mooncode_stream_wait_ms_value(requested : Int32) -> Int32 {
   if requested < 0 {
     0
   } else if requested > 30000 {
@@ -466,7 +466,7 @@ fn mooncode_stream_wait_ms_value(requested : Int) -> Int {
 }
 
 ///|
-fn mooncode_stream_poll_ms_value(requested : Int) -> Int {
+fn mooncode_stream_poll_ms_value(requested : Int32) -> Int32 {
   if requested < 25 {
     25
   } else if requested > 2000 {
@@ -483,10 +483,10 @@ fn mooncode_stream_jsonl_payload(
   book_root : String,
   events : Array[Json],
   since~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
+  wait_ms~ : Int32,
+  poll_ms~ : Int32,
+  wait_elapsed_ms~ : Int32,
+  wait_attempt_count~ : Int32,
 ) -> String raise MoonCodeGoalRuntimeStoreError {
   let records = mooncode_stream_records(
     session_id,
@@ -508,10 +508,10 @@ fn mooncode_stream_sse_payload(
   book_root : String,
   events : Array[Json],
   since~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
+  wait_ms~ : Int32,
+  poll_ms~ : Int32,
+  wait_elapsed_ms~ : Int32,
+  wait_attempt_count~ : Int32,
 ) -> String raise MoonCodeGoalRuntimeStoreError {
   let chunks : Array[String] = []
   for

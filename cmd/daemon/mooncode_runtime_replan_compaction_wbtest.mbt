@@ -72,7 +72,7 @@ fn replan_compaction_test_checkpoint(
   plan : Json,
   planner_steps : Array[Json],
   execution : Json,
-  next_step_index : Int,
+  next_step_index : Int32,
 ) -> Json {
   mooncode_runtime_planner_replan_continuation_event(
     "replan-compaction-session",

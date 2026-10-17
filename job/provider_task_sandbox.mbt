@@ -71,7 +71,7 @@ fn provider_task_execution_args(
 }
 
 ///|
-const ProviderTaskExecutionTimeoutMs : Int = 120_000
+const ProviderTaskExecutionTimeoutMs : Int32 = 120_000
 
 ///|
 async fn execute_provider_task_command(

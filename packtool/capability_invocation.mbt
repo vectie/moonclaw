@@ -73,7 +73,7 @@ pub(all) struct MoonFlowAdapterRequestV2 {
   required_claim : String
   input_digest : String
   input_artifacts : Array[String]
-  timeout_ms : Int
+  timeout_ms : Int32
   created_at : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -86,7 +86,7 @@ pub(all) struct CapabilityInvocationV1 {
   adapter_id : String
   evaluated_at : String
   recorded_at : String
-  attempt : Int
+  attempt : Int32
   request : MoonFlowAdapterRequestV2
   config : Json
   input : Json
@@ -98,9 +98,9 @@ pub(all) struct CapabilityInvocationV1 {
 pub(all) struct CapabilityInvocationPolicyV1 {
   granted_authorities : Array[String]
   reviewed_operation_refs : Array[String]
-  max_attempts : Int
-  timeout_ms : Int
-  remaining_budget_micros : Int
+  max_attempts : Int32
+  timeout_ms : Int32
+  remaining_budget_micros : Int32
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -209,7 +209,7 @@ fn capability_digest(value : String) -> Bool {
 }
 
 ///|
-fn capability_claim_rank(claim : String) -> Int? {
+fn capability_claim_rank(claim : String) -> Int32? {
   match claim {
     "observation" => Some(0)
     "research-evidence" => Some(1)
@@ -491,7 +491,7 @@ fn capability_request_issues(
   installed : InstalledPackCapabilityV1,
   invocation : CapabilityInvocationV1,
   policy : CapabilityInvocationPolicyV1,
-  estimated_cost_micros : Int,
+  estimated_cost_micros : Int32,
 ) -> Array[String] {
   let issues : Array[String] = []
   let request = invocation.request
@@ -674,7 +674,7 @@ fn receipt_for_status(
   invocation : CapabilityInvocationV1,
   status : String,
   result? : PackToolExecutionResult,
-  error_kind? : String = "",
+  error_kind~ : String = "",
 ) -> CapabilityInvocationReceiptV1 {
   let request = invocation.request
   let suffix = status.replace(old="_", new="-")
@@ -902,7 +902,7 @@ async fn capability_receipt_from_reconciliation(
 fn capability_execution_request(
   installed : InstalledPackCapabilityV1,
   invocation : CapabilityInvocationV1,
-  estimated_cost_micros : Int,
+  estimated_cost_micros : Int32,
 ) -> PackToolExecutionRequest {
   let evidence_path = match installed.binding.evidence_outputs.get(0) {
     Some(prefix) =>

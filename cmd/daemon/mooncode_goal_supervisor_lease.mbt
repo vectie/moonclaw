@@ -19,7 +19,7 @@ fn mooncode_goal_supervisor_lease_renewed_v1_kind() -> String {
 fn mooncode_goal_supervisor_lease_validate_owner_fence(
   lease : MoonCodeGoalSupervisorLease?,
   owner_id : String,
-  fence_token : Int,
+  fence_token : Int32,
   presented_lease_expires_at : Int64,
   now : Int64,
 ) -> Bool {
@@ -38,11 +38,11 @@ fn mooncode_goal_supervisor_lease_validate_owner_fence(
 priv struct MoonCodeGoalSupervisorLease {
   session_id : String
   goal_id : String
-  goal_run_id : Int
+  goal_run_id : Int32
   owner_id : String
   recorded_at : Int64
   lease_expires_at : Int64
-  fence_token : Int
+  fence_token : Int32
   event_id : String
 } derive(Eq, Debug)
 
@@ -52,12 +52,12 @@ priv struct MoonCodeGoalSupervisorLease {
 priv struct MoonCodeGoalSupervisorLeaseRenewal {
   session_id : String
   goal_id : String
-  goal_run_id : Int
+  goal_run_id : Int32
   owner_id : String
   recorded_at : Int64
   expected_lease_expires_at : Int64
   lease_expires_at : Int64
-  fence_token : Int
+  fence_token : Int32
   acquisition_event_id : String
   event_id : String
 } derive(Eq, Debug)
@@ -81,12 +81,12 @@ fn mooncode_goal_supervisor_lease_renewed_v1(
   protocol : String,
   session_id : String,
   goal_id : String,
-  goal_run_id : Int,
+  goal_run_id : Int32,
   owner_id : String,
   recorded_at : Int64,
   expected_lease_expires_at : Int64,
   lease_expires_at : Int64,
-  fence_token : Int,
+  fence_token : Int32,
   acquisition_event_id : String,
 ) -> Json raise {
   mooncode_goal_require_canonical_identity("renewal id", id)
@@ -218,11 +218,11 @@ fn mooncode_goal_supervisor_lease_v1(
   protocol : String,
   session_id : String,
   goal_id : String,
-  goal_run_id : Int,
+  goal_run_id : Int32,
   owner_id : String,
   recorded_at : Int64,
   lease_expires_at : Int64,
-  fence_token : Int,
+  fence_token : Int32,
 ) -> Json raise {
   mooncode_goal_require_canonical_identity("lease id", id)
   guard protocol == mooncode_protocol_version() else {
@@ -336,7 +336,7 @@ fn mooncode_goal_supervisor_lease_decode(
 fn mooncode_goal_supervisor_lease_replay(
   records : Array[Json],
   goal : @mooncode_core.Goal,
-) -> (MoonCodeGoalSupervisorLease?, Int) raise {
+) -> (MoonCodeGoalSupervisorLease?, Int32) raise {
   let mut genesis_seen = false
   let mut maximum_fence = 0
   let seen : Map[String, MoonCodeGoalSupervisorLeaseReplayEvent] = Map([])
@@ -574,7 +574,7 @@ fn mooncode_goal_supervisor_lease_matches_request(
   lease : MoonCodeGoalSupervisorLease,
   session_id : String,
   goal_id : String,
-  goal_run_id : Int,
+  goal_run_id : Int32,
   owner_id : String,
   event_id : String,
   recorded_at : Int64,

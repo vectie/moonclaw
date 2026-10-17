@@ -1299,7 +1299,7 @@ fn validate_helper_software_with_criteria(
 }
 
 ///|
-fn hex_digit(value : Int) -> Char {
+fn hex_digit(value : Int32) -> Char {
   if value < 10 {
     ('0'.to_int() + value).unsafe_to_char()
   } else {
@@ -1388,7 +1388,7 @@ async fn execute_agent(
 fn execution_prompt(
   request : Json,
   artifacts : Array[String],
-  trial : Int,
+  trial : Int32,
   feedback : Array[String],
 ) -> String {
   "You are a bounded MoonFlow product adapter executing one declared digital work item inside an isolated task capsule. You cannot access the parent suite workspace.\n" +
@@ -1710,7 +1710,7 @@ async fn execute(args : Array[String]) -> Unit {
 ///|
 fn review_prompt(
   packet : Json,
-  trial : Int,
+  trial : Int32,
   feedback : Array[String],
 ) -> String {
   "You are an independent MoonFlow acceptance reviewer in an isolated task capsule. You did not execute this work and cannot access the parent suite workspace.\n" +

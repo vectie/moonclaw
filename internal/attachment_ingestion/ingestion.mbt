@@ -8,7 +8,7 @@ pub struct MaterializedStarterAttachment {
   extracted_text_path : String?
   status : String
   note : String?
-  size : Int?
+  size : Int32?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -16,12 +16,12 @@ pub fn MaterializedStarterAttachment::new(
   id~ : String,
   mime_type~ : String,
   source_url~ : String,
-  filename? : String? = None,
-  saved_path? : String? = None,
-  extracted_text_path? : String? = None,
-  status? : String = "materialized",
-  note? : String? = None,
-  size? : Int? = None,
+  filename~ : String? = None,
+  saved_path~ : String? = None,
+  extracted_text_path~ : String? = None,
+  status~ : String = "materialized",
+  note~ : String? = None,
+  size~ : Int32? = None,
 ) -> MaterializedStarterAttachment {
   {
     id,
@@ -210,7 +210,7 @@ pub fn starter_attachment_digest_markdown(
 ///|
 pub fn starter_attachment_digest_excerpt(
   digest_markdown : String,
-  limit? : Int = 2000,
+  limit~ : Int32 = 2000,
 ) -> String {
   let trimmed = digest_markdown.trim().to_owned()
   if trimmed.length() <= limit {
@@ -223,7 +223,7 @@ pub fn starter_attachment_digest_excerpt(
 ///|
 pub fn attachment_is_text_like(
   mime_type : String,
-  filename? : String? = None,
+  filename~ : String? = None,
 ) -> Bool {
   if mime_type.has_prefix("text/") ||
     mime_type == "application/json" ||
@@ -249,7 +249,7 @@ pub fn attachment_is_text_like(
 ///|
 pub fn attachment_is_pdf(
   mime_type : String,
-  filename? : String? = None,
+  filename~ : String? = None,
 ) -> Bool {
   if mime_type == "application/pdf" {
     return true

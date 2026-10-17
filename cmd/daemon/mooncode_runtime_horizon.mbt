@@ -71,7 +71,7 @@ fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
 }
 
 ///|
-const MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS : Int = 12000
+const MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS : Int32 = 12000
 
 ///|
 fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
@@ -404,7 +404,7 @@ fn mooncode_runtime_horizon_retained_evidence(command : Json) -> Array[Json] {
 }
 
 ///|
-fn mooncode_runtime_horizon_last_failure(results : Array[Json]) -> Int {
+fn mooncode_runtime_horizon_last_failure(results : Array[Json]) -> Int32 {
   let mut failure = -1
   for index, result in results {
     if !mooncode_json_bool(result, "accepted", default=false) {
@@ -415,7 +415,7 @@ fn mooncode_runtime_horizon_last_failure(results : Array[Json]) -> Int {
 }
 
 ///|
-fn mooncode_runtime_horizon_last_mutation(results : Array[Json]) -> Int {
+fn mooncode_runtime_horizon_last_mutation(results : Array[Json]) -> Int32 {
   let mut mutation = -1
   for index, result in results {
     if mooncode_runtime_turn_result_is_mutation(result) {
@@ -850,7 +850,7 @@ fn mooncode_runtime_horizon_result_summary(result : Json) -> String {
 fn mooncode_runtime_horizon_progress_message(
   command : Json,
   results : Array[Json],
-  remaining_steps : Int,
+  remaining_steps : Int32,
 ) -> Json {
   let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
   let checkpoint_contract = mooncode_runtime_horizon_checkpoint_contract(

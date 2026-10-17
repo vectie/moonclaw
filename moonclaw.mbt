@@ -99,7 +99,7 @@ fn default_log_path() -> String {
 #as_free_fn
 pub async fn Moonclaw::new(
   name? : String,
-  logger? : @pino.Logger = @pino.logger(
+  logger~ : @pino.Logger = @pino.logger(
     "moonclaw",
     try! @pino.Transport::parse("file:\{default_log_path()}"),
   ),
@@ -107,11 +107,11 @@ pub async fn Moonclaw::new(
   home? : String,
   cwd? : String,
   user_message? : String,
-  web_search? : Bool = false,
-  restricted_workspace? : Bool = false,
+  web_search~ : Bool = false,
+  restricted_workspace~ : Bool = false,
   command_approval_scope? : String,
-  source_kind? : String = "user",
-  workspace_trust? : String = "trusted",
+  source_kind~ : String = "user",
+  workspace_trust~ : String = "trusted",
 ) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
@@ -188,7 +188,7 @@ pub async fn Moonclaw::start(self : Moonclaw, prompt? : String) -> Unit {
 /// Fails if the conversation with the given id cannot be found.
 #as_free_fn
 pub async fn Moonclaw::resume_(
-  logger? : @pino.Logger = @pino.logger(
+  logger~ : @pino.Logger = @pino.logger(
     "moonclaw",
     try! @pino.Transport::parse("file:\{default_log_path()}"),
   ),

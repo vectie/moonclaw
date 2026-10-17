@@ -286,8 +286,8 @@ fn Daemon::enforce_supervisor_worker_deadline(
   group~ : @async.TaskGroup[Unit],
   supervisor_id : String,
   worker_run_id : String,
-  attempt : Int,
-  delay_ms : Int,
+  attempt : Int32,
+  delay_ms : Int32,
 ) -> Unit {
   group.spawn_bg(
     () => {
@@ -316,7 +316,7 @@ fn Daemon::enforce_supervisor_worker_deadline(
           return
         }
       }
-      if !(response.code is (200..=299)) {
+      if !(response.code is (200..<=299)) {
         logger.error(
           "Worker rejected runtime-ceiling cancellation \{worker_run_id}: \{response_body.text()}",
         )
@@ -514,7 +514,7 @@ async fn Daemon::supervisor_worker_command(
               "http://127.0.0.1:\{task.port}/v1/external-event/user-message",
               { "message": request.instruction },
             )
-            guard response.code is (200..=299) else {
+            guard response.code is (200..<=299) else {
               raise supervisor_http_failure(
                 "worker provider rejected steer: \{response_body.text()}",
               )
@@ -564,7 +564,7 @@ async fn Daemon::supervisor_worker_command(
               "http://127.0.0.1:\{task.port}\{cancel_path}",
               {},
             )
-            guard response.code is (200..=299) else {
+            guard response.code is (200..<=299) else {
               raise supervisor_http_failure(
                 "worker provider rejected stop: \{response_body.text()}",
               )

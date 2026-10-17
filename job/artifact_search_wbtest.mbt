@@ -11,8 +11,8 @@ async fn search_test_write(
   artifacts : ArtifactStore,
   id : String,
   content : String,
-  job_id? : String = "job-search",
-  run_id? : String = "run-search",
+  job_id~ : String = "job-search",
+  run_id~ : String = "run-search",
 ) -> ArtifactRecord {
   artifacts.write(
     ArtifactWriteRequest::new(

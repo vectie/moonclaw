@@ -52,7 +52,7 @@ fn metadata_bool_with_step_metadata_option(
 fn metadata_int_with_step_metadata_option(
   metadata : Json,
   key : String,
-) -> Int? {
+) -> Int32? {
   match metadata_with_step_metadata(metadata, key) {
     Some(Number(value, ..)) => Some(value.to_int())
     _ => None

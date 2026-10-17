@@ -1,7 +1,7 @@
 ///|
 /// Token usage details for the model-completion segment.
 pub struct CompletionTokensDetails {
-  reasoning_tokens : Int?
+  reasoning_tokens : Int32?
 } derive(Debug, ToJson)
 
 ///|

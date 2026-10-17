@@ -318,7 +318,7 @@ fn native_event_json_string(
 }
 
 ///|
-fn native_event_json_int(json : Json, key : String, default~ : Int) -> Int {
+fn native_event_json_int(json : Json, key : String, default~ : Int32) -> Int32 {
   match native_event_json_object_field(json, key) {
     Some(Number(value, ..)) => value.to_int()
     Some(String(value)) => @string.parse_int(value) catch { _ => default }

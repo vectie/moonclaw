@@ -2,7 +2,7 @@
 pub async fn add_worktree(
   path : String,
   new_branch? : String,
-  force_new_branch? : Bool = false,
+  force_new_branch~ : Bool = false,
   commit? : String,
   cwd? : StringView,
 ) -> Unit {
@@ -24,7 +24,7 @@ pub async fn add_worktree(
 ///|
 pub async fn remove_worktree(
   path : String,
-  force? : Bool = false,
+  force~ : Bool = false,
   cwd? : StringView,
 ) -> Unit {
   let root = cwd.map(fn(value) { value.to_owned() }).unwrap_or(".")

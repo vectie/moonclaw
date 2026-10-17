@@ -16,7 +16,7 @@ pub(all) enum Color {
   BrightMagenta
   BrightCyan
   BrightWhite
-  Rgb(Int, Int, Int)
+  Rgb(Int32, Int32, Int32)
 }
 
 ///|
@@ -180,17 +180,17 @@ pub const EnableBracketedPaste : String = "\u001b[?2004h"
 pub const DisableBracketedPaste : String = "\u001b[?2004l"
 
 ///|
-pub fn cursor_to(col : Int, row : Int) -> String {
+pub fn cursor_to(col : Int32, row : Int32) -> String {
   "\u001b[\{row + 1};\{col + 1}H"
 }
 
 ///|
-pub fn cursor_to_col(col : Int) -> String {
+pub fn cursor_to_col(col : Int32) -> String {
   "\u001b[\{col + 1}G"
 }
 
 ///|
-pub fn cursor_up(n : Int) -> String {
+pub fn cursor_up(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -199,7 +199,7 @@ pub fn cursor_up(n : Int) -> String {
 }
 
 ///|
-pub fn cursor_down(n : Int) -> String {
+pub fn cursor_down(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -208,7 +208,7 @@ pub fn cursor_down(n : Int) -> String {
 }
 
 ///|
-pub fn cursor_right(n : Int) -> String {
+pub fn cursor_right(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -217,7 +217,7 @@ pub fn cursor_right(n : Int) -> String {
 }
 
 ///|
-pub fn cursor_left(n : Int) -> String {
+pub fn cursor_left(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -226,7 +226,7 @@ pub fn cursor_left(n : Int) -> String {
 }
 
 ///|
-pub fn scroll_up(n : Int) -> String {
+pub fn scroll_up(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -235,7 +235,7 @@ pub fn scroll_up(n : Int) -> String {
 }
 
 ///|
-pub fn scroll_down(n : Int) -> String {
+pub fn scroll_down(n : Int32) -> String {
   if n <= 0 {
     ""
   } else {
@@ -244,7 +244,7 @@ pub fn scroll_down(n : Int) -> String {
 }
 
 ///|
-pub fn erase_lines(n : Int) -> String {
+pub fn erase_lines(n : Int32) -> String {
   let mut result = ""
   for _ in 0..<n {
     result = "\{result}\{ClearLine}\n"
@@ -300,7 +300,7 @@ pub fn underline(text : String) -> String {
 }
 
 ///|
-pub fn visible_width(text : String) -> Int {
+pub fn visible_width(text : String) -> Int32 {
   let mut width = 0
   let mut in_escape = false
   for c in text {
@@ -321,7 +321,7 @@ pub fn visible_width(text : String) -> Int {
 }
 
 ///|
-pub fn truncate_styled(text : String, max_width : Int) -> String {
+pub fn truncate_styled(text : String, max_width : Int32) -> String {
   if max_width <= 0 {
     return ""
   }

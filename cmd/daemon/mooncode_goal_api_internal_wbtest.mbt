@@ -3,7 +3,7 @@
 /// signature drift found here should be transferred to the later ledger slice.
 fn goal_internal_assert_error(
   response : MoonCodeGoalApiResponse,
-  status : Int,
+  status : Int32,
   code : String,
 ) -> Unit raise {
   assert_eq(response.status_code, status)

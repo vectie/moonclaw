@@ -9,7 +9,7 @@ fn option_text(options : Json, key : String, fallback : String) -> String raise 
 }
 
 ///|
-fn option_number(options : Json, key : String, fallback : Int) -> Int raise {
+fn option_number(options : Json, key : String, fallback : Int32) -> Int32 raise {
   guard options is Object(fields) else { fail("options must be a JSON object") }
   match fields.get(key) {
     None => fallback

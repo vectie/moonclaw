@@ -11,8 +11,8 @@ fn option_text(fields : Map[String, Json], key : String) -> String raise {
 fn option_number(
   fields : Map[String, Json],
   key : String,
-  fallback : Int,
-) -> Int raise {
+  fallback : Int32,
+) -> Int32 raise {
   match fields.get(key) {
     None => fallback
     Some(Number(n, ..)) if n >= 0 &&

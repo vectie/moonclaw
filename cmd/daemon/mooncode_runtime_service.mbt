@@ -786,7 +786,7 @@ fn mooncode_runtime_service_rearm_requested(
 ///|
 fn mooncode_runtime_service_rearm_event(
   event : Json,
-  rearm_count : Int,
+  rearm_count : Int32,
 ) -> Json {
   if rearm_count == 0 {
     event
@@ -1030,7 +1030,7 @@ fn mooncode_runtime_service_consumer_id(payload : Json) -> String {
 }
 
 ///|
-fn mooncode_runtime_service_live_wait_ms(payload : Json) -> Int {
+fn mooncode_runtime_service_live_wait_ms(payload : Json) -> Int32 {
   let requested = mooncode_json_int(payload, "live_wait_ms", default=5000)
   if requested < 0 {
     0

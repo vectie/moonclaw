@@ -38,8 +38,8 @@ pub fn AssistantMessage::is_streaming(self : AssistantMessage) -> Bool {
 ///|
 pub fn AssistantMessage::get_preferred_height(
   self : AssistantMessage,
-  width : Int,
-) -> Int {
+  width : Int32,
+) -> Int32 {
   let inner_width = width - 2
   let lines = wrap_text(self.text, inner_width.max(1))
   (lines.length() + 1).max(2)
@@ -49,10 +49,10 @@ pub fn AssistantMessage::get_preferred_height(
 pub fn AssistantMessage::render(
   self : AssistantMessage,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let theme = Theme::default()
   output.write(cursor_to(x, y))
@@ -100,8 +100,8 @@ pub fn SystemMessage::text(self : SystemMessage) -> String {
 ///|
 pub fn SystemMessage::get_preferred_height(
   self : SystemMessage,
-  _width : Int,
-) -> Int {
+  _width : Int32,
+) -> Int32 {
   let lines = self.text.split("\n").collect()
   lines.length() + 2
 }
@@ -110,10 +110,10 @@ pub fn SystemMessage::get_preferred_height(
 pub fn SystemMessage::render(
   self : SystemMessage,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   let theme = Theme::default()
   output.write(cursor_to(x, y))

@@ -85,7 +85,7 @@ pub fn WeixinChannel::with_extension(
 }
 
 ///|
-fn weixin_hex_char(n : Int) -> Char {
+fn weixin_hex_char(n : Int32) -> Char {
   if n < 10 {
     ('0'.to_int() + n).unsafe_to_char()
   } else {
@@ -161,7 +161,7 @@ fn strip_xml_cdata(text : String) -> String {
 }
 
 ///|
-fn parse_weixin_timestamp_ms(raw : String?) -> Int {
+fn parse_weixin_timestamp_ms(raw : String?) -> Int32 {
   match raw {
     Some(value) => (@string.parse_int(value) catch { _ => 0 }) * 1000
     None => 0

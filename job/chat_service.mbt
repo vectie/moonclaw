@@ -5,8 +5,8 @@ pub(all) struct JobNotifyTarget {
   recipient : String
   thread_id : String?
   verbosity : NotificationVerbosity
-  heartbeat_interval_ms : Int
-  warn_after_ms : Int
+  heartbeat_interval_ms : Int32
+  warn_after_ms : Int32
 } derive(Debug)
 
 ///|
@@ -61,9 +61,9 @@ pub(all) struct JobStatusSnapshot {
   status : String
   family : String
   current_step : String
-  done_steps : Int
-  total_steps : Int
-  elapsed_ms : Int
+  done_steps : Int32
+  total_steps : Int32
+  elapsed_ms : Int32
   lineage_line : String?
   summary : String?
   error : String?
@@ -81,14 +81,14 @@ pub(all) struct ActiveJobSnapshot {
   run_id : String
   status : String
   family : String
-  depth : Int
+  depth : Int32
   current_step : String
 } derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct JobNotificationRuntimeState {
-  last_sent_at : Int
-  last_notified_event_count : Int
+  last_sent_at : Int32
+  last_notified_event_count : Int32
   long_running_warned : Bool
 } derive(Debug, ToJson, FromJson)
 
@@ -189,9 +189,9 @@ pub async fn save_job_notification_preference(
   recipient : String,
   thread_id : String?,
   verbosity : NotificationVerbosity,
-  now_ms : Int,
-  heartbeat_interval_ms? : Int? = None,
-  warn_after_ms? : Int? = None,
+  now_ms : Int32,
+  heartbeat_interval_ms~ : Int32? = None,
+  warn_after_ms~ : Int32? = None,
 ) -> Unit {
   let id = notification_preference_id(
     channel_id, account_id, recipient, thread_id,
@@ -283,8 +283,8 @@ pub fn render_progress_notification(
 
 ///|
 pub fn initial_notification_runtime_state(
-  now_ms : Int,
-  last_notified_event_count? : Int = 0,
+  now_ms : Int32,
+  last_notified_event_count~ : Int32 = 0,
 ) -> JobNotificationRuntimeState {
   {
     last_sent_at: now_ms,
@@ -300,7 +300,7 @@ pub fn decide_active_job_notifications(
   events : Array[JobRunEvent],
   target : JobNotifyTarget,
   state : JobNotificationRuntimeState,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> JobNotificationDecision {
   if target.verbosity is Off {
     return { messages: [], next_state: state, }

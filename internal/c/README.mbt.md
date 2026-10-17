@@ -20,7 +20,7 @@ pointer validity.
 ///|
 test {
   // Allocate space for a single Int
-  let ptr : @c.Pointer[Int] = @c.malloc(8)
+  let ptr : @c.Pointer[Int32] = @c.malloc(8)
   // Write a value through the pointer
   ptr.store(42)
   // Read the value back

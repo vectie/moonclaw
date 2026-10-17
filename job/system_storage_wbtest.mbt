@@ -482,7 +482,7 @@ fn sample_analysis_recovery_definition() -> JobDefinition {
 
 ///|
 fn sample_analysis_recovery_step(
-  metadata? : Json = {},
+  metadata~ : Json = {},
 ) -> WorkflowStepDefinition {
   {
     id: "repair_planbook_gap",

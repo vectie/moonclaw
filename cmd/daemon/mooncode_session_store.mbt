@@ -20,7 +20,7 @@ async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
 ///|
 async fn mooncode_durable_session_listing_records(
   book_root : String,
-  include_log_counts? : Bool = true,
+  include_log_counts~ : Bool = true,
 ) -> Array[Json] {
   mooncode_durable_session_listing_records_at(
     book_root,
@@ -32,7 +32,7 @@ async fn mooncode_durable_session_listing_records(
 ///|
 async fn mooncode_durable_archived_session_listing_records(
   book_root : String,
-  include_log_counts? : Bool = true,
+  include_log_counts~ : Bool = true,
 ) -> Array[Json] {
   mooncode_durable_session_listing_records_at(
     book_root,
@@ -348,8 +348,8 @@ async fn mooncode_session_listing_record_from_parts_locked(
   live_binding : MoonCodeSessionBinding?,
   snapshot : Json,
   source~ : String,
-  include_log_counts? : Bool = true,
-  archived? : Bool = false,
+  include_log_counts~ : Bool = true,
+  archived~ : Bool = false,
 ) -> Json {
   let safe_session_id = mooncode_safe_session_id(session_id)
   let journal_path = mooncode_session_journal_path_by_safe_id(
@@ -665,7 +665,7 @@ async fn mooncode_session_record_from_parts_locked(
 ///|
 fn mooncode_session_snapshot(
   binding : MoonCodeSessionBinding,
-  journal_sequence? : MoonCodeJournalSequence = MoonCodeJournalSequence::zero(),
+  journal_sequence~ : MoonCodeJournalSequence = MoonCodeJournalSequence::zero(),
 ) -> Json {
   {
     "kind": "mooncode-session-snapshot",
@@ -951,7 +951,7 @@ async fn mooncode_write_session_state_locked(
 async fn mooncode_require_active_session_state_locked(
   book_root : String,
   session_id : String,
-  allow_create? : Bool = false,
+  allow_create~ : Bool = false,
 ) -> Unit {
   let state = mooncode_session_state_locked(book_root, session_id)
   if state == "active" {
@@ -985,7 +985,7 @@ fn mooncode_session_store_root(book_root : String, archived~ : Bool) -> String {
 fn mooncode_session_dir_by_safe_id(
   book_root : String,
   safe_session_id : String,
-  archived? : Bool = false,
+  archived~ : Bool = false,
 ) -> String {
   mooncode_session_store_root(book_root, archived~)
   |> @pathx.join(safe_session_id)
@@ -1003,7 +1003,7 @@ fn mooncode_session_snapshot_path(
 fn mooncode_session_snapshot_path_by_safe_id(
   book_root : String,
   safe_session_id : String,
-  archived? : Bool = false,
+  archived~ : Bool = false,
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("session.json")
@@ -1033,8 +1033,8 @@ async fn mooncode_session_listing_record_from_parts(
   live_binding : MoonCodeSessionBinding?,
   snapshot : Json,
   source~ : String,
-  include_log_counts? : Bool = true,
-  archived? : Bool = false,
+  include_log_counts~ : Bool = true,
+  archived~ : Bool = false,
 ) -> Json {
   if book_root == "" {
     return mooncode_session_listing_record_from_parts_locked(

@@ -29,7 +29,7 @@ async fn send_chat_request(
   )
   defer client.close()
   let response = client.post(uri.path, request.body)
-  guard response.code is (200..=299) else {
+  guard response.code is (200..<=299) else {
     raise HttpRetryError(
       code=response.code,
       body=client.read_all().text(),

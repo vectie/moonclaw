@@ -1579,7 +1579,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
 fn mooncode_runtime_turn_stops_tool_batch(
   plan : Json,
   execution : Json,
-  skill_boundary_active? : Bool = false,
+  skill_boundary_active~ : Bool = false,
   next_tool_call? : Json,
 ) -> Bool {
   let result = mooncode_json_object_field_or_empty(execution, "result")
@@ -2453,7 +2453,7 @@ fn mooncode_runtime_turn_path_has_retained_complete_observation(
 fn mooncode_runtime_turn_repeats_complete_read(
   tool_call : Json,
   results : Array[Json],
-  active_model_messages? : Array[Json] = [],
+  active_model_messages~ : Array[Json] = [],
 ) -> Bool {
   if mooncode_json_string(tool_call, "tool", default="") != "read" {
     return false
@@ -2549,7 +2549,7 @@ fn mooncode_runtime_turn_model_context_retains_complete_observation(
 fn mooncode_runtime_turn_duplicate_complete_observation_path(
   execution : Json,
   prior_results : Array[Json],
-  active_model_messages? : Array[Json] = [],
+  active_model_messages~ : Array[Json] = [],
 ) -> String? {
   if mooncode_json_string(execution, "tool", default="") != "shell" {
     return None
@@ -2579,7 +2579,7 @@ fn mooncode_runtime_turn_duplicate_read_execution(
   book_root : String,
   command_id : String,
   tool_call : Json,
-  path? : String = "",
+  path~ : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let tool = mooncode_json_string(tool_call, "tool", default="read")

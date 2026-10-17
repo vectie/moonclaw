@@ -22,10 +22,10 @@ fn collection_text(
 /// This does not use the provider registry, fetch URLs or write any files.
 pub async fn read_feed_collection(
   manifest_path : String,
-  query? : String = "",
-  source? : String = "",
-  limit? : Int = 50,
-  offset? : Int = 0,
+  query~ : String = "",
+  source~ : String = "",
+  limit~ : Int32 = 50,
+  offset~ : Int32 = 0,
 ) -> FeedCollectionPage {
   check_collection_options(limit, offset)
   let (title, snapshots) = load_feed_snapshots(manifest_path)

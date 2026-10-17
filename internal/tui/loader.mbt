@@ -1,7 +1,7 @@
 ///|
 pub(all) struct Loader {
   frames : Array[String]
-  mut current : Int
+  mut current : Int32
   mut message : String
   mut running : Bool
   style : TextStyle
@@ -75,7 +75,7 @@ pub fn Loader::tick(self : Loader) -> Unit {
 }
 
 ///|
-pub fn Loader::get_preferred_height(_self : Loader, _width : Int) -> Int {
+pub fn Loader::get_preferred_height(_self : Loader, _width : Int32) -> Int32 {
   1
 }
 
@@ -83,10 +83,10 @@ pub fn Loader::get_preferred_height(_self : Loader, _width : Int) -> Int {
 pub fn Loader::render(
   self : Loader,
   output : RenderOutput,
-  x : Int,
-  y : Int,
-  _width : Int,
-  _height : Int,
+  x : Int32,
+  y : Int32,
+  _width : Int32,
+  _height : Int32,
 ) -> Unit {
   output.write(cursor_to(x, y))
   output.write(ClearLineRight)

@@ -22,24 +22,24 @@ pub(all) struct AnalysisToolContract {
 
 ///|
 pub fn AnalysisToolContract::new(
-  shell? : Bool = true,
-  list_files? : Bool = true,
-  glob_files? : Bool = true,
-  list_resources? : Bool = true,
-  read_resource? : Bool = true,
-  runtime_context? : Bool = false,
-  list_worktrees? : Bool = false,
-  delegate_run? : Bool = false,
-  enter_worktree? : Bool = false,
-  exit_worktree? : Bool = false,
-  read_files? : Bool = true,
-  search_files? : Bool = true,
-  todo? : Bool = true,
-  file_write? : Bool = true,
-  patch_edit? : Bool = true,
-  unlimited_ocr? : Bool = true,
-  web_fetch? : Bool = false,
-  web_search? : Bool = false,
+  shell~ : Bool = true,
+  list_files~ : Bool = true,
+  glob_files~ : Bool = true,
+  list_resources~ : Bool = true,
+  read_resource~ : Bool = true,
+  runtime_context~ : Bool = false,
+  list_worktrees~ : Bool = false,
+  delegate_run~ : Bool = false,
+  enter_worktree~ : Bool = false,
+  exit_worktree~ : Bool = false,
+  read_files~ : Bool = true,
+  search_files~ : Bool = true,
+  todo~ : Bool = true,
+  file_write~ : Bool = true,
+  patch_edit~ : Bool = true,
+  unlimited_ocr~ : Bool = true,
+  web_fetch~ : Bool = false,
+  web_search~ : Bool = false,
 ) -> AnalysisToolContract {
   {
     shell,
@@ -605,7 +605,7 @@ pub fn configure_analysis_agent_for_request(
 pub fn configure_analysis_agent_tools(
   agent : @agent.Agent,
   cwd : String,
-  web_search? : Bool = false,
+  web_search~ : Bool = false,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   configure_analysis_agent_for_contract(

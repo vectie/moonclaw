@@ -3,8 +3,8 @@
 /// Text excludes that ending; a bare CR remains part of text.
 pub struct LineEdit {
   kind : String
-  left_line : Int?
-  right_line : Int?
+  left_line : Int32?
+  right_line : Int32?
   text : String
   ending : String
 } derive(ToJson)
@@ -12,11 +12,11 @@ pub struct LineEdit {
 ///|
 pub struct TextDiff {
   identical : Bool
-  left_lines : Int
-  right_lines : Int
-  added_lines : Int
-  removed_lines : Int
-  unchanged_lines : Int
+  left_lines : Int32
+  right_lines : Int32
+  added_lines : Int32
+  removed_lines : Int32
+  unchanged_lines : Int32
   edits : Array[LineEdit]
 } derive(ToJson)
 
@@ -41,8 +41,8 @@ fn split_lines(text : String) -> Array[String] raise {
 ///|
 fn line_edit(
   kind : String,
-  left_line : Int?,
-  right_line : Int?,
+  left_line : Int32?,
+  right_line : Int32?,
   raw : String,
 ) -> LineEdit {
   let ending = if raw.has_suffix("\r\n") {
@@ -68,7 +68,7 @@ fn line_edit(
 pub fn compare_text(left : String, right : String) -> TextDiff raise {
   let before = split_lines(left)
   let after = split_lines(right)
-  let dictionary : Map[String, Int] = Map::new()
+  let dictionary : Map[String, Int32] = Map::new()
   let intern = fn(lines : Array[String]) {
     lines.map(fn(line) {
       match dictionary.get(line) {

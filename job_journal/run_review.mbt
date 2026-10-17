@@ -6,11 +6,11 @@ pub struct RunReview {
   run_id : String
   job_id : String
   manifest_source : String
-  total_events : Int
-  excluded_events : Int
-  total_artifacts : Int
-  excluded_artifacts : Int
-  selected_content_bytes : Int
+  total_events : Int32
+  excluded_events : Int32
+  total_artifacts : Int32
+  excluded_artifacts : Int32
+  selected_content_bytes : Int32
   content_verification : String
   notes : Array[String]
   events : Array[JournalEntry]
@@ -41,7 +41,7 @@ pub fn review_run(
     fail("Combined journals exceed 10000 events")
   }
   let all_artifacts = parse_review_artifacts(manifest_text, manifest_source)
-  let selected : Array[(JournalEntry, Int, Int)] = []
+  let selected : Array[(JournalEntry, Int32, Int32)] = []
   let mut job : String? = None
   for index, entry in entries {
     let event = event_fields(entry)

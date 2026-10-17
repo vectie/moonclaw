@@ -14,10 +14,10 @@ fn test_scope() -> @browser.BrowserSessionScope {
 fn test_action(
   id : String,
   actor : @browser.BrowserActor,
-  operation? : @browser.BrowserOperation = Click,
-  target? : String = "role=button[name='Calculate']",
-  code_revision? : String = "code-a91",
-  required_effect? : @browser.BrowserEffectClass = InteractLocalPage,
+  operation~ : @browser.BrowserOperation = Click,
+  target~ : String = "role=button[name='Calculate']",
+  code_revision~ : String = "code-a91",
+  required_effect~ : @browser.BrowserEffectClass = InteractLocalPage,
 ) -> @browser.BrowserAction {
   @browser.browser_action(
     action_id=id,
@@ -46,14 +46,14 @@ fn ready_command(
 ///|
 fn completed_result(
   command : @browser.BrowserHostCommand,
-  before? : String = "state-before",
-  after? : String = "state-after",
-  target_resolved? : Bool = true,
-  page_trust? : @browser.BrowserPageTrust = TrustedLocalPage,
-  destination_class? : @browser.BrowserDestinationClass = DestinationNotApplicable,
-  quarantine_ref? : String = "",
-  transfer_verdict? : @browser.BrowserTransferVerdict = TransferNotScanned,
-  fresh_authority_valid? : Bool = true,
+  before~ : String = "state-before",
+  after~ : String = "state-after",
+  target_resolved~ : Bool = true,
+  page_trust~ : @browser.BrowserPageTrust = TrustedLocalPage,
+  destination_class~ : @browser.BrowserDestinationClass = DestinationNotApplicable,
+  quarantine_ref~ : String = "",
+  transfer_verdict~ : @browser.BrowserTransferVerdict = TransferNotScanned,
+  fresh_authority_valid~ : Bool = true,
 ) -> @browser.BrowserHostResult {
   @browser.browser_host_result(
     host_receipt_id="fixture-receipt-" + command.action_id,
@@ -385,12 +385,12 @@ fn external_worker() -> @browser.BrowserWorker {
 fn external_action(
   id : String,
   effect : @browser.BrowserEffectClass,
-  target? : String = "role=button[name='Continue']",
-  page_trust? : @browser.BrowserPageTrust = UntrustedExternalPage,
-  transfer_path? : String = "",
-  credential_handle? : String = "",
-  idempotency_key? : String = "",
-  nonce? : String = "",
+  target~ : String = "role=button[name='Continue']",
+  page_trust~ : @browser.BrowserPageTrust = UntrustedExternalPage,
+  transfer_path~ : String = "",
+  credential_handle~ : String = "",
+  idempotency_key~ : String = "",
+  nonce~ : String = "",
 ) -> @browser.BrowserAction {
   @browser.browser_action(
     action_id=id,

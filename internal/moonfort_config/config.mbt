@@ -1,5 +1,5 @@
 ///|
-const MaxSandboxExecutorConfigBytes : Int = 1_048_576
+const MaxSandboxExecutorConfigBytes : Int32 = 1_048_576
 
 ///|
 const SandboxExecutorConfigEnv : String = "MOONCLAW_MOONFORT_CONFIG"
@@ -9,7 +9,7 @@ const MoonFortPromotionConfigEnv : String = "MOONCLAW_MOONFORT_PROMOTION_CONFIG"
 
 ///|
 pub(all) struct PromotionAdapterConfig {
-  protocol_version : Int
+  protocol_version : Int32
   promotion_path : String
   promotion_args : Array[String]
   executor_config_path : String
@@ -17,7 +17,7 @@ pub(all) struct PromotionAdapterConfig {
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
-async fn read_bounded_canonical_file(path : String, limit : Int) -> String {
+async fn read_bounded_canonical_file(path : String, limit : Int32) -> String {
   guard path.has_prefix("/") && limit > 0 else {
     fail("MoonFort configuration path must be absolute")
   }

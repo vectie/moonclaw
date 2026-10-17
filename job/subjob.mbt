@@ -7,19 +7,19 @@ pub(all) struct SubjobStepConfig {
   execution_mode : String?
   execution_target : String?
   include_parent_outputs : Bool
-  max_depth : Int
+  max_depth : Int32
 } derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn SubjobStepConfig::new(
   request_text~ : String,
-  cwd? : String? = None,
-  home? : String? = None,
-  child_profile? : String? = None,
-  execution_mode? : String? = None,
-  execution_target? : String? = None,
-  include_parent_outputs? : Bool = true,
-  max_depth? : Int = 2,
+  cwd~ : String? = None,
+  home~ : String? = None,
+  child_profile~ : String? = None,
+  execution_mode~ : String? = None,
+  execution_target~ : String? = None,
+  include_parent_outputs~ : Bool = true,
+  max_depth~ : Int32 = 2,
 ) -> SubjobStepConfig {
   {
     request_text,
@@ -217,7 +217,7 @@ async fn planned_subjob_proposal(
   home : String?,
   config : SubjobStepConfig,
   planner : ProposalPlanner,
-  now : () -> Int,
+  now : () -> Int32,
 ) -> Result[JobProposal, String] {
   // For provider-backed delegation, the provider owns task decomposition and
   // MoonClaw only compiles the returned task batch into child analysis steps.
@@ -300,12 +300,12 @@ pub fn ProposalPlanner::new(
 
 ///|
 pub(all) struct ProposalCompiler {
-  run : (JobProposal, Int, String, String) -> ProposalCompilation
+  run : (JobProposal, Int32, String, String) -> ProposalCompilation
 }
 
 ///|
 pub fn ProposalCompiler::new(
-  run~ : (JobProposal, Int, String, String) -> ProposalCompilation,
+  run~ : (JobProposal, Int32, String, String) -> ProposalCompilation,
 ) -> ProposalCompiler {
   { run, }
 }
@@ -346,7 +346,7 @@ pub fn ChildRunExecutor::new(
 async fn execute_child_run_locally(
   child_run : JobRun,
   engine_factory : () -> WorkflowEngine,
-  now : () -> Int,
+  now : () -> Int32,
   control : WorkflowExecutionControl,
 ) -> Result[ChildRunExecutionResult, String] {
   let engine = engine_factory()
@@ -372,7 +372,7 @@ async fn record_parent_child_run_event(
   event_type : String,
   status : RunStatus,
   message : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   store.append_run_event({
     run_id: context.run.id,
@@ -396,7 +396,7 @@ async fn record_parent_child_run_started(
   context : WorkflowStepContext,
   compilation : ProposalCompilation,
   child_run : JobRun,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   record_parent_child_run_event(
     store,
@@ -418,7 +418,7 @@ async fn record_parent_child_run_finished(
   child_run : JobRun,
   status : RunStatus,
   message : String,
-  now_ms : Int,
+  now_ms : Int32,
 ) -> Unit {
   record_parent_child_run_event(
     store,
@@ -442,10 +442,10 @@ pub fn subjob_step_handler(
   planner~ : ProposalPlanner,
   compiler~ : ProposalCompiler,
   engine_factory~ : () -> WorkflowEngine,
-  child_executor? : ChildRunExecutor? = None,
-  now? : () -> Int = fn() { @async.now().to_int() },
-  next_run_id? : () -> String = fn() { "run.\{now()}" },
-  kind? : String = "job.delegate",
+  child_executor~ : ChildRunExecutor? = None,
+  now~ : () -> Int32 = fn() { @async.now().to_int() },
+  next_run_id~ : () -> String = fn() { "run.\{now()}" },
+  kind~ : String = "job.delegate",
 ) -> WorkflowStepHandler {
   let store = runtime.store()
   WorkflowStepHandler::new(kind~, run=async fn(context) {

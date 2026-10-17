@@ -3,7 +3,7 @@
 priv struct FileEntry {
   name : String
   kind : String // "file", "directory", "symlink", etc.
-  size : Int? // Size in bytes for files, None for directories
+  size : Int32? // Size in bytes for files, None for directories
   is_hidden : Bool
 } derive(ToJson, FromJson)
 
@@ -12,9 +12,9 @@ priv struct FileEntry {
 struct ListFilesResult {
   path : String
   entries : Array[FileEntry]
-  total_count : Int
-  file_count : Int
-  directory_count : Int
+  total_count : Int32
+  file_count : Int32
+  directory_count : Int32
 } derive(ToJson, FromJson)
 
 ///|

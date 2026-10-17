@@ -8,8 +8,8 @@ priv struct FeishuWebSocketHeader {
 priv struct FeishuWebSocketFrame {
   seq_id : UInt64
   log_id : UInt64
-  service : Int
-  method_id : Int
+  service : Int32
+  method_id : Int32
   headers : Array[FeishuWebSocketHeader]
   payload_encoding : String?
   payload_type : String?
@@ -19,14 +19,14 @@ priv struct FeishuWebSocketFrame {
 
 ///|
 priv struct FeishuWebSocketChunkState {
-  chunks : Map[Int, Bytes]
+  chunks : Map[Int32, Bytes]
 }
 
 ///|
-let feishu_ws_control_frame : Int = 0
+let feishu_ws_control_frame : Int32 = 0
 
 ///|
-let feishu_ws_data_frame : Int = 1
+let feishu_ws_data_frame : Int32 = 1
 
 ///|
 let feishu_ws_header_type : String = "type"
@@ -66,14 +66,14 @@ fn write_varint(buffer : @buffer.Buffer, value : UInt64) -> Unit {
 }
 
 ///|
-fn encode_field_key(field_number : Int, wire_type : Int) -> UInt64 {
+fn encode_field_key(field_number : Int32, wire_type : Int32) -> UInt64 {
   ((field_number << 3) | wire_type).to_uint64()
 }
 
 ///|
 fn write_length_delimited_field(
   buffer : @buffer.Buffer,
-  field_number : Int,
+  field_number : Int32,
   bytes : Bytes,
 ) -> Unit {
   write_varint(buffer, encode_field_key(field_number, 2))
@@ -126,7 +126,7 @@ fn encode_feishu_websocket_frame(frame : FeishuWebSocketFrame) -> Bytes {
 }
 
 ///|
-fn read_varint(bytes : BytesView, start : Int) -> (UInt64, Int)? {
+fn read_varint(bytes : BytesView, start : Int32) -> (UInt64, Int32)? {
   let mut value : UInt64 = 0
   let mut shift = 0
   let mut index = start
@@ -146,7 +146,7 @@ fn read_varint(bytes : BytesView, start : Int) -> (UInt64, Int)? {
 }
 
 ///|
-fn read_length_delimited(bytes : BytesView, start : Int) -> (Bytes, Int)? {
+fn read_length_delimited(bytes : BytesView, start : Int32) -> (Bytes, Int32)? {
   let (length, next_index) = match read_varint(bytes, start) {
     Some(result) => result
     None => return None

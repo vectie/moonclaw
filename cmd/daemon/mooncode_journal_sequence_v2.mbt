@@ -103,7 +103,7 @@ fn MoonCodeJournalSequence::next(
 fn MoonCodeJournalSequence::compare(
   self : MoonCodeJournalSequence,
   other : MoonCodeJournalSequence,
-) -> Int {
+) -> Int32 {
   if self.text.length() < other.text.length() {
     return -1
   }

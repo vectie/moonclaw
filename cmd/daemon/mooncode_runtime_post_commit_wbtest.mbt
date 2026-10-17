@@ -207,7 +207,7 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
 ///|
 fn mooncode_post_commit_test_tool(
   tool : String,
-  arguments? : Json = {},
+  arguments~ : Json = {},
 ) -> Json {
   { "tool": tool, "arguments": arguments }
 }

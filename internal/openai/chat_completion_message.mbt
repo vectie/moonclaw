@@ -11,8 +11,8 @@ pub struct ChatCompletionMessage {
 pub fn ChatCompletionMessage::new(
   content? : String,
   refusal? : String,
-  role? : ChatCompletionMessageRole = Assistant,
-  tool_calls? : Array[ChatCompletionMessageToolCall] = [],
+  role~ : ChatCompletionMessageRole = Assistant,
+  tool_calls~ : Array[ChatCompletionMessageToolCall] = [],
 ) -> ChatCompletionMessage {
   { content, refusal, role, tool_calls, }
 }

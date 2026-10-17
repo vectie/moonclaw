@@ -133,7 +133,7 @@ async fn load_workspace_files(root : String) -> Array[WorkspaceFile] {
 }
 
 ///|
-fn excerpt_workspace_text(content : String, max_lines : Int) -> String {
+fn excerpt_workspace_text(content : String, max_lines : Int32) -> String {
   let lines : Array[String] = []
   for line in content.split("\n") {
     let trimmed = line.trim_end().to_owned()
@@ -229,7 +229,7 @@ async fn render_workspace_prompt_context(
 ///|
 pub async fn load_workspace_snapshot_from_root(
   root : String,
-  configured_from? : String = "explicit",
+  configured_from~ : String = "explicit",
 ) -> WorkspaceSnapshot {
   ensure_workspace_files(root)
   let files = load_workspace_files(root)

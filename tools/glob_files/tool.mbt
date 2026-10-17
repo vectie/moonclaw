@@ -3,7 +3,7 @@ pub struct GlobFilesResult {
   root : String
   pattern : String
   matches : Array[String]
-  total_matches : Int
+  total_matches : Int32
   truncated : Bool
   respect_gitignore : Bool
 } derive(ToJson, FromJson)
@@ -71,8 +71,8 @@ fn segment_matches(pattern : String, text : String) -> Bool {
 fn segment_matches_chars(
   pattern_chars : Array[Char],
   text_chars : Array[Char],
-  p_index : Int,
-  t_index : Int,
+  p_index : Int32,
+  t_index : Int32,
 ) -> Bool {
   if p_index >= pattern_chars.length() {
     return t_index >= text_chars.length()
@@ -98,8 +98,8 @@ fn segment_matches_chars(
 fn glob_matches_segments(
   pattern_segments : Array[String],
   path_segments : Array[String],
-  p_index : Int,
-  s_index : Int,
+  p_index : Int32,
+  s_index : Int32,
 ) -> Bool {
   if p_index >= pattern_segments.length() {
     return s_index >= path_segments.length()
@@ -165,8 +165,8 @@ async fn collect_glob_matches(
   respect_gitignore : Bool,
   does_respect_gitignore~ : Ref[Bool],
   matches : Array[String],
-  total_matches~ : Ref[Int],
-  max_results : Int,
+  total_matches~ : Ref[Int32],
+  max_results : Int32,
 ) -> Unit {
   let entries = @fsx.list_directory(absolute_root)
   for entry in entries {
@@ -242,7 +242,7 @@ async fn execute_glob_files(
     _ => fail("glob_files path must be a directory")
   }
   let max_results = match input.max_results {
-    Some(value) => Int::max(1, value)
+    Some(value) => Int32::max(1, value)
     None => 200
   }
   let respect_gitignore = input.respect_gitignore.unwrap_or(true)

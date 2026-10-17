@@ -53,7 +53,7 @@ pub async fn SessionManager::save_entry(
 }
 
 ///|
-pub fn SessionManager::count(self : SessionManager) -> Int {
+pub fn SessionManager::count(self : SessionManager) -> Int32 {
   self.sessions.length()
 }
 
@@ -139,7 +139,7 @@ pub fn DedupeCache::set(
 }
 
 ///|
-pub fn DedupeCache::clear_expired(self : DedupeCache, now_ms : Int) -> Unit {
+pub fn DedupeCache::clear_expired(self : DedupeCache, now_ms : Int32) -> Unit {
   let expired_keys : Array[String] = []
   for key, entry in self.entries {
     if now_ms - entry.ts > self.ttl_ms {

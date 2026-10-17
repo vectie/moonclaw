@@ -1243,7 +1243,7 @@ fn runtime_tool_test_string(json : Json, key : String) -> String {
 }
 
 ///|
-fn native_event_projection_test_int(json : Json, key : String) -> Int {
+fn native_event_projection_test_int(json : Json, key : String) -> Int32 {
   match json {
     Object(object) =>
       match object.get(key) {

@@ -4,7 +4,7 @@ pub async fn clone(
   url : String,
   to~ : StringView,
   cwd? : StringView,
-  depth? : Int,
+  depth? : Int32,
 ) -> Unit {
   if depth is Some(d) {
     guard d > 0 else { fail("depth must be a positive integer") }
@@ -48,7 +48,7 @@ pub async fn commit(
 pub async fn generate_git_diff(
   original~ : String,
   modified~ : String,
-  line_number? : Bool = false,
+  line_number~ : Bool = false,
 ) -> String {
   @fsx.with_temporary_directory("moonclaw-git-diff-XXXXXXX", tmpdir => {
     let original_path = @pathx.join(tmpdir, "original")
