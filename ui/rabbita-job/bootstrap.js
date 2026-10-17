@@ -19,3 +19,29 @@ if (app) {
 
 import('/main.js')
 installBookOutcome(document)
+
+import { installProcedures } from './procedure-controls.js'
+installProcedures(document)
+
+import { installBlockedRecovery } from './blocked-recovery-controls.js'
+installBlockedRecovery(document)
+
+import { installRework } from "./artifact-rework-controls.js"
+installRework(document)
+
+import { installSourceBrief } from './source-brief-controls.js'
+installSourceBrief(document)
+
+import { installObservedCases } from './observed-case-controls.js'
+installObservedCases(document)
+
+import { installTableInput } from './table-input-controls.js'
+installTableInput(document)
+import { installTableChanges } from './table-changes-controls.js'
+installTableChanges(document)
+
+import { installJSONInput } from './json-input-controls.js'
+installJSONInput(document)
+
+import { installJSONChanges } from './json-changes-controls.js'
+installJSONChanges(document)

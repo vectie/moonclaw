@@ -1,0 +1,5 @@
+ID,Status,Note,Owner
+001,active,"Multiline note:
+keep the quoted comma, and leading-zero ID.",private-owner-a
+002,waiting,"Needs a reviewer; =SUM(A1) is literal text.",private-owner-b
+003,done,This unselected record is omitted.,private-owner-c

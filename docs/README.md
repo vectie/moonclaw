@@ -10,6 +10,14 @@ states and pending inspections without making an acceptance decision.
 Use [CSV review editing](ARTIFACT_REVIEW_CSV.md) to exchange selected worksheet
 rows with local editors and preview exact-base note changes before import.
 
+For task input from a spreadsheet export, [select CSV records and columns](SELECTED_TABLE_INPUTS.md)
+in Work, inspect exact cells and original record positions, then preview and
+apply only the chosen table to the ordinary task draft.
+
+For nested exported observations, [select exact JSON or JSON Lines values](SELECTED_JSON_INPUTS.md)
+by document and JSON Pointer. Inspect complete subtrees, preserve large numeric
+IDs and original syntax, and preview only the chosen values in the task draft.
+
 MoonClaw is the bounded agent runtime for MoonSuite. It owns agent execution,
 job/session state, tool use, runtime evidence, gateway APIs, and MoonCode
 execution behavior. It should not become a desktop shell, durable knowledge

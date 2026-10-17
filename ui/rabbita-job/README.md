@@ -77,6 +77,11 @@ from the repo root, or use `moon -C /path/to/moonclaw run cmd/main -- ...`.
 
 Current surfaces:
 
+- Work [nested JSON input selection](../../docs/SELECTED_JSON_INPUTS.md): inspect,
+  order and preview exact paths from local JSON/JSON Lines exports in a task draft.
+
+- Work source-project save/reopen: [resume exact source curation](../../docs/SOURCE_PROJECTS.md)
+  through a previewed local JSON file, then edit and prepare an ordinary task.
 - `Home`: one state-derived next action plus Ask → Plan → Review → Run →
   Inspect progress
 - `Work`: request threads, transcript, attachments and reviewed-plan actions
@@ -118,3 +123,87 @@ Current workflow notes:
 
 The release journey and negative/recovery cases are recorded in
 `docs/qualification/UI_TO_UI_USE_CASES.md`.
+
+## Use what worked
+
+The existing Work screen includes an explicit accepted-procedure browser and
+expected-versus-delivered comparison. Select a saved work folder that is the Book
+root, open **Use what worked**, inspect/select a method, then use the ordinary
+Plan → Preview → Promote → Confirm path. See
+[`docs/USE_WHAT_WORKED.md`](../../docs/USE_WHAT_WORKED.md) for exact data boundaries,
+recovery behavior, authentication and verification limits. Selection alone never
+starts execution. Source/controller tests: `node --test procedures.test.mjs`.
+
+## Continue blocked work
+
+The Work screen's linked run now has a checkpoint-scoped missing-input recovery
+panel. Inspect completed work and retained artifacts, reopen a saved answer,
+then explicitly continue the same blocked step. Newer checkpoints and uncertain
+submissions require reconciliation rather than a blind replacement run. See
+[`BLOCKED_WORK_RECOVERY.md`](../../docs/BLOCKED_WORK_RECOVERY.md) for the connected
+contract and qualification limits. Run `bash scripts/test-blocked-recovery.sh`.
+
+## Focused source inputs
+
+In Work, **Choose focused source excerpts** imports operator-selected local UTF-8
+text or loads exact text outputs from the linked terminal run. It lets you curate numbered line ranges with relevance notes and a byte budget,
+and previews the exact text before adding it to the ordinary task draft. No file
+is sent until the normal task controls are used. See
+[Focused source briefs](../../docs/FOCUSED_SOURCE_BRIEFS.md) for limits,
+reimport behavior and verification boundaries.
+
+Retained passages share that same working set and are reread before preview and
+apply. See [Retained source passages](../../docs/RETAINED_SOURCE_PASSAGES.md) for
+run/job/artifact/version/digest provenance, read-only endpoints and limits.
+
+The focused-source panel includes a bounded exact-line comparison of two imported
+snapshots. Choose a changed passage and explicitly inspect either side in the
+existing excerpt editor before adding, previewing or applying it. See
+[Changed source passages](../../docs/CHANGED_SOURCE_PASSAGES.md) for limits,
+identity semantics and interruption behavior.
+
+### Observed teaching-case export
+
+Work → **Teach from observed outputs** connects exact retained run text to the
+existing MoonBook CSV rehearsal intake. Load, inspect source lines, explicitly
+label the observation and literal checks, queue cases, preview CSV, then download
+with source revalidation. See [OBSERVED_CASE_EXPORT.md](../../docs/OBSERVED_CASE_EXPORT.md).
+The ordinary plan/composer and Book review authority remain unchanged.
+
+### Reviewed local source refresh
+
+The existing Work source panel now supports a revised same-name local file
+without discarding the operator's curation. Review each old excerpt, choose an
+exact relocated range or manually replace/drop it, preview the full proposed
+project, then atomically replace only unsent source preparation. Notes and task
+order survive for retained excerpts. Use ordinary source-brief preview/apply to
+update a draft, and save a source project to keep the new revision.
+
+See [the operator guide](../../docs/REFRESH_SOURCE_EXCERPTS.md). Production modules
+are `source-refresh.js` and `source-refresh-controls.js`, mounted by the existing
+`source-brief-controls.js`. No new runtime API, MoonBit interface or dependency
+is introduced. Run `node --test source-refresh.test.mjs` from this directory.
+
+### Selected CSV task input
+
+Work → **Choose CSV records and columns** imports a local CSV, inspects logical
+records including quoted multiline cells, and selects rows/columns in task
+order. Original positions disambiguate blank/duplicate headers. Preview the
+complete draft, apply only the selected literal cells, revise/reapply or remove
+the table block. No request, model, formula or upload runs in this authoring flow.
+
+See [the operator guide and portable example](../../docs/SELECTED_TABLE_INPUTS.md).
+`table-input.js` owns the parser, selection and packet; `table-input-controls.js`
+mounts through `bootstrap.js` at the existing Work anchor. Run
+`node --test table-input.test.mjs`. Unsent preparation is tab-local; no source
+project or runtime interface changes are introduced.
+
+### Explicit JSON snapshot changes
+
+The Work composer also mounts **Compare explicitly chosen JSON locations** via
+`json-changes-controls.js`. Choose both local snapshots, formats, document numbers
+and pointers; inspect each exact typed/token pair and select only useful changes.
+Absent and null remain distinct. No array or JSONL entity identity is inferred.
+Preview and apply only prepare the ordinary draft; they do not call a provider.
+See the [worked JSONL example](../../docs/examples/json-changes/README.md).
+Run `node --test ui/rabbita-job/json-changes.test.mjs` from the repository root.

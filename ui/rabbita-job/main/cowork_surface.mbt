@@ -815,6 +815,8 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
     ]),
     div(class="panel-body cowork-main-body", [
       transcript_body,
+      render_cowork_procedures(model),
+      render_cowork_blocked_recovery(model),
       if model.cowork_reply_preview is Some(preview) {
         article(class="cowork-banner cowork-inline-banner", [
           p(class="node-title", "Reply Target"),
@@ -925,6 +927,7 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
               )
             },
             textarea(
+              id="claw-procedure-composer",
               class="artifact-editor-textarea cowork-composer-textarea",
               title="Describe the outcome you want",
               placeholder="Describe the outcome you want, the evidence to use, and any limits…",

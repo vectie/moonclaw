@@ -1,0 +1,6 @@
+ID,Status,Owner,Note
+001,waiting,Alex,Check the draft summary
+002,ready,Alex,The note mentions waiting but the status is ready
+003,waiting,Sam,Prepare another task
+004,waiting,Alex,"Compare the first paragraph
+with the revised ending"

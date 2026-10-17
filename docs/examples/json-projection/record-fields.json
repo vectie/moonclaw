@@ -1,0 +1,8 @@
+{
+  "items": [
+    {"ready": true, "id": 9007199254740993123, "a/b~": null, "private": "not selected"},
+    {"ready": true, "id": -0},
+    {"ready": true, "id": 1.2300e+400, "a/b~": "\u0061"},
+    {"ready": false, "id": 7, "a/b~": false}
+  ]
+}

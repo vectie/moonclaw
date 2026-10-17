@@ -76,6 +76,7 @@ struct CoworkPlanParams {
 ///|
 struct CoworkResumeParams {
   content : String
+  expected_checkpoint : String?
 } derive(FromJson, Debug)
 
 ///|
@@ -1126,6 +1127,20 @@ async fn Gateway::handle_cowork_resume_run(
   let params : CoworkResumeParams = decode_request_body(
     r, "cowork resume params",
   )
+  let session_key = artifact_route_id(session_key).unwrap_or(session_key)
+  let run_id = artifact_route_id(run_id).unwrap_or(run_id)
+  guard !self.recovery_resume_pending.contains(run_id) &&
+    !self.active_job_tasks.contains(run_id) else {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": "resume_not_submitted",
+        "message": "A resume is already being processed; refresh the same run",
+      },
+    })
+  }
+  self.recovery_resume_pending[run_id] = true
+  defer self.recovery_resume_pending.remove(run_id) |> ignore()
+  let event_count = self.job_runtime().store().list_run_events(run_id).length()
   let mut session = match self.sessions.get(session_key) {
     Some(entry) => entry
     None =>
@@ -1135,6 +1150,35 @@ async fn Gateway::handle_cowork_resume_run(
           "message": "Cowork session not found: \{session_key}",
         },
       })
+  }
+  guard session.linked_run_id == Some(run_id) else {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": "resume_not_submitted",
+        "message": "This run is no longer linked to the selected work thread",
+      },
+    })
+  }
+  if params.expected_checkpoint is Some(expected) {
+    let recovery = self.cowork_recovery_snapshot(session_key, run_id)
+    guard recovery is { "checkpoint": String(actual), "can_resume": True, .. } &&
+      actual == expected else {
+      raise json_error(409, "Conflict", {
+        "error": {
+          "code": "resume_not_submitted",
+          "message": "The blocked checkpoint changed or cannot be resumed. Refresh and review it; your answer was kept",
+        },
+      })
+    }
+    session = self.sessions.get(session_key).unwrap_or(session)
+  }
+  guard self.root_group() is Some(_) else {
+    raise json_error(503, "Unavailable", {
+      "error": {
+        "code": "resume_not_submitted",
+        "message": "The runtime is not active. Your answer has not been submitted",
+      },
+    })
   }
   let run = match self.job_runtime().store().get_run(run_id) {
     Some(run) => run
@@ -1164,7 +1208,21 @@ async fn Gateway::handle_cowork_resume_run(
         },
       })
   }
-  let resume_content = params.content.trim().to_owned()
+  // Conditional recovery hashes exactly these bytes. Legacy callers retain
+  // their prior trimming behavior; new clients normalize before hashing.
+  let resume_content = if params.expected_checkpoint is Some(_) {
+    params.content
+  } else {
+    params.content.trim().to_owned()
+  }
+  if params.expected_checkpoint is Some(_) && resume_content.length() > 16000 {
+    raise json_error(400, "BadRequest", {
+      "error": {
+        "code": "resume_not_submitted",
+        "message": "Keep the recovery answer within 16,000 characters",
+      },
+    })
+  }
   if resume_content.is_blank() {
     raise json_error(400, "BadRequest", {
       "error": {
@@ -1180,17 +1238,47 @@ async fn Gateway::handle_cowork_resume_run(
   seed_resume_notification_cursor(
     self.job_app.state(),
     run.id,
-    self.job_runtime().store().list_run_events(run.id).length(),
+    event_count,
     current_time_ms(),
   )
-  self.launch_job_run(run.id, initial_input=Some(merged_input))
   session = self.append_session_message(
     session,
     "user",
     "resume",
     resume_content,
-    metadata={ "run_id": run.id },
+    metadata={
+      "run_id": run.id,
+      "recovery_checkpoint": params.expected_checkpoint,
+    },
   )
+  let expected_after_save = cowork_recovery_projection(
+    session_key,
+    cowork_effective_cwd(session, self.cwd),
+    session.messages.length(),
+    Json::null(),
+    false,
+    run,
+    self.job_runtime().store().list_step_runs(run_id),
+    self.job_runtime().store().list_artifacts(run_id~),
+    event_count,
+    current_time_ms(),
+  )
+  self.save_session_detail(session_key, session)
+  // Persistence yields. Re-read exact state before launching so a concurrent
+  // stop, changed link/folder, newer wait or active launch cannot be undone.
+  let after_save = self.cowork_recovery_snapshot(session_key, run_id)
+  guard expected_after_save is { "checkpoint": String(expected), .. } &&
+    after_save is { "checkpoint": String(actual), "can_resume": True, .. } &&
+    expected == actual && self.root_group() is Some(_) else {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": "resume_retained_not_launched",
+        "message": "Input was retained but the run changed before launch. Inspect the same run; no continuation was launched by this request",
+      },
+    })
+  }
+  self.launch_job_run(run.id, initial_input=Some(merged_input))
+  session = self.sessions.get(session_key).unwrap_or(session)
   session = self.append_session_message(
     session,
     "assistant",

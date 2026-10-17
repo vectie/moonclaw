@@ -110,3 +110,11 @@ boundary. This proves model input construction and replay, **not** a network
 socket, native child launch, live provider, model quality, advertised Town
 listing identity or requester installation. Town publication/bundle/actor
 binding remains separate work.
+
+## Explicit operator reuse
+
+The Work screen also offers [Use what worked](USE_WHAT_WORKED.md): browse accepted
+procedures in its saved work folder, select a method for an ordinary reviewed
+plan, and compare that plan's expectation with its linked result. This reuses the
+same bounded capture reader for read-only discovery. It neither changes the
+native supervisor's selected-Book binding nor duplicates its durable hydration.

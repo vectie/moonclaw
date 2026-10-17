@@ -1,0 +1,10 @@
+{
+  "columns": [
+    { "column_number": 1, "header": "ID" },
+    { "column_number": 3, "header": "Note" }
+  ],
+  "records": [
+    { "record_number": 3, "start_line": 4, "end_line": 4, "cells": ["002", "Needs a reviewer; =SUM(A1) is literal text."] },
+    { "record_number": 2, "start_line": 2, "end_line": 3, "cells": ["001", "Multiline note:\nkeep the quoted comma, and leading-zero ID."] }
+  ]
+}

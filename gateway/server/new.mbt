@@ -105,6 +105,7 @@ pub async fn Gateway::new(
     channel_state: { path: channel_state_file, states: {}, },
     job_app,
     active_job_tasks: {},
+    recovery_resume_pending: {},
     security_runtime,
     workspace_runtime,
     plugin_runtime,
