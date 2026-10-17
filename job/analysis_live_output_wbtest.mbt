@@ -1,6 +1,7 @@
 ///|
 async test "analysis request owns live command before any terminal executor receipt" {
   @fsx.with_temporary_directory("analysis-live-owner-XXXXXX", dir => {
+    let dir = @fs.realpath(dir)
     @fs.write_file(dir + "/executor.json", "{}", create_mode=CreateNew)
     let config = @execution_sandbox.local_sandbox_executor_config(
       "/usr/bin/true",

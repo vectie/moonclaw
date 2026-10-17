@@ -253,6 +253,15 @@ async test "actual Fort live reader crosses authenticated gateway into shipped U
       let (index_response, index_body) = @http.get(base + "/ui")
       assert_eq(index_response.code, 200)
       assert_eq(index_body.text(), @fs.read_file(dist + "/index.html").text())
+      let entries = index_body.text().split("src=\"/assets/").collect()
+      assert_eq(entries.length(), 2)
+      let entry = entries[1].split("\"").next().unwrap().to_owned()
+      let (entry_response, entry_body) = @http.get(base + "/assets/" + entry)
+      assert_eq(entry_response.code, 200)
+      let current = operator_ui_current_compiled_entry(
+        entry_body.text(),
+        @fs.readdir(dist + "/assets"),
+      )
       let served = StringBuilder()
       for asset in @fs.readdir(dist + "/assets", sort=true) {
         if !asset.has_suffix(".js") {
@@ -264,7 +273,9 @@ async test "actual Fort live reader crosses authenticated gateway into shipped U
           body.binary(),
           @fs.read_file(dist + "/assets/" + asset).binary(),
         )
-        served.write_string(body.text())
+        if asset == current || asset == entry {
+          served.write_string(body.text())
+        }
       }
       assert_true(served.to_string().contains("Tail live output"))
       assert_true(served.to_string().contains("Reload from cursor"))

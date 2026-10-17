@@ -214,13 +214,17 @@ async test "Fort retained receipt crosses Claw trusted binding gateway and shipp
       let (entry_response, entry_body) = @http.get(base + "/assets/" + entry)
       assert_eq(entry_response.code, 200)
       let entry_code = entry_body.text()
+      let current = operator_ui_current_compiled_entry(
+        entry_code,
+        @fs.readdir(dist + "/assets"),
+      )
       assert_true(entry_code.contains("moonbook.product-outcome-package.v1"))
       let served = StringBuilder()
       for asset in @fs.readdir(dist + "/assets", sort=true) {
         if !asset.has_suffix(".js") {
           continue
         }
-        if asset.has_prefix("_rabbita_main-entry-") {
+        if asset == current {
           assert_true(
             entry_code.contains(asset),
             msg="Production entry must load the compiled operator controls",
@@ -232,7 +236,9 @@ async test "Fort retained receipt crosses Claw trusted binding gateway and shipp
           body.binary(),
           @fs.read_file(dist + "/assets/" + asset).binary(),
         )
-        served.write_string(body.text())
+        if asset == current || asset == entry {
+          served.write_string(body.text())
+        }
       }
       assert_true(served.to_string().contains("Download retained output"))
       assert_true(served.to_string().contains("approved output ceiling"))

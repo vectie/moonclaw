@@ -1,4 +1,21 @@
 ///|
+fn operator_ui_current_compiled_entry(
+  entry_code : String,
+  assets : Array[String],
+) -> String raise {
+  let current = assets.filter(asset => {
+    asset.has_prefix("_rabbita_main-entry-") &&
+    entry_code.contains("\"./" + asset + "\"")
+  })
+  assert_eq(
+    current.length(),
+    1,
+    msg="Production bootstrap must import exactly one current compiled operator module",
+  )
+  current[0]
+}
+
+///|
 async test "human revisions actual authenticated editor durable store fresh process exact download" {
   @fsx.with_temporary_directory("human-revision-http-XXXXXX", dir => {
     let gateway = Gateway::new(port=0, cwd=dir[:], home=dir[:], auth={
@@ -69,12 +86,16 @@ async test "human revisions actual authenticated editor durable store fresh proc
       let entry = entries[1].split("\"").next().unwrap().to_owned()
       let (entry_response, entry_body) = @http.get(base + "/assets/" + entry)
       assert_eq(entry_response.code, 200)
+      let current = operator_ui_current_compiled_entry(
+        entry_body.text(),
+        @fs.readdir(dist + "/assets"),
+      )
       let served = StringBuilder()
       for asset in @fs.readdir(dist + "/assets", sort=true) {
         if !asset.has_suffix(".js") {
           continue
         }
-        if asset.has_prefix("_rabbita_main-entry-") {
+        if asset == current {
           assert_true(entry_body.text().contains(asset))
         }
         let (response, body) = @http.get(base + "/assets/" + asset)
@@ -83,7 +104,9 @@ async test "human revisions actual authenticated editor durable store fresh proc
           body.binary(),
           @fs.read_file(dist + "/assets/" + asset).binary(),
         )
-        served.write_string(body.text())
+        if asset == current || asset == entry {
+          served.write_string(body.text())
+        }
       }
       assert_true(served.to_string().contains("Save human-revised copy"))
       assert_true(served.to_string().contains("/human-revisions"))

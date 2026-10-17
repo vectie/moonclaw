@@ -85,6 +85,7 @@ async fn recovery_test_pending(root : String) -> String {
 ///|
 async test "read-only recovery projects all five observations without confirming or retrying return" {
   @fsx.with_temporary_directory("recovery-read-only-XXXXXX", async fn(root) {
+    let root = @fs.realpath(root)
     let path = recovery_test_pending(root)
     let before = @fs.read_file(path).binary()
     let names = @fs.readdir(root)
@@ -114,6 +115,7 @@ async test "read-only recovery projects all five observations without confirming
 ///|
 async test "recovery refuses wrong pending attempt missing lock active return and stale readback" {
   @fsx.with_temporary_directory("recovery-stale-XXXXXX", async fn(root) {
+    let root = @fs.realpath(root)
     let path = recovery_test_pending(root)
     let invoked = Ref(0)
     let invoke = async fn(_retention) {

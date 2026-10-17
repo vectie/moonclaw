@@ -76,6 +76,7 @@ test "live bytes validate identity protocol bounds and exact canonical decoded l
 ///|
 async test "pre-dispatch live binding is immutable and independent of terminal receipt" {
   @fsx.with_temporary_directory("claw-live-binding-XXXXXX", dir => {
+    let dir = @fs.realpath(dir)
     @fs.write_file(dir + "/config.json", "{}", create_mode=CreateNew)
     let config = local_sandbox_executor_config(
       "/usr/bin/true",
