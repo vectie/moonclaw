@@ -1,14 +1,14 @@
 ///|
 test "moongate client resolves manifest base url" {
-  let status = {
+  let status = ToJson::to_json({
     "contract": Json::string("moon.suite.status.v2"),
     "service": Json::string("moongate"),
-    "manifest": {
+    "manifest": ToJson::to_json({
       "contract": Json::string("moon.suite.service.v1"),
       "service": Json::string("moongate"),
       "baseUrl": Json::string("http://127.0.0.1:18081"),
-    }.to_json(),
-  }.to_json()
+    }),
+  })
   assert_true(
     moongate_base_url_from_status(status) == Some("http://127.0.0.1:18081"),
   )
@@ -16,16 +16,16 @@ test "moongate client resolves manifest base url" {
 
 ///|
 test "moongate client reads validated default model from suite status" {
-  let status = {
+  let status = ToJson::to_json({
     "contract": Json::string("moon.suite.status.v2"),
     "service": Json::string("moongate"),
-    "manifest": {
+    "manifest": ToJson::to_json({
       "contract": Json::string("moon.suite.service.v1"),
       "service": Json::string("moongate"),
       "baseUrl": Json::string("http://127.0.0.1:15721"),
       "defaultModel": Json::string("gpt-5.6-sol"),
-    }.to_json(),
-  }.to_json()
+    }),
+  })
   let models = moongate_default_models_from_status(status)
   assert_eq(models.length(), 1)
   assert_eq(models[0].id(), "gpt-5.6-sol")
@@ -34,11 +34,13 @@ test "moongate client reads validated default model from suite status" {
 
 ///|
 test "moongate client rejects legacy suite status shortcuts" {
-  let health_only = { "health_url": "http://127.0.0.1:18082/health" }.to_json()
-  let root_base = { "base_url": "http://127.0.0.1:18082" }.to_json()
-  let manifest_only = {
-    "manifest": { "base_url": "http://127.0.0.1:18082" }.to_json(),
-  }.to_json()
+  let health_only = ToJson::to_json({
+    "health_url": "http://127.0.0.1:18082/health",
+  })
+  let root_base = ToJson::to_json({ "base_url": "http://127.0.0.1:18082" })
+  let manifest_only = ToJson::to_json({
+    "manifest": ToJson::to_json({ "base_url": "http://127.0.0.1:18082" }),
+  })
   assert_true(moongate_base_url_from_status(health_only) is None)
   assert_true(moongate_base_url_from_status(root_base) is None)
   assert_true(moongate_base_url_from_status(manifest_only) is None)
@@ -143,7 +145,7 @@ async test "moongate client posts planner metrics to the aggregate route" {
 
 ///|
 test "moongate client parses typed models" {
-  let catalog = {
+  let catalog = ToJson::to_json({
     "models": [
       {
         "slug": Json::string("gpt-5"),
@@ -152,7 +154,7 @@ test "moongate client parses typed models" {
       },
       { "id": Json::string("moon/local") },
     ],
-  }.to_json()
+  })
   guard moongate_models_from_json(catalog) is Ok(models) else {
     fail("expected parsed models")
   }
@@ -184,7 +186,7 @@ test "moongate catalog preserves declared input modalities" {
 
 ///|
 test "moongate client parses typed usage summary" {
-  let summary = {
+  let summary = ToJson::to_json({
     "totalRequests": Json::number(3.0),
     "totalCost": Json::string("0.000300"),
     "totalInputTokens": Json::number(100.0),
@@ -194,7 +196,7 @@ test "moongate client parses typed usage summary" {
     "successRate": Json::number(66.7),
     "realTotalTokens": Json::number(127.0),
     "cacheHitRate": Json::number(12.5),
-  }.to_json()
+  })
   guard MoonGateUsageSummary::from_json(summary) is Ok(parsed) else {
     fail("expected parsed usage summary")
   }
