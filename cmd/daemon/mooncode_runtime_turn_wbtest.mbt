@@ -4162,8 +4162,8 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-tests-XXXXXX"),
   )
   @fsx.write_to_file(
-    @pathx.join(book_root, "moon.mod.json"),
-    "{\n  \"name\": \"mooncode/runtime_tests_fixture\",\n  \"version\": \"0.0.1\",\n  \"deps\": {},\n  \"preferred-target\": \"native\"\n}\n",
+    @pathx.join(book_root, "moon.mod"),
+    "name = \"mooncode/runtime_tests_fixture\"\nversion = \"0.0.1\"\npreferred_target = \"native\"\n",
   )
   @fsx.write_to_file(@pathx.join(book_root, "moon.pkg"), "")
   @fsx.write_to_file(
@@ -4266,8 +4266,8 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-build-XXXXXX"),
   )
   @fsx.write_to_file(
-    @pathx.join(book_root, "moon.mod.json"),
-    "{\n  \"name\": \"mooncode/runtime_build_fixture\",\n  \"version\": \"0.0.1\",\n  \"deps\": {},\n  \"preferred-target\": \"native\"\n}\n",
+    @pathx.join(book_root, "moon.mod"),
+    "name = \"mooncode/runtime_build_fixture\"\nversion = \"0.0.1\"\npreferred_target = \"native\"\n",
   )
   @fsx.write_to_file(@pathx.join(book_root, "moon.pkg"), "")
   @fsx.write_to_file(

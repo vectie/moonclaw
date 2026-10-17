@@ -37,6 +37,11 @@ jobs:
         run: moon fmt --check
       - name: Check native packages
         run: moon check --target native --warn-list +73
+      # The native authenticated gateway test executes the real UI tests
+      # with --frozen, so resolve that nested module before the native suite.
+      - name: Resolve actual gateway UI test dependencies
+        working-directory: ui/rabbita-job
+        run: moon check --target js
       - name: Test native packages
         run: moon test --target native --warn-list +73
       - name: Verify generated interfaces

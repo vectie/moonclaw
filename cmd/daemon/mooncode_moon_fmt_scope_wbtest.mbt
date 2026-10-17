@@ -175,7 +175,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
     assert_eq(@fsx.read_file(clean_unrequested_path), clean_unrequested_before)
     assert_true(
       @fsx.read_file(requested_path).contains(
-        "pub fn requested() -> Int {\n  2\n}",
+        "pub fn requested() -> Int32 {\n  2\n}",
       ),
     )
     let commit = mooncode_fixture_execute_tool_call(
