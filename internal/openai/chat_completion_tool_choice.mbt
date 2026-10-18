@@ -41,3 +41,6 @@ pub impl ToJson for ChatCompletionToolChoice with fn to_json(
       }
   }
 }
+
+///|
+pub extend ChatCompletionToolChoice with ToJson::{to_json}
