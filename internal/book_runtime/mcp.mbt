@@ -136,7 +136,8 @@ pub async fn call_mcp(
   arguments : Json,
 ) -> Json {
   let selected = text(arguments, "server")
-  let servers = mcp_servers(book_root).filter(server => {
+  let canonical_book_root = @fs.realpath(book_root)
+  let servers = mcp_servers(canonical_book_root).filter(server => {
     flag(server, "enabled", default=true) &&
     (selected == "" || text(server, "id") == selected)
   })
