@@ -175,7 +175,7 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
       let milestone = mooncode_json_object_with_field(
         milestone,
         "status",
-        "done".to_json(),
+        Json("done"),
       )
       milestone
     })

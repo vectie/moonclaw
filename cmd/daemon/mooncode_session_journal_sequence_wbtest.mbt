@@ -8,7 +8,7 @@ async test "append wrapper concurrent same identity appends exactly once" {
     }
     let mut appended = 0
     @async.with_task_group(async fn(group) {
-      let tasks = Array::new(capacity=16)
+      let tasks = Array(capacity=16)
       for _ in 0..<16 {
         tasks.push(
           group.spawn(async fn() {
@@ -42,7 +42,7 @@ async test "append wrapper concurrent distinct identities appends all" {
     let session_id = "wrapper-distinct"
     let mut appended = 0
     @async.with_task_group(async fn(group) {
-      let tasks = Array::new(capacity=16)
+      let tasks = Array(capacity=16)
       for i in 0..<16 {
         let payload : Json = {
           "id": "event-\{i}",
@@ -259,7 +259,7 @@ async test "journal transaction same identity concurrent calls linearize once" {
     )
     let mut appended = 0
     @async.with_task_group(async fn(group) {
-      let tasks = Array::new(capacity=16)
+      let tasks = Array(capacity=16)
       for _ in 0..<16 {
         tasks.push(
           group.spawn(async fn() {

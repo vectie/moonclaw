@@ -90,3 +90,14 @@ pub fn new(context : RuntimeContextResult) -> @tool.Tool[RuntimeContextResult] {
     }),
   )
 }
+
+///|
+pub extend RuntimeContextResult with ToJson::{to_json}
+
+///|
+pub extend RuntimeContextResult with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend RuntimeContextResult with Show::{to_string, output}

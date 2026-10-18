@@ -15,7 +15,7 @@ pub struct WorktreeList {
 
 ///|
 fn worktree_slug(text : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut chars_written = 0
   let mut last_dash = true
   for c in text.to_lower().to_array() {
@@ -216,3 +216,21 @@ pub async fn[T] with_worktree(
     () => f(handle),
   )
 }
+
+///|
+pub extend WorktreeHandle with ToJson::{to_json}
+
+///|
+pub extend WorktreeHandle with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WorktreeHandle with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend WorktreeList with ToJson::{to_json}
+
+///|
+pub extend WorktreeList with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WorktreeList with @moonbitlang/core/debug.Debug::{to_repr}

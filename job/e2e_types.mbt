@@ -55,3 +55,23 @@ pub fn E2EJobIntake::new(
     content_type,
   }
 }
+
+///|
+pub extend E2EStarterAttachment with ToJson::{to_json}
+
+///|
+pub extend E2EStarterAttachment with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend E2EStarterAttachment with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend E2EJobIntake with ToJson::{to_json}
+
+///|
+pub extend E2EJobIntake with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend E2EJobIntake with @moonbitlang/core/debug.Debug::{to_repr}

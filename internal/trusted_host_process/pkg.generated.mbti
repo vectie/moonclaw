@@ -29,6 +29,7 @@ pub suberror TrustedHostProcessError {
   UnsafeRepositoryConfig(String)
   HostToolUnavailable(String)
 } derive(@debug.Debug)
+pub fn TrustedHostProcessError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub struct DaemonChildManager {
@@ -78,6 +79,7 @@ pub(all) enum GitOperation {
   FmtPathDiff(String)
   FmtRestorePath(String)
 } derive(@debug.Debug)
+pub fn GitOperation::to_repr(Self) -> @debug.Repr
 
 pub struct GitResult {
   status : Int

@@ -692,3 +692,147 @@ pub fn compare_goal_checkpoint_sequences(
   }
   reports
 }
+
+///|
+pub extend CheckpointProducerIdentity with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointProducerIdentity with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointIdentity with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointIdentity with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ComparisonRequirementDefinition with Eq::{not_equal, equal}
+
+///|
+pub extend ComparisonRequirementDefinition with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ComparisonOutputDefinition with Eq::{not_equal, equal}
+
+///|
+pub extend ComparisonOutputDefinition with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ComparisonCheckDefinition with Eq::{not_equal, equal}
+
+///|
+pub extend ComparisonCheckDefinition with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ComparisonBasis with Eq::{not_equal, equal}
+
+///|
+pub extend ComparisonBasis with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointEvidenceRecord with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointEvidenceRecord with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointRequirementEvidence with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointRequirementEvidence with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointOutputManifest with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointOutputManifest with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointRemainingWork with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointRemainingWork with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointBlocker with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointBlocker with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointVerificationCheck with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointVerificationCheck with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointVerificationManifest with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointVerificationManifest with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointBudget with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointBudget with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalCheckpointSnapshot with Eq::{not_equal, equal}
+
+///|
+pub extend GoalCheckpointSnapshot with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointComparisonOutcome with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointComparisonOutcome with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointAcceptanceOutcome with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointAcceptanceOutcome with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend CheckpointDeltaKind with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointDeltaKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointDelta with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointDelta with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CheckpointComparisonReport with Eq::{not_equal, equal}
+
+///|
+pub extend CheckpointComparisonReport with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

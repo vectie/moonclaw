@@ -532,3 +532,349 @@ pub(all) struct JobRunEvent {
   message : String
   data : Json
 } derive(ToJson, FromJson, Debug)
+
+///|
+pub extend TriggerSource with ToJson::{to_json}
+
+///|
+pub extend TriggerSource with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend TriggerSource with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RunStatus with ToJson::{to_json}
+
+///|
+pub extend RunStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RunStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RetryPolicy with ToJson::{to_json}
+
+///|
+pub extend RetryPolicy with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RetryPolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SchedulePolicy with ToJson::{to_json}
+
+///|
+pub extend SchedulePolicy with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SchedulePolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend WorkflowStepDefinition with ToJson::{to_json}
+
+///|
+pub extend WorkflowStepDefinition with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend WorkflowStepDefinition with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend WorkflowDefinition with ToJson::{to_json}
+
+///|
+pub extend WorkflowDefinition with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WorkflowDefinition with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobDefinition with ToJson::{to_json}
+
+///|
+pub extend JobDefinition with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobDefinition with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobRun with ToJson::{to_json}
+
+///|
+pub extend JobRun with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobRun with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobStepRun with ToJson::{to_json}
+
+///|
+pub extend JobStepRun with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobStepRun with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactStatus with ToJson::{to_json}
+
+///|
+pub extend ArtifactStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ArtifactStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactStatus with Eq::{not_equal, equal}
+
+///|
+pub extend ArtifactRecord with ToJson::{to_json}
+
+///|
+pub extend ArtifactRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ArtifactRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactQuery with ToJson::{to_json}
+
+///|
+pub extend ArtifactQuery with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ArtifactQuery with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactWriteRequest with ToJson::{to_json}
+
+///|
+pub extend ArtifactWriteRequest with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ArtifactWriteRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactRetentionPolicy with ToJson::{to_json}
+
+///|
+pub extend ArtifactRetentionPolicy with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ArtifactRetentionPolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactCleanupReport with ToJson::{to_json}
+
+///|
+pub extend ArtifactCleanupReport with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ArtifactCleanupReport with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemoryStatus with ToJson::{to_json}
+
+///|
+pub extend MemoryStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemoryStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemoryStatus with Eq::{not_equal, equal}
+
+///|
+pub extend MemoryRecord with ToJson::{to_json}
+
+///|
+pub extend MemoryRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemoryRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemoryWriteRequest with ToJson::{to_json}
+
+///|
+pub extend MemoryWriteRequest with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemoryWriteRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemoryQuery with ToJson::{to_json}
+
+///|
+pub extend MemoryQuery with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemoryQuery with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemorySearchHit with ToJson::{to_json}
+
+///|
+pub extend MemorySearchHit with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemorySearchHit with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatBinding with ToJson::{to_json}
+
+///|
+pub extend ChatBinding with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ChatBinding with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RetrievalHit with ToJson::{to_json}
+
+///|
+pub extend RetrievalHit with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RetrievalHit with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatCitation with ToJson::{to_json}
+
+///|
+pub extend ChatCitation with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ChatCitation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatAnswer with ToJson::{to_json}
+
+///|
+pub extend ChatAnswer with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ChatAnswer with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobAskParams with ToJson::{to_json}
+
+///|
+pub extend JobAskParams with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobAskParams with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend NotificationVerbosity with ToJson::{to_json}
+
+///|
+pub extend NotificationVerbosity with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend NotificationVerbosity with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend NotificationVerbosity with Eq::{not_equal, equal}
+
+///|
+pub extend JobNotificationPreference with ToJson::{to_json}
+
+///|
+pub extend JobNotificationPreference with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobNotificationPreference with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend JobProposalStatus with ToJson::{to_json}
+
+///|
+pub extend JobProposalStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProposalStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobProposalStep with ToJson::{to_json}
+
+///|
+pub extend JobProposalStep with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProposalStep with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobProposal with ToJson::{to_json}
+
+///|
+pub extend JobProposal with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProposal with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobControllerState with ToJson::{to_json}
+
+///|
+pub extend JobControllerState with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobControllerState with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobControllerIteration with ToJson::{to_json}
+
+///|
+pub extend JobControllerIteration with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobControllerIteration with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobControllerLineageEdge with ToJson::{to_json}
+
+///|
+pub extend JobControllerLineageEdge with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobControllerLineageEdge with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend JobControllerDecision with ToJson::{to_json}
+
+///|
+pub extend JobControllerDecision with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobControllerDecision with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobRunEvent with ToJson::{to_json}
+
+///|
+pub extend JobRunEvent with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobRunEvent with @moonbitlang/core/debug.Debug::{to_repr}

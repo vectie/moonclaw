@@ -148,3 +148,27 @@ fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
     _ => envelope.summary.unwrap_or("Analysis requires additional inputs.")
   }
 }
+
+///|
+pub extend AdaptiveSubstepPayload with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AdaptiveSubstepPayload with ToJson::{to_json}
+
+///|
+pub extend AdaptiveSubstepPayload with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AdaptiveAnalysisEnvelope with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AdaptiveAnalysisEnvelope with ToJson::{to_json}
+
+///|
+pub extend AdaptiveAnalysisEnvelope with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

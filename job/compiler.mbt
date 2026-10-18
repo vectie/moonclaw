@@ -121,8 +121,8 @@ fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
 fn injected_step_metadata(family : String, step : JobProposalStep) -> Json {
   if provider_delegate_family_name(family) && step.id == "inspect_source" {
     merge_json_objects(step.metadata, [
-      ("best_effort_on_missing_input", true.to_json()),
-      ("disable_waiting_for_input", true.to_json()),
+      ("best_effort_on_missing_input", Json(true)),
+      ("disable_waiting_for_input", Json(true)),
     ])
   } else {
     step.metadata
@@ -383,7 +383,7 @@ fn workflow_steps_for_proposal(
           include_parent_outputs=false,
           max_depth=2,
         ).to_json(),
-        [("board_lane", "Extension".to_json()), ("board_order", (-1).to_json())],
+        [("board_lane", Json("Extension")), ("board_order", Json(-1))],
       ),
       retry_policy: proposal_step_retry_policy("job.delegate", {}),
     })

@@ -110,3 +110,12 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ListFilesResult] {
     },
   )
 }
+
+///|
+pub extend ListFilesResult with ToJson::{to_json}
+
+///|
+pub extend ListFilesResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ListFilesResult with Show::{to_string, output}

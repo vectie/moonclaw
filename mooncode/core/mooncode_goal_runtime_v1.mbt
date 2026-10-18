@@ -345,3 +345,57 @@ pub fn goal_runtime_rejects_aggregate_field(field : String) -> Bool {
     "loc_limit",
   ].any(fn(item) { item == field })
 }
+
+///|
+pub extend GoalOperationPolicy with Eq::{not_equal, equal}
+
+///|
+pub extend GoalOperationPolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRuntimeOperation with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRuntimeOperation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRuntimePhase with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRuntimePhase with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalCriterionEvidence with Eq::{not_equal, equal}
+
+///|
+pub extend GoalCriterionEvidence with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalBlockedReason with Eq::{not_equal, equal}
+
+///|
+pub extend GoalBlockedReason with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalPlannerDecision with Eq::{not_equal, equal}
+
+///|
+pub extend GoalPlannerDecision with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRuntimeOutcome with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRuntimeOutcome with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRuntimeState with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRuntimeState with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRuntimeEvent with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRuntimeEvent with @moonbitlang/core/debug.Debug::{to_repr}

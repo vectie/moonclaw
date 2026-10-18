@@ -70,7 +70,7 @@ fn compact_tool_journal_text(text : String, limit~ : Int32) -> String {
   if chars.length() <= limit {
     return normalized
   }
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for i in 0..<limit {
     buf.write_char(chars[i])
   }
@@ -123,17 +123,17 @@ fn analysis_tool_call_finish_entry(
 ) -> Json {
   let payload : Map[String, Json] = {
     "phase": "finish",
-    "tool": tool_call.name.to_json(),
-    "call_id": tool_call.id.to_json(),
-    "preview": compact_tool_journal_text(rendered, limit=280).to_json(),
+    "tool": Json(tool_call.name),
+    "call_id": Json(tool_call.id),
+    "preview": Json(compact_tool_journal_text(rendered, limit=280)),
   }
   match result {
     Ok(value) => {
-      payload["ok"] = true.to_json()
+      payload["ok"] = Json(true)
       payload["result"] = value
     }
     Err(error) => {
-      payload["ok"] = false.to_json()
+      payload["ok"] = Json(false)
       payload["error"] = error
     }
   }
@@ -196,10 +196,7 @@ pub fn compact_analysis_result_metadata(metadata : Json) -> Json {
                     )
                   }
                   compact.set(key, Json::array(compact_entries))
-                  compact.set(
-                    "tool_call_journal_count",
-                    entries.length().to_json(),
-                  )
+                  compact.set("tool_call_journal_count", Json(entries.length()))
                 }
                 _ => compact.set(key, value)
               }

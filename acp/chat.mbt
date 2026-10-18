@@ -183,3 +183,6 @@ pub fn render_acp_ambiguous_sessions(sessions : Array[AcpSession]) -> String {
 pub fn render_acp_run_failed(error : String) -> String {
   "ACP run failed: \{error}"
 }
+
+///|
+pub extend AcpChatAction with @moonbitlang/core/debug.Debug::{to_repr}

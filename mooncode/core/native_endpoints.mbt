@@ -360,3 +360,19 @@ pub fn native_package_result_endpoint(
     query=[("book_root", book_root)],
   )
 }
+
+///|
+pub extend NativeCapabilityEndpoints with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend NativeCapabilityEndpoints with Eq::{not_equal, equal}
+
+///|
+pub extend NativeCapabilityEndpoints with ToJson::{to_json}
+
+///|
+pub extend NativeCapabilityEndpoints with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

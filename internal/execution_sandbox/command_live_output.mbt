@@ -317,3 +317,41 @@ pub async fn read_bound_command_live_output(
     next_cursor: response.stream_id + ":" + response.next_offset.to_string(),
   }
 }
+
+///|
+pub extend CommandLiveBinding with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CommandLiveBinding with Eq::{not_equal, equal}
+
+///|
+pub extend CommandLiveBinding with ToJson::{to_json}
+
+///|
+pub extend CommandLiveBinding with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend BoundCommandLiveOutput with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend BoundCommandLiveOutput with Eq::{not_equal, equal}
+
+///|
+pub extend BoundCommandLiveOutput with ToJson::{to_json}
+
+///|
+pub extend BoundCommandLiveOutput with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend CommandLiveChunk with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CommandLiveChunk with Eq::{not_equal, equal}
+
+///|
+pub extend CommandLiveChunk with ToJson::{to_json}
+
+///|
+pub extend CommandLiveChunk with @moonbitlang/core/json.FromJson::{from_json}

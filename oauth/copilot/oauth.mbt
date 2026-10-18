@@ -212,3 +212,12 @@ pub async fn start_oauth_flow_for_workspace_root(
 async fn open_browser(url : String) -> Unit raise Error {
   @trusted_host_process.open_browser_url(url) |> ignore()
 }
+
+///|
+pub extend DeviceCodeResponse with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AccessTokenResponse with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CopilotTokenResponse with @moonbitlang/core/debug.Debug::{to_repr}

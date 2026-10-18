@@ -17,15 +17,15 @@ pub fn ArtifactSearch::to_text(self : ArtifactSearch) -> String {
   )
   for hit in self.matches {
     out.write_string(
-      "\nID \{hit.record.id.to_json().stringify()} revision \{hit.record.version} \{hit.record.status.to_json().stringify()}\n",
+      "\nID \{Json(hit.record.id).stringify()} revision \{hit.record.version} \{hit.record.status.to_json().stringify()}\n",
     )
     out.write_string(
-      "  job \{hit.record.job_id.to_json().stringify()} run \{hit.record.run_id.to_json().stringify()} type \{hit.record.artifact_type.to_json().stringify()}\n",
+      "  job \{Json(hit.record.job_id).stringify()} run \{Json(hit.record.run_id).stringify()} type \{Json(hit.record.artifact_type).stringify()}\n",
     )
     out.write_string("  \{hit.content_bytes} bytes \{hit.content_sha256}\n")
     for line in hit.lines {
       out.write_string(
-        "  line \{line.line}: \{line.excerpt.to_json().stringify()}\n",
+        "  line \{line.line}: \{Json(line.excerpt).stringify()}\n",
       )
     }
     if hit.matching_lines > hit.lines.length() {
@@ -36,7 +36,7 @@ pub fn ArtifactSearch::to_text(self : ArtifactSearch) -> String {
   }
   for issue in self.issues {
     out.write_string(
-      "\nISSUE \{issue.artifact_id.to_json().stringify()}: \{issue.reason}\n",
+      "\nISSUE \{Json(issue.artifact_id).stringify()}: \{issue.reason}\n",
     )
   }
   out.to_string()

@@ -2120,13 +2120,11 @@ async test "resolved_model_name uses configured primary model for default" {
     @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
       config_path,
-      {
+      Json({
         "agents": {
           "defaults": { "model": { "primary": "codex/gpt-5.6-sol" } },
         },
-      }
-      .to_json()
-      .stringify(indent=2),
+      }).stringify(indent=2),
     )
     let request = AnalysisRequest::{
       job_id: "job-1",

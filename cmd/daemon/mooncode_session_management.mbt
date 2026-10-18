@@ -121,10 +121,10 @@ async fn Daemon::mooncode_rename_session(
     session_id,
   )
   let updated = snapshot
-    |> mooncode_json_object_with_field("custom_title", title.to_json())
+    |> mooncode_json_object_with_field("custom_title", Json(title))
     |> mooncode_json_object_with_field(
       "journal_sequence",
-      mooncode_journal_last_sequence_exact(journal).text().to_json(),
+      Json(mooncode_journal_last_sequence_exact(journal).text()),
     )
   mooncode_write_locked_file(
     mooncode_session_snapshot_path_by_safe_id(book_root, safe_session_id),

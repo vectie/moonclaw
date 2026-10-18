@@ -206,3 +206,16 @@ pub async fn find_resource_provider(
   }
   None
 }
+
+///|
+pub extend RegisteredResourceProvider with ToJson::{to_json}
+
+///|
+pub extend RegisteredResourceProvider with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend RegisteredResourceProvider with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

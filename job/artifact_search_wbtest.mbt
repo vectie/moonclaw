@@ -1,5 +1,5 @@
 ///|
-async fn search_test_store() -> (String, SystemStore, ArtifactStore) {
+fn search_test_store() -> (String, SystemStore, ArtifactStore) raise {
   let root = @fsx.mkdtemp("/tmp/moonclaw-artifact-search-XXXXXX")
   let store = SystemStore::new(root=@pathx.join(root, "store"))
   let artifacts = ArtifactStore::new(store~)
@@ -183,7 +183,7 @@ async test "artifact search exports the complete observed exact selection and re
   let raw = first.to_json().stringify()
   @fsx.write_to_file(
     store.artifact_record_file(first.id),
-    "{\"future\":7," + raw[1:].to_string(),
+    "{\"future\":7," + raw[1:].to_owned(),
   )
   let full = search_retained_artifacts(store.root, text=Some("match"))
   let exported = full.export_selected(@pathx.join(root, "selected"))
@@ -233,11 +233,11 @@ async test "artifact search exports the complete observed exact selection and re
 async test "artifact search text output escapes terminal and newline content and no match exports nothing" {
   let (root, store, artifacts) = search_test_store()
   ignore(
-    search_test_write(artifacts, "a", "needle\x1b[31m\n", job_id="fake\nrow"),
+    search_test_write(artifacts, "a", "needle\u001b[31m\n", job_id="fake\nrow"),
   )
   let result = search_retained_artifacts(store.root, text=Some("needle"))
   let rendered = result.to_text()
-  assert_false(rendered.contains("\x1b"))
+  assert_false(rendered.contains("\u001b"))
   assert_false(rendered.contains("fake\nrow"))
   assert_true(rendered.contains("Runtime evidence only"))
   let empty = search_retained_artifacts(store.root, text=Some("missing"))

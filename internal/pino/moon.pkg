@@ -1,14 +1,13 @@
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/async/fs",
   "vectie/moonlib/pathx",
-  "moonbitlang/async/io",
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/trusted_host_process",
   "moonbitlang/async",
   "moonbitlang/async/os_error",
   "vectie/moonlib/errno",
   "moonbitlang/async/aqueue",
-  "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
 }

@@ -30,7 +30,7 @@ fn scan_test_record(
     record_kind="event",
     command_id="",
     client_turn_id="",
-    recorded_at=carrier.recorded_at.to_string().to_json(),
+    recorded_at=Json(carrier.recorded_at.to_string()),
     payload=encode_mooncode_goal_runtime_carrier(carrier),
   )
   @json.parse(record.stringify())
@@ -49,7 +49,7 @@ fn scan_test_record_v2(
     record_kind="event",
     command_id="",
     client_turn_id="",
-    recorded_at=carrier.recorded_at.to_string().to_json(),
+    recorded_at=Json(carrier.recorded_at.to_string()),
     payload=encode_mooncode_goal_runtime_carrier(carrier),
   )
   @json.parse(record.stringify())
@@ -94,7 +94,7 @@ test "valid canonical genesis envelope scans and retains canonical bytes" {
 test "reserved carrier rejects wrong missing or non-string record_kind" {
   let carrier = scan_test_carrier()
   let base = scan_test_record(carrier, 1)
-  for replacement in [Some("command".to_json()), None, Some(true.to_json())] {
+  for replacement in [Some(Json("command")), None, Some(Json(true))] {
     let fields = scan_test_copy_object(base)
     match replacement {
       Some(value) => fields["record_kind"] = value
@@ -109,11 +109,11 @@ test "reserved envelope rejects extra key wrong kind contract and non-string ids
   let carrier = scan_test_carrier()
   let base = scan_test_record(carrier, 1)
   let variants : Array[(String, Json)] = [
-    ("extra", true.to_json()),
-    ("kind", "wrong".to_json()),
-    ("contract_id", "wrong".to_json()),
-    ("command_id", true.to_json()),
-    ("client_turn_id", true.to_json()),
+    ("extra", Json(true)),
+    ("kind", Json("wrong")),
+    ("contract_id", Json("wrong")),
+    ("command_id", Json(true)),
+    ("client_turn_id", Json(true)),
   ]
   for variant in variants {
     let key = variant.0
@@ -166,12 +166,7 @@ test "unrelated non-prefixed payload with budget-like extras is ignored" {
 test "carrier-shaped payloads reject damaged inner kind" {
   let carrier = scan_test_carrier()
   let base = scan_test_record(carrier, 1)
-  for
-    replacement in [
-      None,
-      Some(true.to_json()),
-      Some("unrelated.event".to_json()),
-    ] {
+  for replacement in [None, Some(Json(true)), Some(Json("unrelated.event"))] {
     let outer = scan_test_copy_object(base)
     let payload = scan_test_copy_object(outer["payload"])
     match replacement {
@@ -228,7 +223,7 @@ test "mixed v1 and v2 reject gaps and duplicates" {
 test "sequence JSON type must match journal contract" {
   let carrier = scan_test_carrier()
   let v1 = scan_test_copy_object(scan_test_record(carrier, 1))
-  v1["sequence"] = "1".to_json()
+  v1["sequence"] = Json("1")
   assert_true(scan_test_corrupt([Json::object(v1)]))
   let second_fields = scan_test_copy_object(scan_test_record_v2(carrier, "1"))
   second_fields["sequence"] = Json::number(1.0)
@@ -239,9 +234,9 @@ test "sequence JSON type must match journal contract" {
 test "contract id is required string and known even for unrelated payload" {
   let carrier = scan_test_carrier()
   let base = scan_test_record_v2(carrier, "1")
-  for replacement in [None, Some(true.to_json()), Some("unknown".to_json())] {
+  for replacement in [None, Some(Json(true)), Some(Json("unknown"))] {
     let fields = scan_test_copy_object(base)
-    fields["payload"] = Json::object({ "unrelated": true.to_json() })
+    fields["payload"] = Json::object({ "unrelated": Json(true) })
     match replacement {
       None => fields.remove("contract_id") |> ignore
       Some(value) => fields["contract_id"] = value
@@ -266,7 +261,7 @@ test "at least 64 contiguous same identity records have no aggregate bound" {
 test "foreign-session unrelated payload cannot advance cursor" {
   let carrier = scan_test_carrier()
   let fields = scan_test_copy_object(scan_test_record_v2(carrier, "1"))
-  fields["session_id"] = "foreign-session".to_json()
+  fields["session_id"] = Json("foreign-session")
   fields["payload"] = { "kind": "unrelated.event", "value": true }
   assert_true(scan_test_corrupt([Json::object(fields)]))
 }

@@ -23,3 +23,9 @@ impl @json.FromJson for CostDetails with fn from_json(
   }
   { upstream_inference_cost, }
 }
+
+///|
+pub extend CostDetails with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CostDetails with ToJson::{to_json}

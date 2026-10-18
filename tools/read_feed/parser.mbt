@@ -5,7 +5,7 @@ pub struct FeedArticle {
   date_published : String?
   summary : String
   url : String?
-} derive(Show)
+}
 
 ///|
 pub struct FeedPage {
@@ -19,12 +19,12 @@ pub struct FeedPage {
   matched_items : Int32
   format : String
   query : String
-} derive(Show)
+}
 
 ///|
 fn optional_text(value : String?) -> Json {
   match value {
-    Some(value) => value.to_json()
+    Some(value) => Json(value)
     None => Json::null()
   }
 }
@@ -48,7 +48,7 @@ pub impl ToJson for FeedPage with fn to_json(self : FeedPage) -> Json {
     "articles": self.articles,
     "offset": self.offset,
     "next_offset": match self.next_offset {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "next_url": optional_text(self.next_url),
@@ -197,4 +197,30 @@ fn parse_json_feed(body : String) -> FeedDocument raise {
     next_url: text_field(json, "next_url"),
     format: "json-feed",
   }
+}
+
+///|
+pub extend FeedArticle with Show::{to_string, output}
+
+///|
+pub extend FeedPage with Show::{to_string, output}
+
+///|
+pub extend FeedArticle with ToJson::{to_json}
+
+///|
+pub extend FeedPage with ToJson::{to_json}
+
+///|
+pub impl Show for FeedArticle with fn output(self, logger) {
+  logger.write_string(
+    "{id: \{self.id}, title: \{self.title}, date_published: \{feed_show_optional(self.date_published)}, summary: \{self.summary}, url: \{feed_show_optional(self.url)}}",
+  )
+}
+
+///|
+pub impl Show for FeedPage with fn output(self, logger) {
+  logger.write_string(
+    "{source: \{self.source}, title: \{self.title}, articles: \{feed_show_array(self.articles)}, offset: \{self.offset}, next_offset: \{feed_show_optional(self.next_offset)}, next_url: \{feed_show_optional(self.next_url)}, total_items: \{self.total_items}, matched_items: \{self.matched_items}, format: \{self.format}, query: \{self.query}}",
+  )
 }

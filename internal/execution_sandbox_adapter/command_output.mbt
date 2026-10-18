@@ -42,7 +42,7 @@ pub async fn CommandOutputClient::inspect(
 }
 
 ///|
-pub async fn CommandOutputClient::export(
+pub async fn CommandOutputClient::export_bytes(
   self : CommandOutputClient,
   request : String,
   max_bytes : Int32,

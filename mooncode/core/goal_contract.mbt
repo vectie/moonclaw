@@ -195,7 +195,7 @@ fn convergence_name(value : Convergence) -> String {
 ///|
 fn remaining(limit : Int32?, used : Int32) -> Json {
   match limit {
-    Some(value) => (value - used).max(0).to_json()
+    Some(value) => Json((value - used).max(0))
     None => Json::null()
   }
 }
@@ -229,7 +229,7 @@ pub fn goal_status_json(goal : Goal) -> Json {
     }
   }
   let convergence : Json = match goal.convergence {
-    Some(value) => convergence_name(value.report.outcome).to_json()
+    Some(value) => Json(convergence_name(value.report.outcome))
     None => Json::null()
   }
   {
@@ -330,3 +330,99 @@ pub fn goal_evaluation_bundle_json(goal : Goal) -> Json {
     "convergence": convergence,
   }
 }
+
+///|
+pub extend GoalStatus with Eq::{not_equal, equal}
+
+///|
+pub extend GoalStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRunState with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRunState with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RequirementState with Eq::{not_equal, equal}
+
+///|
+pub extend RequirementState with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Convergence with Eq::{not_equal, equal}
+
+///|
+pub extend Convergence with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ApprovalOutcome with Eq::{not_equal, equal}
+
+///|
+pub extend ApprovalOutcome with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalBudget with Eq::{not_equal, equal}
+
+///|
+pub extend GoalBudget with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalRequirement with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRequirement with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend BlockerIdentity with Eq::{not_equal, equal}
+
+///|
+pub extend BlockerIdentity with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalBlocker with Eq::{not_equal, equal}
+
+///|
+pub extend GoalBlocker with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalConvergence with Eq::{not_equal, equal}
+
+///|
+pub extend GoalConvergence with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ConvergenceReport with Eq::{not_equal, equal}
+
+///|
+pub extend ConvergenceReport with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend EvaluationRequest with Eq::{not_equal, equal}
+
+///|
+pub extend EvaluationRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend EvaluationBackoffRecord with Eq::{not_equal, equal}
+
+///|
+pub extend EvaluationBackoffRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ValidatedProjection with Eq::{not_equal, equal}
+
+///|
+pub extend ValidatedProjection with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CompletionProof with Eq::{not_equal, equal}
+
+///|
+pub extend CompletionProof with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Goal with Eq::{not_equal, equal}
+
+///|
+pub extend Goal with @moonbitlang/core/debug.Debug::{to_repr}

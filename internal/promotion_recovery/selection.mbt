@@ -20,8 +20,25 @@ priv struct MoonDeskPromotionRequest {
 ///|
 priv struct MoonFortPromotionError {
   code : String
-  message : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
+
+///|
+/// Validate the required remote message at the decode boundary, then retain only
+/// the error code used by the public recovery contract. Remote diagnostics may
+/// contain private paths and must not become public response state.
+impl @json.FromJson for MoonFortPromotionError with fn from_json(
+  json : Json,
+  json_path : @json.JsonPath,
+) -> MoonFortPromotionError raise @json.JsonDecodeError {
+  guard json is { "code": String(code), "message": String(_), .. } else {
+    raise JsonDecodeError(
+      (
+        json_path, "MoonFortPromotionError requires string code and message fields",
+      ),
+    )
+  }
+  { code, }
+}
 
 ///|
 fn moondesk_promotion_safe_digest(value : String) -> Bool {

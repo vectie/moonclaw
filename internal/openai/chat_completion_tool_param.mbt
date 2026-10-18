@@ -13,3 +13,6 @@ pub impl ToJson for ChatCompletionToolParam with fn to_json(
       { "type": "function", "function": function_definition }
   }
 }
+
+///|
+pub extend ChatCompletionToolParam with ToJson::{to_json}

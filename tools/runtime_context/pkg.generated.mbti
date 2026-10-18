@@ -25,7 +25,11 @@ pub struct RuntimeContextResult {
   execution_isolation : Json?
   enabled_tools : Array[String]
 } derive(ToJson, @json.FromJson)
+pub fn RuntimeContextResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn RuntimeContextResult::new(cwd~ : String, home? : String?, run_id? : String?, job_id? : String?, step_id? : String?, model_name? : String?, execution_mode? : String?, execution_target? : String?, workspace_dir? : String?, execution_isolation? : Json?, enabled_tools? : Array[String]) -> Self
+pub fn RuntimeContextResult::output(Self, &Logger) -> Unit
+pub fn RuntimeContextResult::to_json(Self) -> Json
+pub fn RuntimeContextResult::to_string(Self) -> String
 pub impl Show for RuntimeContextResult
 
 // Type aliases

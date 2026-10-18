@@ -84,20 +84,20 @@ fn mooncode_validate_package_result_body(
   let path = mooncode_package_result_path(body)
   let missing : Array[Json] = []
   if protocol != mooncode_protocol_version() {
-    missing.push("protocol".to_json())
+    missing.push(Json("protocol"))
   }
   if body_session != session_id {
-    missing.push("session_id".to_json())
+    missing.push(Json("session_id"))
   }
   if command_id == "" {
-    missing.push("command_id".to_json())
+    missing.push(Json("command_id"))
   }
   if event != mooncode_event_package_built() &&
     event != mooncode_event_package_verified() {
-    missing.push("event".to_json())
+    missing.push(Json("event"))
   }
   if path == "" {
-    missing.push("path".to_json())
+    missing.push(Json("path"))
   }
   {
     "ok": missing.length() == 0,

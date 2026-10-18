@@ -10,10 +10,13 @@ pub impl ToJson for ChatCompletionStreamOptionsParam with fn to_json(
 ) -> Json {
   let json : Map[String, Json] = Map([])
   if self.include_obfuscation is Some(include_obfuscation) {
-    json["include_obfuscation"] = include_obfuscation.to_json()
+    json["include_obfuscation"] = Json(include_obfuscation)
   }
   if self.include_usage is Some(include_usage) {
-    json["include_usage"] = include_usage.to_json()
+    json["include_usage"] = Json(include_usage)
   }
   Json::object(json)
 }
+
+///|
+pub extend ChatCompletionStreamOptionsParam with ToJson::{to_json}

@@ -133,49 +133,49 @@ pub fn ResponsesRequest::new(
 ///|
 pub impl ToJson for ResponsesRequest with fn to_json(self : ResponsesRequest) -> Json {
   let obj = {
-    "model": self.model.to_json(),
-    "input": self.input.to_json(),
-    "instructions": self.instructions.to_json(),
-    "tools": self.tools.to_json(),
-    "tool_choice": self.tool_choice.to_json(),
+    "model": Json(self.model),
+    "input": Json(self.input),
+    "instructions": Json(self.instructions),
+    "tools": Json(self.tools),
+    "tool_choice": Json(self.tool_choice),
   }
   if self.stream is Some(v) {
-    obj["stream"] = v.to_json()
+    obj["stream"] = Json(v)
   }
   if self.reasoning_effort is Some(_) || self.reasoning_context is Some(_) {
     let reasoning : Map[String, Json] = Map([])
     if self.reasoning_effort is Some(effort) {
-      reasoning["effort"] = effort.to_json()
+      reasoning["effort"] = Json(effort)
     }
     if self.reasoning_context is Some(context) {
-      reasoning["context"] = context.to_json()
+      reasoning["context"] = Json(context)
     }
     obj["reasoning"] = Json::object(reasoning)
   }
   if self.store is Some(v) {
-    obj["store"] = v.to_json()
+    obj["store"] = Json(v)
   }
   if self.previous_response_id is Some(id) {
-    obj["previous_response_id"] = id.to_json()
+    obj["previous_response_id"] = Json(id)
   }
   if self.prompt_cache_key is Some(key) {
-    obj["prompt_cache_key"] = key.to_json()
+    obj["prompt_cache_key"] = Json(key)
   }
   if self.prompt_cache_mode is Some(_) || self.prompt_cache_ttl is Some(_) {
     let options : Map[String, Json] = Map([])
     if self.prompt_cache_mode is Some(mode) {
-      options["mode"] = mode.to_json()
+      options["mode"] = Json(mode)
     }
     if self.prompt_cache_ttl is Some(ttl) {
-      options["ttl"] = ttl.to_json()
+      options["ttl"] = Json(ttl)
     }
     obj["prompt_cache_options"] = Json::object(options)
   }
   if self.max_output_tokens is Some(limit) {
-    obj["max_output_tokens"] = limit.to_json()
+    obj["max_output_tokens"] = Json(limit)
   }
   if self.parallel_tool_calls is Some(enabled) {
-    obj["parallel_tool_calls"] = enabled.to_json()
+    obj["parallel_tool_calls"] = Json(enabled)
   }
   Json::object(obj)
 }
@@ -191,7 +191,7 @@ pub(all) enum ResponseInputItem {
 pub impl ToJson for ResponseInputItem with fn to_json(self : ResponseInputItem) -> Json {
   match self {
     Message(role~, content~) =>
-      { "type": "message", "role": role, "content": content.to_json() }
+      { "type": "message", "role": role, "content": Json(content) }
     FunctionCall(call_id~, name~, arguments~) =>
       {
         "type": "function_call",
@@ -271,3 +271,39 @@ pub fn function_call_output(
 ) -> ResponseInputItem {
   FunctionCallOutput(call_id~, output~)
 }
+
+///|
+pub extend ResponsesRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ContentType with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ContentType with ToJson::{to_json}
+
+///|
+pub extend ContentType with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ContentPart with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ContentPart with ToJson::{to_json}
+
+///|
+pub extend ContentPart with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ResponsesRequest with ToJson::{to_json}
+
+///|
+pub extend ResponseInputItem with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ResponseInputItem with ToJson::{to_json}
+
+///|
+pub extend ResponseItem with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ResponseItem with @moonbitlang/core/json.FromJson::{from_json}

@@ -213,7 +213,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
 /// wrapped in `<skill>` tags containing `<name>`, `<description>`, and
 /// `<location>` elements, all enclosed within `<available_skills>` root tags.
 fn Loader::format_prompt(self : Loader) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   sb.write_string(
     (
       #|====

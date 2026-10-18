@@ -27,3 +27,6 @@ impl @json.FromJson for ChatCompletionChunkChoiceDeltaToolCallFunction with fn f
   }
   { arguments, name, }
 }
+
+///|
+pub extend ChatCompletionChunkChoiceDeltaToolCallFunction with ToJson::{to_json}

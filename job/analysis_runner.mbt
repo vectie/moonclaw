@@ -128,7 +128,7 @@ async fn run_local_analysis_runner(
   }
 
   let mut final_content = ""
-  let delta_content = StringBuilder::new()
+  let delta_content = StringBuilder()
   let mut final_usage : @ai.Usage? = None
   let mut failed : String? = None
   let tool_journal : Array[Json] = []

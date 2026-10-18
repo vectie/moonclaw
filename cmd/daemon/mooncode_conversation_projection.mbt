@@ -229,7 +229,7 @@ fn mooncode_conversation_settle_work_steps(
       turn.work_steps[index] = mooncode_json_object_with_field(
         step,
         "status",
-        settled.to_json(),
+        Json(settled),
       )
     }
   }
@@ -1018,8 +1018,8 @@ fn mooncode_conversation_apply_work_event(
       default="",
     )
     turn.work_steps[index] = step
-      |> mooncode_json_object_with_field("item_id", stable_id.to_json())
-      |> mooncode_json_object_with_field("step_id", stable_id.to_json())
+      |> mooncode_json_object_with_field("item_id", Json(stable_id))
+      |> mooncode_json_object_with_field("step_id", Json(stable_id))
   } else {
     turn.work_steps.push(step)
   }

@@ -722,3 +722,60 @@ pub fn render_memory_search_reply(
   }
   lines.join("\n")
 }
+
+///|
+pub extend JobNotifyTarget with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobChatAction with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChildRunStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChildRunStatus with ToJson::{to_json}
+
+///|
+pub extend ChildRunStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobStatusSnapshot with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobStatusSnapshot with ToJson::{to_json}
+
+///|
+pub extend JobStatusSnapshot with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ActiveJobSnapshot with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ActiveJobSnapshot with ToJson::{to_json}
+
+///|
+pub extend ActiveJobSnapshot with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobNotificationRuntimeState with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend JobNotificationRuntimeState with ToJson::{to_json}
+
+///|
+pub extend JobNotificationRuntimeState with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobNotificationDecision with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobNotificationDecision with ToJson::{to_json}
+
+///|
+pub extend JobNotificationDecision with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

@@ -1,5 +1,5 @@
 ///|
-async fn export_test_store() -> (String, SystemStore, ArtifactStore) {
+fn export_test_store() -> (String, SystemStore, ArtifactStore) raise {
   let root = @fsx.mkdtemp("/tmp/moonclaw-artifact-export-XXXXXX")
   let store = SystemStore::new(root=@pathx.join(root, "store"))
   let artifacts = ArtifactStore::new(store~)
@@ -87,7 +87,7 @@ async test "artifact export retains original future metadata fields and safe col
   let b = export_test_write(artifacts, "b", b"b", file_name="same 🌙.txt")
   let raw = a.to_json().stringify()
   let raw = "{\n  \"future_provenance\": {\"v\": 7}, " +
-    raw[1:].to_string() +
+    raw[1:].to_owned() +
     "\n"
   @fsx.write_to_file(store.artifact_record_file(a.id), raw)
   let result = export_retained_artifacts(

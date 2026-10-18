@@ -357,12 +357,12 @@ fn mooncode_worker_terminal_evidence(
   let evidence = mooncode_json_object_with_field(
     evidence,
     "reason",
-    mooncode_json_string(capped, "output", default="").to_json(),
+    Json(mooncode_json_string(capped, "output", default="")),
   )
   let evidence = mooncode_json_object_with_field(
     evidence,
     "reason_truncated",
-    mooncode_json_bool(capped, "truncated", default=false).to_json(),
+    Json(mooncode_json_bool(capped, "truncated", default=false)),
   )
   mooncode_json_object_with_field(
     evidence,

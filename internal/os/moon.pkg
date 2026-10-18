@@ -8,13 +8,13 @@ import {
   "moonbitlang/core/test",
 }
 
-supported_targets = "native"
-
 import {
   "vectie/moonlib/spawn",
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
 } for "test"
+
+supported_targets = "native"
 
 options(
   "native-stub": [ "os.c" ],

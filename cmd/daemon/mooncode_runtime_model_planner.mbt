@@ -209,7 +209,12 @@ async fn mooncode_runtime_turn_resolve_model(
   command : Json,
   selector : String,
   legacy_source_fallback~ : Bool = true,
+  resource_reader? : async (StringView) -> String?,
 ) -> @model.Model? {
+  let models = match resource_reader {
+    None => models
+    Some(reader) => models.with_resource_reader(reader)
+  }
   mooncode_resolve_model_workspace(
     command,
     selector,
@@ -218,12 +223,16 @@ async fn mooncode_runtime_turn_resolve_model(
       if !mooncode_model_workspace_is_canonical(root) {
         return None
       }
-      let owner_models = @model.Loader::new(home=root, cwd=root)
+      let owner_models = @model.Loader::new(
+        home=root,
+        cwd=root,
+        resource_reader?,
+      )
       owner_models.get_model(name=selector)
     },
     daemon_lookup=selector => models.get_model(name=selector),
     source_lookup=async fn(root, selector) {
-      let source_models = @model.Loader::new(home~, cwd=root)
+      let source_models = @model.Loader::new(home~, cwd=root, resource_reader?)
       source_models.get_model(name=selector)
     },
   )

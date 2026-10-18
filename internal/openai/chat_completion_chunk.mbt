@@ -87,3 +87,9 @@ pub impl @json.FromJson for ChatCompletionChunk with fn from_json(
     error,
   }
 }
+
+///|
+pub extend ChatCompletionChunk with ToJson::{to_json}
+
+///|
+pub extend ChatCompletionChunk with @moonbitlang/core/json.FromJson::{from_json}

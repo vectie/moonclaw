@@ -243,15 +243,15 @@ fn mooncode_goal_supervisor_checkpoint_v1(
     ),
     "basis_sequence": basis_sequence,
     "last_terminal_command_id": match last_terminal_command_id {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => null
     },
     "last_terminal_claim_id": match last_terminal_claim_id {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => null
     },
     "last_terminal_receipt_record_id": match last_terminal_receipt_record_id {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => null
     },
     "recorded_at": goal_json_int64_value(recorded_at),

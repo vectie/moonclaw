@@ -32,3 +32,6 @@ impl @json.FromJson for ChatCompletionChunkChoiceDeltaToolCall with fn from_json
   )
   { index: index.to_int(), id, function, }
 }
+
+///|
+pub extend ChatCompletionChunkChoiceDeltaToolCall with ToJson::{to_json}

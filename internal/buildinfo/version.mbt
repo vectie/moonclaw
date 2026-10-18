@@ -96,3 +96,18 @@ pub impl Eq for Version with fn equal(self, other) -> Bool {
     _ => false
   })
 }
+
+///|
+pub extend Version with ToJson::{to_json}
+
+///|
+pub extend Version with Show::{to_string, output}
+
+///|
+pub extend Build with ToJson::{to_json}
+
+///|
+pub extend Version with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend Version with Eq::{not_equal, equal}

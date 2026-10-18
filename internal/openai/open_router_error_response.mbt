@@ -24,3 +24,11 @@ pub impl @json.FromJson for OpenRouterErrorResponse with fn from_json(
   }
   { code: code.to_int(), message, metadata, }
 }
+
+///|
+pub extend OpenRouterErrorResponse with ToJson::{to_json}
+
+///|
+pub extend OpenRouterErrorResponse with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

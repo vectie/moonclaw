@@ -6,6 +6,7 @@ fn moondesk_control_auth_test_config() -> @moondesk_sandbox_config.Config {
     auth_token: "a".repeat(64),
     workspace_id: "book",
     workspace_root: "/registered/book",
+    trusted_book_roots: None,
   }
 }
 
@@ -86,4 +87,20 @@ test "MoonDesk control route policy protects runtime state but leaves public cal
       "", "v1", "execution-sandbox", "promote",
     ]),
   )
+}
+
+///|
+test "bounded integration routes require control auth under canonical and legacy URLs" {
+  for family in ["code", "mooncode"] {
+    for endpoint in ["mcp", "knowledge", "realtime-session"] {
+      assert_true(
+        moondesk_control_route_requires_auth(Post, [
+          "",
+          "v1",
+          family[:],
+          endpoint[:],
+        ]),
+      )
+    }
+  }
 }

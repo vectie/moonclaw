@@ -43,7 +43,7 @@ async test "human revisions preserve exact source and lineage with duplicate con
       "source",
       100,
     )
-    let before_run = store.list_runs().to_json()
+    let before_run = Json(store.list_runs())
     let source = artifacts.human_revision_source("run-1", "source")
     guard source
       is {
@@ -90,7 +90,7 @@ async test "human revisions preserve exact source and lineage with duplicate con
     }
     assert_eq(saved_metadata["parent_artifact_id"], "source")
     assert_eq(saved_metadata["parent_version"], 1)
-    assert_eq(saved_metadata["parent_digest"], digest.to_json())
+    assert_eq(saved_metadata["parent_digest"], Json(digest))
     assert_eq(saved_metadata["execution_output"], false)
     assert_eq(saved_metadata["accepted_output"], false)
     let (parent, _, revised_digest) = artifacts.human_revision_parent_unlocked(
@@ -108,7 +108,7 @@ async test "human revisions preserve exact source and lineage with duplicate con
     assert_eq(next.version, 2)
     assert_eq(next.logical_key, saved.logical_key)
     guard next.metadata is Object(next_metadata) else { fail("next metadata") }
-    assert_eq(next_metadata["parent_artifact_id"], saved.id.to_json())
+    assert_eq(next_metadata["parent_artifact_id"], Json(saved.id))
     assert_eq(next_metadata["lineage_root_id"], "source")
     try
       artifacts.save_human_revision(
@@ -120,7 +120,7 @@ async test "human revisions preserve exact source and lineage with duplicate con
     } noraise {
       _ => fail("conflicting save ID must fail")
     }
-    assert_eq(store.list_runs().to_json(), before_run)
+    assert_eq(Json(store.list_runs()), before_run)
     let reopened = SystemStore::new(root~)
     reopened.load()
     assert_eq(

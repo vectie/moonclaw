@@ -12,7 +12,7 @@ fn extract_first_json_object(content : String) -> String? {
   if trimmed.has_prefix("{") {
     return Some(trimmed)
   }
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut started = false
   let mut depth = 0
   let mut in_string = false

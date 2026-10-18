@@ -598,7 +598,7 @@ async test "worker handback bounds answers and canonical references without dere
       "../outside.txt", "/tmp/outside.txt", "nested/../../escape.txt",
     ]
     for i = 0; i < 80; i = i + 1 {
-      artifacts.push("findings/\{i}.txt".to_json())
+      artifacts.push(Json("findings/\{i}.txt"))
     }
     for i = 0; i < 40; i = i + 1 {
       mooncode_worker_test_append(

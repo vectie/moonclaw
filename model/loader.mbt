@@ -4,6 +4,7 @@ struct Loader {
   cwd : StringView
   models : Array[Model]
   providers : Map[String, ProviderConfig]
+  resource_reader : (async (StringView) -> String?)?
 }
 
 ///|
@@ -23,7 +24,11 @@ const CODEX_DEFAULT_SELECTOR = "codex/gpt-5.6-sol"
 ///
 /// Populate the loader's in-memory model cache by reading project and user
 /// model configuration files from the MoonSuite MoonClaw product home.
-pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
+pub async fn Loader::new(
+  home? : StringView,
+  cwd? : StringView,
+  resource_reader? : async (StringView) -> String?,
+) -> Loader {
   let home = match home {
     Some(home) => home
     None => @os.home()
@@ -32,7 +37,13 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
     Some(cwd) => cwd
     None => @os.cwd()
   }
-  let loader = Loader::{ home, cwd, models: [], providers: Map([]), }
+  let loader = Loader::{
+    home,
+    cwd,
+    models: [],
+    providers: Map([]),
+    resource_reader,
+  }
   loader.load()
   loader
 }
@@ -90,7 +101,7 @@ async fn Loader::load(self : Loader) -> Unit {
   self.providers.clear()
 
   async fn load_from_path(path : StringView) -> Array[Model] {
-    let text = @fsx.read_file(path) catch { _ => return [] }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return [] }
     guard json is Array(_) else { return [] }
     @json.from_json(json) catch {
@@ -101,7 +112,7 @@ async fn Loader::load(self : Loader) -> Unit {
   async fn load_providers_from_path(
     path : StringView,
   ) -> Map[String, ProviderConfig] {
-    let text = @fsx.read_file(path) catch { _ => return Map([]) }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return Map([]) }
     guard json is Object(obj) else { return Map([]) }
     if obj.get("providers") is Some(_) {
@@ -117,7 +128,7 @@ async fn Loader::load(self : Loader) -> Unit {
   async fn load_providers_from_moonclaw_config(
     path : StringView,
   ) -> Map[String, ProviderConfig] {
-    let text = @fsx.read_file(path) catch { _ => return Map([]) }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return Map([]) }
     guard json is Object(obj) else { return Map([]) }
     guard obj.get("models") is Some(models_json) else { return Map([]) }
@@ -131,24 +142,24 @@ async fn Loader::load(self : Loader) -> Unit {
   }
 
   for path in moonclaw_models_paths(self.cwd) {
-    if @fsx.exists(path) {
+    if self.resource_reader is Some(_) || @fsx.exists(path) {
       self.models.append(load_from_path(path))
       merge_providers(self.providers, load_providers_from_path(path))
     }
   }
   for path in moonclaw_models_paths(self.home) {
-    if @fsx.exists(path) {
+    if self.resource_reader is Some(_) || @fsx.exists(path) {
       self.models.append(load_from_path(path))
       merge_providers(self.providers, load_providers_from_path(path))
     }
   }
   for path in moonclaw_config_paths(self.cwd) {
-    if @fsx.exists(path) {
+    if self.resource_reader is Some(_) || @fsx.exists(path) {
       merge_providers(self.providers, load_providers_from_moonclaw_config(path))
     }
   }
   for path in moonclaw_config_paths(self.home) {
-    if @fsx.exists(path) {
+    if self.resource_reader is Some(_) || @fsx.exists(path) {
       merge_providers(self.providers, load_providers_from_moonclaw_config(path))
     }
   }
@@ -157,10 +168,10 @@ async fn Loader::load(self : Loader) -> Unit {
 ///|
 async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if !@fsx.exists(path) {
+    if self.resource_reader is None && !@fsx.exists(path) {
       return None
     }
-    let text = @fsx.read_file(path) catch { _ => return None }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return None }
     guard json is Object(obj) else { return None }
     if obj.get("api_key") is Some(api_key_json) {
@@ -202,10 +213,10 @@ async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_qwen_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if !@fsx.exists(path) {
+    if self.resource_reader is None && !@fsx.exists(path) {
       return None
     }
-    let text = @fsx.read_file(path) catch { _ => return None }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return None }
     guard json is Object(obj) else { return None }
     if obj.get("qwen_api_key") is Some(api_key_json) {
@@ -249,10 +260,10 @@ async fn Loader::load_qwen_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_kimi_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if !@fsx.exists(path) {
+    if self.resource_reader is None && !@fsx.exists(path) {
       return None
     }
-    let text = @fsx.read_file(path) catch { _ => return None }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return None }
     guard json is Object(obj) else { return None }
     if obj.get("kimi_api_key") is Some(api_key_json) {
@@ -296,10 +307,10 @@ async fn Loader::load_kimi_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if !@fsx.exists(path) {
+    if self.resource_reader is None && !@fsx.exists(path) {
       return None
     }
-    let text = @fsx.read_file(path) catch { _ => return None }
+    let text = self.read_config_resource(path).unwrap_or("")
     let json = @json.parse(text) catch { _ => return None }
     guard json is Object(obj) else { return None }
     if obj.get("kimi_coding_api_key") is Some(api_key_json) {
@@ -942,4 +953,24 @@ pub async fn load(
   name? : String,
 ) -> Model? {
   Loader::new(home?, cwd?).get_model(name?)
+}
+
+///|
+async fn Loader::read_config_resource(
+  self : Loader,
+  path : StringView,
+) -> String? {
+  match self.resource_reader {
+    Some(reader) => reader(path)
+    None => Some(@fsx.read_file(path)) catch { _ => None }
+  }
+}
+
+///|
+/// Copy the same configured scope with an explicit resource reader. Denials propagate.
+pub async fn Loader::with_resource_reader(
+  self : Loader,
+  reader : async (StringView) -> String?,
+) -> Loader {
+  Loader::new(home=self.home, cwd=self.cwd, resource_reader=reader)
 }

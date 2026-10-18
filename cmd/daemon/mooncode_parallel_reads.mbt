@@ -138,7 +138,7 @@ async fn Daemon::mooncode_runtime_turn_execute_parallel_reads(
   })
   let timestamps = tool_calls.map(_ => self.clock.now())
   @async.with_task_group(group => {
-    let tasks = Array::new(capacity=tool_calls.length())
+    let tasks = Array(capacity=tool_calls.length())
     for index in 0..<tool_calls.length() {
       tasks.push(
         group.spawn(() => {

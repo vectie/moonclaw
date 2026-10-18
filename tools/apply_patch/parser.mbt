@@ -77,7 +77,7 @@ fn parse_one_hunk(
   let line_number = start + 1
   if first_line.has_prefix(ADD_FILE_MARKER) {
     let path = first_line[ADD_FILE_MARKER.length():]
-    let contents = StringBuilder::new()
+    let contents = StringBuilder()
     let mut parsed_lines = 1
     let mut i = start + 1
     while i < end {

@@ -34,12 +34,14 @@ pub fn[K : Eq + Hash, V] Cache::get(self : Cache[K, V], key : K) -> V? {
 }
 
 ///|
-pub fn[K : Eq + Hash, V] Cache::op_get(self : Cache[K, V], key : K) -> V {
+#alias("_[_]")
+pub fn[K : Eq + Hash, V] Cache::at(self : Cache[K, V], key : K) -> V {
   self.get(key).unwrap()
 }
 
 ///|
-pub fn[K : Eq + Hash, V] Cache::op_set(
+#alias("_[_]=_")
+pub fn[K : Eq + Hash, V] Cache::set(
   self : Cache[K, V],
   key : K,
   value : V,
@@ -69,5 +71,8 @@ fn[K : Eq + Hash, V] Cache::evict(self : Cache[K, V]) -> Unit {
 pub impl[K : Show, V : ToJson] ToJson for Cache[K, V] with fn to_json(
   self : Cache[K, V],
 ) -> Json {
-  self.cache.to_json()
+  Json(self.cache)
 }
+
+///|
+pub extend Cache with ToJson::{to_json}

@@ -46,7 +46,7 @@ pub impl ToJson for FeedComparison with fn to_json(self : FeedComparison) -> Jso
     "matched_changes": self.matched_changes,
     "offset": self.offset,
     "next_offset": match self.next_offset {
-      Some(offset) => offset.to_json()
+      Some(offset) => Json(offset)
       None => Json::null()
     },
     "query": self.query,
@@ -102,7 +102,7 @@ fn write_comparison_article(
 ///|
 /// Export the selected comparison page, including old and new visible values.
 pub fn FeedComparison::to_markdown(self : FeedComparison) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string("# Feed observation comparison\n\n")
   out.write_string("Source: " + markdown_text(self.source) + "\n\n")
   write_observation(out, "Before", self.before)
@@ -150,3 +150,12 @@ pub fn FeedComparison::to_markdown(self : FeedComparison) -> String {
   }
   out.to_string()
 }
+
+///|
+pub extend FeedObservation with ToJson::{to_json}
+
+///|
+pub extend FeedChange with ToJson::{to_json}
+
+///|
+pub extend FeedComparison with ToJson::{to_json}

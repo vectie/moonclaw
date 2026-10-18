@@ -7,7 +7,6 @@ import {
   "vectie/moonclaw/internal/git",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -23,4 +22,5 @@ import {
   "vectie/moonclaw/tools/replace_in_file",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/event",
+  "moonbitlang/core/test",
 } for "test"

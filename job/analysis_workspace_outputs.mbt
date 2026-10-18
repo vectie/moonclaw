@@ -1,6 +1,6 @@
 ///|
 fn workspace_output_slug(text : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut chars_written = 0
   let mut last_dash = true
   for c in text.to_lower() {

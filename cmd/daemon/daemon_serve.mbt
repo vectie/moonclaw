@@ -10,6 +10,7 @@
 /// - GET  /v1/models     → `list_models`
 /// - GET  /v1/moongate-route → live MoonGate routing status and catalog
 /// - POST /v1/provider-handoff → redeem and install a lease-scoped provider
+/// - POST /v1/provider-connections/import → validate a transient candidate in MoonGate, then install it
 /// - POST /v1/task/register → `register_task`
 /// - GET  /v1/tasks      → `list_tasks`
 /// - POST /v1/task       → `create_task`
@@ -65,207 +66,192 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
       no_wait=true,
     )
     self.httpx.serve(
-      @httpx.cors((r, w) => {
-        let route_path = r.path.split("?").head().unwrap_or(r.path)
-        let paths = route_path.split("/").collect()
-        logger.info("Received request: \{r.method_} \{r.path}")
-        logger.info("Handling request paths: \{Repr(paths)}")
-        try {
-          if moondesk_control_route_requires_auth(r.method_, paths) {
-            self.require_moondesk_control_auth(r, w)
-          }
-          match (r.method_, paths) {
-            (Options, _) => w.write_header(204)
-            // GET /
-            (Get, ["", ""]) => {
-              let index_html = html_read_file(
-                @pathx.join(self.serve, "index.html"),
-              )
-              w.header().set("Content-Type", "text/html")
-              w.write_header(200)
-              w.write(index_html)
-            }
-            (Get, ["", "v1", "health"]) => self.health(w)
-            (Get, ["", "v1", "hosted-ready"]) => self.hosted_ready(w)
-            (Get, ["", "v1", "events"]) => self.get_events(w)
-            (Get, ["", "v1", "models"]) => self.list_models(w)
-            (Get, ["", "v1", "moongate-route"]) => self.moongate_route(w)
-            (Post, ["", "v1", "provider-handoff"]) =>
-              self.provider_handoff(r, w)
-            (Post, ["", "v1", "supervisors", "activate"]) =>
-              self.supervisor_activate(group~, r, w)
-            (Post, ["", "v1", "supervisors", id, "commands", "message"]) =>
-              self.supervisor_send_message(id.to_owned(), r, w)
-            (Post, ["", "v1", "supervisors", id, "commands", "delegate"]) =>
-              self.supervisor_delegate_intent(group~, id.to_owned(), r, w)
-            (Post, ["", "v1", "supervisors", id, "commands", "worker-steer"]) =>
-              self.supervisor_worker_command(
-                group~,
-                id.to_owned(),
-                "worker-steer",
-                r,
-                w,
-              )
-            (Post, ["", "v1", "supervisors", id, "commands", "worker-stop"]) =>
-              self.supervisor_worker_command(
-                group~,
-                id.to_owned(),
-                "worker-stop",
-                r,
-                w,
-              )
-            (
-              Post,
-              ["", "v1", "supervisors", id, "commands", "worker-retry-resume"],
-            ) =>
-              self.supervisor_worker_command(
-                group~,
-                id.to_owned(),
-                "worker-retry-resume",
-                r,
-                w,
-              )
-            (Post, ["", "v1", "supervisors", id, "commands", command]) =>
-              self.supervisor_command(
-                group~,
-                id.to_owned(),
-                command.to_owned(),
-                r,
-                w,
-              )
-            (Get, ["", "v1", "supervisors", id, "status"]) =>
-              self.supervisor_status(id.to_owned(), w)
-            (Get, ["", "v1", "supervisors", id, "events"]) =>
-              self.supervisor_replay(id.to_owned(), r, w)
-            (Post, ["", "v1", "task", "register"]) => self.register_task(r, w)
-            (Get, ["", "v1", "tasks"]) => self.list_tasks(w)
-            (Post, ["", "v1", "task"]) => self.create_task(group~, r, w)
-            (Get, ["", "v1", "task", id]) => self.get_task(id, w)
-            (Get, ["", "v1", "task", id, "events"]) =>
-              self.get_task_events(id~, w)
-            (Get, ["", "v1", "code", "capabilities"]) =>
-              self.mooncode_capabilities(w)
-            (Get, ["", "v1", "code", "skills"]) =>
-              self.mooncode_list_skills(r, w)
-            (Post, ["", "v1", "execution-sandbox", "moon-diagnostics"]) =>
-              self.moondesk_moon_diagnostics(r, w)
-            (Post, ["", "v1", "execution-sandbox", "moon-ide"]) =>
-              self.moondesk_moon_ide(r, w)
-            (Post, ["", "v1", "execution-sandbox", "promote"]) =>
-              self.moondesk_promote_retention(r, w)
-            (Post, ["", "v1", "execution-sandbox", "promotion-receipt"]) =>
-              self.moondesk_promote_retention(r, w, read_receipt=true)
-            (Post, ["", "v1", "execution-sandbox", "promotion-recovery"]) =>
-              @promotion_recovery.handle(r, w)
-            (Get, ["", "v1", "code", "sessions"]) =>
-              self.mooncode_list_sessions(r, w)
-            (Get, ["", "v1", "code", "sessions", session_id]) =>
-              self.mooncode_get_session(session_id~, r, w)
-            (
-              Get,
-              [
-                "",
-                "v1",
-                "code",
-                "sessions",
-                session_id,
-                "media",
-                command_id,
-                index,
-              ],
-            ) =>
-              self.mooncode_get_command_media(
-                session_id~,
-                command_id~,
-                index~,
-                r,
-                w,
-              )
-            (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
-              self.mooncode_accept_command(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "turns"]) =>
-              self.mooncode_submit_turn(group~, session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
-              self.mooncode_goal_runtime_get(session_id~, r, w)
-            (Put, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
-              self.mooncode_goal_runtime_put(session_id~, r, w)
-            (_, ["", "v1", "code", "sessions", _, "goal-runtime"]) =>
-              self.mooncode_goal_runtime_method_not_allowed(w)
-            (Post, ["", "v1", "code", "sessions", session_id, "lifecycle"]) =>
-              self.mooncode_manage_session(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>
-              self.mooncode_runtime_control(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
-              self.mooncode_runtime_claim_state(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
-              self.mooncode_runtime_claim(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "runtime-turn"]) =>
-              self.mooncode_runtime_turn(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "runtime-loop"]) =>
-              self.mooncode_runtime_loop(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "runtime-service"]) =>
-              self.mooncode_runtime_service_state(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "job-history"]) =>
-              self.mooncode_runtime_service_job_history(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "runtime-service"]
-            ) => self.mooncode_runtime_service(group~, session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
-              self.mooncode_runtime_events_state(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
-              self.mooncode_runtime_events(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "tool-exec"]) =>
-              self.mooncode_tool_execute(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "stream"]) =>
-              self.mooncode_stream(session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "eval-report"]) =>
-              self.mooncode_eval_report(session_id~, r, w)
-            (Post, ["", "v1", "code", "sessions", session_id, "package-result"]) =>
-              self.mooncode_package_result(session_id~, r, w)
-            (method_, ["", "v1", "task", id, .. paths]) =>
-              self.forward_to_task(method_~, group~, id~, paths~, r, w)
-            // Auth endpoints
-            (Get, ["", "v1", "auth", "status"]) => self.get_auth_status(w)
-            (Post, ["", "v1", "auth", "codex", "start"]) =>
-              self.start_codex_auth(group~, r, w)
-            (Post, ["", "v1", "auth", "codex", "logout"]) =>
-              self.logout_codex(w)
-            (Post, ["", "v1", "auth", "copilot", "start"]) =>
-              self.start_copilot_auth(group~, r, w)
-            (Post, ["", "v1", "auth", "copilot", "logout"]) =>
-              self.logout_copilot(w)
-            (Post, ["", "v1", "shutdown"]) => {
-              w.header().set("Content-Type", "application/json")
-              w.write_header(200)
-              let response : Json = Json::empty_object()
-              w.write(response.stringify())
-              w.flush()
-              // We need to close the writer before shutting down to ensure the
-              w.close()
-              group.return_immediately(())
-            }
-            (Get, ["", .. file]) =>
-              serve_static_file(w, serve=self.serve, path=file.join("/"))
-            _ =>
-              raise json_error(404, "NotFound", {
-                "error": {
-                  "code": -1,
-                  "message": "Unknown endpoint: \{r.path}",
-                  "metadata": {
-                    "method": r.method_.to_string(),
-                    "path": r.path,
-                  },
-                },
-              })
-          }
-        } catch {
-          HttpError(code~, reason~, body~) => {
-            w.header().set("Content-Type", "application/json")
-            w.write_header(code, reason~)
-            w.write(body)
-          }
-          error => raise error
-        }
-      }),
+      @httpx.cors((r, w) => self.handle_http_request(group~, r, w)),
     )
   })
+}
+
+///|
+async fn Daemon::handle_http_request(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let route_path = r.path.split("?").head().unwrap_or(r.path)
+  let paths = route_path.split("/").collect()
+  logger.info("Received request: \{r.method_} \{r.path}")
+  logger.info("Handling request paths: \{Repr(paths)}")
+  try {
+    let control_config = if moondesk_control_route_requires_auth(
+        r.method_,
+        paths,
+      ) {
+      Some(self.require_moondesk_control_auth(r, w))
+    } else {
+      None
+    }
+    match (r.method_, paths) {
+      (Options, _) => w.write_header(204)
+      (Post, ["", "v1", "code" | "mooncode", "mcp"]) =>
+        self.mooncode_mcp_inspect(control_config.unwrap(), r, w)
+      (Post, ["", "v1", "code" | "mooncode", "knowledge"]) =>
+        self.mooncode_knowledge_service(control_config.unwrap(), r, w)
+      (Post, ["", "v1", "code" | "mooncode", "realtime-session"]) =>
+        self.mooncode_realtime_session(control_config.unwrap(), r, w)
+      // GET /
+      (Get, ["", ""]) => {
+        let index_html = html_read_file(@pathx.join(self.serve, "index.html"))
+        w.header().set("Content-Type", "text/html")
+        w.write_header(200)
+        w.write(index_html)
+      }
+      (Get, ["", "v1", "health"]) => self.health(w)
+      (Get, ["", "v1", "hosted-ready"]) => self.hosted_ready(w)
+      (Get, ["", "v1", "events"]) => self.get_events(w)
+      (Get, ["", "v1", "models"]) => self.list_models(w)
+      (Get, ["", "v1", "moongate-route"]) => self.moongate_route(w)
+      (Post, ["", "v1", "provider-handoff"]) => self.provider_handoff(r, w)
+      (Post, ["", "v1", "provider-connections", "import"]) =>
+        self.import_provider_connection(control_config.unwrap(), r, w)
+      (Post, ["", "v1", "supervisors", "activate"]) =>
+        self.supervisor_activate(group~, r, w)
+      (Post, ["", "v1", "supervisors", id, "commands", "message"]) =>
+        self.supervisor_send_message(id.to_owned(), r, w)
+      (Post, ["", "v1", "supervisors", id, "commands", "delegate"]) =>
+        self.supervisor_delegate_intent(group~, id.to_owned(), r, w)
+      (Post, ["", "v1", "supervisors", id, "commands", "worker-steer"]) =>
+        self.supervisor_worker_command(
+          group~,
+          id.to_owned(),
+          "worker-steer",
+          r,
+          w,
+        )
+      (Post, ["", "v1", "supervisors", id, "commands", "worker-stop"]) =>
+        self.supervisor_worker_command(
+          group~,
+          id.to_owned(),
+          "worker-stop",
+          r,
+          w,
+        )
+      (Post, ["", "v1", "supervisors", id, "commands", "worker-retry-resume"]) =>
+        self.supervisor_worker_command(
+          group~,
+          id.to_owned(),
+          "worker-retry-resume",
+          r,
+          w,
+        )
+      (Post, ["", "v1", "supervisors", id, "commands", command]) =>
+        self.supervisor_command(group~, id.to_owned(), command.to_owned(), r, w)
+      (Get, ["", "v1", "supervisors", id, "status"]) =>
+        self.supervisor_status(id.to_owned(), w)
+      (Get, ["", "v1", "supervisors", id, "events"]) =>
+        self.supervisor_replay(id.to_owned(), r, w)
+      (Post, ["", "v1", "task", "register"]) => self.register_task(r, w)
+      (Get, ["", "v1", "tasks"]) => self.list_tasks(w)
+      (Post, ["", "v1", "task"]) => self.create_task(group~, r, w)
+      (Get, ["", "v1", "task", id]) => self.get_task(id, w)
+      (Get, ["", "v1", "task", id, "events"]) => self.get_task_events(id~, w)
+      (Get, ["", "v1", "code", "capabilities"]) => self.mooncode_capabilities(w)
+      (Get, ["", "v1", "code", "skills"]) => self.mooncode_list_skills(r, w)
+      (Post, ["", "v1", "execution-sandbox", "moon-diagnostics"]) =>
+        self.moondesk_moon_diagnostics(r, w)
+      (Post, ["", "v1", "execution-sandbox", "moon-ide"]) =>
+        self.moondesk_moon_ide(r, w)
+      (Post, ["", "v1", "execution-sandbox", "promote"]) =>
+        self.moondesk_promote_retention(r, w)
+      (Post, ["", "v1", "execution-sandbox", "promotion-receipt"]) =>
+        self.moondesk_promote_retention(r, w, read_receipt=true)
+      (Post, ["", "v1", "execution-sandbox", "promotion-recovery"]) =>
+        @promotion_recovery.handle(r, w)
+      (Get, ["", "v1", "code", "sessions"]) => self.mooncode_list_sessions(r, w)
+      (Get, ["", "v1", "code", "sessions", session_id]) =>
+        self.mooncode_get_session(session_id~, r, w)
+      (
+        Get,
+        ["", "v1", "code", "sessions", session_id, "media", command_id, index],
+      ) =>
+        self.mooncode_get_command_media(session_id~, command_id~, index~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
+        self.mooncode_accept_command(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "turns"]) =>
+        self.mooncode_submit_turn(group~, session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
+        self.mooncode_goal_runtime_get(session_id~, r, w)
+      (Put, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
+        self.mooncode_goal_runtime_put(session_id~, r, w)
+      (_, ["", "v1", "code", "sessions", _, "goal-runtime"]) =>
+        self.mooncode_goal_runtime_method_not_allowed(w)
+      (Post, ["", "v1", "code", "sessions", session_id, "lifecycle"]) =>
+        self.mooncode_manage_session(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>
+        self.mooncode_runtime_control(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
+        self.mooncode_runtime_claim_state(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
+        self.mooncode_runtime_claim(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "runtime-turn"]) =>
+        self.mooncode_runtime_turn(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "runtime-loop"]) =>
+        self.mooncode_runtime_loop(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "runtime-service"]) =>
+        self.mooncode_runtime_service_state(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "job-history"]) =>
+        self.mooncode_runtime_service_job_history(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "runtime-service"]) =>
+        self.mooncode_runtime_service(group~, session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
+        self.mooncode_runtime_events_state(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
+        self.mooncode_runtime_events(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "tool-exec"]) =>
+        self.mooncode_tool_execute(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "stream"]) =>
+        self.mooncode_stream(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "eval-report"]) =>
+        self.mooncode_eval_report(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "package-result"]) =>
+        self.mooncode_package_result(session_id~, r, w)
+      (method_, ["", "v1", "task", id, .. paths]) =>
+        self.forward_to_task(method_~, group~, id~, paths~, r, w)
+      // Auth endpoints
+      (Get, ["", "v1", "auth", "status"]) => self.get_auth_status(w)
+      (Post, ["", "v1", "auth", "codex", "start"]) =>
+        self.start_codex_auth(group~, r, w)
+      (Post, ["", "v1", "auth", "codex", "logout"]) => self.logout_codex(w)
+      (Post, ["", "v1", "auth", "copilot", "start"]) =>
+        self.start_copilot_auth(group~, r, w)
+      (Post, ["", "v1", "auth", "copilot", "logout"]) => self.logout_copilot(w)
+      (Post, ["", "v1", "shutdown"]) => {
+        w.header().set("Content-Type", "application/json")
+        w.write_header(200)
+        let response : Json = Json::empty_object()
+        w.write(response.stringify())
+        w.flush()
+        // We need to close the writer before shutting down to ensure the
+        w.close()
+        group.return_immediately(())
+      }
+      (Get, ["", .. file]) =>
+        serve_static_file(w, serve=self.serve, path=file.join("/"))
+      _ =>
+        raise json_error(404, "NotFound", {
+          "error": {
+            "code": -1,
+            "message": "Unknown endpoint: \{r.path}",
+            "metadata": { "method": r.method_.to_string(), "path": r.path },
+          },
+        })
+    }
+  } catch {
+    HttpError(code~, reason~, body~) => {
+      w.header().set("Content-Type", "application/json")
+      w.write_header(code, reason~)
+      w.write(body)
+    }
+    error => raise error
+  }
 }

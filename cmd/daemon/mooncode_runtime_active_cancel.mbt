@@ -243,9 +243,9 @@ async fn mooncode_runtime_cancel_active_atomic(
     now~,
   )
   if receipt is Object(fields) {
-    fields["control_command_id"] = control_id.to_json()
+    fields["control_command_id"] = Json(control_id)
     fields["events"] = Json::array([event])
-    fields["interrupted_runtime"] = interrupted_runtime.to_json()
+    fields["interrupted_runtime"] = Json(interrupted_runtime)
   }
   ignore(
     mooncode_append_session_journal_once_locked(

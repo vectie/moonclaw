@@ -18,6 +18,10 @@ pub struct EnterWorktreeResult {
   created : Bool
   note : String
 } derive(ToJson, @json.FromJson)
+pub fn EnterWorktreeResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EnterWorktreeResult::output(Self, &Logger) -> Unit
+pub fn EnterWorktreeResult::to_json(Self) -> Json
+pub fn EnterWorktreeResult::to_string(Self) -> String
 pub impl Show for EnterWorktreeResult
 
 // Type aliases

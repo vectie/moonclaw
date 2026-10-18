@@ -74,3 +74,9 @@ pub suberror TrustedHostProcessError {
   UnsafeRepositoryConfig(String)
   HostToolUnavailable(String)
 } derive(Debug)
+
+///|
+pub extend GitOperation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend TrustedHostProcessError with @moonbitlang/core/debug.Debug::{to_repr}

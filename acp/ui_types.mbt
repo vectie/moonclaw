@@ -44,3 +44,39 @@ pub(all) struct AcpUiSnapshot {
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
 } derive(ToJson, FromJson, Debug)
+
+///|
+pub extend AcpUiNodeKind with ToJson::{to_json}
+
+///|
+pub extend AcpUiNodeKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpUiNodeKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpUiNode with ToJson::{to_json}
+
+///|
+pub extend AcpUiNode with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpUiNode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpUiTimelineEntry with ToJson::{to_json}
+
+///|
+pub extend AcpUiTimelineEntry with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpUiTimelineEntry with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpUiSnapshot with ToJson::{to_json}
+
+///|
+pub extend AcpUiSnapshot with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpUiSnapshot with @moonbitlang/core/debug.Debug::{to_repr}

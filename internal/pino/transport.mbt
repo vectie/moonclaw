@@ -35,7 +35,7 @@ priv suberror InvalidTransport {
 /// let _t2 = Transport::parse("file:/var/log/app.log")
 /// ```
 pub fn Transport::parse(transport : StringView) -> Transport raise {
-  let schema = StringBuilder::new()
+  let schema = StringBuilder()
   let mut rest = transport
   while true {
     match rest {

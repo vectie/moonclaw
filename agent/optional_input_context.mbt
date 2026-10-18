@@ -236,3 +236,14 @@ async fn Agent::messages_omitting_optional_contexts(
   self.rules.apply(messages)
   messages.map(message => message.to_openai())
 }
+
+///|
+pub extend OptionalInputContext with ToJson::{to_json}
+
+///|
+pub extend OptionalInputContext with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend OptionalInputContextStatus with ToJson::{to_json}

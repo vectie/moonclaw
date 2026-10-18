@@ -955,12 +955,12 @@ test "mooncode model planner sends a compact request envelope" {
 
   let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
   assert_eq(chat_tools.length(), 2)
-  assert_true(chat_tools.to_json().stringify().contains("finish"))
-  assert_false(chat_tools.to_json().stringify().contains("goal_runtime"))
-  assert_false(chat_tools.to_json().stringify().contains("achieved"))
-  assert_false(chat_tools.to_json().stringify().contains("blocked"))
-  assert_true(chat_tools.to_json().stringify().contains("read_skill"))
-  assert_false(chat_tools.to_json().stringify().contains("moon_check"))
+  assert_true(Json(chat_tools).stringify().contains("finish"))
+  assert_false(Json(chat_tools).stringify().contains("goal_runtime"))
+  assert_false(Json(chat_tools).stringify().contains("achieved"))
+  assert_false(Json(chat_tools).stringify().contains("blocked"))
+  assert_true(Json(chat_tools).stringify().contains("read_skill"))
+  assert_false(Json(chat_tools).stringify().contains("moon_check"))
 
   let plan_request = mooncode_runtime_turn_model_plan_request(
     "gpt-5.6-sol", command,
@@ -985,7 +985,7 @@ test "mooncode model planner sends a compact request envelope" {
   }
   let summary_tools = mooncode_runtime_turn_model_tools_for_command(summary)
   assert_eq(summary_tools.length(), 5)
-  let summary_json = summary_tools.to_json().stringify()
+  let summary_json = Json(summary_tools).stringify()
   assert_true(summary_json.contains("read"))
   assert_true(summary_json.contains("finish"))
   assert_false(summary_json.contains("moon_check"))
@@ -1092,19 +1092,17 @@ test "mooncode model planner sends a compact request envelope" {
   assert_true(system.contains("read_skill"))
   assert_true(system.contains("moonbit-agent-guide"))
   assert_true(
-    initial
-    .to_json()
+    Json(initial)
     .stringify()
     .contains(
       "Dynamic skill gate: the user's wording may omit the implementation language",
     ),
   )
   assert_true(
-    initial.to_json().stringify().contains("the gate is already satisfied"),
+    Json(initial).stringify().contains("the gate is already satisfied"),
   )
   assert_true(
-    initial
-    .to_json()
+    Json(initial)
     .stringify()
     .contains("never through read, shell, glob, grep, find, ls, or web tools"),
   )
@@ -1245,7 +1243,7 @@ test "mooncode planner permits parallel tool calls" {
       { "accepted": true, "tool": "read", "result": { "ok": true } },
     ),
   )
-  let tools_json = mooncode_runtime_turn_model_tools().to_json().stringify()
+  let tools_json = Json(mooncode_runtime_turn_model_tools()).stringify()
   assert_true(tools_json.contains("start_line"))
   assert_true(tools_json.contains("end_line"))
   let kimi_system = mooncode_json_string(
@@ -1476,8 +1474,7 @@ test "mooncode planner has no implicit budget and scopes goal settlement" {
     ),
   )
   assert_false(
-    mooncode_runtime_turn_model_tools_for_command(command)
-    .to_json()
+    Json(mooncode_runtime_turn_model_tools_for_command(command))
     .stringify()
     .contains("goal_runtime"),
   )
@@ -1499,11 +1496,9 @@ test "mooncode planner has no implicit budget and scopes goal settlement" {
   assert_true(
     goal_prompt.contains("genuine external or user-authority blocker"),
   )
-  let goal_tools_json = mooncode_runtime_turn_model_tools_for_command(
-      goal_command,
-    )
-    .to_json()
-    .stringify()
+  let goal_tools_json = Json(
+    mooncode_runtime_turn_model_tools_for_command(goal_command),
+  ).stringify()
   assert_true(goal_tools_json.contains("goal_runtime"))
   assert_true(goal_tools_json.contains("achieved"))
   assert_true(goal_tools_json.contains("blocked"))

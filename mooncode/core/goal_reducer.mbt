@@ -621,3 +621,9 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
     }
   }
 }
+
+///|
+pub extend GoalEvent with Eq::{not_equal, equal}
+
+///|
+pub extend GoalEvent with @moonbitlang/core/debug.Debug::{to_repr}

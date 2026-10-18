@@ -16,7 +16,7 @@ fn model_workspace_fixture_command(
   if owner == "" {
     body
   } else {
-    mooncode_json_object_with_field(body, "model_workspace", owner.to_json())
+    mooncode_json_object_with_field(body, "model_workspace", Json(owner))
   }
 }
 
@@ -72,13 +72,7 @@ test "model workspace native codec is optional and rejects invalid supplied root
     ),
   )
   for
-    root in [
-      Json::null(),
-      (5).to_json(),
-      "".to_json(),
-      "relative".to_json(),
-      " /owner".to_json(),
-    ] {
+    root in [Json::null(), Json(5), Json(""), Json("relative"), Json(" /owner")] {
     let malformed = mooncode_json_object_with_field(
       legacy, "model_workspace", root,
     )
@@ -115,12 +109,12 @@ async test "model workspace exclusive routing covers admission initial followup 
       command,
       "moongate/exact-id",
       legacy_source_fallback=phase != "admission",
-      owner_lookup=async fn(root, selector) {
+      owner_lookup=fn(root, selector) {
         calls.push(root + ":" + selector)
         Some("owner-route")
       },
-      daemon_lookup=async fn(_) { fail("must not use daemon same-named route") },
-      source_lookup=async fn(_, _) {
+      daemon_lookup=fn(_) raise { fail("must not use daemon same-named route") },
+      source_lookup=fn(_, _) raise {
         fail("must not use source same-named route")
       },
     )
@@ -132,11 +126,11 @@ async test "model workspace exclusive routing covers admission initial followup 
   let missing : String? = mooncode_resolve_model_workspace(
     command,
     "moongate/exact-id",
-    owner_lookup=async fn(_, _) { None },
-    daemon_lookup=async fn(_) {
+    owner_lookup=fn(_, _) { None },
+    daemon_lookup=fn(_) raise {
       fail("missing owner must not fall back to daemon")
     },
-    source_lookup=async fn(_, _) {
+    source_lookup=fn(_, _) raise {
       fail("missing owner must not fall back to source")
     },
   )
@@ -151,9 +145,9 @@ async test "model workspace omitted retains legacy admission and planner fallbac
       command,
       "legacy/selector",
       legacy_source_fallback=fallback,
-      owner_lookup=async fn(_, _) { fail("legacy must not consult owner") },
-      daemon_lookup=async fn(_) { None },
-      source_lookup=async fn(root, selector) {
+      owner_lookup=fn(_, _) raise { fail("legacy must not consult owner") },
+      daemon_lookup=fn(_) { None },
+      source_lookup=fn(root, selector) raise {
         assert_eq(root, "/source")
         assert_eq(selector, "legacy/selector")
         Some("source-route")
@@ -220,7 +214,7 @@ async test "model workspace journal freezes identity restores without snapshot a
     )
     for
       changed in [
-        mooncode_json_object_with_field(first, "text", "changed".to_json()),
+        mooncode_json_object_with_field(first, "text", Json("changed")),
         model_workspace_fixture_command(root, "/different-owner", "first"),
         model_workspace_fixture_command(root, "/different-owner", "new-id"),
         omitted,
@@ -276,7 +270,7 @@ async test "model workspace concurrent admission cannot freeze different owners"
   @fsx.with_temporary_directory("mooncode-model-race-XXXXXX", async fn(root) {
     let mut accepted = 0
     @async.with_task_group(async fn(group) {
-      let tasks = Array::new(capacity=2)
+      let tasks = Array(capacity=2)
       for owner in ["/owner-a", "/owner-b"] {
         let body = model_workspace_fixture_command(root, owner, owner)
         tasks.push(

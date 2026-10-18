@@ -166,8 +166,8 @@ fn lunanexa_provider_handoff_success(
     "status": "connected",
     "provider_id": "lunanexa-lease",
     "model": redemption.allowed_models[0],
-    "expires_unix_ms": redemption.expires_unix_ms.to_json(),
-    "maximum_requests": redemption.maximum_requests.to_json(),
+    "expires_unix_ms": Json(redemption.expires_unix_ms),
+    "maximum_requests": Json(redemption.maximum_requests),
   }
 }
 

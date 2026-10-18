@@ -342,3 +342,81 @@ pub fn resolve_role_runtime_contract(
     metadata: resolved_metadata.unwrap_or(defaults.metadata),
   }
 }
+
+///|
+pub extend RolePlanningLayer with ToJson::{to_json}
+
+///|
+pub extend RolePlanningLayer with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RolePlanningLayer with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RolePlanningLayer with Eq::{not_equal, equal}
+
+///|
+pub extend RoleRuntimeMode with ToJson::{to_json}
+
+///|
+pub extend RoleRuntimeMode with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleRuntimeMode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RoleRuntimeMode with Eq::{not_equal, equal}
+
+///|
+pub extend RoleToolAccess with ToJson::{to_json}
+
+///|
+pub extend RoleToolAccess with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleToolAccess with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RoleToolAccess with Eq::{not_equal, equal}
+
+///|
+pub extend RoleMemoryScope with ToJson::{to_json}
+
+///|
+pub extend RoleMemoryScope with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleMemoryScope with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RoleMemoryScope with Eq::{not_equal, equal}
+
+///|
+pub extend RoleRuntimeContract with ToJson::{to_json}
+
+///|
+pub extend RoleRuntimeContract with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleRuntimeContract with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RoleHandoffKind with ToJson::{to_json}
+
+///|
+pub extend RoleHandoffKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleHandoffKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RoleHandoffKind with Eq::{not_equal, equal}
+
+///|
+pub extend RoleHandoffPacket with ToJson::{to_json}
+
+///|
+pub extend RoleHandoffPacket with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RoleHandoffPacket with @moonbitlang/core/debug.Debug::{to_repr}

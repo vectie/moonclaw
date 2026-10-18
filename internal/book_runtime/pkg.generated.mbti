@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/book_runtime"
+
+import {
+  "moonbitlang/async/fs",
+}
+
+// Values
+pub async fn call_mcp(String, String, Json) -> Json
+
+pub fn mcp_servers(String) -> Array[Json] raise
+
+pub fn read_resource(String) -> String? raise
+
+pub fn response_json(String, Int) -> Result[Json, String]
+
+pub async fn storage_file(String, create? : Bool) -> @fs.File?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

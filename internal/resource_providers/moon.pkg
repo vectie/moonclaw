@@ -1,16 +1,17 @@
 import {
+  "moonbitlang/core/debug",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
   "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
-
-supported_targets = "native"
 
 import {
   "moonbitlang/async",
   "vectie/moonclaw/job",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"
+
+supported_targets = "native"

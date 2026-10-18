@@ -28,12 +28,18 @@ pub struct WorktreeHandle {
   branch_name : String
   task_key : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorktreeHandle::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorktreeHandle::to_json(Self) -> Json
+pub fn WorktreeHandle::to_repr(Self) -> @debug.Repr
 
 pub struct WorktreeList {
   repo_root : String
   base_dir : String
   worktrees : Array[WorktreeHandle]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorktreeList::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorktreeList::to_json(Self) -> Json
+pub fn WorktreeList::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

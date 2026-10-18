@@ -153,7 +153,7 @@ fn Loader::format(self : Loader) -> String {
       conditional.push((name, rule))
     }
   }
-  let content = StringBuilder::new()
+  let content = StringBuilder()
   content.write_string(
     (
       $|# Project Rules
@@ -232,3 +232,15 @@ fn Loader::format(self : Loader) -> String {
   }
   content.to_string()
 }
+
+///|
+pub extend Source with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Source with ToJson::{to_json}
+
+///|
+pub extend Rule with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Rule with ToJson::{to_json}

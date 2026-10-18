@@ -547,3 +547,12 @@ pub let prompt : String =
   #|
   #|Search results omit for brevity.
   #|
+
+///|
+pub extend SearchFilesResult with ToJson::{to_json}
+
+///|
+pub extend SearchFilesResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SearchFilesResult with Show::{to_string, output}

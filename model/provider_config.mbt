@@ -29,3 +29,27 @@ pub struct ProviderConfig {
 pub struct ProvidersFile {
   providers : Map[String, ProviderConfig]
 } derive(ToJson, Debug)
+
+///|
+pub extend ModelConfig with ToJson::{to_json}
+
+///|
+pub extend ModelConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CostConfig with ToJson::{to_json}
+
+///|
+pub extend CostConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProviderConfig with ToJson::{to_json}
+
+///|
+pub extend ProviderConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProvidersFile with ToJson::{to_json}
+
+///|
+pub extend ProvidersFile with @moonbitlang/core/debug.Debug::{to_repr}

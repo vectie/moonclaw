@@ -83,7 +83,7 @@ pub fn Schema::to_json(self : Schema) -> Map[String, Json] {
 
 ///|
 pub impl ToJson for Schema with fn to_json(self) {
-  self.to_json().to_json()
+  Json(self.to_json())
 }
 
 ///|

@@ -123,7 +123,7 @@ pub(all) enum EventDesc {
 ///|
 pub impl ToJson for EventDesc with fn to_json(self : EventDesc) -> Json {
   match self {
-    ModelLoaded(name~) => { "msg": "ModelLoaded", "name": name.to_json() }
+    ModelLoaded(name~) => { "msg": "ModelLoaded", "name": Json(name) }
     TokenCounted(token_count) =>
       { "msg": "TokenCounted", "token_count": token_count }
     ContextPruned(origin_token_count~, pruned_token_count~) =>
@@ -573,3 +573,21 @@ pub fn Event::is_cancellation(self : Event) -> Bool {
     _ => false
   }
 }
+
+///|
+pub extend Event with Eq::{not_equal, equal}
+
+///|
+pub extend EventDesc with Eq::{not_equal, equal}
+
+///|
+pub extend EventDesc with ToJson::{to_json}
+
+///|
+pub extend EventDesc with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Event with ToJson::{to_json}
+
+///|
+pub extend Event with @moonbitlang/core/json.FromJson::{from_json}

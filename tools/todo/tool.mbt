@@ -341,3 +341,21 @@ async fn Todo::execute_todo(
     }
   }
 }
+
+///|
+pub extend TodoResult with ToJson::{to_json}
+
+///|
+pub extend TodoResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend TodoResult with Show::{to_string, output}
+
+///|
+pub extend TodoArgs with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend TodoArgs with ToJson::{to_json}
+
+///|
+pub extend TodoArgsError with @moonbitlang/core/debug.Debug::{to_repr}

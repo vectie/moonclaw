@@ -7,7 +7,7 @@ pub struct FeedCollection {
   duplicate_feeds : Int32
   skipped_outlines : Int32
   warnings : Array[String]
-} derive(Show, ToJson)
+} derive(ToJson)
 
 ///|
 priv struct OpmlImport {
@@ -166,4 +166,17 @@ pub fn parse_opml(
     skipped_outlines: state.skipped,
     warnings: state.warnings,
   }
+}
+
+///|
+pub extend FeedCollection with Show::{to_string, output}
+
+///|
+pub extend FeedCollection with ToJson::{to_json}
+
+///|
+pub impl Show for FeedCollection with fn output(self, logger) {
+  logger.write_string(
+    "{title: \{self.title}, providers: \{feed_show_json_array(self.providers)}, duplicate_feeds: \{self.duplicate_feeds}, skipped_outlines: \{self.skipped_outlines}, warnings: \{feed_show_array(self.warnings)}}",
+  )
 }

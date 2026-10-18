@@ -89,7 +89,7 @@ test "planner quantum checkpoint validation fails closed" {
       mooncode_json_object_with_field(
         checkpoint,
         "state",
-        "awaiting-approval".to_json(),
+        Json("awaiting-approval"),
       ),
     ),
   )
@@ -107,7 +107,7 @@ test "planner quantum checkpoint validation fails closed" {
       mooncode_json_object_with_field(
         checkpoint,
         "target_command_id",
-        "other-command".to_json(),
+        Json("other-command"),
       ),
     ),
   )
@@ -116,7 +116,7 @@ test "planner quantum checkpoint validation fails closed" {
       mooncode_json_object_with_field(
         checkpoint,
         "id",
-        "forged-checkpoint".to_json(),
+        Json("forged-checkpoint"),
       ),
     ),
   )
@@ -246,7 +246,7 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
       mooncode_json_object_with_field(
         hydrated_checkpoint,
         "patient_replan_guidance",
-        "".to_json(),
+        Json(""),
       ),
     ),
   )
@@ -377,11 +377,7 @@ test "planner transport checkpoints preserve initial and follow-up resume state"
   assert_false(mooncode_runtime_planner_continuation_is_active(followup))
   assert_false(
     mooncode_runtime_planner_transport_continuation_is_active(
-      mooncode_json_object_with_field(
-        followup,
-        "resume_mode",
-        "initial".to_json(),
-      ),
+      mooncode_json_object_with_field(followup, "resume_mode", Json("initial")),
     ),
   )
 }
@@ -621,7 +617,7 @@ async test "planner max steps is a resumable quantum without tool replay" {
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
     @async.with_task_group(group => {
       group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
       @async.pause()
@@ -817,7 +813,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
     mooncode_with_fixture_moonfort(root, async fn(_) {
       @async.with_task_group(group => {
         group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
@@ -964,7 +960,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
               mooncode_json_object_with_field(
                 first_execution,
                 "pause_reason",
-                "approval-required".to_json(),
+                Json("approval-required"),
               ),
             ),
           ]),
@@ -1113,7 +1109,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         let terminal_plan = mooncode_json_object_with_field(
           mooncode_runtime_planner_checkpoint_test_plan(),
           "model",
-          "test-planner".to_json(),
+          Json("test-planner"),
         )
         let terminal_result : Json = {
           "accepted": true,
@@ -1192,7 +1188,7 @@ async test "cancel settles a claim paused for patient replanning" {
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
     @async.with_task_group(group => {
       group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
       @async.pause()
@@ -1331,7 +1327,7 @@ async test "transient planner close resumes through runtime service without repl
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
     @async.with_task_group(group => {
       group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
       @async.pause()
@@ -1446,7 +1442,7 @@ async test "transient planner close resumes through runtime service without repl
         "once",
       )
       let request_text = request_bodies.join("\n")
-      assert_eq(request_text.split("KEEP_TRANSPORT_SCOPE").length(), 2)
+      assert_eq(request_text.split("KEEP_TRANSPORT_SCOPE").count(), 2)
       let final_journal = mooncode_read_session_journal(root, session_id)
       let final_events = mooncode_journal_entries(
         final_journal,

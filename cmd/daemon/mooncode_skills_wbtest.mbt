@@ -126,13 +126,16 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
 
 ///|
 test "skill catalog classifies source and MoonClaw authority" {
-  let local = mooncode_skill_catalog_row(
+  let book_skill = mooncode_skill_catalog_row(
     "review", "Review a MoonBook change", "/tmp/book/skills/review/SKILL.md", "/tmp/book",
   )
-  assert_eq(mooncode_json_string(local, "source", default=""), "moonbook")
-  assert_eq(mooncode_json_string(local, "authority", default=""), "moonclaw")
+  assert_eq(mooncode_json_string(book_skill, "source", default=""), "moonbook")
   assert_eq(
-    mooncode_json_string(local, "description", default=""),
+    mooncode_json_string(book_skill, "authority", default=""),
+    "moonclaw",
+  )
+  assert_eq(
+    mooncode_json_string(book_skill, "description", default=""),
     "Review a MoonBook change",
   )
   let installed = mooncode_skill_catalog_row(

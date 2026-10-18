@@ -131,3 +131,15 @@ pub fn new() -> @tool.Tool[DelegateRunResult] {
     },
   )
 }
+
+///|
+pub extend DelegateRunResult with ToJson::{to_json}
+
+///|
+pub extend DelegateRunResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend DelegateRunResult with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend DelegateRunResult with Show::{to_string, output}

@@ -41,7 +41,7 @@ async fn import_packet_bytes(
 
 ///|
 fn import_integer(json : Json, key : String, expected : Int32) -> Unit raise {
-  guard json.as_object() is Some(fields) &&
+  guard json is Object(fields) &&
     fields.get(key) is Some(Number(number, ..)) &&
     number == expected.to_double() else {
     fail("Expected an exact integer for \{key}")
@@ -93,7 +93,7 @@ pub async fn import_artifact_export(
   guard manifest_json is { "artifacts": Array(raw_entries), .. } else {
     fail("Expected export artifact entries")
   }
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let sources : Array[ArtifactImportSource] = []
   let mut total = 0
   for i, source in manifest.artifacts {
@@ -146,13 +146,11 @@ pub async fn import_artifact_export(
       |> @pathx.join("artifacts")
       |> @pathx.join(original.id)
       |> @pathx.join("content.bin")
-    guard original_json.as_object() is Some(fields) else {
+    guard original_json is Object(fields) else {
       fail("Expected original record object")
     }
-    fields["path"] = path.to_json()
-    let relocated_bytes = @encoding/utf8.encode(
-      fields.to_json().stringify() + "\n",
-    )
+    fields["path"] = Json(path)
+    let relocated_bytes = @encoding/utf8.encode(Json(fields).stringify() + "\n")
     guard relocated_bytes.length() <= 262144 else {
       fail("Relocated artifact record exceeds the 256 KiB inspection limit")
     }
@@ -211,3 +209,9 @@ pub async fn import_artifact_export(
   )
   result
 }
+
+///|
+pub extend ImportedArtifact with ToJson::{to_json}
+
+///|
+pub extend ArtifactImport with ToJson::{to_json}

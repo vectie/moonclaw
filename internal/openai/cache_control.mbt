@@ -28,3 +28,6 @@ impl @json.FromJson for CacheControl with fn from_json(
       raise JsonDecodeError((json_path, "Unknown cache control type: \{type_}"))
   }
 }
+
+///|
+pub extend CacheControl with ToJson::{to_json}

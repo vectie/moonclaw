@@ -894,9 +894,9 @@ test "mooncode long-horizon loop compacts reference appendices and proves every 
   assert_true(compact.contains("Reference appendix omitted"))
   assert_false(compact.contains("0123456789"))
   assert_true(compact.length() < 1000)
-  let exposed_tools = mooncode_runtime_turn_model_tools_for_command(command)
-    .to_json()
-    .stringify()
+  let exposed_tools = Json(
+    mooncode_runtime_turn_model_tools_for_command(command),
+  ).stringify()
   assert_true(exposed_tools.contains("\"apply_patch\""))
   assert_true(exposed_tools.contains("\"checkpoint\""))
 

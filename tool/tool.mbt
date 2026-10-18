@@ -55,7 +55,7 @@ pub impl[Output : Show] Show for ToolResult[Output] with fn output(
     Ok(output) => logger.write_string(output.to_string())
     Error(ToolFailure(_), message) => logger.write_string(message)
     Error(error, message) =>
-      logger.write_string("\{message}\n\{error.to_json().stringify(indent=2)}")
+      logger.write_string("\{message}\n\{Json(error).stringify(indent=2)}")
   }
 }
 
@@ -133,3 +133,18 @@ pub fn[Output : ToJson] Tool::to_agent_tool(self : Tool[Output]) -> AgentTool {
     },
   }
 }
+
+///|
+pub extend ToolDesc with ToJson::{to_json}
+
+///|
+pub extend ToolDesc with Eq::{not_equal, equal}
+
+///|
+pub extend ToolDesc with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ToolResult with ToJson::{to_json}
+
+///|
+pub extend ToolResult with Show::{to_string, output}

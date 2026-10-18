@@ -30,7 +30,7 @@ fn moonclaw_moongate_route_status_json(
         "name": name,
         "default": configured_default == Some(id),
         "input_modalities": Json::array(
-          input_modalities.map(value => value.to_json()),
+          input_modalities.map(value => Json(value)),
         ),
       })
     }
@@ -149,5 +149,5 @@ async fn Daemon::hosted_ready(self : Daemon, w : @httpx.ResponseWriter) -> Unit 
   w.header().set("Content-Type", "application/json")
   w.header().set("Cache-Control", "no-store")
   w.write_header(if ready { 200 } else { 503 })
-  w.write({ "ready": ready }.to_json().stringify())
+  w.write(Json({ "ready": ready }).stringify())
 }

@@ -79,3 +79,75 @@ pub(all) struct ProviderTaskCommand {
   cwd : String?
   workspace_root : String
 } derive(Debug)
+
+///|
+pub extend ProviderTaskSpec with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProviderTaskSpec with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskSpec with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ProviderTaskBatch with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProviderTaskBatch with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskBatch with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ProviderTaskWorkerContext with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ProviderTaskWorkerContext with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskWorkerContext with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ProviderTaskMemoryCandidate with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ProviderTaskMemoryCandidate with Eq::{not_equal, equal}
+
+///|
+pub extend ProviderTaskMemoryCandidate with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskMemoryCandidate with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ProviderTaskResult with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProviderTaskResult with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ProviderTaskPersistOutcome with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ProviderTaskPersistOutcome with ToJson::{to_json}
+
+///|
+pub extend ProviderTaskPersistOutcome with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ProviderTaskCommand with @moonbitlang/core/debug.Debug::{to_repr}

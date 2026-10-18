@@ -40,13 +40,13 @@ async test "server model flags preserve owning suite discovery outside isolated 
     // Exercise the real serializer and CLI extraction for both initial launch
     // and persisted stopped-worker resume. Neither path starts a child/server.
     for owner in [book, suite, linked_book, linked_suite] {
-      for resume in [false, true] {
+      for resuming in [false, true] {
         let selector = "moongate/configured/exact-id"
         let args = @trusted_host_process.daemon_child_model_arguments(
           Some(selector),
           Some(owner),
         )
-        if resume {
+        if resuming {
           args.append(["--resume", "00000000-0000-0000-0000-000000000001"])
         }
         let (model_workspace, remaining) = server_model_workspace_arguments(
@@ -55,7 +55,7 @@ async test "server model flags preserve owning suite discovery outside isolated 
         assert_eq(model_workspace, Some(owner))
         assert_eq(remaining[0], "--model")
         assert_eq(remaining[1], selector)
-        assert_eq(remaining.length(), if resume { 4 } else { 2 })
+        assert_eq(remaining.length(), if resuming { 4 } else { 2 })
         let resolved = server_resolve_model(
           suite,
           Some(remaining[1]),

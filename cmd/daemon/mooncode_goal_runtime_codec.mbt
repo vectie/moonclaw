@@ -62,7 +62,7 @@ fn mooncode_goal_runtime_canonical(value : String) -> Bool {
 
 ///|
 fn mooncode_goal_runtime_json_string(value : String) -> String {
-  value.to_json().stringify()
+  Json(value).stringify()
 }
 
 ///|

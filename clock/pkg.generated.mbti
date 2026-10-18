@@ -12,12 +12,20 @@ pub let epoch : Epoch
 
 // Types and methods
 type Epoch
+pub fn Epoch::now(Self) -> Timestamp
+pub fn Epoch::now_str(Self) -> String
 pub impl Clock for Epoch
 
 type Timestamp derive(Eq)
+pub fn Timestamp::equal(Self, Self) -> Bool
+pub fn Timestamp::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn Timestamp::from_ms(Int64) -> Self
 pub fn Timestamp::ms(Self) -> Int64
 pub fn Timestamp::ms_since(Self, Self) -> Int64
+pub fn Timestamp::not_equal(Self, Self) -> Bool
+pub fn Timestamp::output(Self, &Logger) -> Unit
+pub fn Timestamp::to_json(Self) -> Json
+pub fn Timestamp::to_string(Self) -> String
 pub fn Timestamp::truncate_to_s(Self) -> Int64
 pub impl Show for Timestamp
 pub impl ToJson for Timestamp

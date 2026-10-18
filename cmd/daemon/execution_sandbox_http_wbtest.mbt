@@ -40,16 +40,16 @@ test "MoonDesk Moon IDE request rejects traversal and unsupported actions" {
       mooncode_json_object_with_field(
         valid,
         "module_path",
-        "../secret.mbt".to_json(),
+        Json("../secret.mbt"),
       ),
       mooncode_json_object_with_field(
         valid,
         "module_path",
-        "/tmp/secret.mbt".to_json(),
+        Json("/tmp/secret.mbt"),
       ),
-      mooncode_json_object_with_field(valid, "action", "shell".to_json()),
-      mooncode_json_object_with_field(valid, "symbol", "Widget;rm".to_json()),
-      mooncode_json_object_with_field(valid, "line", (0).to_json()),
+      mooncode_json_object_with_field(valid, "action", Json("shell")),
+      mooncode_json_object_with_field(valid, "symbol", Json("Widget;rm")),
+      mooncode_json_object_with_field(valid, "line", Json(0)),
     ] {
     try moondesk_sandbox_parse_ide_request(bad) catch {
       _ => continue
@@ -72,6 +72,7 @@ async test "MoonDesk diagnostics directory is bound below registered workspace" 
       auth_token: "a".repeat(64),
       workspace_id: "book",
       workspace_root: @fsx.resolve(root),
+      trusted_book_roots: None,
     }
     assert_eq(
       moondesk_sandbox_directory(config, "packages/app"),
@@ -101,6 +102,7 @@ async test "MoonDesk diagnostics reaches MoonFort with an enforced receipt" {
         auth_token: "a".repeat(64),
         workspace_id: "book",
         workspace_root: @fsx.resolve(root),
+        trusted_book_roots: None,
       }
       let request = moondesk_sandbox_parse_request({
         "protocol_version": 1,
@@ -146,6 +148,7 @@ async test "MoonDesk Moon IDE reaches MoonFort as one typed moon command" {
         auth_token: "a".repeat(64),
         workspace_id: "book",
         workspace_root: @fsx.resolve(root),
+        trusted_book_roots: None,
       }
       let request = moondesk_sandbox_parse_ide_request({
         "protocol_version": 1,

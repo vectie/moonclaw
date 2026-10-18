@@ -62,3 +62,6 @@ impl @json.FromJson for ChatCompletionChoice with fn from_json(
   )
   { finish_reason, index, message, }
 }
+
+///|
+pub extend ChatCompletionChoice with @moonbitlang/core/debug.Debug::{to_repr}

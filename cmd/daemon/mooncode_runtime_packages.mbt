@@ -307,10 +307,10 @@ fn mooncode_runtime_turn_package_index(
     "runtime_verified_package_count": 1,
     "runtime_package_proof_count": 2,
     "package_kinds": Json::array([
-      mooncode_json_string(manifest, "package_kind", default="artifact").to_json(),
+      Json(mooncode_json_string(manifest, "package_kind", default="artifact")),
     ]),
     "entry_points": Json::array([
-      mooncode_json_string(manifest, "context_path", default="").to_json(),
+      Json(mooncode_json_string(manifest, "context_path", default="")),
     ]),
     "packages": Json::array([manifest]),
     "latest_package_manifest": manifest,
@@ -521,7 +521,7 @@ fn mooncode_runtime_turn_string_json_array(
 ) -> Array[Json] {
   let items : Array[Json] = []
   for path in paths {
-    items.push(path.to_json())
+    items.push(Json(path))
   }
   items
 }

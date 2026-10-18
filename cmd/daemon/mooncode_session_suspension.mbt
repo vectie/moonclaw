@@ -244,7 +244,7 @@ async fn Daemon::mooncode_suspend_session_tree(
       mooncode_json_object_with_field(
         result,
         "runtime_cancelled",
-        cancelled.get(current_id).unwrap_or(false).to_json(),
+        Json(cancelled.get(current_id).unwrap_or(false)),
       ),
     )
     index -= 1

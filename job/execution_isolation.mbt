@@ -325,3 +325,38 @@ pub async fn cleanup_run_execution_isolations(
   }
   removed
 }
+
+///|
+pub extend ExecutionIsolationMode with ToJson::{to_json}
+
+///|
+pub extend ExecutionIsolationMode with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ExecutionIsolationMode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ExecutionIsolationSpec with ToJson::{to_json}
+
+///|
+pub extend ExecutionIsolationSpec with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ExecutionIsolationSpec with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ExecutionIsolationResolution with ToJson::{to_json}
+
+///|
+pub extend ExecutionIsolationResolution with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ExecutionIsolationResolution with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

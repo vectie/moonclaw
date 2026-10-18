@@ -33,3 +33,19 @@ pub async fn load_recovery_inspection_config() -> RecoveryInspectionConfig? {
   }
   Some(config)
 }
+
+///|
+pub extend RecoveryInspectionConfig with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend RecoveryInspectionConfig with Eq::{not_equal, equal}
+
+///|
+pub extend RecoveryInspectionConfig with ToJson::{to_json}
+
+///|
+pub extend RecoveryInspectionConfig with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

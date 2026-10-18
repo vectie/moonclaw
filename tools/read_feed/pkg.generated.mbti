@@ -58,7 +58,11 @@ pub struct FeedArticle {
   date_published : String?
   summary : String
   url : String?
-} derive(Show)
+}
+pub fn FeedArticle::output(Self, &Logger) -> Unit
+pub fn FeedArticle::to_json(Self) -> Json
+pub fn FeedArticle::to_string(Self) -> String
+pub impl Show for FeedArticle
 pub impl ToJson for FeedArticle
 
 pub struct FeedChange {
@@ -67,7 +71,11 @@ pub struct FeedChange {
   before : FeedArticle?
   after : FeedArticle?
   changed_fields : Array[String]
-} derive(Show)
+}
+pub fn FeedChange::output(Self, &Logger) -> Unit
+pub fn FeedChange::to_json(Self) -> Json
+pub fn FeedChange::to_string(Self) -> String
+pub impl Show for FeedChange
 pub impl ToJson for FeedChange
 
 pub struct FeedCollection {
@@ -76,7 +84,11 @@ pub struct FeedCollection {
   duplicate_feeds : Int
   skipped_outlines : Int
   warnings : Array[String]
-} derive(Show, ToJson)
+} derive(ToJson)
+pub fn FeedCollection::output(Self, &Logger) -> Unit
+pub fn FeedCollection::to_json(Self) -> Json
+pub fn FeedCollection::to_string(Self) -> String
+pub impl Show for FeedCollection
 
 pub struct FeedCollectionPage {
   title : String
@@ -108,8 +120,12 @@ pub struct FeedComparison {
   next_offset : Int?
   query : String
   kind : String
-} derive(Show)
+}
+pub fn FeedComparison::output(Self, &Logger) -> Unit
+pub fn FeedComparison::to_json(Self) -> Json
 pub fn FeedComparison::to_markdown(Self) -> String
+pub fn FeedComparison::to_string(Self) -> String
+pub impl Show for FeedComparison
 pub impl ToJson for FeedComparison
 
 pub struct FeedDiscovery {
@@ -119,7 +135,11 @@ pub struct FeedDiscovery {
   duplicate_links : Int
   rejected_links : Int
   warnings : Array[String]
-} derive(Show, ToJson)
+} derive(ToJson)
+pub fn FeedDiscovery::output(Self, &Logger) -> Unit
+pub fn FeedDiscovery::to_json(Self) -> Json
+pub fn FeedDiscovery::to_string(Self) -> String
+pub impl Show for FeedDiscovery
 
 pub struct FeedObservation {
   label : String
@@ -127,7 +147,11 @@ pub struct FeedObservation {
   format : String
   total_items : Int
   next_url : String?
-} derive(Show)
+}
+pub fn FeedObservation::output(Self, &Logger) -> Unit
+pub fn FeedObservation::to_json(Self) -> Json
+pub fn FeedObservation::to_string(Self) -> String
+pub impl Show for FeedObservation
 pub impl ToJson for FeedObservation
 
 pub struct FeedPage {
@@ -141,8 +165,12 @@ pub struct FeedPage {
   matched_items : Int
   format : String
   query : String
-} derive(Show)
+}
+pub fn FeedPage::output(Self, &Logger) -> Unit
+pub fn FeedPage::to_json(Self) -> Json
 pub fn FeedPage::to_markdown(Self) -> String
+pub fn FeedPage::to_string(Self) -> String
+pub impl Show for FeedPage
 pub impl ToJson for FeedPage
 
 pub(all) struct FeedSnapshot {

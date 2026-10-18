@@ -1,6 +1,6 @@
 ///|
 fn comparison_markdown_text(text : String) -> String {
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   for c in text {
     match c {
       '&' => output.write_string("&amp;")
@@ -75,7 +75,7 @@ pub fn ArtifactComparison::to_markdown(self : ArtifactComparison) -> String {
       "no final newline"
     }
     lines.push(
-      "- \{position} (\{ending}): \{comparison_markdown_text(edit.text.to_json().stringify())}",
+      "- \{position} (\{ending}): \{comparison_markdown_text(Json(edit.text).stringify())}",
     )
   }
   lines.join("\n") + "\n"

@@ -185,3 +185,36 @@ pub fn assess_shell_command(
     allowed_by_policy: risk_level != Blocked,
   }
 }
+
+///|
+pub extend CommandRiskLevel with ToJson::{to_json}
+
+///|
+pub extend CommandRiskLevel with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandRiskLevel with Show::{to_string, output}
+
+///|
+pub extend CommandRiskLevel with Eq::{not_equal, equal}
+
+///|
+pub extend CommandIntent with ToJson::{to_json}
+
+///|
+pub extend CommandIntent with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandIntent with Show::{to_string, output}
+
+///|
+pub extend CommandIntent with Eq::{not_equal, equal}
+
+///|
+pub extend CommandAssessment with ToJson::{to_json}
+
+///|
+pub extend CommandAssessment with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandAssessment with Show::{to_string, output}

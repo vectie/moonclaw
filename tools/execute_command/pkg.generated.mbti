@@ -19,6 +19,8 @@ pub struct CommandOutput {
   truncated_lines : Int
   original_lines : Int
 } derive(ToJson, @json.FromJson)
+pub fn CommandOutput::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandOutput::to_json(Self) -> Json
 
 pub enum CommandResult {
   Simulated(assessment~ : @security.CommandAssessment)
@@ -28,6 +30,10 @@ pub enum CommandResult {
   TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
   Background(command~ : String, job_id~ : Int)
 } derive(ToJson, @json.FromJson)
+pub fn CommandResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandResult::output(Self, &Logger) -> Unit
+pub fn CommandResult::to_json(Self) -> Json
+pub fn CommandResult::to_string(Self) -> String
 pub impl Show for CommandResult
 
 // Type aliases

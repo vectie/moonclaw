@@ -123,3 +123,15 @@ pub impl @json.FromJson for ProvidersFile with fn from_json(
   }
   { providers, }
 }
+
+///|
+pub extend CostConfig with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ModelConfig with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ProviderConfig with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ProvidersFile with @moonbitlang/core/json.FromJson::{from_json}

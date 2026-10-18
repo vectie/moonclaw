@@ -10,7 +10,7 @@ fn ChatCompletionMessageToolCallBuilder::new(
   id~ : String,
   name~ : String,
 ) -> ChatCompletionMessageToolCallBuilder {
-  { id, name, arguments: StringBuilder::new(), }
+  { id, name, arguments: StringBuilder(), }
 }
 
 ///|
@@ -51,7 +51,7 @@ fn ChatCompletionMessageBuilder::add_delta(
     if self.content is Some(builder) {
       builder.write_string(content)
     } else {
-      let builder = StringBuilder::new()
+      let builder = StringBuilder()
       builder.write_string(content)
       self.content = Some(builder)
     }
@@ -60,7 +60,7 @@ fn ChatCompletionMessageBuilder::add_delta(
     if self.refusal is Some(builder) {
       builder.write_string(refusal)
     } else {
-      let builder = StringBuilder::new()
+      let builder = StringBuilder()
       builder.write_string(refusal)
       self.refusal = Some(builder)
     }

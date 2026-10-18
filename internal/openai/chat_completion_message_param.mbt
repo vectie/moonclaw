@@ -18,8 +18,8 @@ pub impl ToJson for ChatCompletionMessageParam with fn to_json(
     match content_parts {
       [] => ()
       [Text(text)] if text.cache_control is None =>
-        json["content"] = text.text.to_json()
-      [.. parts] => json["content"] = parts.to_json()
+        json["content"] = Json(text.text)
+      [.. parts] => json["content"] = Json(parts)
     }
   }
 
@@ -47,7 +47,7 @@ pub impl ToJson for ChatCompletionMessageParam with fn to_json(
         json["name"] = Json::string(name)
       }
       if !param.tool_calls.is_empty() {
-        json["tool_calls"] = param.tool_calls.to_json()
+        json["tool_calls"] = Json(param.tool_calls)
       }
       Json::object(json)
     }
@@ -162,4 +162,12 @@ pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
     }
     _ => abort("unreachable")
   }
+}
+
+///|
+pub extend ChatCompletionMessageParam with ToJson::{to_json}
+
+///|
+pub extend ChatCompletionMessageParam with @moonbitlang/core/json.FromJson::{
+  from_json,
 }

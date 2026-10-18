@@ -65,7 +65,7 @@ async fn mooncode_skill_catalog_json(
 
 ///|
 async fn Daemon::mooncode_list_skills(
-  self : Daemon,
+  _self : Daemon,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {

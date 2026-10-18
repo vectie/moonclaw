@@ -19,7 +19,7 @@ pub fn SupervisorEpochMsV1::value(self : SupervisorEpochMsV1) -> Int64 {
 pub impl ToJson for SupervisorEpochMsV1 with fn to_json(
   self : SupervisorEpochMsV1,
 ) -> Json {
-  self.value().to_string().to_json()
+  Json(self.value().to_string())
 }
 
 ///|
@@ -459,3 +459,453 @@ pub fn supervisor_delegate_existing_payload_v1(
 pub fn supervisor_payload_digest_v1(payload : Json) -> String {
   @capability.sha256_digest_ref_v1(@encoding/utf8.encode(payload.stringify())).text()
 }
+
+///|
+pub extend SupervisorEpochMsV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorEpochMsV1 with Compare::{
+  op_lt,
+  op_le,
+  op_ge,
+  compare,
+  op_gt,
+}
+
+///|
+pub extend SupervisorEpochMsV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorEpochMsV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorEpochMsV1 with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SupervisorProfileActivationV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorProfileActivationV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorProfileActivationV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorProfileActivationV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorCommandEnvelopeV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorCommandEnvelopeV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorCommandEnvelopeV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorCommandEnvelopeV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorAuthorityVerificationV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorAuthorityVerificationV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorAuthorityVerificationV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorAuthorityVerificationV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorLifecycleV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorLifecycleV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorLifecycleV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorLifecycleV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorStateV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorStateV1 with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SupervisorStateV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorStateV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorCommandReceiptV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorCommandReceiptV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorCommandReceiptV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorCommandReceiptV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorActivateRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorActivateRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorActivateRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorActivateRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorWakeRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorWakeRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorWakeRequestV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorWakeRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorMessageV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorMessageV1 with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SupervisorMessageV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorMessageV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorSendMessageRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorSendMessageRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorSendMessageRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorSendMessageRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorSteerRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorSteerRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorSteerRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorSteerRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorMailboxClaimRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorMailboxClaimRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorMailboxClaimRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorMailboxClaimRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorMailboxAckRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorMailboxAckRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorMailboxAckRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorMailboxAckRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorStopRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorStopRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorStopRequestV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorStopRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorRecoveryActionV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorRecoveryActionV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorRecoveryActionV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorRecoveryActionV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorRetryResumeRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorRetryResumeRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorRetryResumeRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorRetryResumeRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorWorkerLineageV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorWorkerLineageV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorWorkerLineageV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorWorkerLineageV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorDelegateExistingRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorDelegateExistingRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorDelegateExistingRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorDelegateExistingRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorVersionedRecordRefV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorVersionedRecordRefV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorVersionedRecordRefV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorVersionedRecordRefV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorEvidenceRefV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorEvidenceRefV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorEvidenceRefV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SupervisorEvidenceRefV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorGapStatementV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorGapStatementV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorGapStatementV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorGapStatementV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorBookkeeperOutcomeEvidenceV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorBookkeeperOutcomeEvidenceV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorBookkeeperOutcomeEvidenceV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorBookkeeperOutcomeEvidenceV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorOutcomeEvidenceRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorOutcomeEvidenceRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorOutcomeEvidenceRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorOutcomeEvidenceRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorOutcomeOutboxClaimRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorOutcomeOutboxClaimRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorOutcomeOutboxClaimRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorOutcomeOutboxClaimRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorOutcomeOutboxAckRequestV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorOutcomeOutboxAckRequestV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorOutcomeOutboxAckRequestV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorOutcomeOutboxAckRequestV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorJournalEventV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorJournalEventV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorJournalEventV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorJournalEventV1 with Eq::{not_equal, equal}
+
+///|
+pub extend SupervisorStatusProjectionV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorStatusProjectionV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorStatusProjectionV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorReplayResponseV1 with ToJson::{to_json}
+
+///|
+pub extend SupervisorReplayResponseV1 with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SupervisorReplayResponseV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend SupervisorReplayResponseV1 with Eq::{not_equal, equal}

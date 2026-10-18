@@ -32,7 +32,7 @@ fn generate_random_bytes(length : Int32) -> Bytes {
 
 ///|
 fn strip_padding(s : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for c in s {
     if c != '=' {
       buf.write_char(c)
@@ -61,3 +61,6 @@ test "generate_pkce produces valid codes" {
   assert_true(pkce.code_challenge.length() > 40)
   assert_true(pkce.code_verifier != pkce.code_challenge)
 }
+
+///|
+pub extend PkceCodes with @moonbitlang/core/debug.Debug::{to_repr}

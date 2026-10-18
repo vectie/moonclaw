@@ -22,3 +22,8 @@ impl ToJson for ChatCompletionReasoningEffort with fn to_json(
     Xhigh => "xhigh"
   }
 }
+
+///|
+pub extend ChatCompletionReasoningEffort with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

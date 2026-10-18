@@ -117,7 +117,7 @@ pub async fn export_retained_artifacts(
   }
   let root = @fsx.resolve(root)
   let store = SystemStore::new(root~)
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let sources : Array[ArtifactExportSource] = []
   let mut total = 0
   for i, id in artifact_ids {
@@ -229,3 +229,15 @@ pub async fn ArtifactStore::export_selected(
 async fn export_write(path : String, content : Bytes) -> Unit {
   @fs.write_file(path, content, create_mode=CreateNew, permission=0o600)
 }
+
+///|
+pub extend ExportedArtifact with ToJson::{to_json}
+
+///|
+pub extend ExportedArtifact with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ArtifactExport with ToJson::{to_json}
+
+///|
+pub extend ArtifactExport with @moonbitlang/core/json.FromJson::{from_json}

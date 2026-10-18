@@ -18,7 +18,14 @@ pub(all) struct Config {
   auth_token : String
   workspace_id : String
   workspace_root : String
+  trusted_book_roots : Array[String]?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub async fn Config::allows_book_root(Self, String) -> Bool
+pub fn Config::equal(Self, Self) -> Bool
+pub fn Config::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Config::not_equal(Self, Self) -> Bool
+pub fn Config::to_json(Self) -> Json
+pub fn Config::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

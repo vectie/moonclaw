@@ -4,7 +4,6 @@ import {
   "vectie/moonlib/fsx",
   "moonbitlang/async",
   "vectie/moonlib/os",
-  "moonbitlang/async/io",
   "moonbitlang/async/semaphore",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/clock",
@@ -13,7 +12,6 @@ import {
   "moonbitlang/async/process",
   "moonbitlang/async/os_error",
   "moonbitlang/async/stdio",
-  "moonbitlang/core/json",
   "moonbitlang/core/random",
   "moonbitlang/core/test",
 }

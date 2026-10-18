@@ -18,6 +18,10 @@ pub struct ListWorktreesResult {
   current_cwd : String
   worktrees : Array[@worktree.WorktreeHandle]
 } derive(ToJson, @json.FromJson)
+pub fn ListWorktreesResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ListWorktreesResult::output(Self, &Logger) -> Unit
+pub fn ListWorktreesResult::to_json(Self) -> Json
+pub fn ListWorktreesResult::to_string(Self) -> String
 pub impl Show for ListWorktreesResult
 
 // Type aliases

@@ -32,7 +32,7 @@ async test "book source actual native lifecycle retains exact text and fails clo
     execute_run_lifecycle(runtime, "run-1", fn() { 200 }, fn() {
       let engine = WorkflowEngine::new(runtime~)
       engine.register_handler(
-        WorkflowStepHandler::new(kind="fixture.write-text", run=fn(ctx) {
+        WorkflowStepHandler::new(kind="fixture.write-text", run=async fn(ctx) {
           let record = reader.write(
             ArtifactWriteRequest::new(
               run_id=ctx.run.id,

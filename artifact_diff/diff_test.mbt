@@ -7,12 +7,12 @@ test "line comparison identifies edits and exact positions" {
   inspect(diff.added_lines, content="2")
   inspect(diff.removed_lines, content="1")
   inspect(diff.unchanged_lines, content="2")
-  inspect(
+  debug_inspect(
     diff.edits.map(e => e.kind),
-    content="[equal, delete, insert, equal, insert]",
+    content="[\"equal\", \"delete\", \"insert\", \"equal\", \"insert\"]",
   )
-  inspect(diff.edits[1].left_line, content="Some(2)")
-  inspect(diff.edits[2].right_line, content="Some(2)")
+  debug_inspect(diff.edits[1].left_line, content="Some(2)")
+  debug_inspect(diff.edits[2].right_line, content="Some(2)")
   inspect(diff.edits[4].ending, content="")
 }
 
@@ -34,13 +34,11 @@ test "line endings final newline and whitespace are meaningful" {
   inspect(diff.unchanged_lines, content="1")
   inspect(diff.removed_lines, content="2")
   inspect(diff.added_lines, content="2")
-  inspect(diff.edits[0].ending.to_json().stringify(), content="\"\\r\\n\"")
+  inspect(Json(diff.edits[0].ending).stringify(), content="\"\\r\\n\"")
   assert_false(@artifact_diff.compare_text(" a\n", "a\n").identical)
   assert_false(@artifact_diff.compare_text("a\t\n", "a \n").identical)
   inspect(
-    @artifact_diff.compare_text("x\ry", "x\ry").edits[0].text
-    .to_json()
-    .stringify(),
+    Json(@artifact_diff.compare_text("x\ry", "x\ry").edits[0].text).stringify(),
     content="\"x\\ry\"",
   )
 }
@@ -58,7 +56,10 @@ test "unicode including astral characters is preserved" {
 ///|
 test "repeated line alignment has deterministic deletion first ties" {
   let diff = @artifact_diff.compare_text("a\nb\na\n", "b\na\nb\n")
-  inspect(diff.edits.map(e => e.kind), content="[delete, equal, equal, insert]")
+  debug_inspect(
+    diff.edits.map(e => e.kind),
+    content="[\"delete\", \"equal\", \"equal\", \"insert\"]",
+  )
   inspect(diff.unchanged_lines, content="2")
   assert_eq(
     diff.to_json(),
@@ -71,7 +72,7 @@ test "bounded diff reconstructs both inputs across exhaustive small fixtures" {
   let samples = [""]
   for length = 1; length <= 4; length = length + 1 {
     for mask = 0; mask < 1 << length; mask = mask + 1 {
-      let text = StringBuilder::new()
+      let text = StringBuilder()
       for i = 0; i < length; i = i + 1 {
         text.write_string(if (mask & (1 << i)) == 0 { "a\n" } else { "b\n" })
       }
@@ -81,8 +82,8 @@ test "bounded diff reconstructs both inputs across exhaustive small fixtures" {
   for left in samples {
     for right in samples {
       let diff = @artifact_diff.compare_text(left, right)
-      let before = StringBuilder::new()
-      let after = StringBuilder::new()
+      let before = StringBuilder()
+      let after = StringBuilder()
       let mut left_line = 1
       let mut right_line = 1
       for edit in diff.edits {

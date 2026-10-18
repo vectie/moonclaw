@@ -119,3 +119,9 @@ pub fn extract_events_for_message(
     false
   })
 }
+
+///|
+pub extend ServerEvent with ToJson::{to_json}
+
+///|
+pub extend ServerEvent with @httpx.FromEvent::{from_event}

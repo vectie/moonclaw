@@ -44,7 +44,7 @@ pub fn Conversation::set_optional_input_context_status(
 pub fn Conversation::optional_input_contexts(
   self : Conversation,
 ) -> Map[String, Json] {
-  let copy : Map[String, Json] = {}
+  let copy : Map[String, Json] = Map([])
   for key, value in self.optional_input_contexts {
     copy[key] = value
   }

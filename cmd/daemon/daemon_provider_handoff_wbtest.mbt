@@ -146,8 +146,8 @@ async test "one handoff redeems from LunaNexa and installs the MoonGate binding"
           "api_secret": "lnx_" + "a".repeat(64),
           "api_base_url": "http://localhost:\{lunanexa.port()}/user/v1",
           "allowed_models": ["text.default"],
-          "expires_unix_ms": (@async.now() + 60_000L).to_json(),
-          "maximum_requests": 1_000L.to_json(),
+          "expires_unix_ms": Json(@async.now() + 60_000L),
+          "maximum_requests": Json(1_000L),
           "one_time": true,
         } : Json).stringify(),
     )

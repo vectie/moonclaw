@@ -31,17 +31,19 @@ fn mooncode_runtime_cancel_control_receipt(
     now~,
   )
   guard receipt is Object(fields) else { return receipt }
-  fields["target_command_id"] = target_command_id.to_json()
+  fields["target_command_id"] = Json(target_command_id)
   fields["cancelled_event"] = cancelled_event
-  fields["interrupted_runtime"] = interrupted_runtime.to_json()
-  fields["cancel_status"] = (if cancel_status != "" {
-    cancel_status
-  } else if target_command_id == "" {
-    "idle"
-  } else {
-    "cancelled"
-  }).to_json()
-  fields["target_status"] = target_status.to_json()
+  fields["interrupted_runtime"] = Json(interrupted_runtime)
+  fields["cancel_status"] = Json(
+    if cancel_status != "" {
+      cancel_status
+    } else if target_command_id == "" {
+      "idle"
+    } else {
+      "cancelled"
+    },
+  )
+  fields["target_status"] = Json(target_status)
   receipt
 }
 
@@ -285,8 +287,10 @@ async fn mooncode_runtime_cancel_pending_atomic(
       now~,
     )
     if receipt is Object(fields) {
-      fields["control_command_id"] = control_id.to_json()
-      fields["message"] = "MoonClaw withdrew this pending MoonCode request.".to_json()
+      fields["control_command_id"] = Json(control_id)
+      fields["message"] = Json(
+        "MoonClaw withdrew this pending MoonCode request.",
+      )
       fields["execution"] = {
         "accepted": false,
         "cancelled": true,

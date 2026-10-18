@@ -37,8 +37,8 @@ fn mooncode_nochange_policy_error(command : Json) -> String {
   }
   let outcomes = mooncode_json_array_items(policy, "allowed_outcomes")
   if outcomes.length() != 2 ||
-    !outcomes.contains("mutation".to_json()) ||
-    !outcomes.contains("no_change".to_json()) {
+    !outcomes.contains(Json("mutation")) ||
+    !outcomes.contains(Json("no_change")) {
     return "completion_policy.allowed_outcomes must explicitly permit mutation and no_change"
   }
   let alternatives = mooncode_json_array_items(
@@ -74,7 +74,7 @@ fn mooncode_nochange_policy_error(command : Json) -> String {
       ) ||
       mooncode_json_string(check, "command", default="").trim().is_empty() ||
       mooncode_json_string(check, "cwd", default="").trim().is_empty() ||
-      mooncode_nochange_field(check, "exit_code") != (0).to_json() {
+      mooncode_nochange_field(check, "exit_code") != Json(0) {
       return "completion_policy checks require unique ids and exact tool/command/cwd/zero exit"
     }
     seen[id] = true
@@ -194,7 +194,7 @@ fn mooncode_nochange_check_evidence(
           command,
           mooncode_json_string(check, "cwd", default=""),
         ) &&
-        mooncode_nochange_field(metadata, "exit_code") == (0).to_json() &&
+        mooncode_nochange_field(metadata, "exit_code") == Json(0) &&
         !mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) &&
         mooncode_json_string(metadata, "execution_sandbox_policy", default="") ==
         "grant-bound" &&

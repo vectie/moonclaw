@@ -23,7 +23,7 @@ fn analysis_acp_run_id(run_id : String, step_id : String) -> String {
 
 ///|
 fn analysis_acp_message(request : AnalysisRequest) -> String {
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   builder.write_string(request.system_prompt.trim().to_owned())
   builder.write_string("\n\n")
   builder.write_string(request.prompt.trim().to_owned())
@@ -33,12 +33,12 @@ fn analysis_acp_message(request : AnalysisRequest) -> String {
 ///|
 fn analysis_acp_linkage_metadata(request : AnalysisRequest) -> Json {
   let fields : Map[String, Json] = Map([])
-  fields["job_id"] = request.job_id.to_json()
-  fields["job_run_id"] = request.run_id.to_json()
-  fields["job_step_id"] = request.step_id.to_json()
-  fields["execution_mode"] = "acp".to_json()
+  fields["job_id"] = Json(request.job_id)
+  fields["job_run_id"] = Json(request.run_id)
+  fields["job_step_id"] = Json(request.step_id)
+  fields["execution_mode"] = Json("acp")
   match request.execution_target {
-    Some(target) => fields["execution_target"] = target.to_json()
+    Some(target) => fields["execution_target"] = Json(target)
     None => ()
   }
   match request.step_metadata {
@@ -248,8 +248,7 @@ async fn run_acp_analysis_runner(
     Some(receipt) => {
       execution_metadata["patch_receipt"] = receipt
       match acp_patch_receipt_result_decision(receipt) {
-        Some(decision) =>
-          execution_metadata["result_decision"] = decision.to_json()
+        Some(decision) => execution_metadata["result_decision"] = Json(decision)
         None => ()
       }
     }

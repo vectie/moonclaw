@@ -157,3 +157,12 @@ pub fn new(cwd : String) -> @tool.Tool[Result] {
     },
   )
 }
+
+///|
+pub extend Result with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Result with ToJson::{to_json}
+
+///|
+pub extend Result with Show::{to_string, output}

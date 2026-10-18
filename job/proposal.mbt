@@ -1380,3 +1380,33 @@ pub fn render_job_plan_preview_for_chat(preview : JobPlanPreview) -> String {
     "Use `/e2e \{preview.request_text}` for preprocess + planned execution.",
   ].join("\n")
 }
+
+///|
+pub extend ProposalPlanStepPayload with ToJson::{to_json}
+
+///|
+pub extend ProposalPlanStepPayload with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProposalPlanPayload with ToJson::{to_json}
+
+///|
+pub extend ProposalPlanPayload with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobPlanPreviewStep with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobPlanPreviewStep with ToJson::{to_json}
+
+///|
+pub extend JobPlanPreviewStep with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobPlanPreview with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobPlanPreview with ToJson::{to_json}
+
+///|
+pub extend JobPlanPreview with @moonbitlang/core/json.FromJson::{from_json}

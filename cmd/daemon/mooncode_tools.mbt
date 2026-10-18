@@ -60,19 +60,19 @@ fn mooncode_validate_tool_call_body(
   let tool = mooncode_tool_name(body)
   let missing : Array[Json] = []
   if protocol != mooncode_protocol_version() {
-    missing.push("protocol".to_json())
+    missing.push(Json("protocol"))
   }
   if body_session != session_id {
-    missing.push("session_id".to_json())
+    missing.push(Json("session_id"))
   }
   if book_root == "" {
-    missing.push("book_root".to_json())
+    missing.push(Json("book_root"))
   }
   if command_id == "" {
-    missing.push("command_id".to_json())
+    missing.push(Json("command_id"))
   }
   if !mooncode_tool_supported(tool) {
-    missing.push("tool".to_json())
+    missing.push(Json("tool"))
   }
   {
     "ok": missing.length() == 0,
@@ -1880,7 +1880,7 @@ fn mooncode_json_object_with_field(
     _ => ()
   }
   object[key] = value
-  object.to_json()
+  Json(object)
 }
 
 ///|
@@ -2211,7 +2211,7 @@ fn mooncode_tool_result_event(
     },
     "detail": mooncode_json_string(result, "message", default=""),
     "path": path,
-    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
+    "changed_paths": Json::array(changed_paths.map(path => Json(path))),
     "diff": diff,
     "tool": tool,
     "tool_result": result,

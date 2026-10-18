@@ -68,3 +68,27 @@ pub fn usage(
 ) -> Usage {
   { input_tokens, output_tokens, total_tokens, cache_read_tokens, }
 }
+
+///|
+pub extend Message with ToJson::{to_json}
+
+///|
+pub extend Message with Eq::{not_equal, equal}
+
+///|
+pub extend Message with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ToolCall with ToJson::{to_json}
+
+///|
+pub extend ToolCall with Eq::{not_equal, equal}
+
+///|
+pub extend ToolCall with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Usage with Eq::{not_equal, equal}
+
+///|
+pub extend Usage with @moonbitlang/core/debug.Debug::{to_repr}

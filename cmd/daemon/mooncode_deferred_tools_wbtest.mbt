@@ -248,8 +248,7 @@ test "mooncode deferred schema preserves initial reduction and capability recove
   )
   assert_true(dynamic.length() < baseline.length())
   assert_true(
-    dynamic.to_json().stringify().length() <
-    baseline.to_json().stringify().length(),
+    Json(dynamic).stringify().length() < Json(baseline).stringify().length(),
   )
   let recovered_names = mooncode_deferred_test_tool_names(recovered)
   assert_true(recovered_names.contains("browser"))

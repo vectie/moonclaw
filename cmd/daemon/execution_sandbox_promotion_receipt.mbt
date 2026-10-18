@@ -118,14 +118,14 @@ async fn moondesk_promotion_with_receipt(
   // Durably supersede any earlier safe refusal before this attempt can mutate
   // the destination. If invocation or final persistence fails, readback and
   // repeated requests must remain unresolved instead of reviving that refusal.
-  let pending : Json = { "request": request.to_json(), "pending_attempt": true }
+  let pending : Json = { "request": Json(request), "pending_attempt": true }
   moondesk_promotion_save_checkpoint(path, receipt_root, pending, ".starting")
   let response = moondesk_promotion_validate_response(request, invoke())
   let checkpoint = MoonDeskPromotionCheckpoint::{ request, response, }
   moondesk_promotion_save_checkpoint(
     path,
     receipt_root,
-    checkpoint.to_json(),
+    Json(checkpoint),
     ".pending",
   )
   moondesk_promotion_public_response(request, response)

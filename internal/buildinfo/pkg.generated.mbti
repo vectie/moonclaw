@@ -11,6 +11,7 @@ pub struct Build {
   number : Int
   commit : String
 } derive(ToJson)
+pub fn Build::to_json(Self) -> Json
 
 pub struct Version {
   major : Int
@@ -18,7 +19,17 @@ pub struct Version {
   patch : Int
   build : Build?
 } derive(ToJson)
+pub fn Version::compare(Self, Self) -> Int
+pub fn Version::equal(Self, Self) -> Bool
+pub fn Version::not_equal(Self, Self) -> Bool
+pub fn Version::op_ge(Self, Self) -> Bool
+pub fn Version::op_gt(Self, Self) -> Bool
+pub fn Version::op_le(Self, Self) -> Bool
+pub fn Version::op_lt(Self, Self) -> Bool
+pub fn Version::output(Self, &Logger) -> Unit
 pub fn Version::parse(String) -> Self raise
+pub fn Version::to_json(Self) -> Json
+pub fn Version::to_string(Self) -> String
 pub impl Compare for Version
 pub impl Eq for Version
 pub impl Show for Version

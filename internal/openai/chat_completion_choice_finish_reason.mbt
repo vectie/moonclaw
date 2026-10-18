@@ -38,3 +38,8 @@ impl @json.FromJson for ChatCompletionChoiceFinishReason with fn from_json(
     _ => raise JsonDecodeError((json_path, "Unknown finish reason: \{reason}"))
   }
 }
+
+///|
+pub extend ChatCompletionChoiceFinishReason with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

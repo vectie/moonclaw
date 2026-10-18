@@ -45,7 +45,7 @@ pub(all) struct GoalComparisonTrend {
 
 ///|
 fn goal_comparison_normalize(text : String) -> String {
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   let mut pending_space = false
   let mut has_output = false
   for char in text {
@@ -285,3 +285,35 @@ pub fn goal_comparison_trend(
     stable: sample_count > 0 && diverged_count == 0 && insufficient_count == 0,
   }
 }
+
+///|
+pub extend GoalRunRequirementResult with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRunRequirementResult with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend GoalRunResult with Eq::{not_equal, equal}
+
+///|
+pub extend GoalRunResult with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalComparisonVerdict with Eq::{not_equal, equal}
+
+///|
+pub extend GoalComparisonVerdict with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalComparison with Eq::{not_equal, equal}
+
+///|
+pub extend GoalComparison with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend GoalComparisonTrend with Eq::{not_equal, equal}
+
+///|
+pub extend GoalComparisonTrend with @moonbitlang/core/debug.Debug::{to_repr}

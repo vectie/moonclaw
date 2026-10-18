@@ -30,3 +30,16 @@ pub impl @json.FromJson for ChatCompletionMessageToolCall with fn from_json(
   )
   { id, function, }
 }
+
+///|
+pub extend ChatCompletionMessageToolCall with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ChatCompletionMessageToolCall with ToJson::{to_json}
+
+///|
+pub extend ChatCompletionMessageToolCall with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

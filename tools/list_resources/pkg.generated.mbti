@@ -18,6 +18,10 @@ pub struct ListResourcesResult {
   total_resources : Int
   truncated : Bool
 } derive(ToJson, @json.FromJson)
+pub fn ListResourcesResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ListResourcesResult::output(Self, &Logger) -> Unit
+pub fn ListResourcesResult::to_json(Self) -> Json
+pub fn ListResourcesResult::to_string(Self) -> String
 pub impl Show for ListResourcesResult
 
 pub struct ResourceSummary {
@@ -27,6 +31,8 @@ pub struct ResourceSummary {
   description : String
   metadata : Json
 } derive(ToJson, @json.FromJson)
+pub fn ResourceSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ResourceSummary::to_json(Self) -> Json
 
 pub enum ResourceSummaryKind {
   File
@@ -34,6 +40,9 @@ pub enum ResourceSummaryKind {
   Worktree
   Provider
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ResourceSummaryKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ResourceSummaryKind::to_json(Self) -> Json
+pub fn ResourceSummaryKind::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -162,7 +162,7 @@ async test "live steer arriving during replan supersedes stale mutation" {
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
     @async.with_task_group(group => {
       group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
       @async.pause()

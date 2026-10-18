@@ -437,7 +437,7 @@ async fn resolve_adaptive_analysis_result(
                           finalize_provider_task_subplan_execution(
                             request,
                             execution,
-                            child_outputs.to_json(),
+                            Json(child_outputs),
                           ) {
                           Some(Ok(persisted_execution)) =>
                             Some(
@@ -447,7 +447,7 @@ async fn resolve_adaptive_analysis_result(
                                 result_artifact_id,
                                 child_job_id,
                                 child_run_id,
-                                child_outputs.to_json(),
+                                Json(child_outputs),
                               ),
                             )
                           Some(Err(error)) => Some(Err(error))
@@ -459,7 +459,7 @@ async fn resolve_adaptive_analysis_result(
                                 result_artifact_id,
                                 child_job_id,
                                 child_run_id,
-                                child_outputs.to_json(),
+                                Json(child_outputs),
                               ),
                             )
                         }

@@ -1,6 +1,6 @@
 ///|
 fn supervisor_query_component(value : String) -> String {
-  let encoded = StringBuilder::new()
+  let encoded = StringBuilder()
   for character in value {
     match character {
       'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
@@ -206,7 +206,7 @@ async fn Daemon::install_supervisor_profile(
   }
   let (response, body) = @httpx.post_json(
     "http://127.0.0.1:\{task.port}/v1/system-prompt",
-    exact_profile.to_json(),
+    Json(exact_profile),
   )
   guard response.code is (200..<=299) else {
     raise supervisor_http_failure(

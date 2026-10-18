@@ -112,3 +112,17 @@ pub async fn load_promotion_adapter_config() -> PromotionAdapterConfig? {
   }
   Some(config)
 }
+
+///|
+pub extend PromotionAdapterConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PromotionAdapterConfig with Eq::{not_equal, equal}
+
+///|
+pub extend PromotionAdapterConfig with ToJson::{to_json}
+
+///|
+pub extend PromotionAdapterConfig with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

@@ -38,3 +38,8 @@ impl ToJson for ChatCompletionServiceTier with fn to_json(
     Priority => "priority"
   }
 }
+
+///|
+pub extend ChatCompletionServiceTier with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

@@ -11,6 +11,7 @@ pub(all) struct Config {
   auth_token : String
   workspace_id : String
   workspace_root : String
+  trusted_book_roots : Array[String]?
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
@@ -129,7 +130,52 @@ async fn load_from_path(
     @fs.realpath(config.workspace_root) == config.workspace_root else {
     fail("MoonDesk sandbox config failed validation")
   }
+  guard valid_trusted_book_roots(config) else {
+    fail("MoonDesk trusted Book roots failed validation")
+  }
   config
+}
+
+///|
+async fn valid_trusted_book_roots(config : Config) -> Bool {
+  let roots = config.trusted_book_roots.unwrap_or([])
+  if roots.length() > 128 {
+    return false
+  }
+  let seen : Map[String, Bool] = Map([])
+  for root in roots {
+    if root == "" ||
+      root.length() > 4096 ||
+      root.contains("\u{0}") ||
+      !(root == config.workspace_root ||
+      (config.workspace_root == "/" && root.has_prefix("/")) ||
+      root.has_prefix(config.workspace_root + "/")) ||
+      seen.contains(root) {
+      return false
+    }
+    guard ((@fs.realpath(root) == root &&
+    @fs.kind(root, follow_symlink=false) == Directory) catch {
+      _ => false
+    }) else {
+      return false
+    }
+    seen[root] = true
+  }
+  true
+}
+
+///|
+/// Exact operator-owned membership; neither registration nor descendants imply trust.
+pub async fn Config::allows_book_root(self : Config, root : String) -> Bool {
+  guard valid_trusted_book_roots(self) &&
+    self.trusted_book_roots.unwrap_or([]).contains(root) else {
+    return false
+  }
+  (@fs.realpath(self.workspace_root) == self.workspace_root &&
+  @fs.realpath(root) == root &&
+  @fs.kind(root, follow_symlink=false) == Directory) catch {
+    _ => false
+  }
 }
 
 ///|
@@ -154,3 +200,15 @@ pub async fn load(read_only~ : Bool = false) -> Config? {
     ),
   )
 }
+
+///|
+pub extend Config with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Config with Eq::{not_equal, equal}
+
+///|
+pub extend Config with ToJson::{to_json}
+
+///|
+pub extend Config with @moonbitlang/core/json.FromJson::{from_json}

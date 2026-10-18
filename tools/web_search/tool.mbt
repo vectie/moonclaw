@@ -96,7 +96,7 @@ fn append_percent_encoded(buf : StringBuilder, code : Int32) -> Unit {
 
 ///|
 fn url_encode_component(text : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for ch in text.to_array() {
     match ch {
       'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
@@ -487,3 +487,18 @@ test "parse_duckduckgo_result collects abstract and related topics" {
   inspect(result.results[0].title, content="MoonBit")
   inspect(result.results[1].url, content="https://example.test/docs")
 }
+
+///|
+pub extend WebSearchItem with ToJson::{to_json}
+
+///|
+pub extend WebSearchItem with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WebSearchResult with ToJson::{to_json}
+
+///|
+pub extend WebSearchResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WebSearchResult with Show::{to_string, output}

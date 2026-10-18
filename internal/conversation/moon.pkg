@@ -12,11 +12,11 @@ import {
   "vectie/moonclaw/internal/pino",
   "moonbitlang/async",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
-
-supported_targets = "native"
 
 import {
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"
+
+supported_targets = "native"

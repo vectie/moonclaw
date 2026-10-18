@@ -56,3 +56,24 @@ pub fn ApplyResult::summary(self : ApplyResult) -> String {
   }
   lines.join("\n")
 }
+
+///|
+pub extend Hunk with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Hunk with Eq::{not_equal, equal}
+
+///|
+pub extend UpdateFileChunk with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend UpdateFileChunk with Eq::{not_equal, equal}
+
+///|
+pub extend ParsedPatch with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ParseError with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ApplyResult with @moonbitlang/core/debug.Debug::{to_repr}

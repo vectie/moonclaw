@@ -4,15 +4,14 @@ import {
   "vectie/moonclaw/internal/token_counter",
   "vectie/moonclaw/internal/conversation",
   "vectie/moonlib/uuid",
-  "vectie/moonclaw/event",
   "vectie/moonclaw/ai",
-  "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
-
-supported_targets = "native"
 
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
+  "vectie/moonclaw/event",
 } for "test"
+
+supported_targets = "native"

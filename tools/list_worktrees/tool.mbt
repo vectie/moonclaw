@@ -51,3 +51,12 @@ pub fn new(cwd : String) -> @tool.Tool[ListWorktreesResult] {
     },
   )
 }
+
+///|
+pub extend ListWorktreesResult with ToJson::{to_json}
+
+///|
+pub extend ListWorktreesResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ListWorktreesResult with Show::{to_string, output}

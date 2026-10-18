@@ -92,7 +92,7 @@ async test "MoonCode rehydrates a persisted model from its MoonBook root" {
         recursive=true,
         exists_ok=true,
       )
-      @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+      @fsx.write_to_file(models_path, Json([model]).stringify(indent=2))
       let primary = @model.Loader::new(home=daemon_root, cwd=daemon_root)
       let resolved = mooncode_runtime_turn_resolve_model(
         primary,
@@ -113,7 +113,7 @@ async test "MoonCode rehydrates a persisted model from its MoonBook root" {
       // MoonGate route, even when rehydrating from the correct owning Book.
       @fsx.write_to_file(
         models_path,
-        [
+        Json([
           @model.Model::new(
             api_key="dummy",
             base_url="https://other.invalid",
@@ -121,9 +121,7 @@ async test "MoonCode rehydrates a persisted model from its MoonBook root" {
             model_name="kimi-k3",
             safe_zone_tokens=131072,
           ),
-        ]
-        .to_json()
-        .stringify(),
+        ]).stringify(),
       )
       assert_true(
         mooncode_runtime_turn_resolve_model(

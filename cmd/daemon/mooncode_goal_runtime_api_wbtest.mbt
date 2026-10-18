@@ -29,7 +29,7 @@ fn goal_runtime_test_error(
   assert_eq(body["protocol"], ("mooncode.v1" : Json))
   assert_eq(body["owner"], ("moonclaw" : Json))
   assert_eq(body["contract"], ("mooncode-goal-runtime.v1" : Json))
-  assert_eq(body["error"], code.to_json())
+  assert_eq(body["error"], Json(code))
 }
 
 ///|
@@ -125,7 +125,7 @@ async test "legacy authority excludes goal-runtime creation" {
     let id = "session"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
     assert_eq(
-      mooncode_goal_api_put_internal(root, id, goal_api_body((7).to_json()), 1L).status_code,
+      mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L).status_code,
       201,
     )
     let before = @fsx.read_file(mooncode_session_journal_path(root, id))
@@ -163,7 +163,7 @@ async test "goal-runtime authority excludes legacy creation" {
     let legacy = mooncode_goal_api_put_internal(
       root,
       id,
-      goal_api_body((7).to_json()),
+      goal_api_body(Json(7)),
       2L,
     )
     assert_eq(legacy.status_code, 409)
@@ -201,12 +201,7 @@ async test "concurrent legacy and runtime creation choose exactly one authority"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
     @async.with_task_group(group => {
       let legacy_task = group.spawn(() => {
-        mooncode_goal_api_put_internal(
-          root,
-          id,
-          goal_api_body((7).to_json()),
-          1L,
-        )
+        mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L)
       })
       let runtime_task = group.spawn(() => {
         mooncode_goal_runtime_api_put_internal(
@@ -242,7 +237,7 @@ async test "handcrafted dual authority fails closed on both reads" {
     let id = "session"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
     assert_eq(
-      mooncode_goal_api_put_internal(root, id, goal_api_body((7).to_json()), 1L).status_code,
+      mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L).status_code,
       201,
     )
     let genesis = new_mooncode_goal_runtime_genesis(

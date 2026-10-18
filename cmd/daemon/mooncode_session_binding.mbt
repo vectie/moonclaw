@@ -292,6 +292,16 @@ async fn MoonCodeSessionBinding::restore_session_metadata(
     return
   }
   let snapshot = mooncode_load_session_snapshot(self.book_root, self.session_id)
+  let journal = mooncode_read_session_journal(self.book_root, self.session_id)
+  self.restore_session_metadata_parts(snapshot, journal)
+}
+
+///|
+fn MoonCodeSessionBinding::restore_session_metadata_parts(
+  self : MoonCodeSessionBinding,
+  snapshot : Json,
+  journal : Array[Json],
+) -> Unit raise {
   if self.custom_title == "" {
     self.custom_title = mooncode_json_string(
       snapshot,
@@ -305,7 +315,6 @@ async fn MoonCodeSessionBinding::restore_session_metadata(
     "model_workspace",
     default=self.model_workspace,
   )
-  let journal = mooncode_read_session_journal(self.book_root, self.session_id)
   match mooncode_journal_model_workspace(journal) {
     Some(root) => {
       if self.model_workspace != "" && self.model_workspace != root {

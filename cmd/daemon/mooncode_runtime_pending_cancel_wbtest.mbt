@@ -236,7 +236,7 @@ async test "cancel and claim barriers preserve both settlement orderings" {
         mooncode_pending_cancel_test_prompt(root, "retained"),
         cancel,
       ])
-      let barrier : @aqueue.Queue[Unit] = @aqueue.Queue(kind=Unbounded)
+      let barrier : @aqueue.Queue[Unit] = Queue(kind=Unbounded)
       let tasks : Array[async () -> Unit] = [
         async fn() {
           if cancel_first {

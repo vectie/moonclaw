@@ -62,7 +62,7 @@ pub fn build_authorize_url(
 
 ///|
 fn url_encode(s : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for c in s {
     match c {
       'A'..<='Z' | 'a'..<='z' | '0'..<='9' | '-' | '_' | '.' | '~' =>
@@ -121,7 +121,7 @@ pub async fn exchange_code_for_tokens(
 
 ///|
 fn url_decode(s : StringView) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let chars = s.to_array()
   let mut i = 0
   while i < chars.length() {
@@ -293,3 +293,6 @@ pub async fn start_oauth_flow_for_workspace_root(
 async fn open_browser(url : String) -> Unit raise Error {
   @trusted_host_process.open_browser_url(url) |> ignore()
 }
+
+///|
+pub extend TokenResponse with @moonbitlang/core/debug.Debug::{to_repr}

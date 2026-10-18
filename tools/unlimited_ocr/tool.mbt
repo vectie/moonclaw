@@ -51,3 +51,12 @@ pub fn new(cwd : String) -> @tool.Tool[UnlimitedOcrResult] {
     }),
   )
 }
+
+///|
+pub extend UnlimitedOcrResult with ToJson::{to_json}
+
+///|
+pub extend UnlimitedOcrResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend UnlimitedOcrResult with Show::{to_string, output}

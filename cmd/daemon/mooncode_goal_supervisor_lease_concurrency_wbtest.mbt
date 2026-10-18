@@ -19,7 +19,7 @@ async test "mooncode_goal_supervisor_lease: concurrent initial acquire linearize
       let mut acquired = 0
       let mut conflicts = 0
       @async.with_task_group(async fn(group) {
-        let tasks = Array::new(capacity=16)
+        let tasks = Array(capacity=16)
         for i in 0..<16 {
           tasks.push(
             group.spawn(async fn() {
@@ -84,7 +84,7 @@ async test "mooncode_goal_supervisor_lease: concurrent takeover linearizes once"
       let mut acquired = 0
       let mut conflicts = 0
       @async.with_task_group(async fn(group) {
-        let tasks = Array::new(capacity=16)
+        let tasks = Array(capacity=16)
         for i in 0..<16 {
           tasks.push(
             group.spawn(async fn() {

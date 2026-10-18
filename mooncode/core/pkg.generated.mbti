@@ -1080,6 +1080,9 @@ pub(all) enum ApprovalOutcome {
   Approved
   Rejected
 } derive(Eq, @debug.Debug)
+pub fn ApprovalOutcome::equal(Self, Self) -> Bool
+pub fn ApprovalOutcome::not_equal(Self, Self) -> Bool
+pub fn ApprovalOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct BlockerIdentity {
   kind : String
@@ -1087,12 +1090,18 @@ pub(all) struct BlockerIdentity {
   resource : String
   required_change : String
 } derive(Eq, @debug.Debug)
+pub fn BlockerIdentity::equal(Self, Self) -> Bool
+pub fn BlockerIdentity::not_equal(Self, Self) -> Bool
+pub fn BlockerIdentity::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CheckpointAcceptanceOutcome {
   Accepted
   Rejected
   InsufficientEvidence
 } derive(Eq, @debug.Debug)
+pub fn CheckpointAcceptanceOutcome::equal(Self, Self) -> Bool
+pub fn CheckpointAcceptanceOutcome::not_equal(Self, Self) -> Bool
+pub fn CheckpointAcceptanceOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointBlocker {
   blocker_id : String
@@ -1100,6 +1109,9 @@ pub(all) struct CheckpointBlocker {
   evidence_ref : String
   digest : String
 } derive(Eq, @debug.Debug)
+pub fn CheckpointBlocker::equal(Self, Self) -> Bool
+pub fn CheckpointBlocker::not_equal(Self, Self) -> Bool
+pub fn CheckpointBlocker::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointBudget {
   token_limit : Int?
@@ -1109,6 +1121,9 @@ pub(all) struct CheckpointBudget {
   turns_used : Int
   wall_time_used : Int
 } derive(Eq, @debug.Debug)
+pub fn CheckpointBudget::equal(Self, Self) -> Bool
+pub fn CheckpointBudget::not_equal(Self, Self) -> Bool
+pub fn CheckpointBudget::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CheckpointComparisonOutcome {
   Exact
@@ -1116,6 +1131,9 @@ pub(all) enum CheckpointComparisonOutcome {
   Disagreed
   InsufficientEvidence
 } derive(Eq, @debug.Debug)
+pub fn CheckpointComparisonOutcome::equal(Self, Self) -> Bool
+pub fn CheckpointComparisonOutcome::not_equal(Self, Self) -> Bool
+pub fn CheckpointComparisonOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointComparisonReport {
   contract_version : Int
@@ -1129,6 +1147,9 @@ pub(all) struct CheckpointComparisonReport {
   deltas : Array[CheckpointDelta]
   regression : Bool
 } derive(Eq, @debug.Debug)
+pub fn CheckpointComparisonReport::equal(Self, Self) -> Bool
+pub fn CheckpointComparisonReport::not_equal(Self, Self) -> Bool
+pub fn CheckpointComparisonReport::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointDelta {
   kind : CheckpointDeltaKind
@@ -1136,6 +1157,9 @@ pub(all) struct CheckpointDelta {
   left_digest : String
   right_digest : String
 } derive(Eq, @debug.Debug)
+pub fn CheckpointDelta::equal(Self, Self) -> Bool
+pub fn CheckpointDelta::not_equal(Self, Self) -> Bool
+pub fn CheckpointDelta::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CheckpointDeltaKind {
   StaleBasis
@@ -1159,6 +1183,9 @@ pub(all) enum CheckpointDeltaKind {
   MissingSequenceSide
   Regression
 } derive(Eq, @debug.Debug)
+pub fn CheckpointDeltaKind::equal(Self, Self) -> Bool
+pub fn CheckpointDeltaKind::not_equal(Self, Self) -> Bool
+pub fn CheckpointDeltaKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointEvidenceRecord {
   evidence_id : String
@@ -1167,6 +1194,9 @@ pub(all) struct CheckpointEvidenceRecord {
   content_digest : String
   evidence_ref : String
 } derive(Eq, @debug.Debug)
+pub fn CheckpointEvidenceRecord::equal(Self, Self) -> Bool
+pub fn CheckpointEvidenceRecord::not_equal(Self, Self) -> Bool
+pub fn CheckpointEvidenceRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointIdentity {
   checkpoint_id : String
@@ -1174,6 +1204,9 @@ pub(all) struct CheckpointIdentity {
   checkpoint_key : String
   parent_checkpoint_id : String?
 } derive(Eq, @debug.Debug)
+pub fn CheckpointIdentity::equal(Self, Self) -> Bool
+pub fn CheckpointIdentity::not_equal(Self, Self) -> Bool
+pub fn CheckpointIdentity::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointOutputManifest {
   output_id : String
@@ -1183,18 +1216,27 @@ pub(all) struct CheckpointOutputManifest {
   artifact_digest : String
   evidence_refs : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CheckpointOutputManifest::equal(Self, Self) -> Bool
+pub fn CheckpointOutputManifest::not_equal(Self, Self) -> Bool
+pub fn CheckpointOutputManifest::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointProducerIdentity {
   producer_id : String
   producer_version : String
   contract_version : Int
 } derive(Eq, @debug.Debug)
+pub fn CheckpointProducerIdentity::equal(Self, Self) -> Bool
+pub fn CheckpointProducerIdentity::not_equal(Self, Self) -> Bool
+pub fn CheckpointProducerIdentity::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointRemainingWork {
   work_id : String
   requirement_id : String
   description_digest : String
 } derive(Eq, @debug.Debug)
+pub fn CheckpointRemainingWork::equal(Self, Self) -> Bool
+pub fn CheckpointRemainingWork::not_equal(Self, Self) -> Bool
+pub fn CheckpointRemainingWork::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointRequirementEvidence {
   requirement_id : String
@@ -1202,6 +1244,9 @@ pub(all) struct CheckpointRequirementEvidence {
   state : RequirementState
   evidence_refs : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CheckpointRequirementEvidence::equal(Self, Self) -> Bool
+pub fn CheckpointRequirementEvidence::not_equal(Self, Self) -> Bool
+pub fn CheckpointRequirementEvidence::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointVerificationCheck {
   check_id : String
@@ -1210,10 +1255,16 @@ pub(all) struct CheckpointVerificationCheck {
   result_digest : String
   evidence_refs : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CheckpointVerificationCheck::equal(Self, Self) -> Bool
+pub fn CheckpointVerificationCheck::not_equal(Self, Self) -> Bool
+pub fn CheckpointVerificationCheck::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CheckpointVerificationManifest {
   checks : Array[CheckpointVerificationCheck]
 } derive(Eq, @debug.Debug)
+pub fn CheckpointVerificationManifest::equal(Self, Self) -> Bool
+pub fn CheckpointVerificationManifest::not_equal(Self, Self) -> Bool
+pub fn CheckpointVerificationManifest::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ComparisonBasis {
   version : Int
@@ -1225,31 +1276,49 @@ pub(all) struct ComparisonBasis {
   required_outputs : Array[ComparisonOutputDefinition]
   required_checks : Array[ComparisonCheckDefinition]
 } derive(Eq, @debug.Debug)
+pub fn ComparisonBasis::equal(Self, Self) -> Bool
+pub fn ComparisonBasis::not_equal(Self, Self) -> Bool
+pub fn ComparisonBasis::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ComparisonCheckDefinition {
   check_id : String
   spec_digest : String
 } derive(Eq, @debug.Debug)
+pub fn ComparisonCheckDefinition::equal(Self, Self) -> Bool
+pub fn ComparisonCheckDefinition::not_equal(Self, Self) -> Bool
+pub fn ComparisonCheckDefinition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ComparisonOutputDefinition {
   output_id : String
   spec_digest : String
 } derive(Eq, @debug.Debug)
+pub fn ComparisonOutputDefinition::equal(Self, Self) -> Bool
+pub fn ComparisonOutputDefinition::not_equal(Self, Self) -> Bool
+pub fn ComparisonOutputDefinition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ComparisonRequirementDefinition {
   requirement_id : String
   spec_digest : String
 } derive(Eq, @debug.Debug)
+pub fn ComparisonRequirementDefinition::equal(Self, Self) -> Bool
+pub fn ComparisonRequirementDefinition::not_equal(Self, Self) -> Bool
+pub fn ComparisonRequirementDefinition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompletionProof {
   projection : ValidatedProjection
 } derive(Eq, @debug.Debug)
+pub fn CompletionProof::equal(Self, Self) -> Bool
+pub fn CompletionProof::not_equal(Self, Self) -> Bool
+pub fn CompletionProof::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Convergence {
   Converged
   Disagreed
   InsufficientEvidence
 } derive(Eq, @debug.Debug)
+pub fn Convergence::equal(Self, Self) -> Bool
+pub fn Convergence::not_equal(Self, Self) -> Bool
+pub fn Convergence::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConvergenceReport {
   evaluation_id : String
@@ -1259,6 +1328,9 @@ pub(all) struct ConvergenceReport {
   requirement_deltas : Array[String]
   residual_risks : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn ConvergenceReport::equal(Self, Self) -> Bool
+pub fn ConvergenceReport::not_equal(Self, Self) -> Bool
+pub fn ConvergenceReport::to_repr(Self) -> @debug.Repr
 
 pub(all) struct EvaluationBackoffRecord {
   evaluation_id : String
@@ -1269,6 +1341,9 @@ pub(all) struct EvaluationBackoffRecord {
   category : String
   next_retry_at : Int64
 } derive(Eq, @debug.Debug)
+pub fn EvaluationBackoffRecord::equal(Self, Self) -> Bool
+pub fn EvaluationBackoffRecord::not_equal(Self, Self) -> Bool
+pub fn EvaluationBackoffRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct EvaluationRequest {
   id : String
@@ -1276,6 +1351,9 @@ pub(all) struct EvaluationRequest {
   revision : Int
   evidence_digest : String
 } derive(Eq, @debug.Debug)
+pub fn EvaluationRequest::equal(Self, Self) -> Bool
+pub fn EvaluationRequest::not_equal(Self, Self) -> Bool
+pub fn EvaluationRequest::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Goal {
   id : String
@@ -1298,11 +1376,17 @@ pub(all) struct Goal {
   approval_refs : Array[String]
   seen_ids : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn Goal::equal(Self, Self) -> Bool
+pub fn Goal::not_equal(Self, Self) -> Bool
+pub fn Goal::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalBlockedReason {
   code : String
   detail : String
 } derive(Eq, @debug.Debug)
+pub fn GoalBlockedReason::equal(Self, Self) -> Bool
+pub fn GoalBlockedReason::not_equal(Self, Self) -> Bool
+pub fn GoalBlockedReason::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalBlocker {
   identity : BlockerIdentity
@@ -1310,6 +1394,9 @@ pub(all) struct GoalBlocker {
   last_consecutive_turn : Int
   run_id : Int
 } derive(Eq, @debug.Debug)
+pub fn GoalBlocker::equal(Self, Self) -> Bool
+pub fn GoalBlocker::not_equal(Self, Self) -> Bool
+pub fn GoalBlocker::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalBudget {
   token_limit : Int?
@@ -1319,6 +1406,9 @@ pub(all) struct GoalBudget {
   turns_used : Int
   wall_time_used : Int
 } derive(Eq, @debug.Debug)
+pub fn GoalBudget::equal(Self, Self) -> Bool
+pub fn GoalBudget::not_equal(Self, Self) -> Bool
+pub fn GoalBudget::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalCheckpointSnapshot {
   contract_version : Int
@@ -1336,6 +1426,9 @@ pub(all) struct GoalCheckpointSnapshot {
   verification : CheckpointVerificationManifest
   budget : CheckpointBudget
 } derive(Eq, @debug.Debug)
+pub fn GoalCheckpointSnapshot::equal(Self, Self) -> Bool
+pub fn GoalCheckpointSnapshot::not_equal(Self, Self) -> Bool
+pub fn GoalCheckpointSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalComparison {
   checkpoint : Int
@@ -1344,6 +1437,9 @@ pub(all) struct GoalComparison {
   lexical_similarity_bps : Int
   mismatches : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn GoalComparison::equal(Self, Self) -> Bool
+pub fn GoalComparison::not_equal(Self, Self) -> Bool
+pub fn GoalComparison::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalComparisonTrend {
   sample_count : Int
@@ -1354,6 +1450,9 @@ pub(all) struct GoalComparisonTrend {
   average_similarity_bps : Int
   stable : Bool
 } derive(Eq, @debug.Debug)
+pub fn GoalComparisonTrend::equal(Self, Self) -> Bool
+pub fn GoalComparisonTrend::not_equal(Self, Self) -> Bool
+pub fn GoalComparisonTrend::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalComparisonVerdict {
   Equivalent
@@ -1361,16 +1460,25 @@ pub(all) enum GoalComparisonVerdict {
   Diverged
   Insufficient
 } derive(Eq, @debug.Debug)
+pub fn GoalComparisonVerdict::equal(Self, Self) -> Bool
+pub fn GoalComparisonVerdict::not_equal(Self, Self) -> Bool
+pub fn GoalComparisonVerdict::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalConvergence {
   report : ConvergenceReport
   accepted_revision : Int
 } derive(Eq, @debug.Debug)
+pub fn GoalConvergence::equal(Self, Self) -> Bool
+pub fn GoalConvergence::not_equal(Self, Self) -> Bool
+pub fn GoalConvergence::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalCriterionEvidence {
   criterion : String
   evidence_refs : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn GoalCriterionEvidence::equal(Self, Self) -> Bool
+pub fn GoalCriterionEvidence::not_equal(Self, Self) -> Bool
+pub fn GoalCriterionEvidence::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalEvent {
   ContinuationAccepted(String, Int64, Int, Int)
@@ -1388,17 +1496,26 @@ pub(all) enum GoalEvent {
   CompleteRequested(String, Int64, CompletionProof)
   Resume(String, Int64)
 } derive(Eq, @debug.Debug)
+pub fn GoalEvent::equal(Self, Self) -> Bool
+pub fn GoalEvent::not_equal(Self, Self) -> Bool
+pub fn GoalEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalOperationPolicy {
   max_output_bytes : Int
   timeout_milliseconds : Int
 } derive(Eq, @debug.Debug)
+pub fn GoalOperationPolicy::equal(Self, Self) -> Bool
+pub fn GoalOperationPolicy::not_equal(Self, Self) -> Bool
+pub fn GoalOperationPolicy::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalPlannerDecision {
   Continue(Array[GoalRuntimeOperation], String, String)
   Achieved(String, Array[GoalCriterionEvidence])
   Blocked(GoalBlockedReason, Array[String], String?)
 } derive(Eq, @debug.Debug)
+pub fn GoalPlannerDecision::equal(Self, Self) -> Bool
+pub fn GoalPlannerDecision::not_equal(Self, Self) -> Bool
+pub fn GoalPlannerDecision::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalRequirement {
   id : String
@@ -1406,11 +1523,17 @@ pub(all) struct GoalRequirement {
   state : RequirementState
   evidence_refs : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn GoalRequirement::equal(Self, Self) -> Bool
+pub fn GoalRequirement::not_equal(Self, Self) -> Bool
+pub fn GoalRequirement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalRunRequirementResult {
   id : String
   passed : Bool
 } derive(Eq, @debug.Debug)
+pub fn GoalRunRequirementResult::equal(Self, Self) -> Bool
+pub fn GoalRunRequirementResult::not_equal(Self, Self) -> Bool
+pub fn GoalRunRequirementResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalRunResult {
   runner : String
@@ -1421,6 +1544,9 @@ pub(all) struct GoalRunResult {
   artifact_digest : String
   summary : String
 } derive(Eq, @debug.Debug)
+pub fn GoalRunResult::equal(Self, Self) -> Bool
+pub fn GoalRunResult::not_equal(Self, Self) -> Bool
+pub fn GoalRunResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalRunState {
   Runnable
@@ -1430,6 +1556,9 @@ pub(all) enum GoalRunState {
   Evaluating
   EvaluationBackoff
 } derive(Eq, @debug.Debug)
+pub fn GoalRunState::equal(Self, Self) -> Bool
+pub fn GoalRunState::not_equal(Self, Self) -> Bool
+pub fn GoalRunState::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalRuntimeEvent {
   PlannerDecision(String, GoalPlannerDecision)
@@ -1438,6 +1567,9 @@ pub(all) enum GoalRuntimeEvent {
   PhaseChanged(String, GoalRuntimePhase)
   Cancelled(String, String)
 } derive(Eq, @debug.Debug)
+pub fn GoalRuntimeEvent::equal(Self, Self) -> Bool
+pub fn GoalRuntimeEvent::not_equal(Self, Self) -> Bool
+pub fn GoalRuntimeEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GoalRuntimeOperation {
   operation_id : String
@@ -1445,12 +1577,18 @@ pub(all) struct GoalRuntimeOperation {
   input : String
   policy : GoalOperationPolicy
 } derive(Eq, @debug.Debug)
+pub fn GoalRuntimeOperation::equal(Self, Self) -> Bool
+pub fn GoalRuntimeOperation::not_equal(Self, Self) -> Bool
+pub fn GoalRuntimeOperation::to_repr(Self) -> @debug.Repr
 
 pub enum GoalRuntimeOutcome {
   AchievedOutcome(String, Array[GoalCriterionEvidence])
   BlockedOutcome(GoalBlockedReason, Array[String], String?)
   CancelledOutcome(String)
 } derive(Eq, @debug.Debug)
+pub fn GoalRuntimeOutcome::equal(Self, Self) -> Bool
+pub fn GoalRuntimeOutcome::not_equal(Self, Self) -> Bool
+pub fn GoalRuntimeOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalRuntimePhase {
   Queued
@@ -1460,18 +1598,27 @@ pub(all) enum GoalRuntimePhase {
   PausedNoProgress
   PausedExternal
 } derive(Eq, @debug.Debug)
+pub fn GoalRuntimePhase::equal(Self, Self) -> Bool
+pub fn GoalRuntimePhase::not_equal(Self, Self) -> Bool
+pub fn GoalRuntimePhase::to_repr(Self) -> @debug.Repr
 
 pub struct GoalRuntimeState {
   contract : String
   phase : GoalRuntimePhase
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn GoalRuntimeState::equal(Self, Self) -> Bool
+pub fn GoalRuntimeState::not_equal(Self, Self) -> Bool
+pub fn GoalRuntimeState::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GoalStatus {
   Active
   Complete
   Blocked
 } derive(Eq, @debug.Debug)
+pub fn GoalStatus::equal(Self, Self) -> Bool
+pub fn GoalStatus::not_equal(Self, Self) -> Bool
+pub fn GoalStatus::to_repr(Self) -> @debug.Repr
 
 pub(all) struct NativeCapabilityEndpoints {
   capabilities : String
@@ -1493,13 +1640,21 @@ pub(all) struct NativeCapabilityEndpoints {
   eval_report : String
   package_result : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn NativeCapabilityEndpoints::equal(Self, Self) -> Bool
+pub fn NativeCapabilityEndpoints::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn NativeCapabilityEndpoints::not_equal(Self, Self) -> Bool
 pub fn NativeCapabilityEndpoints::required_endpoints(Self) -> Array[String]
+pub fn NativeCapabilityEndpoints::to_json(Self) -> Json
+pub fn NativeCapabilityEndpoints::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RequirementState {
   Unproven
   Proven
   Contradicted
 } derive(Eq, @debug.Debug)
+pub fn RequirementState::equal(Self, Self) -> Bool
+pub fn RequirementState::not_equal(Self, Self) -> Bool
+pub fn RequirementState::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ValidatedProjection {
   revision : Int
@@ -1513,6 +1668,9 @@ pub(all) struct ValidatedProjection {
   command_evidence_complete_and_passing : Bool
   mutations_have_later_passing_checks : Bool
 } derive(Eq, @debug.Debug)
+pub fn ValidatedProjection::equal(Self, Self) -> Bool
+pub fn ValidatedProjection::not_equal(Self, Self) -> Bool
+pub fn ValidatedProjection::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

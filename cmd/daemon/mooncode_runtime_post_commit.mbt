@@ -65,27 +65,27 @@ async fn mooncode_runtime_post_commit_capture(
   metadata = mooncode_json_object_with_field(
     metadata,
     "post_commit_boundary",
-    true.to_json(),
+    Json(true),
   )
   metadata = mooncode_json_object_with_field(
     metadata,
     "post_commit_capture_valid",
-    mooncode_json_bool(snapshot, "valid", default=false).to_json(),
+    Json(mooncode_json_bool(snapshot, "valid", default=false)),
   )
   metadata = mooncode_json_object_with_field(
     metadata,
     "commit_sha",
-    commit_sha.to_json(),
+    Json(commit_sha),
   )
   metadata = mooncode_json_object_with_field(
     metadata,
     "commit_tree",
-    mooncode_json_string(snapshot, "commit_tree", default="").to_json(),
+    Json(mooncode_json_string(snapshot, "commit_tree", default="")),
   )
   metadata = mooncode_json_object_with_field(
     metadata,
     "changed_paths",
-    Json::array(changed_paths.map(path => path.to_json())),
+    Json::array(changed_paths.map(path => Json(path))),
   )
   mooncode_json_object_with_field(result, "metadata", metadata)
 }

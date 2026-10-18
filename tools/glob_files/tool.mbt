@@ -294,3 +294,12 @@ pub fn new(cwd : String) -> @tool.Tool[GlobFilesResult] {
     },
   )
 }
+
+///|
+pub extend GlobFilesResult with ToJson::{to_json}
+
+///|
+pub extend GlobFilesResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend GlobFilesResult with Show::{to_string, output}

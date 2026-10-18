@@ -44,7 +44,7 @@ test "mooncode_goal_api: valid limits preserve exact values" {
 
   for limit in [0, 7, 2147483647] {
     let request = mooncode_parse_goal_put_request(
-      goal_api_body(limit.to_json()),
+      goal_api_body(Json(limit)),
       "session",
     )
     assert_eq(request.objective, "Ship it")
@@ -74,7 +74,7 @@ test "mooncode_goal_api: turn_limit policy rejects invalid values" {
 
 ///|
 test "mooncode_goal_api: isolated container shape rejection" {
-  let body = goal_api_body((7).to_json())
+  let body = goal_api_body(Json(7))
   let top = match body {
     Object(top) => top
     _ => abort("fixture")
@@ -82,7 +82,7 @@ test "mooncode_goal_api: isolated container shape rejection" {
   top["budget"] = (7 : Json)
   assert_true(goal_api_rejected(body))
 
-  let body = goal_api_body((7).to_json())
+  let body = goal_api_body(Json(7))
   let top = match body {
     Object(top) => top
     _ => abort("fixture")
@@ -94,7 +94,7 @@ test "mooncode_goal_api: isolated container shape rejection" {
 ///|
 test "mooncode_goal_api: exact schemas reject client state injection" {
   for field in ["tokens_used", "turns_used", "wall_time_used"] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -102,7 +102,7 @@ test "mooncode_goal_api: exact schemas reject client state injection" {
     top[field] = (0 : Json)
     assert_true(goal_api_rejected(body))
 
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -115,7 +115,7 @@ test "mooncode_goal_api: exact schemas reject client state injection" {
     assert_true(goal_api_rejected(body))
   }
   for field in ["state", "evidence", "evidence_refs"] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -136,7 +136,7 @@ test "mooncode_goal_api: exact schemas reject client state injection" {
 ///|
 test "mooncode_goal_api: isolated scalar identity and text rejection" {
   for field in ["session_id", "goal_id", "objective"] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -145,7 +145,7 @@ test "mooncode_goal_api: isolated scalar identity and text rejection" {
     assert_true(goal_api_rejected(body))
   }
   for field in ["id", "criterion"] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -162,16 +162,16 @@ test "mooncode_goal_api: isolated scalar identity and text rejection" {
     assert_true(goal_api_rejected(body))
   }
   for value in ["", " session", "session "] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
     }
-    top["session_id"] = value.to_json()
+    top["session_id"] = Json(value)
     assert_true(goal_api_rejected(body, path=value))
   }
   for value in ["", " r1", "r1 "] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -184,7 +184,7 @@ test "mooncode_goal_api: isolated scalar identity and text rejection" {
       Object(requirement) => requirement
       _ => abort("fixture")
     }
-    requirement["id"] = value.to_json()
+    requirement["id"] = Json(value)
     assert_true(goal_api_rejected(body))
   }
 }
@@ -192,7 +192,7 @@ test "mooncode_goal_api: isolated scalar identity and text rejection" {
 ///|
 test "mooncode_goal_api: every budget key is required" {
   for field in ["token_limit", "turn_limit", "wall_time_limit"] {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(top) => top
       _ => abort("fixture")
@@ -424,7 +424,7 @@ async test "mooncode_goal_api: active session gate rejects every identity mismat
         Object(object) => object
         _ => abort("fixture")
       }
-      object[pair.0] = pair.1.to_json()
+      object[pair.0] = Json(pair.1)
       goal_gate_write_snapshot(root, id, false, snapshot)
       let dir = goal_gate_dir(root, id, false)
       let before_bytes = @fsx.read_file(dir + "/session.json")

@@ -165,12 +165,9 @@ async test "durable claim preserves approval waiting evidence" {
   let approval = mooncode_claim_projection_event(
       "tool.approval_requested", "waiting",
     )
-    |> mooncode_json_object_with_field("state", "pending".to_json())
-    |> mooncode_json_object_with_field(
-      "approval_id",
-      "approval-claim".to_json(),
-    )
-    |> mooncode_json_object_with_field("tool", "bash".to_json())
+    |> mooncode_json_object_with_field("state", Json("pending"))
+    |> mooncode_json_object_with_field("approval_id", Json("approval-claim"))
+    |> mooncode_json_object_with_field("tool", Json("bash"))
   mooncode_append_session_journal(
     root,
     session,
@@ -181,7 +178,7 @@ async test "durable claim preserves approval waiting evidence" {
       mooncode_runtime_continuation_kind(),
       "waiting",
     )
-    |> mooncode_json_object_with_field("state", "awaiting-approval".to_json())
+    |> mooncode_json_object_with_field("state", Json("awaiting-approval"))
   mooncode_append_session_journal(
     root,
     session,
@@ -228,7 +225,7 @@ async test "durable claim preserves paused planner and rejected finish projectio
       let answer = mooncode_claim_projection_event("finish", "done")
         |> mooncode_json_object_with_field(
           "content",
-          "Rejected earlier answer".to_json(),
+          Json("Rejected earlier answer"),
         )
       mooncode_append_session_journal(
         root,
@@ -247,10 +244,10 @@ async test "durable claim preserves paused planner and rejected finish projectio
         mooncode_runtime_continuation_kind(),
         "paused",
       )
-      |> mooncode_json_object_with_field("state", state.to_json())
+      |> mooncode_json_object_with_field("state", Json(state))
       |> mooncode_json_object_with_field(
         "finish_rejected",
-        (state == "planner-replan-paused").to_json(),
+        Json(state == "planner-replan-paused"),
       )
     mooncode_append_session_journal(
       root,
@@ -298,7 +295,7 @@ async test "older durable claim cannot override terminal event outcomes or assis
     let delta = mooncode_claim_projection_event("assistant_delta", "running")
       |> mooncode_json_object_with_field(
         "content",
-        "Existing assistant response".to_json(),
+        Json("Existing assistant response"),
       )
     mooncode_append_session_journal(
       root,
@@ -517,7 +514,7 @@ test "claims preserve streaming assistant and terminal receipt keeps existing fi
   let delta = mooncode_claim_projection_event("assistant_delta", "running")
     |> mooncode_json_object_with_field(
       "content",
-      "Existing assistant response".to_json(),
+      Json("Existing assistant response"),
     )
   let streaming = mooncode_session_conversation(
     {},

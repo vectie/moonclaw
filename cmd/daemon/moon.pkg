@@ -1,10 +1,11 @@
 import {
+  "vectie/moonclaw/internal/book_runtime",
+  "vectie/moonclaw/internal/provider_connection",
   "vectie/moonclaw/internal/promotion_recovery",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/internal/book_learning",
   "moonbitlang/async",
   "moonbitlang/async/http",
-  "moonbitlang/async/io",
   "vectie/moonlib/os",
   "vectie/moonlib/conversation" @moonlib_conversation,
   "vectie/moonlib/moonsuite",
@@ -28,7 +29,6 @@ import {
   "vectie/moonclaw/internal/httpx",
   "vectie/moonlib/errno",
   "moonbitlang/async/fs",
-  "vectie/moonclaw/event",
   "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/internal/conversation",
   "vectie/moonclaw/internal/context_pruner",
@@ -41,7 +41,6 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/buffer",
   "moonbitlang/core/string",
-  "moonbitlang/core/strconv",
   "moonbitlang/x/codec/base64",
   "moonbitlang/x/crypto",
   "moonbitlang/core/test",
@@ -59,3 +58,8 @@ import {
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/cmd/internal/test_utils",
 } for "test"
+
+import {
+  "moonbitlang/async/process",
+  "vectie/moonclaw/event",
+} for "wbtest"

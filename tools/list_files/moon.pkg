@@ -3,7 +3,6 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonclaw/file",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -11,4 +10,5 @@ supported_targets = "native"
 import {
   "vectie/moonclaw/internal/mock",
   "moonbitlang/async",
+  "moonbitlang/core/test",
 } for "test"

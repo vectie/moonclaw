@@ -3,7 +3,7 @@ async test "return receipt recovers a lost acknowledgement twice without another
   @fsx.with_temporary_directory("return-receipt-XXXXXX", async fn(root) {
     let request = moondesk_test_promotion_request()
     let starts = Ref(0)
-    let invoke = async fn() {
+    let invoke : async () -> MoonFortPromotionResponse = fn() {
       starts.val += 1
       moondesk_test_promotion_response(request)
     }
@@ -32,7 +32,7 @@ async test "return receipt preserves exact selection and execution binding" {
   @fsx.with_temporary_directory("return-binding-XXXXXX", async fn(root) {
     let request = moondesk_test_promotion_request()
     ignore(
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         moondesk_test_promotion_response(request)
       }),
     )
@@ -101,7 +101,7 @@ async test "return receipt keeps safe refusal retryable but recovery outcomes re
     let applied = moondesk_test_promotion_response(request)
     let starts = Ref(0)
     ignore(
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         starts.val += 1
         {
           ..applied,
@@ -121,7 +121,7 @@ async test "return receipt keeps safe refusal retryable but recovery outcomes re
       .contains("not-applied"),
     )
     ignore(
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         starts.val += 1
         {
           ..applied,
@@ -136,7 +136,7 @@ async test "return receipt keeps safe refusal retryable but recovery outcomes re
         }
       }),
     )
-    let result = moondesk_promotion_with_receipt(request, root, async fn() {
+    let result = moondesk_promotion_with_receipt(request, root, fn() {
       starts.val += 1
       applied
     })
@@ -154,7 +154,7 @@ async test "return receipt write failure cannot claim a saved acknowledgement" {
     @fs.mkdir(path + ".pending")
     let starts = Ref(0)
     try
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         starts.val += 1
         moondesk_test_promotion_response(request)
       })
@@ -178,7 +178,7 @@ async test "return retry pending checkpoint supersedes the earlier safe refusal"
     let request = moondesk_test_promotion_request()
     let response = moondesk_test_promotion_response(request)
     ignore(
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         {
           ..response,
           workspace_id: "",
@@ -198,7 +198,7 @@ async test "return retry pending checkpoint supersedes the earlier safe refusal"
     // next Fort invocation has not started.
     @fs.mkdir(path + ".starting")
     try
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         starts.val += 1
         response
       })
@@ -241,7 +241,7 @@ async test "return retry pending checkpoint supersedes the earlier safe refusal"
         _ => fail("Interrupted retry recovered the previous refusal")
       }
       try
-        moondesk_promotion_with_receipt(request, root, async fn() {
+        moondesk_promotion_with_receipt(request, root, fn() {
           starts.val += 1
           response
         })
@@ -262,7 +262,7 @@ async test "return retry final write failure cannot revive an earlier safe refus
     let request = moondesk_test_promotion_request()
     let response = moondesk_test_promotion_response(request)
     ignore(
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         {
           ..response,
           workspace_id: "",
@@ -279,7 +279,7 @@ async test "return retry final write failure cannot revive an earlier safe refus
     @fs.mkdir(path + ".pending")
     let starts = Ref(0)
     try
-      moondesk_promotion_with_receipt(request, root, async fn() {
+      moondesk_promotion_with_receipt(request, root, fn() {
         starts.val += 1
         response
       })
@@ -301,7 +301,7 @@ async test "return retry final write failure cannot revive an earlier safe refus
         _ => fail("Final write failure recovered the previous refusal")
       }
       try
-        moondesk_promotion_with_receipt(request, root, async fn() {
+        moondesk_promotion_with_receipt(request, root, fn() {
           starts.val += 1
           response
         })

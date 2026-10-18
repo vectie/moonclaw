@@ -381,19 +381,19 @@ pub fn structured_analysis_result_payload(
 ) -> Json {
   let decision = analysis_result_decision(config, execution)
   let payload : Map[String, Json] = {
-    "step_id": step_id.to_json(),
-    "result_decision": decision.to_json(),
-    "requires_review": (decision == "review" || decision == "blocked").to_json(),
-    "notify_town": (decision != "no_change").to_json(),
-    "model": execution.model_name.to_json(),
-    "content": execution.content.to_json(),
-    "conversation_id": execution.conversation_id.to_json(),
+    "step_id": Json(step_id),
+    "result_decision": Json(decision),
+    "requires_review": Json(decision == "review" || decision == "blocked"),
+    "notify_town": Json(decision != "no_change"),
+    "model": Json(execution.model_name),
+    "content": Json(execution.content),
+    "conversation_id": Json(execution.conversation_id),
     "usage": usage_json(execution.usage),
     "metadata": compact_analysis_result_metadata(execution.metadata),
   }
   match analysis_result_content_contract(config) {
     Some(contract) => {
-      payload.set("content_contract", contract.to_json())
+      payload.set("content_contract", Json(contract))
       if contract == presentation_contract_version() {
         match parse_presentation_deck_spec_text(execution.content) {
           Some(spec) => payload.set("parsed_content", spec.to_json())
@@ -616,3 +616,14 @@ pub fn configure_analysis_agent_tools(
     sandbox_config?,
   )
 }
+
+///|
+pub extend AnalysisToolContract with ToJson::{to_json}
+
+///|
+pub extend AnalysisToolContract with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AnalysisToolContract with @moonbitlang/core/debug.Debug::{to_repr}

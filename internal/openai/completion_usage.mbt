@@ -98,3 +98,12 @@ pub impl @json.FromJson for CompletionUsage with fn from_json(
     total_tokens: total_tokens.to_int(),
   }
 }
+
+///|
+pub extend CompletionUsage with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CompletionUsage with ToJson::{to_json}
+
+///|
+pub extend CompletionUsage with @moonbitlang/core/json.FromJson::{from_json}

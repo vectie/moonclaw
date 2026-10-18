@@ -295,3 +295,27 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
     },
   )
 }
+
+///|
+pub extend ResourceSummaryKind with ToJson::{to_json}
+
+///|
+pub extend ResourceSummaryKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ResourceSummaryKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ResourceSummary with ToJson::{to_json}
+
+///|
+pub extend ResourceSummary with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ListResourcesResult with ToJson::{to_json}
+
+///|
+pub extend ListResourcesResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ListResourcesResult with Show::{to_string, output}

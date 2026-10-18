@@ -31,7 +31,7 @@ fn mooncode_service_job_history_projection(
         jobs[active] = mooncode_json_object_with_field(
           jobs[active],
           "status",
-          "interrupted".to_json(),
+          Json("interrupted"),
         )
       }
       let event_id = mooncode_json_string(event, "id", default="")
@@ -82,23 +82,23 @@ fn mooncode_service_job_history_projection(
       }
       let detail = mooncode_json_string(event, "detail", default="")
       jobs[target] = jobs[target]
-        |> mooncode_json_object_with_field("status", status.to_json())
-        |> mooncode_json_object_with_field("finished_at", created_at.to_json())
+        |> mooncode_json_object_with_field("status", Json(status))
+        |> mooncode_json_object_with_field("finished_at", Json(created_at))
         |> mooncode_json_object_with_field(
           "ran_turn_count",
-          mooncode_json_int(event, "ran_turn_count", default=0).to_json(),
+          Json(mooncode_json_int(event, "ran_turn_count", default=0)),
         )
         |> mooncode_json_object_with_field(
           "failed_turn_count",
-          mooncode_json_int(event, "failed_turn_count", default=0).to_json(),
+          Json(mooncode_json_int(event, "failed_turn_count", default=0)),
         )
         |> mooncode_json_object_with_field(
           "stopped_by",
-          mooncode_json_string(event, "stopped_by", default="").to_json(),
+          Json(mooncode_json_string(event, "stopped_by", default="")),
         )
         |> mooncode_json_object_with_field(
           "detail",
-          mooncode_job_detail_preview(detail).to_json(),
+          Json(mooncode_job_detail_preview(detail)),
         )
       active = -1
     }
@@ -107,7 +107,7 @@ fn mooncode_service_job_history_projection(
     jobs[active] = mooncode_json_object_with_field(
       jobs[active],
       "status",
-      "interrupted".to_json(),
+      Json("interrupted"),
     )
   }
   let recent : Array[Json] = []

@@ -70,3 +70,14 @@ pub impl @json.FromJson for ChatCompletionMessage with fn from_json(
   }
   { content, refusal, role: Assistant, tool_calls, }
 }
+
+///|
+pub extend ChatCompletionMessage with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatCompletionMessage with ToJson::{to_json}
+
+///|
+pub extend ChatCompletionMessage with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

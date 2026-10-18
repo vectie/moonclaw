@@ -217,3 +217,17 @@ pub async fn GatewayJobApp::start_external_oneoff_file(
     workspace_dir: result.workspace_dir,
   })
 }
+
+///|
+pub extend ExternalOneoffReceipt with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ExternalOneoffReceipt with Eq::{not_equal, equal}
+
+///|
+pub extend ExternalOneoffReceipt with ToJson::{to_json}
+
+///|
+pub extend ExternalOneoffReceipt with @moonbitlang/core/json.FromJson::{
+  from_json,
+}

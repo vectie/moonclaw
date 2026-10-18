@@ -135,3 +135,9 @@ pub async fn ArtifactStore::compare_text(
 ) -> ArtifactComparison {
   compare_retained_artifacts(self.store.root, left_id, right_id)
 }
+
+///|
+pub extend ComparedArtifact with ToJson::{to_json}
+
+///|
+pub extend ArtifactComparison with ToJson::{to_json}

@@ -52,7 +52,7 @@ fn slugify_id_segment(
   max_words~ : Int32,
   max_chars~ : Int32,
 ) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut chars_written = 0
   let mut words = 0
   let mut last_dash = true
@@ -104,7 +104,7 @@ fn slugify_id_segment(
 
 ///|
 fn short_id_suffix(seed : String, max_chars~ : Int32) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut count = 0
   for c in seed.to_lower().to_array() {
     match c {
@@ -141,7 +141,7 @@ fn formatted_timestamp_or_fallback(timestamp_ms : Int32) -> String {
 ///|
 fn compact_timestamp(now_ms : Int32) -> String {
   let rendered = formatted_timestamp_or_fallback(now_ms)
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut count = 0
   for c in rendered.to_array() {
     match c {

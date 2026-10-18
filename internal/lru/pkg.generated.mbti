@@ -8,9 +8,12 @@ pub fn[K : Eq + Hash, V] cache(max_size? : Int) -> Cache[K, V]
 
 // Types and methods
 type Cache[K, V]
+#alias("_[_]")
+pub fn[K : Eq + Hash, V] Cache::at(Self[K, V], K) -> V
 pub fn[K : Eq + Hash, V] Cache::get(Self[K, V], K) -> V?
-pub fn[K : Eq + Hash, V] Cache::op_get(Self[K, V], K) -> V
-pub fn[K : Eq + Hash, V] Cache::op_set(Self[K, V], K, V) -> Unit
+#alias("_[_]=_")
+pub fn[K : Eq + Hash, V] Cache::set(Self[K, V], K, V) -> Unit
+pub fn[K : Show, V : ToJson] Cache::to_json(Self[K, V]) -> Json
 pub impl[K : Show, V : ToJson] ToJson for Cache[K, V]
 
 // Type aliases

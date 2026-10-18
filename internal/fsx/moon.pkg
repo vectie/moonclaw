@@ -1,16 +1,12 @@
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/async/fs",
   "vectie/moonlib/pathx",
-  "moonbitlang/async/io",
   "vectie/moonlib/errno",
   "vectie/moonlib/os",
   "moonbitlang/async/os_error",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
-  "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
-
-supported_targets = "native"
 
 import {
   "moonbitlang/async",
@@ -18,7 +14,10 @@ import {
   "vectie/moonlib/spawn",
   "moonbitlang/async/process",
   "vectie/moonclaw/internal/signal",
+  "moonbitlang/core/test",
 } for "test"
+
+supported_targets = "native"
 
 options(
   "native-stub": [

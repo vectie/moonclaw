@@ -163,3 +163,64 @@ pub fn parse_presentation_render_package_text(
   }
   None
 }
+
+///|
+pub extend PresentationRenderHandoff with ToJson::{to_json}
+
+///|
+pub extend PresentationRenderHandoff with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PresentationRenderHandoff with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend PresentationRenderArtifact with ToJson::{to_json}
+
+///|
+pub extend PresentationRenderArtifact with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PresentationRenderArtifact with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend PresentationRenderPackage with ToJson::{to_json}
+
+///|
+pub extend PresentationRenderPackage with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PresentationRenderPackage with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend PresentationPageSpec with ToJson::{to_json}
+
+///|
+pub extend PresentationPageSpec with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PresentationPageSpec with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PresentationDeckSpec with ToJson::{to_json}
+
+///|
+pub extend PresentationDeckSpec with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PresentationDeckSpec with @moonbitlang/core/debug.Debug::{to_repr}

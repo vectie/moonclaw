@@ -129,7 +129,7 @@ async fn capture_ready(
   guard @fs.kind(root) == Directory else { fail("source_root_not_canonical") }
   let before = inventory_all(root, result=progress)
   let records : Array[Record] = []
-  let hashes : Map[String, String] = {}
+  let hashes : Map[String, String] = Map([])
   let mut excluded = 0
   let mut size = 0
   for path in before.paths {

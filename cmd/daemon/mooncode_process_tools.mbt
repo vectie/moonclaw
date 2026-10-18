@@ -308,7 +308,7 @@ fn mooncode_shell_parent_path_escapes(
     return true
   }
   let relative = cwd[root.length() + 1:].to_owned()
-  let available_parent_hops = relative.split("/").length()
+  let available_parent_hops = relative.split("/").count()
   mooncode_shell_max_parent_hops(cmd) > available_parent_hops
 }
 
@@ -847,7 +847,9 @@ async fn mooncode_tool_moon_cmd(
       )
     }
     fields["formatter_scope"] = scope.to_json()
-    fields["status"] = mooncode_json_int(metadata, "exit_code", default=-1).to_json()
+    fields["status"] = Json(
+      mooncode_json_int(metadata, "exit_code", default=-1),
+    )
     let output = mooncode_json_string(terminal, "output", default="")
     if scope.snapshot_error != "" {
       return mooncode_tool_error_result(
@@ -1188,13 +1190,13 @@ async fn mooncode_tool_moon_check_with_config(
       message="moon check state metadata is invalid",
     )
   }
-  fields["execution_sandbox_required"] = true.to_json()
-  fields["execution_sandbox_configured"] = true.to_json()
-  fields["execution_sandbox_policy"] = "grant-bound".to_json()
-  fields["approval_plan_digest"] = execution.plan.expected_approval_digest.to_json()
-  fields["approval_id"] = receipt.approval_id.to_json()
-  fields["run_id"] = receipt.run_id.to_json()
-  fields["profile_digest"] = receipt.profile_digest.to_json()
+  fields["execution_sandbox_required"] = Json(true)
+  fields["execution_sandbox_configured"] = Json(true)
+  fields["execution_sandbox_policy"] = Json("grant-bound")
+  fields["approval_plan_digest"] = Json(execution.plan.expected_approval_digest)
+  fields["approval_id"] = Json(receipt.approval_id)
+  fields["run_id"] = Json(receipt.run_id)
+  fields["profile_digest"] = Json(receipt.profile_digest)
   fields["sandbox_evidence"] = mooncode_sandbox_evidence(execution)
   if exit_code == 0 {
     mooncode_tool_ok_result(

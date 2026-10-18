@@ -2238,7 +2238,7 @@ async test "provider task subplan finalizer persists durable artifacts back thro
       finalize_provider_task_subplan_execution(
         request,
         execution,
-        child_outputs.to_json(),
+        Json(child_outputs),
       ) {
       Some(Ok(finalized)) => finalized
       Some(Err(error)) => fail(error)

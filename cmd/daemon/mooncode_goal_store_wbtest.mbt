@@ -406,7 +406,7 @@ fn goal_store_replace_string(
   match value {
     Object(fields) => {
       let copied = fields.copy()
-      copied[field] = replacement.to_json()
+      copied[field] = Json(replacement)
       Json::object(copied)
     }
     _ => value

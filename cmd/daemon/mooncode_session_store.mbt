@@ -817,6 +817,11 @@ async fn mooncode_session_stored_state_locked(marker : String) -> String {
   defer file.close()
   file.lock(Shared)
   defer file.unlock()
+  mooncode_session_stored_state_file(file)
+}
+
+///|
+async fn mooncode_session_stored_state_file(file : @fs.File) -> String {
   let committed_size = mooncode_newline_committed_size(file)
   let mut consumed = 0L
   let mut latest = ""
@@ -870,6 +875,29 @@ async fn mooncode_session_state_locked(
   ) catch {
     _ => false
   }
+  let snapshot = if active || archived {
+    mooncode_load_session_snapshot_from_store(
+      book_root,
+      safe_session_id,
+      archived~,
+    )
+  } else {
+    Json::empty_object()
+  }
+  mooncode_session_state_from_parts(
+    book_root, session_id, stored_state, active, archived, snapshot,
+  )
+}
+
+///|
+fn mooncode_session_state_from_parts(
+  book_root : String,
+  session_id : String,
+  stored_state : String,
+  active : Bool,
+  archived : Bool,
+  snapshot : Json,
+) -> String raise {
   if active && archived {
     raise InvalidJournal(
       "MoonCode session `\{session_id}` exists in both active and archived storage",
@@ -879,11 +907,6 @@ async fn mooncode_session_state_locked(
   // bound to a child MoonBook. Never let a suite-root or sibling-book lookup
   // relabel that session as its own, including after daemon restart.
   if active || archived {
-    let snapshot = mooncode_load_session_snapshot_from_store(
-      book_root,
-      safe_session_id,
-      archived~,
-    )
     let recorded_root = mooncode_json_string(snapshot, "book_root", default="")
     if recorded_root != book_root {
       return "foreign"

@@ -42,19 +42,6 @@ pub async fn[T] with_temporary_directory(
   let os_tmpdir = @os.tmpdir()
   let template = @pathx.join(os_tmpdir, template)
   let template = mkdtemp(template)
-  try f(template) catch {
-    error => {
-      @fs.rmdir(template, recursive=true) catch {
-        _ => ()
-      }
-      raise error
-    }
-  } noraise {
-    value => {
-      @fs.rmdir(template, recursive=true) catch {
-        _ => ()
-      }
-      value
-    }
-  }
+  defer (@fs.rmdir(template, recursive=true) catch { _ => () })
+  f(template)
 }

@@ -187,3 +187,12 @@ pub impl ToJson for Type with fn to_json(self) {
     SaaS(KimiCoding) => "saas/kimi_coding"
   }
 }
+
+///|
+pub extend Model with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Type with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Type with ToJson::{to_json}

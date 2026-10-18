@@ -604,3 +604,45 @@ pub fn kimi_coding_model(
     safe_zone_tokens=name.safe_zone_tokens(),
   )
 }
+
+///|
+pub extend Model with ToJson::{to_json}
+
+///|
+pub extend Model with Eq::{not_equal, equal}
+
+///|
+pub extend Model with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Provider with Eq::{not_equal, equal}
+
+///|
+pub extend Provider with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Type with Eq::{not_equal, equal}
+
+///|
+pub extend Type with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Type with Show::{to_string, output}
+
+///|
+pub extend CommonModels with Show::{to_string, output}
+
+///|
+pub extend CodexModels with Show::{to_string, output}
+
+///|
+pub extend CopilotModels with Show::{to_string, output}
+
+///|
+pub extend QwenModels with Show::{to_string, output}
+
+///|
+pub extend KimiModels with Show::{to_string, output}
+
+///|
+pub extend KimiCodingModels with Show::{to_string, output}

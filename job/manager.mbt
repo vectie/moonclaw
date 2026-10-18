@@ -38,7 +38,7 @@ pub impl ToJson for Job with fn to_json(self : Job) -> Json {
     "stderr": self.stderr,
   }
   if self.description is Some(desc) {
-    json["description"] = desc.to_json()
+    json["description"] = Json(desc)
   }
   Json::object(json)
 }
@@ -59,7 +59,7 @@ pub impl Show for Id with fn output(self : Id, logger : &Logger) -> Unit {
 
 ///|
 pub impl ToJson for Id with fn to_json(self : Id) -> Json {
-  self.0.to_json()
+  Json(self.0)
 }
 
 ///|
@@ -151,3 +151,21 @@ pub fn Manager::list(self : Manager) -> Array[Job] {
 pub fn Manager::get(self : Manager, id : Id) -> Job? {
   self.jobs.get(id)
 }
+
+///|
+pub extend Job with ToJson::{to_json}
+
+///|
+pub extend Id with Hash::{hash, hash_combine}
+
+///|
+pub extend Id with Eq::{not_equal, equal}
+
+///|
+pub extend Id with Show::{to_string, output}
+
+///|
+pub extend Id with ToJson::{to_json}
+
+///|
+pub extend Id with @moonbitlang/core/json.FromJson::{from_json}

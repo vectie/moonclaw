@@ -87,3 +87,12 @@ pub async fn delete_credentials_for_workspace_root(root~ : String) -> Unit {
     @fsx.remove(path)
   }
 }
+
+///|
+pub extend Credentials with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Credentials with ToJson::{to_json}
+
+///|
+pub extend Credentials with @moonbitlang/core/json.FromJson::{from_json}

@@ -259,7 +259,7 @@ fn mooncode_runtime_turn_commit_result(
     "commit_tree": commit_tree,
     "commit_message": message,
     "status_before": status_before,
-    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
+    "changed_paths": Json::array(changed_paths.map(path => Json(path))),
     "status_after": status_after,
     "detail": detail,
     "output": output,
@@ -341,7 +341,7 @@ fn mooncode_runtime_turn_commit_event(
       "status_before",
       default="",
     ),
-    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
+    "changed_paths": Json::array(changed_paths.map(path => Json(path))),
     "status_after": mooncode_json_string(
       commit_result,
       "status_after",

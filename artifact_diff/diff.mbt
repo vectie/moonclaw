@@ -68,7 +68,7 @@ fn line_edit(
 pub fn compare_text(left : String, right : String) -> TextDiff raise {
   let before = split_lines(left)
   let after = split_lines(right)
-  let dictionary : Map[String, Int32] = Map::new()
+  let dictionary : Map[String, Int32] = Map([])
   let intern = fn(lines : Array[String]) {
     lines.map(fn(line) {
       match dictionary.get(line) {
@@ -133,3 +133,9 @@ pub fn compare_text(left : String, right : String) -> TextDiff raise {
     edits,
   }
 }
+
+///|
+pub extend LineEdit with ToJson::{to_json}
+
+///|
+pub extend TextDiff with ToJson::{to_json}

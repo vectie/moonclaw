@@ -63,3 +63,15 @@ async fn RegisterInfo::register(
       })
   }
 }
+
+///|
+pub extend RegisterRequest with ToJson::{to_json}
+
+///|
+pub extend RegisterRequest with @json.FromJson::{from_json}
+
+///|
+pub extend RegisterResponse with ToJson::{to_json}
+
+///|
+pub extend RegisterResponse with @json.FromJson::{from_json}

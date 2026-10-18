@@ -51,6 +51,17 @@ pub struct DirectoryEntry {
   name : String
   kind : FileKind
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn DirectoryEntry::compare(Self, Self) -> Int
+pub fn DirectoryEntry::equal(Self, Self) -> Bool
+pub fn DirectoryEntry::hash(Self) -> Int
+pub fn DirectoryEntry::hash_combine(Self, Hasher) -> Unit
+pub fn DirectoryEntry::not_equal(Self, Self) -> Bool
+pub fn DirectoryEntry::op_ge(Self, Self) -> Bool
+pub fn DirectoryEntry::op_gt(Self, Self) -> Bool
+pub fn DirectoryEntry::op_le(Self, Self) -> Bool
+pub fn DirectoryEntry::op_lt(Self, Self) -> Bool
+pub fn DirectoryEntry::to_json(Self) -> Json
+pub fn DirectoryEntry::to_repr(Self) -> @debug.Repr
 
 pub enum FileKind {
   Unknown
@@ -62,6 +73,17 @@ pub enum FileKind {
   BlockDevice
   CharDevice
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn FileKind::compare(Self, Self) -> Int
+pub fn FileKind::equal(Self, Self) -> Bool
+pub fn FileKind::hash(Self) -> Int
+pub fn FileKind::hash_combine(Self, Hasher) -> Unit
+pub fn FileKind::not_equal(Self, Self) -> Bool
+pub fn FileKind::op_ge(Self, Self) -> Bool
+pub fn FileKind::op_gt(Self, Self) -> Bool
+pub fn FileKind::op_le(Self, Self) -> Bool
+pub fn FileKind::op_lt(Self, Self) -> Bool
+pub fn FileKind::to_json(Self) -> Json
+pub fn FileKind::to_repr(Self) -> @debug.Repr
 
 type FileRead
 pub fn FileRead::close(Self) -> Unit

@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/debug",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
@@ -7,18 +8,19 @@ import {
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/oauth/copilot",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
 }
 
-supported_targets = "native"
+import {
+  "vectie/moonclaw/internal/mock",
+  "moonbitlang/async",
+  "moonbitlang/core/test",
+} for "wbtest"
 
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"
 
-import {
-  "vectie/moonclaw/internal/mock",
-  "moonbitlang/async",
-} for "wbtest"
+supported_targets = "native"

@@ -174,7 +174,7 @@ async test "goal runtime supervisor fails closed on legacy authority" {
       mooncode_goal_api_put_internal(
         root,
         session_id,
-        goal_api_body((7).to_json()),
+        goal_api_body(Json(7)),
         1L,
       ).status_code,
       201,
@@ -271,7 +271,7 @@ test "goal runtime supervisor source mapping is stable and selective" {
   assert_eq(cancelled.length(), 1)
   assert_true(cancelled[0] is Cancelled(_, _))
   guard cancelled_source is Object(wrong_source) else { abort("fixture") }
-  wrong_source["source"] = "external".to_json()
+  wrong_source["source"] = Json("external")
   assert_eq(
     mooncode_goal_runtime_events_from_source(Json::object(wrong_source)).length(),
     0,

@@ -1,7 +1,7 @@
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/async",
   "moonbitlang/async/process",
-  "moonbitlang/async/io",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/buffer",
   "vectie/moonlib/fsx",

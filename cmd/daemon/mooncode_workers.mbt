@@ -50,7 +50,7 @@ async fn mooncode_validate_spawn_workers(
     }
   }
   if workers.length() == 0 {
-    errors.push("workers must be a non-empty array".to_json())
+    errors.push(Json("workers must be a non-empty array"))
   }
   for index, worker in workers {
     let worker_id = mooncode_json_string(worker, "id", default="")
@@ -76,10 +76,10 @@ async fn mooncode_validate_spawn_workers(
       default="workspace_change",
     )
     if worker_id == "" {
-      errors.push("workers[\{index}].id must be non-empty".to_json())
+      errors.push(Json("workers[\{index}].id must be non-empty"))
     } else if seen_ids.contains(worker_id) {
       errors.push(
-        "workers[\{index}].id duplicates existing worker `\{worker_id}`".to_json(),
+        Json("workers[\{index}].id duplicates existing worker `\{worker_id}`"),
       )
     } else {
       seen_ids[worker_id] = true
@@ -88,25 +88,27 @@ async fn mooncode_validate_spawn_workers(
       !@pathx.is_absolute(raw_root) ||
       !@fsx.exists(child_root) {
       errors.push(
-        "workers[\{index}].book_root must be an existing absolute path".to_json(),
+        Json("workers[\{index}].book_root must be an existing absolute path"),
       )
     } else if mooncode_worker_roots_overlap(parent_root, child_root) {
       errors.push(
-        "workers[\{index}].book_root must be isolated from the parent".to_json(),
+        Json("workers[\{index}].book_root must be isolated from the parent"),
       )
     } else if overlaps_seen_root {
       errors.push(
-        "workers[\{index}].book_root overlaps another worker root".to_json(),
+        Json("workers[\{index}].book_root overlaps another worker root"),
       )
     } else {
       seen_roots[child_root] = true
     }
     if prompt == "" {
-      errors.push("workers[\{index}].prompt must be non-empty".to_json())
+      errors.push(Json("workers[\{index}].prompt must be non-empty"))
     }
     if task_intent != "workspace_change" && task_intent != "read_only" {
       errors.push(
-        "workers[\{index}].task_intent must be `workspace_change` or `read_only`".to_json(),
+        Json(
+          "workers[\{index}].task_intent must be `workspace_change` or `read_only`",
+        ),
       )
     }
   }
@@ -331,7 +333,7 @@ async fn mooncode_wait_workers_projection(
     match item {
       String(worker_id) =>
         if !found.contains(worker_id) {
-          missing.push(worker_id.to_json())
+          missing.push(Json(worker_id))
         }
       _ => ()
     }

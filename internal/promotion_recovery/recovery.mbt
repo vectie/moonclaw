@@ -6,7 +6,7 @@ priv struct MoonDeskRecoveryRequest {
   retention_id : String
   pending_attempt_id : String
   request_id : String
-} derive(Eq, ToJson, @json.FromJson)
+} derive(@json.FromJson)
 
 ///|
 priv struct MoonFortRecoveryResponse {
@@ -22,7 +22,7 @@ priv struct MoonFortRecoveryResponse {
   observed_state_digest : String
   outcome : String
   error : MoonFortPromotionError?
-} derive(Eq, ToJson, @json.FromJson)
+} derive(@json.FromJson)
 
 ///|
 fn recovery_safe_id(value : String) -> Bool {

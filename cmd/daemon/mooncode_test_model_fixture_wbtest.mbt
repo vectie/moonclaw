@@ -16,6 +16,6 @@ async fn mooncode_test_model_loader(book_root : String) -> @model.Loader {
     recursive=true,
     exists_ok=true,
   )
-  @fsx.write_to_file(models_path, [model].to_json().stringify())
+  @fsx.write_to_file(models_path, Json([model]).stringify())
   @model.Loader::new(home=book_root, cwd=book_root)
 }

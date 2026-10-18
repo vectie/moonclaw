@@ -17,13 +17,17 @@ pub async fn start(ArrayView[String]) -> Unit
 
 // Types and methods
 type CreateMessageRequest
+pub fn CreateMessageRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn CreateMessageRequest::new(message~ : @ai.Message, web_search? : Bool, optional_context? : @agent.OptionalInputContext) -> Self
 pub fn CreateMessageRequest::queue_on(Self, @agent.Agent) -> @uuid.Uuid
+pub fn CreateMessageRequest::to_json(Self) -> Json
 pub impl ToJson for CreateMessageRequest
 pub impl @json.FromJson for CreateMessageRequest
 
 type CreateMessageResponse
+pub fn CreateMessageResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn CreateMessageResponse::new(id~ : @uuid.Uuid, queued~ : Bool) -> Self
+pub fn CreateMessageResponse::to_json(Self) -> Json
 pub impl ToJson for CreateMessageResponse
 pub impl @json.FromJson for CreateMessageResponse
 
@@ -43,9 +47,13 @@ pub struct RegisterRequest {
   web_search : Bool
   model : String
 } derive(ToJson, @json.FromJson)
+pub fn RegisterRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RegisterRequest::to_json(Self) -> Json
 
 pub(all) struct RegisterResponse {
 } derive(ToJson, @json.FromJson)
+pub fn RegisterResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RegisterResponse::to_json(Self) -> Json
 
 type Server
 pub async fn Server::new(name? : String, model? : String, model_workspace? : String, register? : RegisterInfo, serve~ : String, port~ : Int, home? : String, cwd? : String, web_search? : Bool, resume_id? : @uuid.Uuid, source_kind? : String, workspace_trust? : String) -> Self
@@ -56,6 +64,8 @@ pub(all) enum ServerStreamEvent {
   MoonclawQueuedMessagesSynchronized(Array[@agent.QueuedMessage])
   Moonclaw(@event.Event)
 }
+pub fn ServerStreamEvent::from_event(@httpx.Event) -> Self raise
+pub fn ServerStreamEvent::to_event(Self) -> @httpx.Event
 pub impl @httpx.FromEvent for ServerStreamEvent
 pub impl @httpx.ToEvent for ServerStreamEvent
 
@@ -63,6 +73,8 @@ pub(all) enum Status {
   Idle
   Busy
 }
+pub fn Status::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Status::to_json(Self) -> Json
 pub impl ToJson for Status
 pub impl @json.FromJson for Status
 

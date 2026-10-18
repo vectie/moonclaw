@@ -28,7 +28,7 @@ pub impl ToJson for ChatCompletionContentPartParam with fn to_json(
     ImageUrl(param) => {
       let image_url : Map[String, Json] = { "url": param.url }
       if param.detail is Some(detail) {
-        image_url["detail"] = detail.to_json()
+        image_url["detail"] = Json(detail)
       }
       { "type": "image_url", "image_url": Json::object(image_url) }
     }
@@ -84,3 +84,6 @@ impl @json.FromJson for ChatCompletionContentPartParam with fn from_json(
       raise JsonDecodeError((json_path, "Unknown content part type: \{type_}"))
   }
 }
+
+///|
+pub extend ChatCompletionContentPartParam with ToJson::{to_json}

@@ -39,23 +39,31 @@ pub fn DaemonChildManager::new(
 
 ///|
 pub async fn DaemonChildManager::start(self : DaemonChildManager) -> Unit {
-  @async.with_task_group(group => {
-    while true {
-      let request = self.spawn_queue.get()
-      let task = group.spawn(() => {
-        @process.run(
-          request.executable,
-          request.arguments,
-          cwd=request.cwd,
-          extra_env=request.environment,
-          inherit_env=false,
-          cancel_handler=@process.graceful_cancel(timeout=1000),
-        )
-      })
-      request.response.put(Ok({ task, }))
-    }
-  }) catch {
-    error => {
+  let outcome = try
+    @async.with_task_group(group => {
+      while true {
+        let request = self.spawn_queue.get()
+        let task = group.spawn(() => {
+          @process.run(
+            request.executable,
+            request.arguments,
+            cwd=request.cwd,
+            extra_env=request.environment,
+            inherit_env=false,
+            cancel_handler=@process.graceful_cancel(timeout=1000),
+          )
+        })
+        request.response.put(Ok({ task, }))
+      }
+    })
+  catch {
+    error => Err(error)
+  } noraise {
+    value => Ok(value)
+  }
+  match outcome {
+    Ok(_) => ()
+    Err(error) => {
       while self.spawn_queue.try_get() is Some(request) {
         request.response.put(Err(error))
       }

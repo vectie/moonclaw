@@ -73,12 +73,14 @@ pub struct AnthropicBlock {
   type_ : String
   text : String?
 }
+pub fn AnthropicBlock::to_json(Self) -> Json
 pub impl ToJson for AnthropicBlock
 
 pub enum AnthropicContent {
   Text(String)
   Blocks(Array[AnthropicBlock])
 }
+pub fn AnthropicContent::to_json(Self) -> Json
 pub impl ToJson for AnthropicContent
 
 pub struct AnthropicContentBlock {
@@ -88,17 +90,22 @@ pub struct AnthropicContentBlock {
   input : Json?
   id : String?
 } derive(@debug.Debug, @json.FromJson)
+pub fn AnthropicContentBlock::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnthropicContentBlock::to_repr(Self) -> @debug.Repr
 
 pub struct AnthropicDelta {
   type_ : String?
   text : String?
   stop_reason : String?
 } derive(@debug.Debug, @json.FromJson)
+pub fn AnthropicDelta::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnthropicDelta::to_repr(Self) -> @debug.Repr
 
 pub struct AnthropicMessage {
   role : String
   content : AnthropicContent
 }
+pub fn AnthropicMessage::to_json(Self) -> Json
 pub impl ToJson for AnthropicMessage
 
 pub struct AnthropicRequest {
@@ -109,6 +116,7 @@ pub struct AnthropicRequest {
   tools : Array[AnthropicTool]?
   stream : Bool?
 }
+pub fn AnthropicRequest::to_json(Self) -> Json
 pub impl ToJson for AnthropicRequest
 
 pub struct AnthropicResponse {
@@ -121,6 +129,8 @@ pub struct AnthropicResponse {
   stop_sequence : String?
   usage : AnthropicUsage
 } derive(@debug.Debug, @json.FromJson)
+pub fn AnthropicResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnthropicResponse::to_repr(Self) -> @debug.Repr
 
 pub struct AnthropicStreamEvent {
   type_ : String
@@ -129,22 +139,28 @@ pub struct AnthropicStreamEvent {
   content_block : AnthropicContentBlock?
   message : AnthropicResponse?
 } derive(@debug.Debug, @json.FromJson)
+pub fn AnthropicStreamEvent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnthropicStreamEvent::to_repr(Self) -> @debug.Repr
 
 pub struct AnthropicTool {
   name : String
   description : String?
   input_schema : Json
 }
+pub fn AnthropicTool::to_json(Self) -> Json
 pub impl ToJson for AnthropicTool
 
 pub struct AnthropicUsage {
   input_tokens : Int
   output_tokens : Int
 } derive(@debug.Debug, @json.FromJson)
+pub fn AnthropicUsage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnthropicUsage::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CacheControl {
   Ephemeral
 }
+pub fn CacheControl::to_json(Self) -> Json
 pub impl ToJson for CacheControl
 
 pub struct ChatCompletion {
@@ -156,7 +172,10 @@ pub struct ChatCompletion {
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
 } derive(@debug.Debug)
+pub fn ChatCompletion::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ChatCompletion::new(id~ : String, choices~ : Array[ChatCompletionChoice], created~ : Int, model~ : String, usage? : CompletionUsage, system_fingerprint? : String, service_tier? : ChatCompletionServiceTier) -> Self
+pub fn ChatCompletion::to_json(Self) -> Json
+pub fn ChatCompletion::to_repr(Self) -> @debug.Repr
 pub impl ToJson for ChatCompletion
 pub impl @json.FromJson for ChatCompletion
 
@@ -182,6 +201,7 @@ pub struct ChatCompletionChoice {
   message : ChatCompletionMessage
 } derive(@debug.Debug)
 pub fn ChatCompletionChoice::new(finish_reason? : ChatCompletionChoiceFinishReason, index~ : Int, message~ : ChatCompletionMessage) -> Self
+pub fn ChatCompletionChoice::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ChatCompletionChoiceFinishReason {
   Stop
@@ -190,6 +210,7 @@ pub(all) enum ChatCompletionChoiceFinishReason {
   ContentFilter
   FunctionCall
 } derive(@debug.Debug)
+pub fn ChatCompletionChoiceFinishReason::to_repr(Self) -> @debug.Repr
 
 pub struct ChatCompletionChunk {
   id : String
@@ -201,6 +222,8 @@ pub struct ChatCompletionChunk {
   service_tier : ChatCompletionServiceTier?
   error : OpenRouterErrorResponse?
 } derive(ToJson)
+pub fn ChatCompletionChunk::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatCompletionChunk::to_json(Self) -> Json
 pub impl @json.FromJson for ChatCompletionChunk
 
 pub struct ChatCompletionChunkChoice {
@@ -208,6 +231,7 @@ pub struct ChatCompletionChunkChoice {
   delta : ChatCompletionChunkChoiceDelta
   finish_reason : ChatCompletionChoiceFinishReason?
 } derive(ToJson)
+pub fn ChatCompletionChunkChoice::to_json(Self) -> Json
 
 pub struct ChatCompletionChunkChoiceDelta {
   content : String?
@@ -215,17 +239,20 @@ pub struct ChatCompletionChunkChoiceDelta {
   role : ChatCompletionRole?
   tool_calls : Array[ChatCompletionChunkChoiceDeltaToolCall]?
 } derive(ToJson)
+pub fn ChatCompletionChunkChoiceDelta::to_json(Self) -> Json
 
 pub struct ChatCompletionChunkChoiceDeltaToolCall {
   index : Int
   id : String?
   function : ChatCompletionChunkChoiceDeltaToolCallFunction
 } derive(ToJson)
+pub fn ChatCompletionChunkChoiceDeltaToolCall::to_json(Self) -> Json
 
 pub struct ChatCompletionChunkChoiceDeltaToolCallFunction {
   arguments : String?
   name : String?
 } derive(ToJson)
+pub fn ChatCompletionChunkChoiceDeltaToolCallFunction::to_json(Self) -> Json
 
 pub struct ChatCompletionContentPartImageUrlParam {
   url : String
@@ -237,6 +264,7 @@ pub enum ChatCompletionContentPartParam {
   ImageUrl(ChatCompletionContentPartImageUrlParam)
 }
 pub fn ChatCompletionContentPartParam::new(text~ : String, cache_control? : CacheControl) -> Self
+pub fn ChatCompletionContentPartParam::to_json(Self) -> Json
 pub impl ToJson for ChatCompletionContentPartParam
 pub impl ToChatCompletionMessageParamContent for ChatCompletionContentPartParam
 
@@ -259,8 +287,11 @@ pub struct ChatCompletionMessage {
   role : ChatCompletionMessageRole
   tool_calls : Array[ChatCompletionMessageToolCall]
 } derive(ToJson, @debug.Debug)
+pub fn ChatCompletionMessage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ChatCompletionMessage::new(content? : String, refusal? : String, role? : ChatCompletionMessageRole, tool_calls? : Array[ChatCompletionMessageToolCall]) -> Self
+pub fn ChatCompletionMessage::to_json(Self) -> Json
 pub fn ChatCompletionMessage::to_param(Self) -> ChatCompletionMessageParam
+pub fn ChatCompletionMessage::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ChatCompletionMessage
 
 pub(all) enum ChatCompletionMessageParam {
@@ -269,18 +300,25 @@ pub(all) enum ChatCompletionMessageParam {
   Assistant(ChatCompletionAssistantMessageParam)
   Tool(ChatCompletionToolMessageParam)
 }
+pub fn ChatCompletionMessageParam::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatCompletionMessageParam::to_json(Self) -> Json
 pub impl ToJson for ChatCompletionMessageParam
 pub impl @json.FromJson for ChatCompletionMessageParam
 
 pub enum ChatCompletionMessageRole {
   Assistant
 } derive(@debug.Debug)
+pub fn ChatCompletionMessageRole::to_json(Self) -> Json
+pub fn ChatCompletionMessageRole::to_repr(Self) -> @debug.Repr
 pub impl ToJson for ChatCompletionMessageRole
 
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
 } derive(@debug.Debug)
+pub fn ChatCompletionMessageToolCall::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatCompletionMessageToolCall::to_json(Self) -> Json
+pub fn ChatCompletionMessageToolCall::to_repr(Self) -> @debug.Repr
 pub impl ToJson for ChatCompletionMessageToolCall
 pub impl @json.FromJson for ChatCompletionMessageToolCall
 
@@ -288,6 +326,7 @@ pub struct ChatCompletionMessageToolCallFunction {
   arguments : String?
   name : String
 } derive(@debug.Debug)
+pub fn ChatCompletionMessageToolCallFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ChatCompletionReasoningEffort {
   None_
@@ -297,6 +336,7 @@ pub(all) enum ChatCompletionReasoningEffort {
   High
   Xhigh
 } derive(@debug.Debug)
+pub fn ChatCompletionReasoningEffort::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ChatCompletionRole {
   Developer
@@ -305,6 +345,7 @@ pub(all) enum ChatCompletionRole {
   Assistant
   Tool
 } derive(ToJson)
+pub fn ChatCompletionRole::to_json(Self) -> Json
 
 pub(all) enum ChatCompletionServiceTier {
   Auto
@@ -313,11 +354,13 @@ pub(all) enum ChatCompletionServiceTier {
   Scale
   Priority
 } derive(@debug.Debug)
+pub fn ChatCompletionServiceTier::to_repr(Self) -> @debug.Repr
 
 pub struct ChatCompletionStreamOptionsParam {
   include_obfuscation : Bool?
   include_usage : Bool?
 }
+pub fn ChatCompletionStreamOptionsParam::to_json(Self) -> Json
 pub impl ToJson for ChatCompletionStreamOptionsParam
 
 pub struct ChatCompletionSystemMessageParam {
@@ -343,6 +386,7 @@ pub struct ChatCompletionToolMessageParam {
 pub enum ChatCompletionToolParam {
   Function(FunctionDefinition)
 }
+pub fn ChatCompletionToolParam::to_json(Self) -> Json
 pub impl ToJson for ChatCompletionToolParam
 
 pub struct ChatCompletionUserMessageParam {
@@ -361,6 +405,8 @@ pub struct ChatTransportRequest {
 pub struct CompletionTokensDetails {
   reasoning_tokens : Int?
 } derive(ToJson, @debug.Debug)
+pub fn CompletionTokensDetails::to_json(Self) -> Json
+pub fn CompletionTokensDetails::to_repr(Self) -> @debug.Repr
 
 pub struct CompletionUsage {
   completion_tokens : Int
@@ -371,7 +417,10 @@ pub struct CompletionUsage {
   prompt_tokens_details : PromptTokensDetails?
   total_tokens : Int
 } derive(ToJson, @debug.Debug)
+pub fn CompletionUsage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn CompletionUsage::new(completion_tokens~ : Int, completion_tokens_details? : CompletionTokensDetails, cost? : Double, cost_details? : CostDetails, prompt_tokens~ : Int, prompt_tokens_details? : PromptTokensDetails, total_tokens~ : Int) -> Self
+pub fn CompletionUsage::to_json(Self) -> Json
+pub fn CompletionUsage::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for CompletionUsage
 
 pub struct CompletionUsageParam {
@@ -381,6 +430,8 @@ pub struct CompletionUsageParam {
 pub struct CostDetails {
   upstream_inference_cost : Double?
 } derive(ToJson, @debug.Debug)
+pub fn CostDetails::to_json(Self) -> Json
+pub fn CostDetails::to_repr(Self) -> @debug.Repr
 
 pub struct FunctionDefinition {
   name : String
@@ -396,6 +447,8 @@ pub struct OpenRouterErrorResponse {
   message : String
   metadata : Json
 } derive(ToJson)
+pub fn OpenRouterErrorResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn OpenRouterErrorResponse::to_json(Self) -> Json
 pub impl @json.FromJson for OpenRouterErrorResponse
 
 pub struct PromptTokensDetails {
@@ -404,6 +457,8 @@ pub struct PromptTokensDetails {
   audio_tokens : Int?
 } derive(ToJson, @debug.Debug)
 pub fn PromptTokensDetails::new(cached_tokens? : Int, cache_write_tokens? : Int, audio_tokens? : Int) -> Self
+pub fn PromptTokensDetails::to_json(Self) -> Json
+pub fn PromptTokensDetails::to_repr(Self) -> @debug.Repr
 
 pub struct Request {
   model : String
@@ -421,6 +476,7 @@ pub struct Request {
   parallel_tool_calls : Bool?
 }
 pub fn Request::compact_for_overload(Self, Int) -> Self
+pub fn Request::to_json(Self) -> Json
 pub impl ToJson for Request
 
 pub(all) enum ResponseFormat {
@@ -428,6 +484,7 @@ pub(all) enum ResponseFormat {
   JsonSchema(JsonSchema)
   JsonObject
 }
+pub fn ResponseFormat::to_json(Self) -> Json
 pub impl ToJson for ResponseFormat
 
 // Type aliases

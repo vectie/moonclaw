@@ -276,3 +276,21 @@ pub fn WorkspaceRuntime::prompt_context(self : WorkspaceRuntime) -> String {
 pub fn WorkspaceRuntime::snapshot(self : WorkspaceRuntime) -> WorkspaceSnapshot {
   self.snapshot
 }
+
+///|
+pub extend WorkspaceFile with ToJson::{to_json}
+
+///|
+pub extend WorkspaceFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WorkspaceFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend WorkspaceSnapshot with ToJson::{to_json}
+
+///|
+pub extend WorkspaceSnapshot with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WorkspaceSnapshot with @moonbitlang/core/debug.Debug::{to_repr}

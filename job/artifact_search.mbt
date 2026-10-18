@@ -260,7 +260,7 @@ pub async fn ArtifactSearch::export_selected(
   }
   let store = SystemStore::new(root=self.store_root)
   let sources : Array[ArtifactExportSource] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let mut total = 0
   for index, observed in self.matches {
     guard !seen.contains(observed.record.id) else {
@@ -283,3 +283,15 @@ pub async fn ArtifactSearch::export_selected(
   }
   export_prepared_artifacts(store, sources, destination)
 }
+
+///|
+pub extend ArtifactSearchLine with ToJson::{to_json}
+
+///|
+pub extend ArtifactSearchMatch with ToJson::{to_json}
+
+///|
+pub extend ArtifactSearchIssue with ToJson::{to_json}
+
+///|
+pub extend ArtifactSearch with ToJson::{to_json}

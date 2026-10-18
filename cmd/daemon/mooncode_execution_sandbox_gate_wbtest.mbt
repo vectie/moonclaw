@@ -189,8 +189,8 @@ async test "MoonCode moon_check pairs missing-config refusal with configured gra
         mooncode_json_object_field_or_empty(capture, "grant"),
         "command",
       )
-      assert_true(command.to_json().stringify().contains("moon"))
-      assert_true(command.to_json().stringify().contains("check"))
+      assert_true(Json(command).stringify().contains("moon"))
+      assert_true(Json(command).stringify().contains("check"))
       assert_false(@fsx.exists(@pathx.join(book_root, "host-fallback-marker")))
     })
   })

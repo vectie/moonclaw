@@ -84,15 +84,15 @@ fn mooncode_goal_genesis(
     "timestamp": goal_json_int64_value(created_at),
     "budget": {
       "token_limit": match goal.budget.token_limit {
-        Some(v) => v.to_json()
+        Some(v) => Json(v)
         None => Json::null()
       },
       "turn_limit": match goal.budget.turn_limit {
-        Some(v) => v.to_json()
+        Some(v) => Json(v)
         None => Json::null()
       },
       "wall_time_limit": match goal.budget.wall_time_limit {
-        Some(v) => v.to_json()
+        Some(v) => Json(v)
         None => Json::null()
       },
       "tokens_used": 0,

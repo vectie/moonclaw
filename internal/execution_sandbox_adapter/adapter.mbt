@@ -191,3 +191,9 @@ pub async fn PromotionClient::promote_retention(
   )
   { status: process.status, stdout: process.stdout, }
 }
+
+///|
+pub extend ProcessResponse with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ProcessResponse with Eq::{not_equal, equal}

@@ -25,3 +25,6 @@ impl @json.FromJson for ChatCompletionRole with fn from_json(
     role => raise JsonDecodeError((json_path, "Unknown role: \{role}"))
   }
 }
+
+///|
+pub extend ChatCompletionRole with ToJson::{to_json}

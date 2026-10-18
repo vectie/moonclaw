@@ -44,6 +44,9 @@ pub struct ApprovalRecord {
   approved_at : Int?
   context : Json?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ApprovalRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ApprovalRecord::to_json(Self) -> Json
+pub fn ApprovalRecord::to_repr(Self) -> @debug.Repr
 
 pub struct CommandAssessment {
   command : String
@@ -56,6 +59,10 @@ pub struct CommandAssessment {
   requires_approval : Bool
   allowed_by_policy : Bool
 } derive(Show, ToJson, @json.FromJson)
+pub fn CommandAssessment::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandAssessment::output(Self, &Logger) -> Unit
+pub fn CommandAssessment::to_json(Self) -> Json
+pub fn CommandAssessment::to_string(Self) -> String
 
 pub enum CommandIntent {
   Binary
@@ -64,6 +71,12 @@ pub enum CommandIntent {
   Vcs
   Unknown
 } derive(Eq, Show, ToJson, @json.FromJson)
+pub fn CommandIntent::equal(Self, Self) -> Bool
+pub fn CommandIntent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandIntent::not_equal(Self, Self) -> Bool
+pub fn CommandIntent::output(Self, &Logger) -> Unit
+pub fn CommandIntent::to_json(Self) -> Json
+pub fn CommandIntent::to_string(Self) -> String
 
 pub struct CommandPolicy {
   native : String
@@ -71,6 +84,9 @@ pub struct CommandPolicy {
   restart : Bool
   owner_display : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn CommandPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandPolicy::to_json(Self) -> Json
+pub fn CommandPolicy::to_repr(Self) -> @debug.Repr
 
 pub enum CommandRiskLevel {
   Low
@@ -78,6 +94,12 @@ pub enum CommandRiskLevel {
   High
   Blocked
 } derive(Eq, Show, ToJson, @json.FromJson)
+pub fn CommandRiskLevel::equal(Self, Self) -> Bool
+pub fn CommandRiskLevel::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandRiskLevel::not_equal(Self, Self) -> Bool
+pub fn CommandRiskLevel::output(Self, &Logger) -> Unit
+pub fn CommandRiskLevel::to_json(Self) -> Json
+pub fn CommandRiskLevel::to_string(Self) -> String
 
 pub struct PairingRecord {
   key : String
@@ -88,8 +110,14 @@ pub struct PairingRecord {
   created_at : Int
   approved_at : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PairingRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PairingRecord::to_json(Self) -> Json
+pub fn PairingRecord::to_repr(Self) -> @debug.Repr
 
 type PersistedSecurityState derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PersistedSecurityState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PersistedSecurityState::to_json(Self) -> Json
+pub fn PersistedSecurityState::to_repr(Self) -> @debug.Repr
 
 pub enum SecurityChatAction {
   Pair

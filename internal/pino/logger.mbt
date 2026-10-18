@@ -83,7 +83,7 @@ pub async fn Logger::log(
     "msg": message,
   }
   try {
-    object["hostname"] = @os.gethostname().to_json()
+    object["hostname"] = Json(@os.gethostname())
   } catch {
     _ => ()
   }
@@ -97,7 +97,7 @@ pub async fn Logger::log(
       object[k] = v
     }
   }
-  self.transport.write(object.to_json())
+  self.transport.write(Json(object))
 }
 
 ///|

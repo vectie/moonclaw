@@ -182,7 +182,7 @@ fn contains_system_after(
 fn checkpoint_content_text(
   parts : Array[@openai.ChatCompletionContentPartParam],
 ) -> String {
-  let content = StringBuilder::new()
+  let content = StringBuilder()
   let mut has_content = false
   for part in parts {
     match part {
@@ -218,7 +218,7 @@ fn Pruner::checkpoint_observation(
     }
     Assistant(assistant) => {
       let text = checkpoint_content_text(assistant.content).trim().to_owned()
-      let line = StringBuilder::new()
+      let line = StringBuilder()
       let mut has_content = false
       if text != "" {
         line.write_string(
@@ -269,7 +269,7 @@ fn Pruner::context_checkpoint(
     }
     index -= 1
   }
-  let checkpoint = StringBuilder::new()
+  let checkpoint = StringBuilder()
   checkpoint.write_string(ContextCheckpoint)
   checkpoint.write_string(
     " Compacted \{compacted_end - compacted_start} historical messages.",

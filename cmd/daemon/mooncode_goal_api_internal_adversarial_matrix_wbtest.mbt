@@ -5,7 +5,7 @@ fn goal_adversarial_body_for(id : String, goal : Json) -> Json {
     Object(value) => value
     _ => abort("fixture")
   }
-  fields["session_id"] = id.to_json()
+  fields["session_id"] = Json(id)
   body
 }
 
@@ -29,7 +29,7 @@ async test "mooncode_goal_api_internal adversarial matrix: journal directory is 
       "goal_corrupt",
     )
     goal_adversarial_assert_error(
-      mooncode_goal_api_put_internal(root, id, goal_api_body((7).to_json()), 1L),
+      mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L),
       409,
       "goal_corrupt",
     )
@@ -62,7 +62,7 @@ async test "mooncode_goal_api_internal adversarial matrix: journal symlink and t
       "goal_corrupt",
     )
     goal_adversarial_assert_error(
-      mooncode_goal_api_put_internal(root, id, goal_api_body((7).to_json()), 1L),
+      mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L),
       409,
       "goal_corrupt",
     )
@@ -78,7 +78,7 @@ async test "mooncode_goal_api_internal adversarial matrix: missing mismatch and 
   @fsx.with_temporary_directory("moonclaw-goal-session-matrix-XXXXXX", async fn(
     root,
   ) {
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     goal_adversarial_assert_error(
       mooncode_goal_api_get_internal(root, "session"),
       404,
@@ -121,7 +121,7 @@ async test "mooncode_goal_api_internal adversarial matrix: missing mismatch and 
       mooncode_goal_api_put_internal(
         root,
         corrupt,
-        goal_adversarial_body_for(corrupt, (7).to_json()),
+        goal_adversarial_body_for(corrupt, Json(7)),
         1L,
       ),
       409,
@@ -199,7 +199,7 @@ async test "mooncode_goal_api_internal adversarial matrix: exact nested fixture 
   ) {
     let id = "session"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let top = match body {
       Object(value) => value
       _ => abort("fixture")

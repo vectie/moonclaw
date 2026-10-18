@@ -59,3 +59,6 @@ impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
   }
   { content, refusal, role, tool_calls, }
 }
+
+///|
+pub extend ChatCompletionChunkChoiceDelta with ToJson::{to_json}

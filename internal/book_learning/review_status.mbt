@@ -46,9 +46,9 @@ fn agent_memory_text_review_status(content : String) -> String {
     let line = lines[0].trim_end().to_owned()
     if line.has_prefix("status:") {
       return agent_memory_review_fields({
-        "status": agent_memory_text_status_value(
-          line["status:".length():].to_owned(),
-        ).to_json(),
+        "status": Json(
+          agent_memory_text_status_value(line["status:".length():].to_owned()),
+        ),
       })
     }
     return "candidate"
@@ -56,7 +56,7 @@ fn agent_memory_text_review_status(content : String) -> String {
   if lines[0].trim_end() != "---" {
     return "candidate"
   }
-  let fields : Map[String, Json] = {}
+  let fields : Map[String, Json] = Map([])
   let mut closed = false
   for index in 1..<lines.length() {
     let line = lines[index].trim_end().to_owned()
@@ -68,14 +68,14 @@ fn agent_memory_text_review_status(content : String) -> String {
       if fields.contains("status") {
         return "candidate"
       }
-      fields["status"] = agent_memory_text_status_value(
-        line["status:".length():].to_owned(),
-      ).to_json()
+      fields["status"] = Json(
+        agent_memory_text_status_value(line["status:".length():].to_owned()),
+      )
     } else if line.has_prefix("accepted:") {
       if fields.contains("accepted") {
         return "candidate"
       }
-      fields["accepted"] = (line["accepted:".length():].trim() == "true").to_json()
+      fields["accepted"] = Json(line["accepted:".length():].trim() == "true")
     }
   }
   if closed {

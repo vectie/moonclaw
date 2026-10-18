@@ -987,7 +987,7 @@ test "accepted leaf forms" {
     ] {
     ignore(
       mooncode_goal_runtime_decode_phase(
-        codec_parse_fixture(phase.to_json().stringify()),
+        codec_parse_fixture(Json(phase).stringify()),
       ),
     )
   }

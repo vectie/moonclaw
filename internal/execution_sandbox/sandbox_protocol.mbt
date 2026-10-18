@@ -1135,3 +1135,349 @@ pub async fn run_approved_exec(
   let audit_path = persist_sandbox_audit(config, plan, receipt)
   { plan, receipt, audit_path, }
 }
+
+///|
+pub extend MoonFortBackendKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortBackendKind with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortBackendKind with ToJson::{to_json}
+
+///|
+pub extend MoonFortBackendKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortNetworkMode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortNetworkMode with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortNetworkMode with ToJson::{to_json}
+
+///|
+pub extend MoonFortNetworkMode with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortEnforcementRequirement with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortEnforcementRequirement with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortEnforcementRequirement with ToJson::{to_json}
+
+///|
+pub extend MoonFortEnforcementRequirement with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortEnforcement with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortEnforcement with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortEnforcement with ToJson::{to_json}
+
+///|
+pub extend MoonFortEnforcement with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortRunStatus with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortRunStatus with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortRunStatus with ToJson::{to_json}
+
+///|
+pub extend MoonFortRunStatus with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortScratchEntryKind with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortScratchEntryKind with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortScratchEntryKind with ToJson::{to_json}
+
+///|
+pub extend MoonFortScratchEntryKind with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortScratchChangeKind with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortScratchChangeKind with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortScratchChangeKind with ToJson::{to_json}
+
+///|
+pub extend MoonFortScratchChangeKind with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortScratchEntry with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortScratchEntry with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortScratchEntry with ToJson::{to_json}
+
+///|
+pub extend MoonFortScratchEntry with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortScratchChange with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortScratchChange with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortScratchChange with ToJson::{to_json}
+
+///|
+pub extend MoonFortScratchChange with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortLimits with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortLimits with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortLimits with ToJson::{to_json}
+
+///|
+pub extend MoonFortLimits with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortCommand with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortCommand with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortCommand with ToJson::{to_json}
+
+///|
+pub extend MoonFortCommand with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortExecutionGrant with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortExecutionGrant with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortExecutionGrant with ToJson::{to_json}
+
+///|
+pub extend MoonFortExecutionGrant with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortInvocation with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortInvocation with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortInvocation with ToJson::{to_json}
+
+///|
+pub extend MoonFortInvocation with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortGrantPublicationRequest with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortGrantPublicationRequest with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortGrantPublicationRequest with ToJson::{to_json}
+
+///|
+pub extend MoonFortGrantPublicationRequest with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortGrantPublicationResponse with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortGrantPublicationResponse with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortGrantPublicationResponse with ToJson::{to_json}
+
+///|
+pub extend MoonFortGrantPublicationResponse with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortCommandOutputArtifactRef with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortCommandOutputArtifactRef with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortCommandOutputArtifactRef with ToJson::{to_json}
+
+///|
+pub extend MoonFortCommandOutputArtifactRef with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortReceipt with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortReceipt with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortReceipt with ToJson::{to_json}
+
+///|
+pub extend MoonFortReceipt with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MoonFortProtocolError with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MoonFortProtocolError with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortProtocolError with ToJson::{to_json}
+
+///|
+pub extend MoonFortProtocolError with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortExecutorResponse with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortExecutorResponse with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortExecutorResponse with ToJson::{to_json}
+
+///|
+pub extend MoonFortExecutorResponse with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortLiveOutputReference with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortLiveOutputReference with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortLiveOutputReference with ToJson::{to_json}
+
+///|
+pub extend MoonFortLiveOutputReference with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend MoonFortLiveOutputReadResponse with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend MoonFortLiveOutputReadResponse with Eq::{not_equal, equal}
+
+///|
+pub extend MoonFortLiveOutputReadResponse with ToJson::{to_json}
+
+///|
+pub extend MoonFortLiveOutputReadResponse with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SandboxExecutorConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SandboxExecutorConfig with Eq::{not_equal, equal}
+
+///|
+pub extend SandboxExecutorConfig with ToJson::{to_json}
+
+///|
+pub extend SandboxExecutorConfig with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend SandboxApprovalPlan with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SandboxApprovalPlan with Eq::{not_equal, equal}
+
+///|
+pub extend SandboxApprovalPlan with ToJson::{to_json}
+
+///|
+pub extend SandboxApprovalPlan with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SandboxAuditRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SandboxAuditRecord with Eq::{not_equal, equal}
+
+///|
+pub extend SandboxAuditRecord with ToJson::{to_json}
+
+///|
+pub extend SandboxAuditRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SandboxExecution with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend SandboxExecution with Eq::{not_equal, equal}
+
+///|
+pub extend SandboxExecution with ToJson::{to_json}
+
+///|
+pub extend SandboxExecution with @moonbitlang/core/json.FromJson::{from_json}

@@ -177,7 +177,7 @@ fn SystemStore::step_dir(self : SystemStore, run_id : String) -> String {
 
 ///|
 fn safe_step_file_segment(step_id : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut chars_written = 0
   let mut last_dash = true
   for c in step_id.to_lower() {
@@ -297,7 +297,7 @@ async fn[T] SystemStore::with_store_lock(
 ) -> T {
   self.ensure_directories()
   let mutex = system_store_process_locks.get_or_init(@fs.realpath(self.root), () => {
-    @semaphore.Semaphore::new(1)
+    Semaphore(1)
   })
   mutex.acquire()
   defer mutex.release()
@@ -1633,3 +1633,116 @@ pub async fn SystemStore::list_run_events(
   }
   events
 }
+
+///|
+pub extend DefinitionsIndexFile with ToJson::{to_json}
+
+///|
+pub extend DefinitionsIndexFile with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend DefinitionsIndexFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend RunsIndexFile with ToJson::{to_json}
+
+///|
+pub extend RunsIndexFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend RunsIndexFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ArtifactsIndexFile with ToJson::{to_json}
+
+///|
+pub extend ArtifactsIndexFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ArtifactsIndexFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend MemoriesFile with ToJson::{to_json}
+
+///|
+pub extend MemoriesFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend MemoriesFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatBindingsFile with ToJson::{to_json}
+
+///|
+pub extend ChatBindingsFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ChatBindingsFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend NotificationPreferencesFile with ToJson::{to_json}
+
+///|
+pub extend NotificationPreferencesFile with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend NotificationPreferencesFile with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend JobProposalsFile with ToJson::{to_json}
+
+///|
+pub extend JobProposalsFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProposalsFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ControllerStateFile with ToJson::{to_json}
+
+///|
+pub extend ControllerStateFile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ControllerStateFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ControllerIterationsFile with ToJson::{to_json}
+
+///|
+pub extend ControllerIterationsFile with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ControllerIterationsFile with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ControllerLineageFile with ToJson::{to_json}
+
+///|
+pub extend ControllerLineageFile with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ControllerLineageFile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ControllerDecisionsFile with ToJson::{to_json}
+
+///|
+pub extend ControllerDecisionsFile with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend ControllerDecisionsFile with @moonbitlang/core/debug.Debug::{to_repr}

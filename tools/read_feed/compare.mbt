@@ -5,7 +5,7 @@ pub struct FeedObservation {
   format : String
   total_items : Int32
   next_url : String?
-} derive(Show)
+}
 
 ///|
 pub struct FeedChange {
@@ -14,7 +14,7 @@ pub struct FeedChange {
   before : FeedArticle?
   after : FeedArticle?
   changed_fields : Array[String]
-} derive(Show)
+}
 
 ///|
 pub struct FeedComparison {
@@ -32,7 +32,7 @@ pub struct FeedComparison {
   next_offset : Int32?
   query : String
   kind : String
-} derive(Show)
+}
 
 ///|
 let comparison_scope : String = "Normalized visible fields: title, date_published, summary (first 2000 Unicode characters), url. Match by exact parsed ID; no full-content comparison."
@@ -45,7 +45,7 @@ fn observation_index(
   document : FeedDocument,
   side : String,
 ) -> Map[String, FeedArticle] raise {
-  let index : Map[String, FeedArticle] = {}
+  let index : Map[String, FeedArticle] = Map([])
   for article in document.articles {
     guard !article.id.trim().is_empty() else {
       fail("\{side} observation has an empty article ID")
@@ -215,4 +215,34 @@ pub fn compare_feeds(
     query,
     kind,
   }
+}
+
+///|
+pub extend FeedObservation with Show::{to_string, output}
+
+///|
+pub extend FeedChange with Show::{to_string, output}
+
+///|
+pub extend FeedComparison with Show::{to_string, output}
+
+///|
+pub impl Show for FeedObservation with fn output(self, logger) {
+  logger.write_string(
+    "{label: \{self.label}, title: \{self.title}, format: \{self.format}, total_items: \{self.total_items}, next_url: \{feed_show_optional(self.next_url)}}",
+  )
+}
+
+///|
+pub impl Show for FeedChange with fn output(self, logger) {
+  logger.write_string(
+    "{kind: \{self.kind}, id: \{self.id}, before: \{feed_show_optional(self.before)}, after: \{feed_show_optional(self.after)}, changed_fields: \{feed_show_array(self.changed_fields)}}",
+  )
+}
+
+///|
+pub impl Show for FeedComparison with fn output(self, logger) {
+  logger.write_string(
+    "{source: \{self.source}, before: \{self.before}, after: \{self.after}, newly_listed: \{self.newly_listed}, changed: \{self.changed}, no_longer_listed: \{self.no_longer_listed}, unchanged: \{self.unchanged}, changes: \{feed_show_array(self.changes)}, total_changes: \{self.total_changes}, matched_changes: \{self.matched_changes}, offset: \{self.offset}, next_offset: \{feed_show_optional(self.next_offset)}, query: \{self.query}, kind: \{self.kind}}",
+  )
 }

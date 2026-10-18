@@ -344,3 +344,44 @@ pub fn analysis_step_handler(
     }
   })
 }
+
+///|
+pub extend AnalysisPolicy with ToJson::{to_json}
+
+///|
+pub extend AnalysisPolicy with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnalysisPolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnalysisArtifactConfig with ToJson::{to_json}
+
+///|
+pub extend AnalysisArtifactConfig with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AnalysisArtifactConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnalysisStepConfig with ToJson::{to_json}
+
+///|
+pub extend AnalysisStepConfig with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnalysisStepConfig with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnalysisRequest with ToJson::{to_json}
+
+///|
+pub extend AnalysisRequest with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnalysisRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnalysisExecution with @moonbitlang/core/debug.Debug::{to_repr}

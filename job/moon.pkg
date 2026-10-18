@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/debug",
   "vectie/moonclaw/artifact_diff",
   "vectie/moonclaw/internal/book_learning",
   "moonbitlang/async",
@@ -7,7 +8,6 @@ import {
   "vectie/moonclaw/agent",
   "vectie/moonclaw/acp",
   "vectie/moonclaw/ai",
-  "vectie/moonclaw/event",
   "vectie/moonclaw/file",
   "vectie/moonclaw/model",
   "vectie/moonclaw/prompt",
@@ -27,8 +27,6 @@ import {
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
   "moonbitlang/core/string",
-  "moonbitlang/core/strconv",
-  "moonbitlang/core/test",
   "moonbitlang/x/time",
   "vectie/moonclaw/tools/apply_patch",
   "vectie/moonclaw/tools/delegate_run",
@@ -58,6 +56,7 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"
 
 import {

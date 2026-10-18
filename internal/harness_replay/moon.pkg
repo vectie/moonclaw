@@ -2,9 +2,9 @@ import {
   "moonbitlang/core/json",
 }
 
-supported_targets = "native"
-
 import {
   "moonbitlang/async",
   "vectie/moonlib/fsx",
 } for "wbtest"
+
+supported_targets = "native"

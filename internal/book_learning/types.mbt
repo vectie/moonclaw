@@ -193,7 +193,7 @@ pub fn render(snapshot : Snapshot) -> String {
       snapshot.status +
       ". No learned records included."
   }
-  let records = snapshot.records.to_json().stringify(indent=2)
+  let records = Json(snapshot.records).stringify(indent=2)
   "[Selected Book accepted learning: historical context only]\n" +
   "Status: ready; content_digest: " +
   snapshot.content_digest +
@@ -202,3 +202,39 @@ pub fn render(snapshot : Snapshot) -> String {
   records +
   "\n[/Selected Book accepted learning]"
 }
+
+///|
+pub extend Binding with Eq::{not_equal, equal}
+
+///|
+pub extend Binding with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Binding with ToJson::{to_json}
+
+///|
+pub extend Binding with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Record with Eq::{not_equal, equal}
+
+///|
+pub extend Record with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Record with ToJson::{to_json}
+
+///|
+pub extend Record with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend Snapshot with Eq::{not_equal, equal}
+
+///|
+pub extend Snapshot with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend Snapshot with ToJson::{to_json}
+
+///|
+pub extend Snapshot with @moonbitlang/core/json.FromJson::{from_json}

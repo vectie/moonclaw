@@ -1,8 +1,8 @@
 import {
+  "moonbitlang/core/debug",
   "vectie/moonclaw/tool",
   "vectie/moonclaw/tools/apply_patch",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -12,4 +12,5 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonclaw/internal/mock",
   "vectie/moonlib/pathx",
+  "moonbitlang/core/test",
 } for "test"

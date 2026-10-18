@@ -192,7 +192,7 @@ test "carrier recorded_at is canonical nonnegative Int64 string" {
   let base = carrier_genesis_json(1L)
   for value in ["+1", "01", "-0", "-1", " 1", "1 ", "9223372036854775808"] {
     let fields = carrier_object_copy(base)
-    fields["recorded_at"] = value.to_json()
+    fields["recorded_at"] = Json(value)
     carrier_assert_mutation_rejected(base, fields)
   }
   let fields = carrier_object_copy(base)
@@ -208,8 +208,7 @@ test "carrier rejects malformed and noncanonical embedded records" {
   carrier_assert_mutation_rejected(base, malformed)
   let noncanonical = carrier_object_copy(base)
   match noncanonical["canonical_record"] {
-    String(record) =>
-      noncanonical["canonical_record"] = (" " + record).to_json()
+    String(record) => noncanonical["canonical_record"] = Json(" " + record)
     _ => abort("expected canonical record string")
   }
   carrier_assert_mutation_rejected(base, noncanonical)

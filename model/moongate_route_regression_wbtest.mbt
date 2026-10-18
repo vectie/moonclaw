@@ -43,7 +43,7 @@ async test "reserved MoonGate selector ignores cached model name collision" (
       .add_directory("products")
       .add_directory("moonclaw")
       .add_directory("models")
-      .add_file("models.json", content=[collision].to_json().stringify())
+      .add_file("models.json", content=Json([collision]).stringify())
     let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
     assert_true(loader.get_model(name="moongate/chosen") is None)
     assert_eq(loader.get_model().unwrap().name, "moongate/chosen")

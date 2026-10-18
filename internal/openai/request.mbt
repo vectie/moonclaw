@@ -402,7 +402,7 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     "messages": self.messages,
   }
   if !self.tools.is_empty() {
-    json["tools"] = self.tools.to_json()
+    json["tools"] = Json(self.tools)
   }
   if self.usage is Some(usage) {
     json["usage"] = ToJson::to_json(usage)
@@ -411,10 +411,10 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     json["user"] = Json::string(user)
   }
   if self.max_tokens is Some(max_tokens) {
-    json["max_tokens"] = max_tokens.to_json()
+    json["max_tokens"] = Json(max_tokens)
   }
   if self.temperature is Some(temperature) {
-    json["temperature"] = temperature.to_json()
+    json["temperature"] = Json(temperature)
   }
   if self.reasoning_effort is Some(reasoning_effort) {
     json["reasoning_effort"] = ToJson::to_json(reasoning_effort)
@@ -423,7 +423,7 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     json["response_format"] = response_format.to_json()
   }
   if self.stream is Some(stream) {
-    json["stream"] = stream.to_json()
+    json["stream"] = Json(stream)
   }
   if self.stream_options is Some(stream_options) {
     json["stream_options"] = stream_options.to_json()
@@ -432,7 +432,10 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     json["tool_choice"] = tool_choice.to_json()
   }
   if self.parallel_tool_calls is Some(parallel_tool_calls) {
-    json["parallel_tool_calls"] = parallel_tool_calls.to_json()
+    json["parallel_tool_calls"] = Json(parallel_tool_calls)
   }
   Json::object(json)
 }
+
+///|
+pub extend Request with ToJson::{to_json}

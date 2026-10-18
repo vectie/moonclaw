@@ -24,6 +24,11 @@ pub(all) struct PromotionAdapterConfig {
   executor_config_path : String
   receipt_root : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn PromotionAdapterConfig::equal(Self, Self) -> Bool
+pub fn PromotionAdapterConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PromotionAdapterConfig::not_equal(Self, Self) -> Bool
+pub fn PromotionAdapterConfig::to_json(Self) -> Json
+pub fn PromotionAdapterConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RecoveryInspectionConfig {
   protocol_version : Int
@@ -32,6 +37,11 @@ pub(all) struct RecoveryInspectionConfig {
   executor_config_path : String
   receipt_root : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RecoveryInspectionConfig::equal(Self, Self) -> Bool
+pub fn RecoveryInspectionConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RecoveryInspectionConfig::not_equal(Self, Self) -> Bool
+pub fn RecoveryInspectionConfig::to_json(Self) -> Json
+pub fn RecoveryInspectionConfig::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

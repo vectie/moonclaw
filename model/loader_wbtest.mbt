@@ -531,10 +531,7 @@ async test "legacy nested moonclaw models are ignored" (t : @test.Test) {
     let _ = mock.cwd
       .add_directory(".moonclaw")
       .add_directory("models")
-      .add_file(
-        "models.json",
-        content=[legacy_model].to_json().stringify(indent=2),
-      )
+      .add_file("models.json", content=Json([legacy_model]).stringify(indent=2))
     let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
     assert_eq(loader.models.length(), 0)
     assert_true(!loader.providers.contains("legacy"))

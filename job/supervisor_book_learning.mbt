@@ -2,7 +2,7 @@
 fn supervisor_learning_alias(
   metadata : Json,
   key : String,
-  alias : String,
+  alternate_key : String,
 ) -> String {
   guard metadata is Object(fields) else { return "" }
   match fields.get(key) {
@@ -10,7 +10,7 @@ fn supervisor_learning_alias(
       return value.trim().to_owned()
     _ => ()
   }
-  match fields.get(alias) {
+  match fields.get(alternate_key) {
     Some(String(value)) => value.trim().to_owned()
     _ => ""
   }
@@ -75,7 +75,7 @@ fn supervisor_learning_from_definition(
         Ok(_) => ()
       }
       guard fields.get("book_learning_input_contract") ==
-        Some("moonclaw.book-learning-input.v1".to_json()) else {
+        Some(Json("moonclaw.book-learning-input.v1")) else {
         return Err("captured Book learning contract is missing")
       }
       if claimed is Some(expected) &&
@@ -179,7 +179,7 @@ pub fn JobDefinition::public_json(self : JobDefinition) -> Json {
   guard self.config is Object(config) && config.contains("book_learning_input") else {
     return self.to_json()
   }
-  let fields : Map[String, Json] = {}
+  let fields : Map[String, Json] = Map([])
   if self.config is Object(config) {
     for key, value in config {
       if key == "book_learning_input" {
@@ -199,16 +199,6 @@ pub fn JobDefinition::public_json(self : JobDefinition) -> Json {
   }
   let public_definition = { ..self, config: Json::object(fields), }
   public_definition.to_json()
-}
-
-///|
-/// A redacted GET/PUT preserves private input; callers cannot create or replace it.
-async fn SystemStore::prepare_public_definition(
-  self : SystemStore,
-  definition : JobDefinition,
-) -> Result[JobDefinition, String] {
-  self.reload_supervisor_worker_store()
-  self.merge_public_definition(definition)
 }
 
 ///|

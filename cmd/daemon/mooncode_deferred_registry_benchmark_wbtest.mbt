@@ -3,8 +3,8 @@ test "mooncode deferred registry benchmark reports schema reduction and lookup l
   let command = mooncode_deferred_test_command(true)
   let baseline = mooncode_runtime_turn_model_tools()
   let dynamic = mooncode_runtime_turn_model_tools_for_command(command)
-  let baseline_chars = baseline.to_json().stringify().length()
-  let dynamic_chars = dynamic.to_json().stringify().length()
+  let baseline_chars = Json(baseline).stringify().length()
+  let dynamic_chars = Json(dynamic).stringify().length()
   let registry = mooncode_runtime_turn_deferred_tool_catalog()
   let queries = [
     "browser screenshot", "inspect image pixels", "moonbit semantic outline", "moonbit test build",

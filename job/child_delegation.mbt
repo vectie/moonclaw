@@ -707,3 +707,33 @@ pub fn decode_child_delegation_v1(value : Json) -> ChildDelegationV1 raise {
   }
   rebuilt
 }
+
+///|
+pub extend DelegationClaimCeilingV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend DelegationClaimCeilingV1 with Eq::{not_equal, equal}
+
+///|
+pub extend ChildDelegationV1 with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChildDelegationV1 with Eq::{not_equal, equal}
+
+///|
+pub extend ChildDelegationConsumptionV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ChildDelegationConsumptionV1 with Eq::{not_equal, equal}
+
+///|
+pub extend ChildDelegationUseReceiptV1 with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ChildDelegationUseReceiptV1 with Eq::{not_equal, equal}

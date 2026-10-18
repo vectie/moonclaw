@@ -26,7 +26,7 @@ async test "nochange actual required test through existing degraded executor" {
     let command = mooncode_json_object_with_field(
       nochange_test_command(policy~),
       "book_root",
-      root.to_json(),
+      Json(root),
     )
     mooncode_with_fixture_moonfort(root, async fn(config) {
       let evidence : Array[Json] = []
@@ -70,7 +70,7 @@ async test "nochange actual required test through existing degraded executor" {
         mooncode_runtime_turn_result_payload(evidence[1]),
         "metadata",
       )
-      assert_eq(mooncode_nochange_field(metadata, "exit_code"), (0).to_json())
+      assert_eq(mooncode_nochange_field(metadata, "exit_code"), Json(0))
       assert_true(
         mooncode_json_string(
           mooncode_runtime_turn_result_payload(evidence[1]),
@@ -87,7 +87,7 @@ async test "nochange actual required test through existing degraded executor" {
         "evidence_refs",
         Json::array(
           evidence.map(result => {
-            mooncode_nochange_result_event_id(command, result).to_json()
+            Json(mooncode_nochange_result_event_id(command, result))
           }),
         ),
       )

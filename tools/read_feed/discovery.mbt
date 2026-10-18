@@ -8,7 +8,7 @@ pub struct FeedDiscovery {
   duplicate_links : Int32
   rejected_links : Int32
   warnings : Array[String]
-} derive(Show, ToJson)
+} derive(ToJson)
 
 ///|
 /// Discover alternate RSS, Atom and JSON Feed links from a saved HTML head.
@@ -161,4 +161,17 @@ pub fn discover_feeds(
     })
   }
   { page_url, base_url, providers, duplicate_links, rejected_links, warnings, }
+}
+
+///|
+pub extend FeedDiscovery with Show::{to_string, output}
+
+///|
+pub extend FeedDiscovery with ToJson::{to_json}
+
+///|
+pub impl Show for FeedDiscovery with fn output(self, logger) {
+  logger.write_string(
+    "{page_url: \{self.page_url}, base_url: \{feed_show_optional(self.base_url)}, providers: \{feed_show_json_array(self.providers)}, duplicate_links: \{self.duplicate_links}, rejected_links: \{self.rejected_links}, warnings: \{feed_show_array(self.warnings)}}",
+  )
 }

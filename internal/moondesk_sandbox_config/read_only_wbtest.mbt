@@ -10,6 +10,7 @@ async test "read-only config preserves private modes and content and refuses ins
     auth_token: "b".repeat(64),
     workspace_id: "book",
     workspace_root: root,
+    trusted_book_roots: None,
   }
   @fs.write_file(
     path,

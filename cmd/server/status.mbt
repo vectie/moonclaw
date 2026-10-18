@@ -45,3 +45,9 @@ test "Status::FromJson" {
   json_inspect(@json.from_json("idle") is Idle, content=true)
   json_inspect(@json.from_json("generating") is Busy, content=true)
 }
+
+///|
+pub extend Status with ToJson::{to_json}
+
+///|
+pub extend Status with @json.FromJson::{from_json}

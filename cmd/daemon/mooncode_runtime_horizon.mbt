@@ -138,7 +138,7 @@ fn mooncode_runtime_horizon_required_milestones(command : Json) -> Array[Json] {
         "path": mooncode_json_string(item, "path", default=""),
         "context_paths": Json::array(
           mooncode_json_array_string_items(item, "context_paths").map(value => {
-            value.to_json()
+            Json(value)
           }),
         ),
       })
@@ -224,12 +224,12 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
     "objective": objective,
     "constraints": Json::array(
       mooncode_json_array_string_items(supplied, "constraints").map(value => {
-        value.to_json()
+        Json(value)
       }),
     ),
     "context_paths": Json::array(
       mooncode_json_array_string_items(supplied, "context_paths").map(value => {
-        value.to_json()
+        Json(value)
       }),
     ),
     "milestones": Json::array(
@@ -367,9 +367,7 @@ fn mooncode_runtime_horizon_attach_checkpoint(
           "metadata": {
             "evidence_kind": "runtime.commit_created",
             "commit_sha": commit_sha,
-            "changed_paths": Json::array(
-              changed_paths.map(path => path.to_json()),
-            ),
+            "changed_paths": Json::array(changed_paths.map(path => Json(path))),
           },
         },
       })

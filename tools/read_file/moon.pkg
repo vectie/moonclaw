@@ -4,7 +4,6 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonclaw/internal/tiktoken",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -12,4 +11,5 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"

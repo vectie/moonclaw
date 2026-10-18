@@ -14,6 +14,7 @@ pub struct LineEdit {
   text : String
   ending : String
 } derive(ToJson)
+pub fn LineEdit::to_json(Self) -> Json
 
 pub struct TextDiff {
   identical : Bool
@@ -24,6 +25,7 @@ pub struct TextDiff {
   unchanged_lines : Int
   edits : Array[LineEdit]
 } derive(ToJson)
+pub fn TextDiff::to_json(Self) -> Json
 
 // Type aliases
 

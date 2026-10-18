@@ -596,11 +596,11 @@ async test "concurrent independently loaded runtimes share one durable learning 
 async test "runtime locks share aliases release cancellation and leave independent roots free" {
   let root = @fs.tmpdir(prefix="claw-learning-locks-")
   defer @fs.rmdir(root, recursive=true)
-  let alias = root + "-alias"
-  @fs.symlink(target=root, alias)
-  defer @fs.remove(alias)
+  let alternate_path = root + "-alias"
+  @fs.symlink(target=root, alternate_path)
+  defer @fs.remove(alternate_path)
   let first = learning_runtime(root + "/runtime")
-  let same = learning_runtime(alias + "/runtime")
+  let same = learning_runtime(alternate_path + "/runtime")
   let independent = learning_runtime(root + "/independent")
   first.with_lock(() => {
     assert_eq(
@@ -648,4 +648,14 @@ async test "runtime locks share aliases release cancellation and leave independe
     }),
     Some(true),
   )
+}
+
+///|
+/// Test-only preparation wrapper; production persistence uses save_public_definition.
+async fn SystemStore::prepare_public_definition(
+  self : SystemStore,
+  definition : JobDefinition,
+) -> Result[JobDefinition, String] {
+  self.reload_supervisor_worker_store()
+  self.merge_public_definition(definition)
 }

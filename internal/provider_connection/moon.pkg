@@ -1,0 +1,14 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+  "vectie/moonclaw/internal/book_runtime",
+  "vectie/moonclaw/plugin/moongate",
+  "vectie/moonlib/moonsuite",
+  "vectie/moonlib/os",
+}
+
+supported_targets = "native"

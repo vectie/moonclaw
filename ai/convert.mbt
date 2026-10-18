@@ -21,7 +21,7 @@ pub fn Message::from_openai(
 ) -> Message {
   match param {
     User(user) => {
-      let content = StringBuilder::new()
+      let content = StringBuilder()
       for part in user.content {
         match part {
           Text(param) => content.write_string(param.text)
@@ -31,7 +31,7 @@ pub fn Message::from_openai(
       user_message(content=content.to_string())
     }
     System(system) => {
-      let content = StringBuilder::new()
+      let content = StringBuilder()
       for part in system.content {
         match part {
           Text(param) => content.write_string(param.text)
@@ -41,7 +41,7 @@ pub fn Message::from_openai(
       system_message(content=content.to_string())
     }
     Assistant(assistant) => {
-      let content = StringBuilder::new()
+      let content = StringBuilder()
       for part in assistant.content {
         match part {
           Text(param) => content.write_string(param.text)
@@ -54,7 +54,7 @@ pub fn Message::from_openai(
       )
     }
     Tool(tool) => {
-      let content = StringBuilder::new()
+      let content = StringBuilder()
       for part in tool.content {
         match part {
           Text(param) => content.write_string(param.text)

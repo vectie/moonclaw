@@ -17,6 +17,9 @@ pub enum PatchEditMode {
   Preview
   Apply
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PatchEditMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PatchEditMode::to_json(Self) -> Json
+pub fn PatchEditMode::to_repr(Self) -> @debug.Repr
 
 pub struct PatchEditResult {
   mode : PatchEditMode
@@ -28,6 +31,11 @@ pub struct PatchEditResult {
   deleted : Array[String]
   file_count : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PatchEditResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PatchEditResult::output(Self, &Logger) -> Unit
+pub fn PatchEditResult::to_json(Self) -> Json
+pub fn PatchEditResult::to_repr(Self) -> @debug.Repr
+pub fn PatchEditResult::to_string(Self) -> String
 pub impl Show for PatchEditResult
 
 // Type aliases

@@ -22,6 +22,10 @@ pub struct UnlimitedOcrResult {
   stdout : String
   stderr : String
 } derive(ToJson, @json.FromJson)
+pub fn UnlimitedOcrResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn UnlimitedOcrResult::output(Self, &Logger) -> Unit
+pub fn UnlimitedOcrResult::to_json(Self) -> Json
+pub fn UnlimitedOcrResult::to_string(Self) -> String
 pub impl Show for UnlimitedOcrResult
 
 // Type aliases

@@ -190,3 +190,12 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ReadFileToolResult] {
     }),
   )
 }
+
+///|
+pub extend ReadFileToolResult with ToJson::{to_json}
+
+///|
+pub extend ReadFileToolResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ReadFileToolResult with Show::{to_string, output}

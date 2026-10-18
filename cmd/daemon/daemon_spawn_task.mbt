@@ -48,7 +48,7 @@ async fn Daemon::spawn_task(
   }
   defer self.rqs.remove(id.to_string())
   logger.info(
-    "Spawning governed MoonClaw server child at \{cwd.to_json().stringify(indent=2)}",
+    "Spawning governed MoonClaw server child at \{Json(cwd).stringify(indent=2)}",
   )
   let process = self.process.spawn_server(
     cwd~,

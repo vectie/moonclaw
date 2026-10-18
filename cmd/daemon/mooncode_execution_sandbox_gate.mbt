@@ -153,16 +153,18 @@ fn mooncode_sandbox_terminal_result(
       message="ExecutionSandbox result metadata is invalid",
     )
   }
-  fields["exit_code"] = exit_code.to_json()
-  fields["status"] = exit_code.to_json()
-  fields["truncated"] = mooncode_json_bool(capped, "truncated", default=false).to_json()
-  fields["execution_sandbox_required"] = true.to_json()
-  fields["execution_sandbox_configured"] = true.to_json()
-  fields["execution_sandbox_policy"] = "grant-bound".to_json()
-  fields["approval_plan_digest"] = execution.plan.expected_approval_digest.to_json()
-  fields["approval_id"] = receipt.approval_id.to_json()
-  fields["run_id"] = receipt.run_id.to_json()
-  fields["profile_digest"] = receipt.profile_digest.to_json()
+  fields["exit_code"] = Json(exit_code)
+  fields["status"] = Json(exit_code)
+  fields["truncated"] = Json(
+    mooncode_json_bool(capped, "truncated", default=false),
+  )
+  fields["execution_sandbox_required"] = Json(true)
+  fields["execution_sandbox_configured"] = Json(true)
+  fields["execution_sandbox_policy"] = Json("grant-bound")
+  fields["approval_plan_digest"] = Json(execution.plan.expected_approval_digest)
+  fields["approval_id"] = Json(receipt.approval_id)
+  fields["run_id"] = Json(receipt.run_id)
+  fields["profile_digest"] = Json(receipt.profile_digest)
   fields["sandbox_evidence"] = mooncode_sandbox_evidence(execution)
   let output = mooncode_json_string(capped, "output", default="")
   if exit_code == expected_exit_code {

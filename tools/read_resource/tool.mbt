@@ -315,3 +315,21 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
     },
   )
 }
+
+///|
+pub extend ResourceKind with ToJson::{to_json}
+
+///|
+pub extend ResourceKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ResourceKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ReadResourceResult with ToJson::{to_json}
+
+///|
+pub extend ReadResourceResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ReadResourceResult with Show::{to_string, output}

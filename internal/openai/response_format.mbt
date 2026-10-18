@@ -30,3 +30,6 @@ pub impl ToJson for ResponseFormat with fn to_json(self : ResponseFormat) -> Jso
     JsonObject => { "type": "json_object" }
   }
 }
+
+///|
+pub extend ResponseFormat with ToJson::{to_json}

@@ -155,7 +155,7 @@ impl @json.FromJson for Running with fn from_json(
   }
   let queued_messages = match map.get("queued_messages") {
     Some(Array(qms)) => {
-      let ms = Array::new()
+      let ms = Array()
       for i, qm_json in qms {
         let qm : QueuedMessage = @json.from_json(
           qm_json,
@@ -222,7 +222,7 @@ impl ToJson for Running with fn to_json(self : Running) -> Json {
     "workspace_trust": self.workspace_trust,
   }
   if self.name is Some(name) {
-    object["name"] = name.to_json()
+    object["name"] = Json(name)
   }
   Json::object(object)
 }

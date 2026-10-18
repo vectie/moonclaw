@@ -42,13 +42,7 @@ fn mooncode_command_with_model_workspace(
         )
       }
       if root != "" {
-        Ok(
-          mooncode_json_object_with_field(
-            body,
-            "model_workspace",
-            root.to_json(),
-          ),
-        )
+        Ok(mooncode_json_object_with_field(body, "model_workspace", Json(root)))
       } else {
         Ok(body)
       }

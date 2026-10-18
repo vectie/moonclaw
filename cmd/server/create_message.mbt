@@ -24,7 +24,7 @@ pub impl ToJson for CreateMessageRequest with fn to_json(
     "message": self.message.to_openai().to_json(),
   }
   if self.web_search is Some(ws) {
-    object["web_search"] = ws.to_json()
+    object["web_search"] = Json(ws)
   }
   if self.optional_context is Some(context) {
     object["optional_context"] = context.to_json()
@@ -138,7 +138,7 @@ test "CreateMessageRequest preserves and binds exact optional context descriptor
         ).to_json(),
       )
     } catch {
-      @json.JsonDecodeError(_) => rejected = true
+      JsonDecodeError(_) => rejected = true
     }
     assert_true(rejected)
   }
@@ -207,3 +207,15 @@ async fn Server::create_message(
   let response : CreateMessageResponse = { id, queued, }
   w.send_json(code=200, response.to_json())
 }
+
+///|
+pub extend CreateMessageRequest with ToJson::{to_json}
+
+///|
+pub extend CreateMessageRequest with @json.FromJson::{from_json}
+
+///|
+pub extend CreateMessageResponse with ToJson::{to_json}
+
+///|
+pub extend CreateMessageResponse with @json.FromJson::{from_json}

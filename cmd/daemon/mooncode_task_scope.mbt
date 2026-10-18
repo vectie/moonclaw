@@ -128,9 +128,7 @@ async fn mooncode_task_scope_finish(
     return mooncode_tool_error_result(
       tool,
       message="MoonCode could not enforce task scope before executing `\{tool}`: \{before.error}",
-      metadata={
-        "allowed_scope": Json::array(scopes.map(path => path.to_json())),
-      },
+      metadata={ "allowed_scope": Json::array(scopes.map(path => Json(path))) },
     )
   }
   let outcome = mooncode_moon_fmt_verify_and_restore(

@@ -29,3 +29,8 @@ impl @json.FromJson for ChatCompletionMessageToolCallFunction with fn from_json(
   }
   { arguments, name, }
 }
+
+///|
+pub extend ChatCompletionMessageToolCallFunction with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}

@@ -64,7 +64,7 @@ async fn[T] SupervisorRuntime::with_lock(
     _ => ()
   }
   let mutex = supervisor_process_locks.get_or_init(@fs.realpath(self.root()), () => {
-    @semaphore.Semaphore::new(1)
+    Semaphore(1)
   })
   mutex.acquire()
   defer mutex.release()

@@ -49,17 +49,47 @@ fn recovery_test_response(outcome : String) -> MoonFortRecoveryResponse {
     outcome,
     error: match outcome {
       "manual-recovery" =>
-        Some({
-          code: "root-mapping-unproven",
-          message: "/private/CANARY-secret",
-        })
+        Some(
+          try! @json.from_json({
+            "code": "root-mapping-unproven",
+            "message": "/private/CANARY-secret",
+          }),
+        )
       "unavailable" =>
-        Some({
-          code: "destination-unavailable",
-          message: "/private/CANARY-secret",
-        })
+        Some(
+          try! @json.from_json({
+            "code": "destination-unavailable",
+            "message": "/private/CANARY-secret",
+          }),
+        )
       _ => None
     },
+  }
+}
+
+///|
+test "recovery error validates required remote fields before retaining only code" {
+  let valid : MoonFortPromotionError = @json.from_json({
+    "code": "root-mapping-unproven",
+    "message": "/private/CANARY-secret",
+    "future_field": true,
+  })
+  assert_eq(valid.code, "root-mapping-unproven")
+  let invalids : Array[Json] = [
+    { "code": "root-mapping-unproven" },
+    { "code": "root-mapping-unproven", "message": Json::null() },
+    { "code": "root-mapping-unproven", "message": 7 },
+    { "message": "diagnostic" },
+    { "code": false, "message": "diagnostic" },
+  ]
+  for invalid in invalids {
+    try {
+      let _ : MoonFortPromotionError = @json.from_json(invalid)
+    } catch {
+      _ => ()
+    } noraise {
+      _ => fail("invalid recovery error must fail required-field validation")
+    }
   }
 }
 
@@ -210,9 +240,17 @@ test "inspection response binding and state matrix reject substituted contradict
   assert_true(token_equal("a".repeat(64), "a".repeat(64)))
   assert_false(token_equal("b".repeat(64), "a".repeat(64)))
   assert_false(token_equal("", "a".repeat(64)))
-  let extra = recovery_test_request().to_json()
+  let request = recovery_test_request()
+  let extra : Json = {
+    "protocol_version": request.protocol_version,
+    "instance_id": request.instance_id,
+    "workspace_id": request.workspace_id,
+    "retention_id": request.retention_id,
+    "pending_attempt_id": request.pending_attempt_id,
+    "request_id": request.request_id,
+  }
   guard extra is Object(fields) else { fail("object") }
-  fields["workspace_root"] = "/private/secret".to_json()
+  fields["workspace_root"] = Json("/private/secret")
   assert_true(
     (Ok(moondesk_recovery_parse_request(extra)) catch { error => Err(error) })
     is Err(_),

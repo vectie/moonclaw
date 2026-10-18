@@ -19,8 +19,8 @@ fn mooncode_harness_benchmark_case(
   }
   let baseline_tools = mooncode_runtime_turn_model_tools_for_command(baseline)
   let dynamic_tools = mooncode_runtime_turn_model_tools_for_command(dynamic)
-  let baseline_chars = baseline_tools.to_json().stringify().length()
-  let dynamic_chars = dynamic_tools.to_json().stringify().length()
+  let baseline_chars = Json(baseline_tools).stringify().length()
+  let dynamic_chars = Json(dynamic_tools).stringify().length()
   {
     "case": name,
     "baseline_tool_count": baseline_tools.length(),
@@ -242,7 +242,7 @@ fn mooncode_harness_regression_case(
   let observed_metrics = mooncode_json_object_with_field(
     metrics,
     "model_retry_count",
-    retry_count.to_json(),
+    Json(retry_count),
   )
   let latency_fixture_ms = 10 + name.length()
   let exported = mooncode_planner_metrics_export_payload(

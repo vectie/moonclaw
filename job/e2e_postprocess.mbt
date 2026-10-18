@@ -114,13 +114,13 @@ fn presentation_renderer_theme(proposal : JobProposal) -> String? {
 fn presentation_renderer_metadata(proposal : JobProposal) -> Json {
   let metadata : Map[String, Json] = {
     "preferred_skills": Json::array([]),
-    "enable_tools": false.to_json(),
-    "web_search": false.to_json(),
+    "enable_tools": Json(false),
+    "web_search": Json(false),
     "postprocess_contract": presentation_contract_version(),
-    "result_content_json_contract": presentation_render_contract_version().to_json(),
+    "result_content_json_contract": Json(presentation_render_contract_version()),
     "result_file_name": "presentation_render_result.json",
     "report_file_name": "presentation_render_report.md",
-    "skip_primary_workspace_output": true.to_json(),
+    "skip_primary_workspace_output": Json(true),
     "postprocess_kind": "presentation-render",
     "board_lane": "Presentation",
     "board_order": 910,
@@ -130,7 +130,7 @@ fn presentation_renderer_metadata(proposal : JobProposal) -> Json {
     None => ()
   }
   match presentation_renderer_theme(proposal) {
-    Some(theme) => metadata.set("presentation_theme", theme.to_json())
+    Some(theme) => metadata.set("presentation_theme", Json(theme))
     None => ()
   }
   Json::object(metadata)

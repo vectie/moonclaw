@@ -155,7 +155,7 @@ pub fn ReadingShortlist::catalog(
         "state": entry.state,
         "note": entry.note,
         "position": match selected.get(entry.entry_id) {
-          Some(position) => position.to_json()
+          Some(position) => Json(position)
           None => Json::null()
         },
       })

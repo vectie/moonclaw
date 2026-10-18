@@ -408,7 +408,7 @@ async fn mooncode_stream_resume_scan_locked(
     let event = mooncode_json_object_with_field(
       mooncode_json_object_field_or_empty(record, "payload"),
       "journal_sequence",
-      next.text().to_json(),
+      Json(next.text()),
     )
     let projected = mooncode_stream_resume_project_event(event)
     if projected is None {
@@ -616,20 +616,15 @@ async fn mooncode_stream_resume_create_spool(
   replay_limit : Int32,
 ) -> MoonCodeStreamResumeSpool {
   let directory = @fs.tmpdir(prefix="mooncode-resume-stream")
+  errdefer (@fs.rmdir(directory, recursive=true) catch { _ => () })
   let path = @pathx.join(directory, "events.spool")
   let writer = @fs.open(
     path,
     mode=WriteOnly,
     create_mode=CreateOrTruncate,
     permission=0o600,
-  ) catch {
-    error => {
-      @fs.rmdir(directory, recursive=true) catch {
-        _ => ()
-      }
-      raise error
-    }
-  }
+  )
+  defer writer.close()
   let summary = mooncode_stream_resume_scan(
     book_root,
     session_id,
@@ -637,16 +632,7 @@ async fn mooncode_stream_resume_create_spool(
     replay_limit,
     writer~,
     format~,
-  ) catch {
-    error => {
-      writer.close()
-      @fs.rmdir(directory, recursive=true) catch {
-        _ => ()
-      }
-      raise error
-    }
-  }
-  writer.close()
+  )
   { directory, path, summary, }
 }
 
@@ -659,26 +645,18 @@ async fn mooncode_stream_resume_deliver(
   done : Json,
 ) -> Unit {
   let reader = @fs.open(spool.path, mode=ReadOnly)
-  try {
-    if format == "sse" {
-      w.header().set("Content-Type", "text/event-stream")
-      w.header().set("Cache-Control", "no-cache")
-    } else {
-      w.header().set("Content-Type", "application/x-ndjson")
-    }
-    w.write_header(200)
-    w.write(mooncode_stream_record_frame(format, meta))
-    w.write_reader(reader)
-    w.write(mooncode_stream_record_frame(format, done))
-    w.flush()
-  } catch {
-    error => {
-      reader.close()
-      raise error
-    }
-  } noraise {
-    _ => reader.close()
+  defer reader.close()
+  if format == "sse" {
+    w.header().set("Content-Type", "text/event-stream")
+    w.header().set("Cache-Control", "no-cache")
+  } else {
+    w.header().set("Content-Type", "application/x-ndjson")
   }
+  w.write_header(200)
+  w.write(mooncode_stream_record_frame(format, meta))
+  w.write_reader(reader)
+  w.write(mooncode_stream_record_frame(format, done))
+  w.flush()
 }
 
 ///|
@@ -838,13 +816,9 @@ async fn Daemon::mooncode_stream_resume(
     replay_limit,
     wait,
   )
-  try mooncode_stream_resume_deliver(w, format, spool, meta, done) catch {
-    error => {
-      spool.cleanup()
-      raise error
-    }
-  } noraise {
-    _ => spool.cleanup()
+  {
+    defer spool.cleanup()
+    mooncode_stream_resume_deliver(w, format, spool, meta, done)
   }
   ignore(self)
 }

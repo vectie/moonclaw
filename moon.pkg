@@ -10,7 +10,6 @@ import {
   "vectie/moonclaw/tools/todo",
   "vectie/moonclaw/tools/search_files",
   "vectie/moonclaw/prompt",
-  "vectie/moonclaw/tool",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/tools/apply_patch",
   "vectie/moonclaw/tools/write_to_file",
@@ -23,8 +22,6 @@ import {
   "vectie/moonlib/uuid",
   "vectie/moonlib/rand",
   "vectie/moonlib/moonsuite",
-  "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -32,4 +29,6 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
+  "vectie/moonclaw/tool",
 } for "test"

@@ -68,7 +68,7 @@ fn adaptive_subplan_policy_metadata(
   let policy : Map[String, Json] = Map([])
   match
     metadata_int_with_step_metadata_option(request.step_metadata, "timeout_ms") {
-    Some(value) => policy.set("timeout_ms", value.to_json())
+    Some(value) => policy.set("timeout_ms", Json(value))
     None => ()
   }
   match
@@ -76,20 +76,20 @@ fn adaptive_subplan_policy_metadata(
       request.step_metadata,
       "max_total_tokens",
     ) {
-    Some(value) => policy.set("max_total_tokens", value.to_json())
+    Some(value) => policy.set("max_total_tokens", Json(value))
     None => ()
   }
   match waiting_for_input_disabled_from_metadata(request.step_metadata) {
-    Some(value) => policy.set("disable_waiting_for_input", value.to_json())
+    Some(value) => policy.set("disable_waiting_for_input", Json(value))
     None => ()
   }
   match best_effort_on_missing_input_from_metadata(request.step_metadata) {
-    Some(value) => policy.set("best_effort_on_missing_input", value.to_json())
+    Some(value) => policy.set("best_effort_on_missing_input", Json(value))
     None => ()
   }
   match
     requested_model_name_or_none(config.model.unwrap_or(request.model_name)) {
-    Some(model) => policy.set("model", model.to_json())
+    Some(model) => policy.set("model", Json(model))
     None => ()
   }
   let system_prompt = adaptive_subplan_string_metadata(
@@ -97,7 +97,7 @@ fn adaptive_subplan_policy_metadata(
     "system_prompt",
   ).unwrap_or(config.system_prompt.unwrap_or(""))
   if !system_prompt.is_blank() {
-    policy.set("system_prompt", system_prompt.to_json())
+    policy.set("system_prompt", Json(system_prompt))
   }
   let preferred_skills = if !config.preferred_skills.is_empty() {
     config.preferred_skills
@@ -108,16 +108,16 @@ fn adaptive_subplan_policy_metadata(
     )
   }
   if !preferred_skills.is_empty() {
-    policy.set("preferred_skills", preferred_skills.to_json())
+    policy.set("preferred_skills", Json(preferred_skills))
   }
-  policy.set("enable_tools", config.enable_tools.to_json())
-  policy.set("web_search", config.web_search.to_json())
+  policy.set("enable_tools", Json(config.enable_tools))
+  policy.set("web_search", Json(config.web_search))
   // Adaptive child steps must retain the structured tool contract. A boolean
   // web_search flag alone does not register web_search/web_fetch tools because
   // the safe default contract deliberately leaves remote tools disabled.
   policy.set("tool_contract", request.tool_contract.to_json())
   if adaptive_subplan_provider_derived(request) {
-    policy.set("provider_subplan_execution", true.to_json())
+    policy.set("provider_subplan_execution", Json(true))
   }
   Json::object(policy)
 }

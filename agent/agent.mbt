@@ -578,3 +578,9 @@ pub fn Agent::clear_inputs(self : Agent) -> Array[QueuedMessage] {
 pub fn Agent::id(agent : Agent) -> @uuid.Uuid {
   agent.history.id()
 }
+
+///|
+pub extend QueuedMessage with ToJson::{to_json}
+
+///|
+pub extend QueuedMessage with @moonbitlang/core/json.FromJson::{from_json}

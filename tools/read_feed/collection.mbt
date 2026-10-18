@@ -80,7 +80,7 @@ pub impl ToJson for FeedCollectionPage with fn to_json(
     "matched_items": self.matched_items,
     "offset": self.offset,
     "next_offset": match self.next_offset {
-      Some(offset) => offset.to_json()
+      Some(offset) => Json(offset)
       None => Json::null()
     },
     "query": self.query,

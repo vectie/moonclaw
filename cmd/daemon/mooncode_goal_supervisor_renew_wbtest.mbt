@@ -343,7 +343,7 @@ async test "mooncode_goal_supervisor_renew: 16 contenders linearize once" {
       let mut renewed_count = 0
       let mut conflict_count = 0
       @async.with_task_group(async fn(group) {
-        let tasks = Array::new(capacity=16)
+        let tasks = Array(capacity=16)
         for i in 0..<16 {
           tasks.push(
             group.spawn(async fn() {

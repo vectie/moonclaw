@@ -127,3 +127,24 @@ pub fn new(cwd : String) -> @tool.Tool[PatchEditResult] {
     },
   )
 }
+
+///|
+pub extend PatchEditMode with ToJson::{to_json}
+
+///|
+pub extend PatchEditMode with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend PatchEditMode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PatchEditResult with ToJson::{to_json}
+
+///|
+pub extend PatchEditResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend PatchEditResult with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PatchEditResult with Show::{to_string, output}

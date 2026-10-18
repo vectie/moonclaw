@@ -30,6 +30,11 @@ pub(all) struct Binding {
   source_root : String
   request_digest : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn Binding::equal(Self, Self) -> Bool
+pub fn Binding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Binding::not_equal(Self, Self) -> Bool
+pub fn Binding::to_json(Self) -> Json
+pub fn Binding::to_repr(Self) -> @debug.Repr
 
 pub struct Record {
   path : String
@@ -39,6 +44,11 @@ pub struct Record {
   sha256 : String
   content_utf8 : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn Record::equal(Self, Self) -> Bool
+pub fn Record::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Record::not_equal(Self, Self) -> Bool
+pub fn Record::to_json(Self) -> Json
+pub fn Record::to_repr(Self) -> @debug.Repr
 
 pub struct Snapshot {
   contract : String
@@ -56,6 +66,11 @@ pub struct Snapshot {
   content_digest : String
   binding_digest : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn Snapshot::equal(Self, Self) -> Bool
+pub fn Snapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Snapshot::not_equal(Self, Self) -> Bool
+pub fn Snapshot::to_json(Self) -> Json
+pub fn Snapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

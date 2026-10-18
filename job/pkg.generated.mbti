@@ -382,6 +382,9 @@ pub(all) struct ActiveJobSnapshot {
   depth : Int
   current_step : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ActiveJobSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ActiveJobSnapshot::to_json(Self) -> Json
+pub fn ActiveJobSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AdaptiveAnalysisEnvelope {
   verdict : String
@@ -390,12 +393,18 @@ pub(all) struct AdaptiveAnalysisEnvelope {
   suggested_substeps : Array[AdaptiveSubstepPayload]?
   substeps : Array[AdaptiveSubstepPayload]?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AdaptiveAnalysisEnvelope::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AdaptiveAnalysisEnvelope::to_json(Self) -> Json
+pub fn AdaptiveAnalysisEnvelope::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AdaptiveSubstepPayload {
   title : String
   prompt : String
   kind : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AdaptiveSubstepPayload::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AdaptiveSubstepPayload::to_json(Self) -> Json
+pub fn AdaptiveSubstepPayload::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisArtifactConfig {
   report_artifact_type : String
@@ -406,7 +415,10 @@ pub(all) struct AnalysisArtifactConfig {
   scope : Array[String]
   append_only : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AnalysisArtifactConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn AnalysisArtifactConfig::new(report_artifact_type? : String, result_artifact_type? : String, logical_key? : String?, report_file_name? : String?, result_file_name? : String?, scope? : Array[String], append_only? : Bool) -> Self
+pub fn AnalysisArtifactConfig::to_json(Self) -> Json
+pub fn AnalysisArtifactConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisExecution {
   model_name : String
@@ -415,6 +427,7 @@ pub(all) struct AnalysisExecution {
   usage : @ai.Usage?
   metadata : Json
 } derive(@debug.Debug)
+pub fn AnalysisExecution::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisExecutor {
   run : async (AnalysisRequest) -> Result[AnalysisExecution, String]
@@ -426,7 +439,10 @@ pub(all) struct AnalysisPolicy {
   max_total_tokens : Int?
   skip_if_artifact_exists : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AnalysisPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn AnalysisPolicy::new(timeout_ms? : Int?, max_total_tokens? : Int?, skip_if_artifact_exists? : Bool) -> Self
+pub fn AnalysisPolicy::to_json(Self) -> Json
+pub fn AnalysisPolicy::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisRequest {
   job_id : String
@@ -448,6 +464,9 @@ pub(all) struct AnalysisRequest {
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AnalysisRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AnalysisRequest::to_json(Self) -> Json
+pub fn AnalysisRequest::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisStepConfig {
   prompt : String
@@ -465,7 +484,10 @@ pub(all) struct AnalysisStepConfig {
   artifacts : AnalysisArtifactConfig
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AnalysisStepConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, execution_mode? : String?, execution_target? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
+pub fn AnalysisStepConfig::to_json(Self) -> Json
+pub fn AnalysisStepConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AnalysisToolContract {
   shell : Bool
@@ -487,7 +509,10 @@ pub(all) struct AnalysisToolContract {
   web_fetch : Bool
   web_search : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn AnalysisToolContract::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_run? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, patch_edit? : Bool, unlimited_ocr? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::to_json(Self) -> Json
+pub fn AnalysisToolContract::to_repr(Self) -> @debug.Repr
 
 type ArtifactBytesWriteRequest
 
@@ -495,6 +520,9 @@ pub(all) struct ArtifactCleanupReport {
   archived_ids : Array[String]
   deleted_ids : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactCleanupReport::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ArtifactCleanupReport::to_json(Self) -> Json
+pub fn ArtifactCleanupReport::to_repr(Self) -> @debug.Repr
 
 pub struct ArtifactComparison {
   schema : String
@@ -502,6 +530,7 @@ pub struct ArtifactComparison {
   right : ComparedArtifact
   diff : @artifact_diff.TextDiff
 } derive(ToJson)
+pub fn ArtifactComparison::to_json(Self) -> Json
 pub fn ArtifactComparison::to_markdown(Self) -> String
 
 pub struct ArtifactExport {
@@ -509,6 +538,8 @@ pub struct ArtifactExport {
   artifacts : Array[ExportedArtifact]
   total_content_bytes : Int
 } derive(ToJson, @json.FromJson)
+pub fn ArtifactExport::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ArtifactExport::to_json(Self) -> Json
 pub fn ArtifactExport::to_readme(Self) -> String
 
 pub struct ArtifactImport {
@@ -517,6 +548,7 @@ pub struct ArtifactImport {
   artifacts : Array[ImportedArtifact]
   total_content_bytes : Int
 } derive(ToJson)
+pub fn ArtifactImport::to_json(Self) -> Json
 
 pub(all) struct ArtifactQuery {
   job_id : String?
@@ -526,7 +558,10 @@ pub(all) struct ArtifactQuery {
   scope : String?
   status : ArtifactStatus?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactQuery::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ArtifactQuery::new(job_id? : String?, run_id? : String?, artifact_type? : String?, logical_key? : String?, scope? : String?, status? : ArtifactStatus?) -> Self
+pub fn ArtifactQuery::to_json(Self) -> Json
+pub fn ArtifactQuery::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ArtifactRecord {
   id : String
@@ -543,6 +578,9 @@ pub(all) struct ArtifactRecord {
   archived_at : Int?
   scope : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ArtifactRecord::to_json(Self) -> Json
+pub fn ArtifactRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ArtifactRetentionPolicy {
   artifact_type : String?
@@ -551,7 +589,10 @@ pub(all) struct ArtifactRetentionPolicy {
   max_age_ms : Int?
   archive_before_delete : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactRetentionPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ArtifactRetentionPolicy::new(artifact_type? : String?, scope? : String?, keep_latest? : Int?, max_age_ms? : Int?, archive_before_delete? : Bool) -> Self
+pub fn ArtifactRetentionPolicy::to_json(Self) -> Json
+pub fn ArtifactRetentionPolicy::to_repr(Self) -> @debug.Repr
 
 pub struct ArtifactSearch {
   schema : String
@@ -567,17 +608,20 @@ pub struct ArtifactSearch {
   issues : Array[ArtifactSearchIssue]
 } derive(ToJson)
 pub async fn ArtifactSearch::export_selected(Self, String) -> ArtifactExport
+pub fn ArtifactSearch::to_json(Self) -> Json
 pub fn ArtifactSearch::to_text(Self) -> String
 
 pub struct ArtifactSearchIssue {
   artifact_id : String
   reason : String
 } derive(ToJson)
+pub fn ArtifactSearchIssue::to_json(Self) -> Json
 
 pub struct ArtifactSearchLine {
   line : Int
   excerpt : String
 } derive(ToJson)
+pub fn ArtifactSearchLine::to_json(Self) -> Json
 
 pub struct ArtifactSearchMatch {
   record : ArtifactRecord
@@ -587,11 +631,17 @@ pub struct ArtifactSearchMatch {
   matching_lines : Int
   lines : Array[ArtifactSearchLine]
 } derive(ToJson)
+pub fn ArtifactSearchMatch::to_json(Self) -> Json
 
 pub(all) enum ArtifactStatus {
   Active
   Archived
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactStatus::equal(Self, Self) -> Bool
+pub fn ArtifactStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ArtifactStatus::not_equal(Self, Self) -> Bool
+pub fn ArtifactStatus::to_json(Self) -> Json
+pub fn ArtifactStatus::to_repr(Self) -> @debug.Repr
 
 pub struct ArtifactStore {
   store : SystemStore
@@ -623,9 +673,15 @@ pub(all) struct ArtifactWriteRequest {
   content : String
   append_only : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactWriteRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ArtifactWriteRequest::new(run_id~ : String, job_id~ : String, artifact_type~ : String, content~ : String, logical_key? : String?, content_type? : String, file_name? : String?, metadata? : Json, scope? : Array[String], append_only? : Bool) -> Self
+pub fn ArtifactWriteRequest::to_json(Self) -> Json
+pub fn ArtifactWriteRequest::to_repr(Self) -> @debug.Repr
 
 type ArtifactsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ArtifactsIndexFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ArtifactsIndexFile::to_json(Self) -> Json
+pub fn ArtifactsIndexFile::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ChatAnswer {
   binding_id : String?
@@ -635,6 +691,9 @@ pub(all) struct ChatAnswer {
   hits : Array[RetrievalHit]
   memory_hits : Array[MemorySearchHit]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ChatAnswer::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatAnswer::to_json(Self) -> Json
+pub fn ChatAnswer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ChatBinding {
   id : String
@@ -644,8 +703,14 @@ pub(all) struct ChatBinding {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ChatBinding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatBinding::to_json(Self) -> Json
+pub fn ChatBinding::to_repr(Self) -> @debug.Repr
 
 type ChatBindingsFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ChatBindingsFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatBindingsFile::to_json(Self) -> Json
+pub fn ChatBindingsFile::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ChatCitation {
   artifact_id : String
@@ -655,6 +720,9 @@ pub(all) struct ChatCitation {
   path : String
   scope : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ChatCitation::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChatCitation::to_json(Self) -> Json
+pub fn ChatCitation::to_repr(Self) -> @debug.Repr
 
 pub struct ChatService {
   store : SystemStore
@@ -676,6 +744,9 @@ pub(all) struct CheckpointRecord {
   next_retry_at : Int?
   retry_source_run_id : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn CheckpointRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CheckpointRecord::to_json(Self) -> Json
+pub fn CheckpointRecord::to_repr(Self) -> @debug.Repr
 
 pub struct CheckpointStore {
   root : String
@@ -699,6 +770,9 @@ pub struct ChildDelegationConsumptionV1 {
   requested_artifacts : Int?
   evidence : @capability.ContentAddressedEvidenceRefV1
 } derive(Eq, @debug.Debug)
+pub fn ChildDelegationConsumptionV1::equal(Self, Self) -> Bool
+pub fn ChildDelegationConsumptionV1::not_equal(Self, Self) -> Bool
+pub fn ChildDelegationConsumptionV1::to_repr(Self) -> @debug.Repr
 
 pub struct ChildDelegationUseReceiptV1 {
   delegation_ref : @capability.DelegationRefV1
@@ -710,6 +784,9 @@ pub struct ChildDelegationUseReceiptV1 {
   evaluated_at : String
   receipt_digest : @capability.DigestRefV1
 } derive(Eq, @debug.Debug)
+pub fn ChildDelegationUseReceiptV1::equal(Self, Self) -> Bool
+pub fn ChildDelegationUseReceiptV1::not_equal(Self, Self) -> Bool
+pub fn ChildDelegationUseReceiptV1::to_repr(Self) -> @debug.Repr
 
 pub struct ChildDelegationV1 {
   reference : @capability.DelegationRefV1
@@ -730,8 +807,11 @@ pub fn ChildDelegationV1::allowed_operations(Self) -> ReadOnlyArray[@capability.
 pub fn ChildDelegationV1::artifact_prefixes(Self) -> ReadOnlyArray[String]
 pub fn ChildDelegationV1::budget(Self) -> @capability.HandoverBudgetCeilingsV1
 pub fn ChildDelegationV1::claim_ceiling(Self) -> DelegationClaimCeilingV1
+pub fn ChildDelegationV1::equal(Self, Self) -> Bool
 pub fn ChildDelegationV1::expires_at(Self) -> String
+pub fn ChildDelegationV1::not_equal(Self, Self) -> Bool
 pub fn ChildDelegationV1::reference(Self) -> @capability.DelegationRefV1
+pub fn ChildDelegationV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ChildRunExecutionRequest {
   parent_context : WorkflowStepContext
@@ -754,12 +834,16 @@ pub(all) struct ChildRunStatus {
   run_id : String
   status : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ChildRunStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ChildRunStatus::to_json(Self) -> Json
+pub fn ChildRunStatus::to_repr(Self) -> @debug.Repr
 
 pub struct ComparedArtifact {
   record : ArtifactRecord
   content_sha256 : String
   content_bytes : Int
 } derive(ToJson)
+pub fn ComparedArtifact::to_json(Self) -> Json
 
 pub struct ConfirmProposalResult {
   compilation : ProposalCompilation
@@ -767,21 +851,39 @@ pub struct ConfirmProposalResult {
 }
 
 type ControllerDecisionsFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ControllerDecisionsFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ControllerDecisionsFile::to_json(Self) -> Json
+pub fn ControllerDecisionsFile::to_repr(Self) -> @debug.Repr
 
 type ControllerIterationsFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ControllerIterationsFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ControllerIterationsFile::to_json(Self) -> Json
+pub fn ControllerIterationsFile::to_repr(Self) -> @debug.Repr
 
 type ControllerLineageFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ControllerLineageFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ControllerLineageFile::to_json(Self) -> Json
+pub fn ControllerLineageFile::to_repr(Self) -> @debug.Repr
 
 type ControllerStateFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ControllerStateFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ControllerStateFile::to_json(Self) -> Json
+pub fn ControllerStateFile::to_repr(Self) -> @debug.Repr
 
 type DefinitionsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn DefinitionsIndexFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn DefinitionsIndexFile::to_json(Self) -> Json
+pub fn DefinitionsIndexFile::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DelegationClaimCeilingV1 {
   EvidenceOnly
   Draft
   Reviewable
 } derive(Eq, @debug.Debug)
+pub fn DelegationClaimCeilingV1::equal(Self, Self) -> Bool
 pub fn DelegationClaimCeilingV1::id(Self) -> String
+pub fn DelegationClaimCeilingV1::not_equal(Self, Self) -> Bool
+pub fn DelegationClaimCeilingV1::to_repr(Self) -> @debug.Repr
 
 pub struct E2EJobIntake {
   request_text : String
@@ -794,7 +896,10 @@ pub struct E2EJobIntake {
   thread_id : String?
   content_type : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn E2EJobIntake::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn E2EJobIntake::new(request_text~ : String, requested_output_format? : String?, starter_attachments? : Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Self
+pub fn E2EJobIntake::to_json(Self) -> Json
+pub fn E2EJobIntake::to_repr(Self) -> @debug.Repr
 
 pub struct E2EStarterAttachment {
   id : String
@@ -803,18 +908,27 @@ pub struct E2EStarterAttachment {
   filename : String?
   size : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn E2EStarterAttachment::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn E2EStarterAttachment::new(id~ : String, mime_type~ : String, url~ : String, filename? : String?, size? : Int?) -> Self
+pub fn E2EStarterAttachment::to_json(Self) -> Json
+pub fn E2EStarterAttachment::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ExecutionIsolationMode {
   SharedWorkspace
   GitWorktree
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ExecutionIsolationMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ExecutionIsolationMode::to_json(Self) -> Json
+pub fn ExecutionIsolationMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ExecutionIsolationResolution {
   cwd : String
   metadata : Json?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ExecutionIsolationResolution::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ExecutionIsolationResolution::new(cwd~ : String, metadata? : Json?) -> Self
+pub fn ExecutionIsolationResolution::to_json(Self) -> Json
+pub fn ExecutionIsolationResolution::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ExecutionIsolationSpec {
   mode : ExecutionIsolationMode
@@ -825,7 +939,10 @@ pub(all) struct ExecutionIsolationSpec {
   cleanup_policy : String?
   force_new_branch : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ExecutionIsolationSpec::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, cleanup_policy? : String?, force_new_branch? : Bool) -> Self
+pub fn ExecutionIsolationSpec::to_json(Self) -> Json
+pub fn ExecutionIsolationSpec::to_repr(Self) -> @debug.Repr
 
 pub struct ExportedArtifact {
   record : ArtifactRecord
@@ -835,6 +952,8 @@ pub struct ExportedArtifact {
   content_sha256 : String
   content_bytes : Int
 } derive(ToJson, @json.FromJson)
+pub fn ExportedArtifact::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ExportedArtifact::to_json(Self) -> Json
 
 pub(all) struct ExternalOneoffReceipt {
   packet_id : String
@@ -843,6 +962,11 @@ pub(all) struct ExternalOneoffReceipt {
   status : String
   workspace_dir : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn ExternalOneoffReceipt::equal(Self, Self) -> Bool
+pub fn ExternalOneoffReceipt::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ExternalOneoffReceipt::not_equal(Self, Self) -> Bool
+pub fn ExternalOneoffReceipt::to_json(Self) -> Json
+pub fn ExternalOneoffReceipt::to_repr(Self) -> @debug.Repr
 
 pub struct ExternalProposalImportResult {
   proposal : JobProposal
@@ -865,6 +989,9 @@ pub struct ExternalProposalPacket {
   tags : Array[String]
   metadata : Json
 } derive(ToJson, @debug.Debug)
+pub fn ExternalProposalPacket::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ExternalProposalPacket::to_json(Self) -> Json
+pub fn ExternalProposalPacket::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ExternalProposalPacket
 
 pub struct GatewayJobApp {
@@ -939,6 +1066,14 @@ pub fn GovernedChildRunExecutionRequestV1::authorization(Self) -> ChildDelegatio
 pub fn GovernedChildRunExecutionRequestV1::request(Self) -> ChildRunExecutionRequest
 
 pub(all) struct Id(Int) derive(Eq, Hash)
+pub fn Id::equal(Self, Self) -> Bool
+pub fn Id::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Id::hash(Self) -> Int
+pub fn Id::hash_combine(Self, Hasher) -> Unit
+pub fn Id::not_equal(Self, Self) -> Bool
+pub fn Id::output(Self, &Logger) -> Unit
+pub fn Id::to_json(Self) -> Json
+pub fn Id::to_string(Self) -> String
 pub impl Show for Id
 pub impl ToJson for Id
 pub impl @json.FromJson for Id
@@ -951,6 +1086,7 @@ pub struct ImportedArtifact {
   content_sha256 : String
   content_bytes : Int
 } derive(ToJson)
+pub fn ImportedArtifact::to_json(Self) -> Json
 
 pub struct Job {
   id : Id
@@ -963,6 +1099,7 @@ pub struct Job {
   // private fields
 }
 pub fn Job::status(Self) -> Int?
+pub fn Job::to_json(Self) -> Json
 pub async fn Job::wait(Self) -> Int
 pub impl ToJson for Job
 
@@ -972,6 +1109,9 @@ pub(all) struct JobAskParams {
   artifact_query : ArtifactQuery?
   max_hits : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobAskParams::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobAskParams::to_json(Self) -> Json
+pub fn JobAskParams::to_repr(Self) -> @debug.Repr
 
 pub(all) enum JobChatAction {
   Plan(String)
@@ -993,6 +1133,7 @@ pub(all) enum JobChatAction {
   Memories
   MemorySearch(String)
 } derive(@debug.Debug)
+pub fn JobChatAction::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobControllerDecision {
   id : String
@@ -1007,6 +1148,9 @@ pub(all) struct JobControllerDecision {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobControllerDecision::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobControllerDecision::to_json(Self) -> Json
+pub fn JobControllerDecision::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobControllerIteration {
   id : String
@@ -1023,6 +1167,9 @@ pub(all) struct JobControllerIteration {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobControllerIteration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobControllerIteration::to_json(Self) -> Json
+pub fn JobControllerIteration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobControllerLineageEdge {
   id : String
@@ -1033,6 +1180,9 @@ pub(all) struct JobControllerLineageEdge {
   metadata : Json
   created_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobControllerLineageEdge::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobControllerLineageEdge::to_json(Self) -> Json
+pub fn JobControllerLineageEdge::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobControllerState {
   controller_job_id : String
@@ -1049,6 +1199,9 @@ pub(all) struct JobControllerState {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobControllerState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobControllerState::to_json(Self) -> Json
+pub fn JobControllerState::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobDefinition {
   id : String
@@ -1062,12 +1215,18 @@ pub(all) struct JobDefinition {
   updated_at : Int
   tags : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobDefinition::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn JobDefinition::public_json(Self) -> Json
+pub fn JobDefinition::to_json(Self) -> Json
+pub fn JobDefinition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobNotificationDecision {
   messages : Array[String]
   next_state : JobNotificationRuntimeState
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobNotificationDecision::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobNotificationDecision::to_json(Self) -> Json
+pub fn JobNotificationDecision::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobNotificationPreference {
   id : String
@@ -1081,12 +1240,18 @@ pub(all) struct JobNotificationPreference {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobNotificationPreference::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobNotificationPreference::to_json(Self) -> Json
+pub fn JobNotificationPreference::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobNotificationRuntimeState {
   last_sent_at : Int
   last_notified_event_count : Int
   long_running_warned : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobNotificationRuntimeState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobNotificationRuntimeState::to_json(Self) -> Json
+pub fn JobNotificationRuntimeState::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobNotifyTarget {
   channel_id : String
@@ -1097,6 +1262,7 @@ pub(all) struct JobNotifyTarget {
   heartbeat_interval_ms : Int
   warn_after_ms : Int
 } derive(@debug.Debug)
+pub fn JobNotifyTarget::to_repr(Self) -> @debug.Repr
 
 pub struct JobPlanPreview {
   title : String
@@ -1107,11 +1273,17 @@ pub struct JobPlanPreview {
   starter_files : Array[String]
   source : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobPlanPreview::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobPlanPreview::to_json(Self) -> Json
+pub fn JobPlanPreview::to_repr(Self) -> @debug.Repr
 
 pub struct JobPlanPreviewStep {
   id : String
   title : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobPlanPreviewStep::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobPlanPreviewStep::to_json(Self) -> Json
+pub fn JobPlanPreviewStep::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobProfile {
   id : String
@@ -1124,13 +1296,22 @@ pub(all) struct JobProfile {
   steps : Array[JobProfileStep]
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProfile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProfile::to_json(Self) -> Json
+pub fn JobProfile::to_repr(Self) -> @debug.Repr
 
 type JobProfileConfigPayload derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProfileConfigPayload::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProfileConfigPayload::to_json(Self) -> Json
+pub fn JobProfileConfigPayload::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobProfileMatchRules {
   any : Array[String]?
   all : Array[String]?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProfileMatchRules::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProfileMatchRules::to_json(Self) -> Json
+pub fn JobProfileMatchRules::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobProfileStep {
   id : String
@@ -1145,6 +1326,9 @@ pub(all) struct JobProfileStep {
   max_depth : Int?
   metadata : Json?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProfileStep::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProfileStep::to_json(Self) -> Json
+pub fn JobProfileStep::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobProposal {
   id : String
@@ -1170,12 +1354,18 @@ pub(all) struct JobProposal {
   created_at : Int
   updated_at : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProposal::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProposal::to_json(Self) -> Json
+pub fn JobProposal::to_repr(Self) -> @debug.Repr
 
 pub(all) enum JobProposalStatus {
   Draft
   Confirmed
   Rejected
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProposalStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProposalStatus::to_json(Self) -> Json
+pub fn JobProposalStatus::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobProposalStep {
   id : String
@@ -1189,8 +1379,14 @@ pub(all) struct JobProposalStep {
   include_parent_outputs : Bool?
   max_depth : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProposalStep::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProposalStep::to_json(Self) -> Json
+pub fn JobProposalStep::to_repr(Self) -> @debug.Repr
 
 type JobProposalsFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobProposalsFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobProposalsFile::to_json(Self) -> Json
+pub fn JobProposalsFile::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobRun {
   id : String
@@ -1208,6 +1404,9 @@ pub(all) struct JobRun {
   summary : String?
   error : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobRun::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobRun::to_json(Self) -> Json
+pub fn JobRun::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobRunEvent {
   run_id : String
@@ -1219,6 +1418,9 @@ pub(all) struct JobRunEvent {
   message : String
   data : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobRunEvent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobRunEvent::to_json(Self) -> Json
+pub fn JobRunEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobStatusSnapshot {
   definition_id : String
@@ -1239,6 +1441,9 @@ pub(all) struct JobStatusSnapshot {
   latest_event_line : String
   output_lines : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobStatusSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobStatusSnapshot::to_json(Self) -> Json
+pub fn JobStatusSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobStepRun {
   id : String
@@ -1254,12 +1459,18 @@ pub(all) struct JobStepRun {
   output : Json?
   error : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobStepRun::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobStepRun::to_json(Self) -> Json
+pub fn JobStepRun::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobUiHandoff {
   node_id : String
   step_id : String?
   remote : Array[JobUiRemoteLink]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiHandoff::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiHandoff::to_json(Self) -> Json
+pub fn JobUiHandoff::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobUiNode {
   id : String
@@ -1278,6 +1489,9 @@ pub(all) struct JobUiNode {
   provisional : Bool
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiNode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiNode::to_json(Self) -> Json
+pub fn JobUiNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum JobUiNodeKind {
   Proposal
@@ -1289,6 +1503,9 @@ pub(all) enum JobUiNodeKind {
   Artifact
   Memory
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiNodeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiNodeKind::to_json(Self) -> Json
+pub fn JobUiNodeKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobUiRemoteLink {
   id : String
@@ -1299,6 +1516,9 @@ pub(all) struct JobUiRemoteLink {
   detail : String?
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiRemoteLink::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiRemoteLink::to_json(Self) -> Json
+pub fn JobUiRemoteLink::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobUiSnapshot {
   run : JobRun
@@ -1315,6 +1535,9 @@ pub(all) struct JobUiSnapshot {
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiSnapshot::to_json(Self) -> Json
+pub fn JobUiSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct JobUiTimelineEntry {
   id : String
@@ -1327,6 +1550,9 @@ pub(all) struct JobUiTimelineEntry {
   status : String?
   data : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn JobUiTimelineEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn JobUiTimelineEntry::to_json(Self) -> Json
+pub fn JobUiTimelineEntry::to_repr(Self) -> @debug.Repr
 
 pub struct Manager {
   cwd : String
@@ -1340,6 +1566,9 @@ pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
 
 type MemoriesFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn MemoriesFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MemoriesFile::to_json(Self) -> Json
+pub fn MemoriesFile::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryQuery {
   kind : String?
@@ -1354,7 +1583,10 @@ pub(all) struct MemoryQuery {
   source_artifact_id : String?
   status : MemoryStatus?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn MemoryQuery::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn MemoryQuery::new(kind? : String?, tag? : String?, scope? : String?, workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?, status? : MemoryStatus?) -> Self
+pub fn MemoryQuery::to_json(Self) -> Json
+pub fn MemoryQuery::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryRecord {
   id : String
@@ -1376,6 +1608,9 @@ pub(all) struct MemoryRecord {
   updated_at : Int
   archived_at : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn MemoryRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MemoryRecord::to_json(Self) -> Json
+pub fn MemoryRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemorySearchHit {
   memory_id : String
@@ -1391,6 +1626,9 @@ pub(all) struct MemorySearchHit {
   recipient : String?
   thread_id : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn MemorySearchHit::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MemorySearchHit::to_json(Self) -> Json
+pub fn MemorySearchHit::to_repr(Self) -> @debug.Repr
 
 pub struct MemoryService {
   store : SystemStore
@@ -1406,6 +1644,11 @@ pub(all) enum MemoryStatus {
   Active
   Archived
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MemoryStatus::equal(Self, Self) -> Bool
+pub fn MemoryStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MemoryStatus::not_equal(Self, Self) -> Bool
+pub fn MemoryStatus::to_json(Self) -> Json
+pub fn MemoryStatus::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryWriteRequest {
   kind : String
@@ -1422,15 +1665,26 @@ pub(all) struct MemoryWriteRequest {
   thread_id : String?
   source_artifact_id : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn MemoryWriteRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn MemoryWriteRequest::new(kind~ : String, content~ : String, title? : String?, metadata? : Json, tags? : Array[String], scope? : Array[String], workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?) -> Self
+pub fn MemoryWriteRequest::to_json(Self) -> Json
+pub fn MemoryWriteRequest::to_repr(Self) -> @debug.Repr
 
 type NotificationPreferencesFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn NotificationPreferencesFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn NotificationPreferencesFile::to_json(Self) -> Json
+pub fn NotificationPreferencesFile::to_repr(Self) -> @debug.Repr
 
 pub(all) enum NotificationVerbosity {
   Off
   Normal
   Verbose
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn NotificationVerbosity::equal(Self, Self) -> Bool
+pub fn NotificationVerbosity::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn NotificationVerbosity::not_equal(Self, Self) -> Bool
+pub fn NotificationVerbosity::to_json(Self) -> Json
+pub fn NotificationVerbosity::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PersistedAnalysisExecution {
   execution : AnalysisExecution
@@ -1451,6 +1705,9 @@ pub struct PresentationDeckSpec {
   pages : Array[PresentationPageSpec]
   render_handoff : PresentationRenderHandoff?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PresentationDeckSpec::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PresentationDeckSpec::to_json(Self) -> Json
+pub fn PresentationDeckSpec::to_repr(Self) -> @debug.Repr
 
 pub struct PresentationPageSpec {
   page_number : Int
@@ -1465,12 +1722,18 @@ pub struct PresentationPageSpec {
   look_and_feel : String
   speaker_notes : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PresentationPageSpec::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PresentationPageSpec::to_json(Self) -> Json
+pub fn PresentationPageSpec::to_repr(Self) -> @debug.Repr
 
 pub struct PresentationRenderArtifact {
   role : String
   path : String
   description : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PresentationRenderArtifact::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PresentationRenderArtifact::to_json(Self) -> Json
+pub fn PresentationRenderArtifact::to_repr(Self) -> @debug.Repr
 
 pub struct PresentationRenderHandoff {
   renderer_target : String?
@@ -1478,6 +1741,9 @@ pub struct PresentationRenderHandoff {
   delivery_notes : String?
   asset_requests : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PresentationRenderHandoff::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PresentationRenderHandoff::to_json(Self) -> Json
+pub fn PresentationRenderHandoff::to_repr(Self) -> @debug.Repr
 
 pub struct PresentationRenderPackage {
   provider : String?
@@ -1490,6 +1756,9 @@ pub struct PresentationRenderPackage {
   handoff_summary : String
   notes : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PresentationRenderPackage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PresentationRenderPackage::to_json(Self) -> Json
+pub fn PresentationRenderPackage::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProposalCompilation {
   family : String
@@ -1504,8 +1773,12 @@ pub(all) struct ProposalCompiler {
 pub fn ProposalCompiler::new(run~ : (JobProposal, Int, String, String) -> ProposalCompilation) -> Self
 
 type ProposalPlanPayload derive(ToJson, @debug.Debug)
+pub fn ProposalPlanPayload::to_json(Self) -> Json
+pub fn ProposalPlanPayload::to_repr(Self) -> @debug.Repr
 
 type ProposalPlanStepPayload derive(ToJson, @debug.Debug)
+pub fn ProposalPlanStepPayload::to_json(Self) -> Json
+pub fn ProposalPlanStepPayload::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProposalPlanner {
   run : async (String, String, String?) -> JobProposal
@@ -1518,6 +1791,9 @@ pub(all) struct ProviderTaskBatch {
   summary : String
   tasks : Array[ProviderTaskSpec]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskBatch::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskBatch::to_json(Self) -> Json
+pub fn ProviderTaskBatch::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskCommand {
   provider : @resource_providers.RegisteredResourceProvider
@@ -1526,6 +1802,7 @@ pub(all) struct ProviderTaskCommand {
   cwd : String?
   workspace_root : String
 } derive(@debug.Debug)
+pub fn ProviderTaskCommand::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskMemoryCandidate {
   kind : String
@@ -1534,6 +1811,11 @@ pub(all) struct ProviderTaskMemoryCandidate {
   durable : Bool
   target_page : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskMemoryCandidate::equal(Self, Self) -> Bool
+pub fn ProviderTaskMemoryCandidate::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskMemoryCandidate::not_equal(Self, Self) -> Bool
+pub fn ProviderTaskMemoryCandidate::to_json(Self) -> Json
+pub fn ProviderTaskMemoryCandidate::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskPersistOutcome {
   log_path : String
@@ -1542,6 +1824,9 @@ pub(all) struct ProviderTaskPersistOutcome {
   notify_town : Bool
   evidence_id : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskPersistOutcome::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskPersistOutcome::to_json(Self) -> Json
+pub fn ProviderTaskPersistOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskResult {
   task_id : String
@@ -1551,6 +1836,9 @@ pub(all) struct ProviderTaskResult {
   requires_review : Bool
   notify_town : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskResult::to_json(Self) -> Json
+pub fn ProviderTaskResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskSpec {
   id : String
@@ -1561,6 +1849,9 @@ pub(all) struct ProviderTaskSpec {
   requires_review : Bool
   target_pages : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskSpec::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskSpec::to_json(Self) -> Json
+pub fn ProviderTaskSpec::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProviderTaskWorkerContext {
   book_id : String
@@ -1577,6 +1868,9 @@ pub(all) struct ProviderTaskWorkerContext {
   memory_summary : String
   output_contract : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ProviderTaskWorkerContext::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ProviderTaskWorkerContext::to_json(Self) -> Json
+pub fn ProviderTaskWorkerContext::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RetrievalHit {
   artifact_id : String
@@ -1587,11 +1881,17 @@ pub(all) struct RetrievalHit {
   path : String
   scope : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RetrievalHit::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RetrievalHit::to_json(Self) -> Json
+pub fn RetrievalHit::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RetryPolicy {
   max_attempts : Int
   backoff_ms : Int?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RetryPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RetryPolicy::to_json(Self) -> Json
+pub fn RetryPolicy::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RoleHandoffKind {
   StrategicToDomain
@@ -1599,6 +1899,11 @@ pub(all) enum RoleHandoffKind {
   ExecutionToDomain
   DomainToStrategic
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleHandoffKind::equal(Self, Self) -> Bool
+pub fn RoleHandoffKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RoleHandoffKind::not_equal(Self, Self) -> Bool
+pub fn RoleHandoffKind::to_json(Self) -> Json
+pub fn RoleHandoffKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RoleHandoffPacket {
   kind : RoleHandoffKind
@@ -1609,7 +1914,10 @@ pub(all) struct RoleHandoffPacket {
   review_required : Bool
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleHandoffPacket::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn RoleHandoffPacket::new(kind~ : RoleHandoffKind, objective~ : String, scope_summary~ : String, constraints? : Array[String], output_contract? : String?, review_required? : Bool, metadata? : Json) -> Self
+pub fn RoleHandoffPacket::to_json(Self) -> Json
+pub fn RoleHandoffPacket::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RoleMemoryScope {
   Step
@@ -1617,12 +1925,22 @@ pub(all) enum RoleMemoryScope {
   Domain
   Global
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleMemoryScope::equal(Self, Self) -> Bool
+pub fn RoleMemoryScope::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RoleMemoryScope::not_equal(Self, Self) -> Bool
+pub fn RoleMemoryScope::to_json(Self) -> Json
+pub fn RoleMemoryScope::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RolePlanningLayer {
   Strategic
   Domain
   Execution
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RolePlanningLayer::equal(Self, Self) -> Bool
+pub fn RolePlanningLayer::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RolePlanningLayer::not_equal(Self, Self) -> Bool
+pub fn RolePlanningLayer::to_json(Self) -> Json
+pub fn RolePlanningLayer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RoleRuntimeContract {
   role_id : String
@@ -1636,18 +1954,31 @@ pub(all) struct RoleRuntimeContract {
   output_contract : String?
   metadata : Json
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleRuntimeContract::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn RoleRuntimeContract::new(role_id~ : String, planning_layer? : RolePlanningLayer, runtime_mode? : RoleRuntimeMode, tool_access? : RoleToolAccess, memory_scope? : RoleMemoryScope, allow_delegate? : Bool, allow_workspace_write? : Bool, allow_execution_tools? : Bool, output_contract? : String?, metadata? : Json) -> Self
+pub fn RoleRuntimeContract::to_json(Self) -> Json
+pub fn RoleRuntimeContract::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RoleRuntimeMode {
   PlannerOnly
   Executor
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleRuntimeMode::equal(Self, Self) -> Bool
+pub fn RoleRuntimeMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RoleRuntimeMode::not_equal(Self, Self) -> Bool
+pub fn RoleRuntimeMode::to_json(Self) -> Json
+pub fn RoleRuntimeMode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RoleToolAccess {
   Disabled
   Limited
   Full
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RoleToolAccess::equal(Self, Self) -> Bool
+pub fn RoleToolAccess::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RoleToolAccess::not_equal(Self, Self) -> Bool
+pub fn RoleToolAccess::to_json(Self) -> Json
+pub fn RoleToolAccess::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RunExecutionHooks {
   on_started : async (JobDefinition, JobRun) -> Unit
@@ -1665,8 +1996,14 @@ pub(all) enum RunStatus {
   Failed
   Cancelled
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RunStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RunStatus::to_json(Self) -> Json
+pub fn RunStatus::to_repr(Self) -> @debug.Repr
 
 type RunsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RunsIndexFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RunsIndexFile::to_json(Self) -> Json
+pub fn RunsIndexFile::to_repr(Self) -> @debug.Repr
 
 pub struct RuntimeManager {
   store : SystemStore
@@ -1700,6 +2037,9 @@ pub(all) struct SchedulePolicy {
   interval_minutes : Int?
   timezone : String?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn SchedulePolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SchedulePolicy::to_json(Self) -> Json
+pub fn SchedulePolicy::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SubjobStepConfig {
   request_text : String
@@ -1711,12 +2051,20 @@ pub(all) struct SubjobStepConfig {
   include_parent_outputs : Bool
   max_depth : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn SubjobStepConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, child_profile? : String?, execution_mode? : String?, execution_target? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
+pub fn SubjobStepConfig::to_json(Self) -> Json
+pub fn SubjobStepConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorActivateRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   profile : SupervisorProfileActivationV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorActivateRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorActivateRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorActivateRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorActivateRequestV1::to_json(Self) -> Json
+pub fn SupervisorActivateRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorAuthorityVerificationV1 {
   operation_ref : String
@@ -1724,6 +2072,11 @@ pub(all) struct SupervisorAuthorityVerificationV1 {
   capability_resolution : Json
   verified_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorAuthorityVerificationV1::equal(Self, Self) -> Bool
+pub fn SupervisorAuthorityVerificationV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorAuthorityVerificationV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorAuthorityVerificationV1::to_json(Self) -> Json
+pub fn SupervisorAuthorityVerificationV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorAuthorityVerifierV1 {
   verify : async (SupervisorCommandEnvelopeV1, String) -> Result[SupervisorAuthorityVerificationV1, String]
@@ -1750,6 +2103,11 @@ pub(all) struct SupervisorBookkeeperOutcomeEvidenceV1 {
   capability_change_digest : String
   capability_summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorBookkeeperOutcomeEvidenceV1::equal(Self, Self) -> Bool
+pub fn SupervisorBookkeeperOutcomeEvidenceV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorBookkeeperOutcomeEvidenceV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorBookkeeperOutcomeEvidenceV1::to_json(Self) -> Json
+pub fn SupervisorBookkeeperOutcomeEvidenceV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorCommandEnvelopeV1 {
   contract_id : String
@@ -1760,6 +2118,11 @@ pub(all) struct SupervisorCommandEnvelopeV1 {
   expected_cursor : Int?
   authority : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorCommandEnvelopeV1::equal(Self, Self) -> Bool
+pub fn SupervisorCommandEnvelopeV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorCommandEnvelopeV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorCommandEnvelopeV1::to_json(Self) -> Json
+pub fn SupervisorCommandEnvelopeV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorCommandReceiptV1 {
   contract_id : String
@@ -1772,6 +2135,11 @@ pub(all) struct SupervisorCommandReceiptV1 {
   duplicate : Bool
   response : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorCommandReceiptV1::equal(Self, Self) -> Bool
+pub fn SupervisorCommandReceiptV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorCommandReceiptV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorCommandReceiptV1::to_json(Self) -> Json
+pub fn SupervisorCommandReceiptV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorDelegateExistingRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1780,6 +2148,11 @@ pub(all) struct SupervisorDelegateExistingRequestV1 {
   worker_job_id : String
   delegation : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorDelegateExistingRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorDelegateExistingRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorDelegateExistingRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorDelegateExistingRequestV1::to_json(Self) -> Json
+pub fn SupervisorDelegateExistingRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorDelegateIntentPreparedV1 {
   receipt : SupervisorCommandReceiptV1
@@ -1788,6 +2161,10 @@ pub(all) struct SupervisorDelegateIntentPreparedV1 {
   execution_status : String
   delegation : Json
 } derive(Eq, ToJson, @debug.Debug)
+pub fn SupervisorDelegateIntentPreparedV1::equal(Self, Self) -> Bool
+pub fn SupervisorDelegateIntentPreparedV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorDelegateIntentPreparedV1::to_json(Self) -> Json
+pub fn SupervisorDelegateIntentPreparedV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorDelegateIntentRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1796,6 +2173,11 @@ pub(all) struct SupervisorDelegateIntentRequestV1 {
   task : SupervisorWorkerTaskV1
   scope : SupervisorWorkerScopeV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorDelegateIntentRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorDelegateIntentRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorDelegateIntentRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorDelegateIntentRequestV1::to_json(Self) -> Json
+pub fn SupervisorDelegateIntentRequestV1::to_repr(Self) -> @debug.Repr
 
 pub struct SupervisorDelegateRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1815,6 +2197,16 @@ pub struct SupervisorDelegateResponseV1 {
 }
 
 pub struct SupervisorEpochMsV1(Int64) derive(Compare, Eq, @debug.Debug)
+pub fn SupervisorEpochMsV1::compare(Self, Self) -> Int
+pub fn SupervisorEpochMsV1::equal(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorEpochMsV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::op_ge(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::op_gt(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::op_le(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::op_lt(Self, Self) -> Bool
+pub fn SupervisorEpochMsV1::to_json(Self) -> Json
+pub fn SupervisorEpochMsV1::to_repr(Self) -> @debug.Repr
 pub fn SupervisorEpochMsV1::value(Self) -> Int64
 pub impl ToJson for SupervisorEpochMsV1
 pub impl @json.FromJson for SupervisorEpochMsV1
@@ -1825,6 +2217,11 @@ pub(all) struct SupervisorEvidenceRefV1 {
   digest : String
   provenance_ref : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorEvidenceRefV1::equal(Self, Self) -> Bool
+pub fn SupervisorEvidenceRefV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorEvidenceRefV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorEvidenceRefV1::to_json(Self) -> Json
+pub fn SupervisorEvidenceRefV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorGapStatementV1 {
   present : Bool
@@ -1832,6 +2229,11 @@ pub(all) struct SupervisorGapStatementV1 {
   summary : String
   evidence_refs : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorGapStatementV1::equal(Self, Self) -> Bool
+pub fn SupervisorGapStatementV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorGapStatementV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorGapStatementV1::to_json(Self) -> Json
+pub fn SupervisorGapStatementV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorJournalEventV1 {
   contract_id : String
@@ -1853,6 +2255,11 @@ pub(all) struct SupervisorJournalEventV1 {
   outcome_evidence : SupervisorBookkeeperOutcomeEvidenceV1?
   authority_verification : SupervisorAuthorityVerificationV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorJournalEventV1::equal(Self, Self) -> Bool
+pub fn SupervisorJournalEventV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorJournalEventV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorJournalEventV1::to_json(Self) -> Json
+pub fn SupervisorJournalEventV1::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SupervisorLifecycleV1 {
   Dormant
@@ -1860,6 +2267,11 @@ pub(all) enum SupervisorLifecycleV1 {
   Stopped
   Failed
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorLifecycleV1::equal(Self, Self) -> Bool
+pub fn SupervisorLifecycleV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorLifecycleV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorLifecycleV1::to_json(Self) -> Json
+pub fn SupervisorLifecycleV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorMailboxAckRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1867,6 +2279,11 @@ pub(all) struct SupervisorMailboxAckRequestV1 {
   claim_id : String
   message_ids : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorMailboxAckRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorMailboxAckRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorMailboxAckRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorMailboxAckRequestV1::to_json(Self) -> Json
+pub fn SupervisorMailboxAckRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorMailboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1875,6 +2292,11 @@ pub(all) struct SupervisorMailboxClaimRequestV1 {
   max_messages : Int
   lease_expires_at : SupervisorEpochMsV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorMailboxClaimRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorMailboxClaimRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorMailboxClaimRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorMailboxClaimRequestV1::to_json(Self) -> Json
+pub fn SupervisorMailboxClaimRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorMessageV1 {
   message_id : String
@@ -1887,6 +2309,11 @@ pub(all) struct SupervisorMessageV1 {
   created_at : SupervisorEpochMsV1
   metadata : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorMessageV1::equal(Self, Self) -> Bool
+pub fn SupervisorMessageV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorMessageV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorMessageV1::to_json(Self) -> Json
+pub fn SupervisorMessageV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorOutcomeEvidenceRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1894,6 +2321,11 @@ pub(all) struct SupervisorOutcomeEvidenceRequestV1 {
   source_event_ids : Array[String]
   projection : SupervisorBookkeeperOutcomeEvidenceV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorOutcomeEvidenceRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeEvidenceRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorOutcomeEvidenceRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeEvidenceRequestV1::to_json(Self) -> Json
+pub fn SupervisorOutcomeEvidenceRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorOutcomeOutboxAckRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1902,6 +2334,11 @@ pub(all) struct SupervisorOutcomeOutboxAckRequestV1 {
   submission_ids : Array[String]
   bookkeeper_receipts : Array[Json]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorOutcomeOutboxAckRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeOutboxAckRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorOutcomeOutboxAckRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeOutboxAckRequestV1::to_json(Self) -> Json
+pub fn SupervisorOutcomeOutboxAckRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorOutcomeOutboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -1910,6 +2347,11 @@ pub(all) struct SupervisorOutcomeOutboxClaimRequestV1 {
   max_items : Int
   lease_expires_at : SupervisorEpochMsV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorOutcomeOutboxClaimRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeOutboxClaimRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorOutcomeOutboxClaimRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorOutcomeOutboxClaimRequestV1::to_json(Self) -> Json
+pub fn SupervisorOutcomeOutboxClaimRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorProfileActivationV1 {
   contract_id : String
@@ -1922,11 +2364,21 @@ pub(all) struct SupervisorProfileActivationV1 {
   runtime_binding : Json
   activated_at : SupervisorEpochMsV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorProfileActivationV1::equal(Self, Self) -> Bool
+pub fn SupervisorProfileActivationV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorProfileActivationV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorProfileActivationV1::to_json(Self) -> Json
+pub fn SupervisorProfileActivationV1::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SupervisorRecoveryActionV1 {
   Resume
   Retry(new_run_id~ : String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorRecoveryActionV1::equal(Self, Self) -> Bool
+pub fn SupervisorRecoveryActionV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorRecoveryActionV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorRecoveryActionV1::to_json(Self) -> Json
+pub fn SupervisorRecoveryActionV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorReplayResponseV1 {
   contract_id : String
@@ -1936,12 +2388,22 @@ pub(all) struct SupervisorReplayResponseV1 {
   has_more : Bool
   events : Array[SupervisorJournalEventV1]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorReplayResponseV1::equal(Self, Self) -> Bool
+pub fn SupervisorReplayResponseV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorReplayResponseV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorReplayResponseV1::to_json(Self) -> Json
+pub fn SupervisorReplayResponseV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorRetryResumeRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   action : SupervisorRecoveryActionV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorRetryResumeRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorRetryResumeRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorRetryResumeRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorRetryResumeRequestV1::to_json(Self) -> Json
+pub fn SupervisorRetryResumeRequestV1::to_repr(Self) -> @debug.Repr
 
 pub struct SupervisorRuntime {
   runtime : RuntimeManager
@@ -1996,6 +2458,11 @@ pub(all) struct SupervisorSendMessageRequestV1 {
   supervisor_id : String
   message : SupervisorMessageV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorSendMessageRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorSendMessageRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorSendMessageRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorSendMessageRequestV1::to_json(Self) -> Json
+pub fn SupervisorSendMessageRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorStateV1 {
   contract_id : String
@@ -2007,6 +2474,11 @@ pub(all) struct SupervisorStateV1 {
   updated_at : SupervisorEpochMsV1
   last_error : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorStateV1::equal(Self, Self) -> Bool
+pub fn SupervisorStateV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorStateV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorStateV1::to_json(Self) -> Json
+pub fn SupervisorStateV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorStatusProjectionV1 {
   contract_id : String
@@ -2016,6 +2488,9 @@ pub(all) struct SupervisorStatusProjectionV1 {
   workers : Array[SupervisorWorkerStatusV1]
   latest_event : SupervisorJournalEventV1?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorStatusProjectionV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorStatusProjectionV1::to_json(Self) -> Json
+pub fn SupervisorStatusProjectionV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorSteerRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -2023,6 +2498,11 @@ pub(all) struct SupervisorSteerRequestV1 {
   message : SupervisorMessageV1
   target_run_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorSteerRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorSteerRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorSteerRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorSteerRequestV1::to_json(Self) -> Json
+pub fn SupervisorSteerRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorStopRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -2030,18 +2510,33 @@ pub(all) struct SupervisorStopRequestV1 {
   reason : String
   force : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorStopRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorStopRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorStopRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorStopRequestV1::to_json(Self) -> Json
+pub fn SupervisorStopRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorVersionedRecordRefV1 {
   record_id : String
   record_version : String
   record_digest : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorVersionedRecordRefV1::equal(Self, Self) -> Bool
+pub fn SupervisorVersionedRecordRefV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorVersionedRecordRefV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorVersionedRecordRefV1::to_json(Self) -> Json
+pub fn SupervisorVersionedRecordRefV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWakeRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   run_id : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWakeRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorWakeRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWakeRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWakeRequestV1::to_json(Self) -> Json
+pub fn SupervisorWakeRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerBudgetV1 {
   max_cost_micro_usd : Int64
@@ -2049,6 +2544,11 @@ pub(all) struct SupervisorWorkerBudgetV1 {
   max_tokens : Int64
   max_artifacts : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerBudgetV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerBudgetV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerBudgetV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerBudgetV1::to_json(Self) -> Json
+pub fn SupervisorWorkerBudgetV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerLineageV1 {
   supervisor_id : String
@@ -2060,6 +2560,11 @@ pub(all) struct SupervisorWorkerLineageV1 {
   delegation_ref : Json
   recorded_at : SupervisorEpochMsV1
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerLineageV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerLineageV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerLineageV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerLineageV1::to_json(Self) -> Json
+pub fn SupervisorWorkerLineageV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerRetryRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -2067,6 +2572,11 @@ pub(all) struct SupervisorWorkerRetryRequestV1 {
   worker_run_id : String
   reason : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerRetryRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerRetryRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerRetryRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerRetryRequestV1::to_json(Self) -> Json
+pub fn SupervisorWorkerRetryRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerScopeV1 {
   claim_ceiling : String
@@ -2074,6 +2584,11 @@ pub(all) struct SupervisorWorkerScopeV1 {
   artifact_prefixes : Array[String]
   expires_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerScopeV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerScopeV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerScopeV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerScopeV1::to_json(Self) -> Json
+pub fn SupervisorWorkerScopeV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerStatusV1 {
   contract_id : String
@@ -2100,6 +2615,9 @@ pub(all) struct SupervisorWorkerStatusV1 {
   outcome_source_event_id : String?
   outcome_evidence_candidate : SupervisorBookkeeperOutcomeEvidenceV1?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerStatusV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerStatusV1::to_json(Self) -> Json
+pub fn SupervisorWorkerStatusV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerSteerRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -2108,6 +2626,11 @@ pub(all) struct SupervisorWorkerSteerRequestV1 {
   instruction : String
   metadata : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerSteerRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerSteerRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerSteerRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerSteerRequestV1::to_json(Self) -> Json
+pub fn SupervisorWorkerSteerRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerStopRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
@@ -2116,6 +2639,11 @@ pub(all) struct SupervisorWorkerStopRequestV1 {
   reason : String
   force : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerStopRequestV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerStopRequestV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerStopRequestV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerStopRequestV1::to_json(Self) -> Json
+pub fn SupervisorWorkerStopRequestV1::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupervisorWorkerTaskV1 {
   task_id : String
@@ -2126,6 +2654,11 @@ pub(all) struct SupervisorWorkerTaskV1 {
   web_search : Bool
   metadata : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SupervisorWorkerTaskV1::equal(Self, Self) -> Bool
+pub fn SupervisorWorkerTaskV1::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SupervisorWorkerTaskV1::not_equal(Self, Self) -> Bool
+pub fn SupervisorWorkerTaskV1::to_json(Self) -> Json
+pub fn SupervisorWorkerTaskV1::to_repr(Self) -> @debug.Repr
 
 pub struct SystemStore {
   root : String
@@ -2202,6 +2735,9 @@ pub(all) enum TriggerSource {
   Recovery
   Custom(String)
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn TriggerSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn TriggerSource::to_json(Self) -> Json
+pub fn TriggerSource::to_repr(Self) -> @debug.Repr
 
 pub(all) struct WorkflowDefinition {
   id : String
@@ -2209,6 +2745,9 @@ pub(all) struct WorkflowDefinition {
   steps : Array[WorkflowStepDefinition]
   output_bindings : Array[String]
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorkflowDefinition::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorkflowDefinition::to_json(Self) -> Json
+pub fn WorkflowDefinition::to_repr(Self) -> @debug.Repr
 
 pub struct WorkflowEngine {
   runtime : RuntimeManager
@@ -2247,6 +2786,9 @@ pub(all) struct WorkflowStepDefinition {
   config : Json
   retry_policy : RetryPolicy?
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorkflowStepDefinition::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorkflowStepDefinition::to_json(Self) -> Json
+pub fn WorkflowStepDefinition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct WorkflowStepHandler {
   kind : String

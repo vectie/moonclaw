@@ -512,3 +512,39 @@ pub async fn AcpRuntime::set_session_status(
     None => Err("Unknown ACP session: \{session_id}")
   }
 }
+
+///|
+pub extend AcpTarget with ToJson::{to_json}
+
+///|
+pub extend AcpTarget with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpTarget with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpSession with ToJson::{to_json}
+
+///|
+pub extend AcpSession with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpSession with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpRun with ToJson::{to_json}
+
+///|
+pub extend AcpRun with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpRun with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PersistedAcpState with ToJson::{to_json}
+
+///|
+pub extend PersistedAcpState with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend PersistedAcpState with @moonbitlang/core/debug.Debug::{to_repr}

@@ -67,7 +67,7 @@ fn XmlCursor::name(self : XmlCursor) -> String raise {
 
 ///|
 fn xml_entities(text : String) -> String raise {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let cursor = XmlCursor::{ body: text, pos: 0, }
   while cursor.pos < text.length() {
     if text[cursor.pos] == '&' {
@@ -100,7 +100,7 @@ fn xml_entities(text : String) -> String raise {
             ) else {
             fail("Invalid XML character reference")
           }
-          out.write_char(Char::from_int(value))
+          out.write_char(value.unsafe_to_char())
         }
       }
     } else {
@@ -124,7 +124,7 @@ fn XmlCursor::element(
   }
   self.pos += 1
   let qualified = self.name()
-  let attrs : Map[String, String] = {}
+  let attrs : Map[String, String] = Map([])
   while true {
     self.space()
     if self.starts(">") || self.starts("/>") {
@@ -166,7 +166,7 @@ fn XmlCursor::element(
   }
   let ns = namespaces.get(prefix).unwrap_or("")
   let children : Array[FeedXml] = []
-  let text = StringBuilder::new()
+  let text = StringBuilder()
   if self.starts("/>") {
     self.pos += 2
   } else {

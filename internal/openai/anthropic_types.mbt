@@ -75,3 +75,37 @@ pub struct AnthropicDelta {
   text : String?
   stop_reason : String?
 } derive(FromJson, Debug)
+
+///|
+pub extend AnthropicResponse with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnthropicResponse with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnthropicContentBlock with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AnthropicContentBlock with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnthropicUsage with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnthropicUsage with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnthropicStreamEvent with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend AnthropicStreamEvent with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AnthropicDelta with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AnthropicDelta with @moonbitlang/core/debug.Debug::{to_repr}

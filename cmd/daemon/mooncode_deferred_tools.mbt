@@ -260,7 +260,7 @@ fn mooncode_runtime_turn_deferred_tool_search_result(
     excluded_names~,
   )
   let names = matches.map(match_ => {
-    mooncode_json_string(match_, "name", default="").to_json()
+    Json(mooncode_json_string(match_, "name", default=""))
   })
   mooncode_tool_ok_result(
     "tool_search",

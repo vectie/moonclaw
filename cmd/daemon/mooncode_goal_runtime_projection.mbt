@@ -96,9 +96,9 @@ fn mooncode_goal_record_with_sequence(
   let copy = fields.copy()
   copy["sequence"] = if mooncode_json_string(record, "contract_id", default="") ==
     mooncode_journal_contract_id_v2() {
-    sequence.to_string().to_json()
+    Json(sequence.to_string())
   } else {
-    sequence.to_json()
+    Json(sequence)
   }
   Json::object(copy)
 }

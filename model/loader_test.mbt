@@ -16,7 +16,7 @@ async test "Loader" (t : @test.Test) {
       .add_directory("moonclaw")
       .add_directory("models")
       .add_file("models.json")
-    models_file.write_string(models.to_json().stringify(indent=2))
+    models_file.write_string(Json(models).stringify(indent=2))
     json_inspect(mock.json(@json.parse(models_file.read())), content=[
       {
         "name": "haiku",
@@ -104,7 +104,7 @@ async test "load" (t : @test.Test) {
       .add_directory("moonclaw")
       .add_directory("models")
       .add_file("models.json")
-    models_file.write_string(models.to_json().stringify(indent=2))
+    models_file.write_string(Json(models).stringify(indent=2))
     json_inspect(mock.json(@json.parse(models_file.read())), content=[
       {
         "name": "haiku",
@@ -156,7 +156,7 @@ async test "removes-old-models" (t : @test.Test) {
       .add_directory("models")
       .add_file("models.json")
     let models = [old_model]
-    models_file.write_string(models.to_json().stringify(indent=2))
+    models_file.write_string(Json(models).stringify(indent=2))
     let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
     json_inspect(loader.get_model(), content=[
       {
@@ -179,7 +179,7 @@ async test "removes-old-models" (t : @test.Test) {
       safe_zone_tokens=200000,
     )
     let models = [new_model]
-    models_file.write_string(models.to_json().stringify(indent=2))
+    models_file.write_string(Json(models).stringify(indent=2))
     json_inspect(loader.get_model(), content=[
       {
         "name": "new_model",

@@ -50,7 +50,7 @@ fn replan_compaction_test_execution(
       now=@clock.Timestamp::from_ms(1000L),
     ),
     "id",
-    event_id.to_json(),
+    Json(event_id),
   )
   {
     "kind": "mooncode-tool-execution",

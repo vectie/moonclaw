@@ -24,8 +24,16 @@ async fn Running::sync(task : Running) -> Unit {
 /// Throws an error if the HTTP request fails or if the response body cannot be
 /// parsed as JSON.
 async fn Running::sync_status(task : Running) -> Unit {
-  let (r, b) = @http.get("http://127.0.0.1:\{task.port}/v1/status") catch {
-    error => {
+  let response = try
+    @http.get("http://127.0.0.1:\{task.port}/v1/status")
+  catch {
+    error => Err(error)
+  } noraise {
+    response => Ok(response)
+  }
+  let (r, b) = match response {
+    Ok(response) => response
+    Err(error) => {
       logger.warn("Failed to sync status from task \{task.id}: \{error}")
       raise error
     }
@@ -36,8 +44,14 @@ async fn Running::sync_status(task : Running) -> Unit {
     )
     return
   }
-  let b = b.json() catch {
-    error => {
+  let decoded = try b.json() catch {
+    error => Err(error)
+  } noraise {
+    value => Ok(value)
+  }
+  let b = match decoded {
+    Ok(value) => value
+    Err(error) => {
       logger.warn("Failed to parse status JSON from task \{task.id}: \{error}")
       raise error
     }
@@ -73,7 +87,7 @@ async fn Running::sync_queued_messages(task : Running) -> Unit {
         "error": {
           "code": -1,
           "message": "Failed to get queued messages from task: \{error}",
-          "metadata": error.to_json(),
+          "metadata": Json(error),
         },
       })
   }
@@ -92,7 +106,7 @@ async fn Running::sync_queued_messages(task : Running) -> Unit {
         "error": {
           "code": -1,
           "message": "Failed to parse queued messages JSON from task: \{error}",
-          "metadata": error.to_json(),
+          "metadata": Json(error),
         },
       })
   }

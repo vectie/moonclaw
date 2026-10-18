@@ -30,7 +30,7 @@ pub struct CommandOutputClient {
   config_path : String
   receipt_root : String
 }
-pub async fn CommandOutputClient::export(Self, String, Int) -> Bytes
+pub async fn CommandOutputClient::export_bytes(Self, String, Int) -> Bytes
 pub async fn CommandOutputClient::inspect(Self, String) -> ProcessResponse
 pub async fn CommandOutputClient::new(String, String, String) -> Self
 
@@ -38,6 +38,9 @@ pub(all) struct ProcessResponse {
   status : Int
   stdout : String
 } derive(Eq, @debug.Debug)
+pub fn ProcessResponse::equal(Self, Self) -> Bool
+pub fn ProcessResponse::not_equal(Self, Self) -> Bool
+pub fn ProcessResponse::to_repr(Self) -> @debug.Repr
 
 pub struct PromotionClient {
   promotion_path : String

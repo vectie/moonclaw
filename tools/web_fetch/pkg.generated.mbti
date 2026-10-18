@@ -24,6 +24,10 @@ pub struct WebFetchResult {
   source : String
   metadata : Json
 } derive(ToJson, @json.FromJson)
+pub fn WebFetchResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WebFetchResult::output(Self, &Logger) -> Unit
+pub fn WebFetchResult::to_json(Self) -> Json
+pub fn WebFetchResult::to_string(Self) -> String
 pub impl Show for WebFetchResult
 
 // Type aliases

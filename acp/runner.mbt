@@ -85,3 +85,12 @@ pub async fn execute_launch_plan(
     "ACP backend execution is disabled for target \{plan.target_id}: a MoonFort ExecutionSandbox grant is required",
   )
 }
+
+///|
+pub extend AcpLaunchCommand with ToJson::{to_json}
+
+///|
+pub extend AcpLaunchCommand with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpLaunchCommand with @moonbitlang/core/debug.Debug::{to_repr}

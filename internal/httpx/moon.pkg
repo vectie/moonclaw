@@ -10,10 +10,10 @@ import {
   "moonbitlang/core/json",
 }
 
-supported_targets = "native"
-
 import {
   "moonbitlang/core/test",
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
 } for "test"
+
+supported_targets = "native"

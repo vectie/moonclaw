@@ -80,7 +80,7 @@ async fn Daemon::forward_to_task(
             "error": {
               "code": -1,
               "message": "Failed to check existence of 'cwd' path: \{error}",
-              "metadata": { "cwd": cwd, "error": error.to_json() },
+              "metadata": { "cwd": cwd, "error": Json(error) },
             },
           })
       }

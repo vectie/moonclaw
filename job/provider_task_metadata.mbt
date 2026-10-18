@@ -34,8 +34,8 @@ fn provider_task_step_metadata(
     "timeout_ms": 600000,
     "max_total_tokens": 24000,
   }
-  metadata.set("enable_tools", true.to_json())
-  metadata.set("web_search", true.to_json())
+  metadata.set("enable_tools", Json(true))
+  metadata.set("web_search", Json(true))
   metadata.set(
     "tool_contract",
     AnalysisToolContract::new(web_fetch=true, web_search=true).to_json(),

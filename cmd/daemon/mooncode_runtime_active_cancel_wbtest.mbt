@@ -612,8 +612,8 @@ async test "active cancel waits for local task terminal write before settling" {
       root, "cancel-original", "original",
     )
     let item = mooncode_active_cancel_test_select(root, cancel)
-    let started : @aqueue.Queue[Unit] = @aqueue.Queue(kind=Unbounded)
-    let blocked : @aqueue.Queue[Unit] = @aqueue.Queue(kind=Unbounded)
+    let started : @aqueue.Queue[Unit] = Queue(kind=Unbounded)
+    let blocked : @aqueue.Queue[Unit] = Queue(kind=Unbounded)
     @async.with_task_group(group => {
       let task = group.spawn(
         async fn() {

@@ -102,3 +102,12 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
   }
   { id, choices, created, model, usage, system_fingerprint, service_tier, }
 }
+
+///|
+pub extend ChatCompletion with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ChatCompletion with ToJson::{to_json}
+
+///|
+pub extend ChatCompletion with @moonbitlang/core/json.FromJson::{from_json}

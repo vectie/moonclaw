@@ -107,3 +107,12 @@ pub fn new(cwd : String) -> @tool.Tool[EnterWorktreeResult] {
     },
   )
 }
+
+///|
+pub extend EnterWorktreeResult with ToJson::{to_json}
+
+///|
+pub extend EnterWorktreeResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend EnterWorktreeResult with Show::{to_string, output}

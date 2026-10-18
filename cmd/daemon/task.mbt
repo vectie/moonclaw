@@ -51,3 +51,9 @@ pub impl @json.FromJson for Task with fn from_json(
       )
   }
 }
+
+///|
+pub extend Task with ToJson::{to_json}
+
+///|
+pub extend Task with @json.FromJson::{from_json}

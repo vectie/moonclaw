@@ -3,7 +3,7 @@ let atom_namespace : String = "http://www.w3.org/2005/Atom"
 
 ///|
 fn feed_space(text : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut pending = false
   let mut started = false
   for c in text {
@@ -24,7 +24,7 @@ fn feed_space(text : String) -> String {
 ///|
 /// Produce plain text only, never execute/render publisher markup.
 fn feed_html_text(html : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let lower = html.to_lower()
   let mut pos = 0
   while pos < html.length() {

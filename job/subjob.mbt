@@ -61,12 +61,12 @@ fn proposal_with_execution_override(
   }
   match trimmed_mode {
     Some(mode) if !mode.is_blank() =>
-      merged_execution_metadata.set("mode", mode.to_json())
+      merged_execution_metadata.set("mode", Json(mode))
     _ => ()
   }
   match trimmed_target {
     Some(target) if !target.is_blank() =>
-      merged_execution_metadata.set("target", target.to_json())
+      merged_execution_metadata.set("target", Json(target))
     _ => ()
   }
   let merged_profile_metadata : Map[String, Json] = Map([])
@@ -184,13 +184,12 @@ fn proposal_with_missing_input_policy(
   }
   let policy_metadata : Map[String, Json] = Map([])
   match disable_waiting {
-    Some(value) =>
-      policy_metadata.set("disable_waiting_for_input", value.to_json())
+    Some(value) => policy_metadata.set("disable_waiting_for_input", Json(value))
     None => ()
   }
   match best_effort_on_missing_input {
     Some(value) =>
-      policy_metadata.set("best_effort_on_missing_input", value.to_json())
+      policy_metadata.set("best_effort_on_missing_input", Json(value))
     None => ()
   }
   let policy_json = Json::object(policy_metadata)
@@ -644,3 +643,12 @@ pub fn subjob_step_handler(
     )
   })
 }
+
+///|
+pub extend SubjobStepConfig with ToJson::{to_json}
+
+///|
+pub extend SubjobStepConfig with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend SubjobStepConfig with @moonbitlang/core/debug.Debug::{to_repr}

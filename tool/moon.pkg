@@ -1,6 +1,6 @@
 import {
+  "moonbitlang/core/debug",
   "vectie/moonclaw/internal/openai",
-  "moonbitlang/core/json",
 }
 
 supported_targets = "native"

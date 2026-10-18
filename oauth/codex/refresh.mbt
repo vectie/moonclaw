@@ -67,3 +67,6 @@ pub async fn refresh_and_save_credentials() -> Credentials raise Error {
   println("Tokens refreshed")
   final_credentials
 }
+
+///|
+pub extend RefreshResponse with @moonbitlang/core/debug.Debug::{to_repr}

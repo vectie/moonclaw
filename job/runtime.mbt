@@ -670,3 +670,12 @@ pub fn RuntimeManager::due_definitions(
   }
   due
 }
+
+///|
+pub extend CheckpointRecord with ToJson::{to_json}
+
+///|
+pub extend CheckpointRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CheckpointRecord with @moonbitlang/core/debug.Debug::{to_repr}

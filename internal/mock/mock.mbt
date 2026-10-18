@@ -123,19 +123,11 @@ pub async fn[T] with_home(directory : Directory, f : async () -> T) -> T {
   home_lock.acquire()
   let home = @os.home()
   @os.setenv("HOME", directory.path(), overwrite=true)
-  try f() catch {
-    error => {
-      @os.setenv("HOME", home, overwrite=true)
-      home_lock.release()
-      raise error
-    }
-  } noraise {
-    value => {
-      @os.setenv("HOME", home, overwrite=true)
-      home_lock.release()
-      value
-    }
+  defer {
+    @os.setenv("HOME", home, overwrite=true)
+    home_lock.release()
   }
+  f()
 }
 
 ///|
@@ -414,7 +406,7 @@ pub async fn run(
             )
           }
           let mangled = {
-            let builder = StringBuilder::new()
+            let builder = StringBuilder()
             for c in t.name() {
               if c.is_ascii_alphabetic() || c.is_ascii_digit() {
                 builder.write_char(c)

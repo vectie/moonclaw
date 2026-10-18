@@ -163,7 +163,7 @@ async fn mooncode_service_goal_queue_test(
     assert_eq(status["terminal"], true)
     assert_eq(
       status["outcome"],
-      (if blocked { "blocked" } else { "achieved" }).to_json(),
+      Json(if blocked { "blocked" } else { "achieved" }),
     )
     let events = daemon.mooncode_runtime_service_events(session_id, root)
     assert_eq(events.length(), 1)

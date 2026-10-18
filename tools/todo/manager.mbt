@@ -112,7 +112,7 @@ fn extract_task_tags(content : String) -> Array[String] {
   while true {
     match remaining {
       [.. "<task>", .. rest] => {
-        task = Some(StringBuilder::new())
+        task = Some(StringBuilder())
         remaining = rest
         continue
       }

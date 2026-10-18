@@ -12,3 +12,11 @@ pub impl ToJson for ChatCompletionMessageRole with fn to_json(
     Assistant => "assistant"
   }
 }
+
+///|
+pub extend ChatCompletionMessageRole with @moonbitlang/core/debug.Debug::{
+  to_repr,
+}
+
+///|
+pub extend ChatCompletionMessageRole with ToJson::{to_json}

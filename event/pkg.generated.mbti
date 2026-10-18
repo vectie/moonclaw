@@ -19,11 +19,15 @@ pub struct Event {
   created : @clock.Timestamp
   desc : EventDesc
 } derive(Eq)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn Event::is_cancellation(Self) -> Bool
 pub fn Event::is_incoming(Self) -> Bool
 pub fn Event::is_starting(Self) -> Bool
 pub fn Event::is_stopping(Self) -> Bool
 pub fn Event::new(id~ : @uuid.Uuid, created? : @clock.Timestamp, EventDesc) -> Self
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_json(Self) -> Json
 pub impl ToJson for Event
 pub impl @json.FromJson for Event
 
@@ -47,6 +51,10 @@ pub(all) enum EventDesc {
   Failed(Json)
   Pruned(id~ : @uuid.Uuid)
 } derive(Eq)
+pub fn EventDesc::equal(Self, Self) -> Bool
+pub fn EventDesc::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EventDesc::not_equal(Self, Self) -> Bool
+pub fn EventDesc::to_json(Self) -> Json
 pub impl ToJson for EventDesc
 pub impl @json.FromJson for EventDesc
 

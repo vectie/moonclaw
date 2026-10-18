@@ -17,7 +17,11 @@ pub async fn AgentTool::call(Self, Json) -> ToolResult[(Json, String)] noraise
 pub fn AgentTool::desc(Self) -> ToolDesc
 
 pub(all) struct JsonSchema(Json) derive(Eq, @debug.Debug)
+pub fn JsonSchema::equal(Self, Self) -> Bool
 pub fn JsonSchema::from_json(Json) -> Self
+pub fn JsonSchema::not_equal(Self, Self) -> Bool
+pub fn JsonSchema::to_json(Self) -> Json
+pub fn JsonSchema::to_repr(Self) -> @debug.Repr
 pub impl ToJson for JsonSchema
 
 pub struct Tool[Output] {
@@ -35,7 +39,11 @@ pub struct ToolDesc {
   name : String
   schema : JsonSchema
 } derive(Eq, ToJson, @debug.Debug)
+pub fn ToolDesc::equal(Self, Self) -> Bool
+pub fn ToolDesc::not_equal(Self, Self) -> Bool
+pub fn ToolDesc::to_json(Self) -> Json
 pub fn ToolDesc::to_openai(Self) -> @openai.ChatCompletionToolParam
+pub fn ToolDesc::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ToolFn[Output](async (Json) -> ToolResult[Output] noraise)
 
@@ -47,6 +55,9 @@ pub enum ToolResult[Output] {
 pub fn[Output] ToolResult::error(String, error? : Error) -> Self[Output]
 #as_free_fn
 pub fn[Output] ToolResult::ok(Output) -> Self[Output]
+pub fn[Output : Show] ToolResult::output(Self[Output], &Logger) -> Unit
+pub fn[Output : ToJson] ToolResult::to_json(Self[Output]) -> Json
+pub fn[Output : Show] ToolResult::to_string(Self[Output]) -> String
 pub impl[Output : Show] Show for ToolResult[Output]
 
 // Type aliases

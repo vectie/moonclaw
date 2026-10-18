@@ -56,7 +56,9 @@ pub struct OptionalInputContext {
   digest : String
   integrity_digest : String
 } derive(ToJson, @json.FromJson)
+pub fn OptionalInputContext::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn OptionalInputContext::new(block~ : String, omission~ : String, digest~ : String) -> Self
+pub fn OptionalInputContext::to_json(Self) -> Json
 pub fn OptionalInputContext::valid_for_message(Self, @ai.Message) -> Bool
 
 pub struct OptionalInputContextStatus {
@@ -64,6 +66,7 @@ pub struct OptionalInputContextStatus {
   digest : String
   status : String
 } derive(ToJson)
+pub fn OptionalInputContextStatus::to_json(Self) -> Json
 
 pub struct QueuedMessage {
   id : @uuid.Uuid
@@ -71,6 +74,8 @@ pub struct QueuedMessage {
   web_search : Bool
   optional_context : OptionalInputContext?
 }
+pub fn QueuedMessage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn QueuedMessage::to_json(Self) -> Json
 pub impl ToJson for QueuedMessage
 pub impl @json.FromJson for QueuedMessage
 

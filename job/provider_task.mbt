@@ -753,7 +753,7 @@ fn provider_task_synthesis_page_from_source(source_page : String) -> String {
 
 ///|
 fn provider_task_wiki_page_slug(text : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let mut chars_written = 0
   let mut last_dash = true
   for c in text.to_lower().to_array() {
@@ -1038,7 +1038,7 @@ fn provider_task_execution_step_metadata(
       }
     _ => ()
   }
-  merged.set("provider_force_single_response", force_single_response.to_json())
+  merged.set("provider_force_single_response", Json(force_single_response))
   Json::object(merged)
 }
 
@@ -1125,10 +1125,12 @@ fn provider_task_guardrail_split_execution(
   target_id : String,
 ) -> AnalysisExecution {
   let envelope_json : Map[String, Json] = {
-    "verdict": "needs_subplan".to_json(),
-    "summary": envelope.summary
-    .unwrap_or("Provider task requires splitting before execution.")
-    .to_json(),
+    "verdict": Json("needs_subplan"),
+    "summary": Json(
+      envelope.summary.unwrap_or(
+        "Provider task requires splitting before execution.",
+      ),
+    ),
   }
   match adaptive_substeps(envelope) {
     [] => ()
@@ -1481,12 +1483,12 @@ async fn persist_provider_task_failure_debug(
       return "provider-task-failure-debug-unavailable: \{path_error}; original error: \{error}"
   }
   let payload : Map[String, Json] = {
-    "error": error.to_json(),
-    "task_id": task.id.to_json(),
-    "task_title": task.title.to_json(),
-    "conversation_id": execution.conversation_id.to_json(),
-    "model_name": execution.model_name.to_json(),
-    "raw_content": execution.content.to_json(),
+    "error": Json(error),
+    "task_id": Json(task.id),
+    "task_title": Json(task.title),
+    "conversation_id": Json(execution.conversation_id),
+    "model_name": Json(execution.model_name),
+    "raw_content": Json(execution.content),
     "usage": usage_json(execution.usage),
     "metadata": execution.metadata,
   }

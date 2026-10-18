@@ -10,6 +10,7 @@ pub fn cl100k_base() -> Encoding raise
 
 // Errors
 type DecodingError derive(@debug.Debug)
+pub fn DecodingError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 type Encoding

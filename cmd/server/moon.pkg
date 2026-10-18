@@ -1,7 +1,6 @@
 import {
   "moonbitlang/async/http",
   "moonbitlang/async",
-  "moonbitlang/async/io",
   "vectie/moonclaw",
   "vectie/moonclaw/ai",
   "vectie/moonlib/os",
@@ -22,7 +21,6 @@ import {
   "vectie/moonclaw/model",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
 }
 
@@ -30,6 +28,7 @@ supported_targets = "native"
 
 import {
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
   "moonbitlang/async/socket",
   "vectie/moonclaw/cmd/internal/test_utils",
 } for "test"

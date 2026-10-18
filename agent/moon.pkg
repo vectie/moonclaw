@@ -20,7 +20,6 @@ import {
   "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/deque",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
   "moonbitlang/x/crypto",
   "moonbitlang/core/encoding/utf8",
 }
@@ -38,6 +37,7 @@ import {
   "vectie/moonclaw/tools/todo",
   "vectie/moonclaw/tools/list_files",
   "vectie/moonclaw/tools/execute_command",
+  "moonbitlang/core/test",
 } for "test"
 
 import {

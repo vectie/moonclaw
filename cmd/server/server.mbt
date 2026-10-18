@@ -212,12 +212,18 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
       let task = group.spawn(
         () => {
           logger.info("Starting moonclaw task...")
-          self.moonclaw.agent.start() catch {
-            error => {
+          let outcome = try self.moonclaw.agent.start() catch {
+            error => Err(error)
+          } noraise {
+            _ => Ok(())
+          }
+          match outcome {
+            Ok(_) => ()
+            Err(error) => {
               logger.error("moonclaw task failed: \{error}")
               if !@async.is_being_cancelled() {
                 self.broadcast.put(
-                  @event.Event::new(id=self.uuid.v4(), Failed(error.to_json())),
+                  @event.Event::new(id=self.uuid.v4(), Failed(Json(error))),
                 )
               } else {
                 self.broadcast.put(
@@ -266,7 +272,7 @@ async fn Server::cancel_moonclaw(
   }
   task.cancel()
   let pms = self.moonclaw.agent.clear_inputs()
-  w.send_json(code=200, { "pending_messages": pms.to_json() })
+  w.send_json(code=200, { "pending_messages": Json(pms) })
 }
 
 ///|
@@ -307,7 +313,7 @@ pub impl @httpx.ToEvent for ServerStreamEvent with fn to_event(
     MoonclawQueuedMessagesSynchronized(queued_messages) =>
       @httpx.Event::new(
         event="moonclaw.queued_messages.synchronized",
-        data=queued_messages.to_json().stringify(),
+        data=Json(queued_messages).stringify(),
       )
     Moonclaw(event) =>
       @httpx.Event::new(event="moonclaw", data=event.to_json().stringify())
@@ -347,7 +353,7 @@ async fn Server::get_queued_messages(
   let queued_messages : Array[Json] = self.moonclaw.agent
     .queued_messages()
     .map(m => { "id": m.id, "message": m.message.to_openai() })
-  w.send_json(code=200, queued_messages.to_json())
+  w.send_json(code=200, Json(queued_messages))
 }
 
 ///|
@@ -368,7 +374,7 @@ async fn Server::get_system_prompt(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let res : Json = match self.moonclaw.agent.system_prompt() {
-    Some(sys) => sys.to_json()
+    Some(sys) => Json(sys)
     None => Json::null()
   }
   w.send_json(code=200, res)
@@ -447,3 +453,9 @@ async fn Server::send_cancellation_event(
   self.moonclaw.agent.external_events().send(Cancelled)
   w.send_json(code=200, { "success": true })
 }
+
+///|
+pub extend ServerStreamEvent with @httpx.FromEvent::{from_event}
+
+///|
+pub extend ServerStreamEvent with @httpx.ToEvent::{to_event}

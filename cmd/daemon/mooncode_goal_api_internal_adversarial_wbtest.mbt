@@ -18,7 +18,7 @@ fn goal_adversarial_assert_error(
   assert_eq(body["kind"], ("mooncode-goal-error" : Json))
   assert_eq(body["protocol"], ("mooncode.v1" : Json))
   assert_eq(body["owner"], ("moonclaw" : Json))
-  assert_eq(body["error"], code.to_json())
+  assert_eq(body["error"], Json(code))
   let encoded = response.body.stringify()
   for
     field in [
@@ -36,7 +36,7 @@ async test "mooncode_goal_api_internal adversarial: invalid UTF-8 journal is imm
     let id = "session"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
     let journal = mooncode_session_journal_path(root, id)
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let created = mooncode_goal_api_put_internal(root, id, body, 1L)
     assert_eq(created.status_code, 201)
     @fs.write_file(journal, Bytes::from_array([0xff, 10]))
@@ -72,12 +72,7 @@ async test "mooncode_goal_api_internal adversarial: complete and unterminated co
       )
       assert_eq(@fsx.read_file(journal), before)
       goal_adversarial_assert_error(
-        mooncode_goal_api_put_internal(
-          root,
-          id,
-          goal_api_body((7).to_json()),
-          1L,
-        ),
+        mooncode_goal_api_put_internal(root, id, goal_api_body(Json(7)), 1L),
         409,
         "goal_corrupt",
       )
@@ -95,7 +90,7 @@ async test "mooncode_goal_api_internal adversarial: sole unterminated genesis is
     let created = mooncode_goal_api_put_internal(
       root,
       id,
-      goal_api_body((7).to_json()),
+      goal_api_body(Json(7)),
       1L,
     )
     assert_eq(created.status_code, 201)
@@ -112,7 +107,7 @@ async test "mooncode_goal_api_internal adversarial: sole unterminated genesis is
     let recreated = mooncode_goal_api_put_internal(
       root,
       id,
-      goal_api_body((7).to_json()),
+      goal_api_body(Json(7)),
       1L,
     )
     assert_eq(recreated.status_code, 201)
@@ -131,7 +126,7 @@ async test "mooncode_goal_api_internal adversarial: torn suffix after committed 
     let id = "session"
     goal_gate_write_snapshot(root, id, false, goal_gate_snapshot(id, root))
     let journal = mooncode_session_journal_path(root, id)
-    let body = goal_api_body((7).to_json())
+    let body = goal_api_body(Json(7))
     let created = mooncode_goal_api_put_internal(root, id, body, 1L)
     assert_eq(created.status_code, 201)
     let committed = @fsx.read_file(journal)

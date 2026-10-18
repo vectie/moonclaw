@@ -24,7 +24,7 @@ priv struct Stopped {
 impl ToJson for Stopped with fn to_json(self : Stopped) -> Json {
   let object : Map[String, Json] = Map([])
   if self.name is Some(name) {
-    object["name"] = name.to_json()
+    object["name"] = Json(name)
   }
   object.merge_in_place({
     "id": self.id,

@@ -8,6 +8,7 @@ fn moondesk_control_route_requires_auth(
     (Get, ["", "v1", "models"]) => true
     (Get, ["", "v1", "moongate-route"]) => true
     (Post, ["", "v1", "provider-handoff"]) => true
+    (_, ["", "v1", "provider-connections", "import"]) => true
     (Get, ["", "v1", "tasks"]) => true
     // Provider workers register back into the daemon on this process-internal
     // endpoint. It is not part of the MoonDesk control plane and remains
@@ -16,6 +17,9 @@ fn moondesk_control_route_requires_auth(
     (Post, ["", "v1", "task"]) => true
     (_, ["", "v1", "task", _, ..]) => true
     (_, ["", "v1", "code", ..]) => true
+    (_, ["", "v1", "mooncode", "mcp"]) => true
+    (_, ["", "v1", "mooncode", "knowledge"]) => true
+    (_, ["", "v1", "mooncode", "realtime-session"]) => true
     (_, ["", "v1", "supervisors", ..]) => true
     (Get, ["", "v1", "auth", "status"]) => true
     (Post, ["", "v1", "auth", "codex", "start"]) => true
@@ -56,9 +60,10 @@ async fn Daemon::require_moondesk_control_auth(
   self : Daemon,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
-) -> Unit {
+) -> @moondesk_sandbox_config.Config {
   ignore(self)
-  let config = @moondesk_sandbox_config.load() catch {
+  w.header().set("Cache-Control", "no-store")
+  let config = @moondesk_sandbox_config.load(read_only=true) catch {
     _ =>
       raise json_error(503, "ServiceUnavailable", {
         "error": {
@@ -87,4 +92,5 @@ async fn Daemon::require_moondesk_control_auth(
   // The credential itself is never copied into response state.
   w.header().set("X-MoonClaw-Instance-ID", config.instance_id)
   w.header().set("Cache-Control", "no-store")
+  config
 }

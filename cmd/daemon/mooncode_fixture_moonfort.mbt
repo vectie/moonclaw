@@ -166,17 +166,8 @@ async fn[T] mooncode_with_fixture_moonfort(
       ],
     }
     mooncode_install_fixture_sandbox_config(book_root, config)
-    try body(config) catch {
-      error => {
-        mooncode_remove_fixture_sandbox_config(book_root)
-        raise error
-      }
-    } noraise {
-      value => {
-        mooncode_remove_fixture_sandbox_config(book_root)
-        value
-      }
-    }
+    defer mooncode_remove_fixture_sandbox_config(book_root)
+    body(config)
   })
 }
 
@@ -278,7 +269,7 @@ async fn mooncode_fixture_authorized_runtime_command(
       mooncode_fixture_authorized_tool_body(config, book_root, call),
     )
   }
-  fields["runtime_tool_calls"] = authorized.to_json()
+  fields["runtime_tool_calls"] = Json(authorized)
   command
 }
 

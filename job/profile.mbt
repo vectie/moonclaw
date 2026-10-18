@@ -378,3 +378,43 @@ pub async fn suggest_job_profile_family(
   }
   best.map(fn(profile) { profile.family })
 }
+
+///|
+pub extend JobProfileMatchRules with ToJson::{to_json}
+
+///|
+pub extend JobProfileMatchRules with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobProfileMatchRules with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobProfileStep with ToJson::{to_json}
+
+///|
+pub extend JobProfileStep with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProfileStep with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobProfile with ToJson::{to_json}
+
+///|
+pub extend JobProfile with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobProfile with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobProfileConfigPayload with ToJson::{to_json}
+
+///|
+pub extend JobProfileConfigPayload with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend JobProfileConfigPayload with @moonbitlang/core/debug.Debug::{to_repr}

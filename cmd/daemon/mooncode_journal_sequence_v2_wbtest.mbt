@@ -136,7 +136,7 @@ test "journal sequence parses v1 number and v2 string far beyond Int64" {
   let wrong_v1 = match v2 {
     Object(fields) => {
       let copied = fields.copy()
-      copied["contract_id"] = @moonlib_conversation.journal_contract_id().to_json()
+      copied["contract_id"] = Json(@moonlib_conversation.journal_contract_id())
       Json::object(copied)
     }
     _ => abort("expected object")
@@ -144,7 +144,7 @@ test "journal sequence parses v1 number and v2 string far beyond Int64" {
   let wrong_v2 = match v1 {
     Object(fields) => {
       let copied = fields.copy()
-      copied["contract_id"] = mooncode_journal_contract_id_v2().to_json()
+      copied["contract_id"] = Json(mooncode_journal_contract_id_v2())
       Json::object(copied)
     }
     _ => abort("expected object")
@@ -152,7 +152,7 @@ test "journal sequence parses v1 number and v2 string far beyond Int64" {
   let unknown = match v2 {
     Object(fields) => {
       let copied = fields.copy()
-      copied["contract_id"] = "unknown".to_json()
+      copied["contract_id"] = Json("unknown")
       Json::object(copied)
     }
     _ => abort("expected object")
@@ -200,7 +200,7 @@ test "v2 journal record has exact ten-key projection" {
   assert_json_string(fields["recorded_at"], "now")
   match fields["payload"] {
     Object(payload) => {
-      assert_eq(payload["value"], true.to_json())
+      assert_eq(payload["value"], Json(true))
       assert_json_string(payload["operation"], "opaque and allowed")
     }
     _ => fail("payload is not object")
@@ -242,6 +242,6 @@ test "journal cursor JSON dual-read is canonical and arbitrary precision" {
     ignore(mooncode_journal_cursor_from_json(("01" : Json)))
   })
   mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
-    ignore(mooncode_journal_cursor_from_json(true.to_json()))
+    ignore(mooncode_journal_cursor_from_json(Json(true)))
   })
 }

@@ -157,3 +157,21 @@ pub fn prepare_launch_plan(
     backend => Err("Unsupported ACP backend: \{backend}")
   }
 }
+
+///|
+pub extend AcpRunRequest with ToJson::{to_json}
+
+///|
+pub extend AcpRunRequest with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpRunRequest with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend AcpLaunchPlan with ToJson::{to_json}
+
+///|
+pub extend AcpLaunchPlan with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend AcpLaunchPlan with @moonbitlang/core/debug.Debug::{to_repr}

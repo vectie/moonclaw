@@ -152,14 +152,12 @@ async fn Daemon::mooncode_start_runtime_service(
   let lifecycle_gate = mooncode_open_session_lifecycle_gate(
     book_root, session_id,
   )
-  ignore(lifecycle_gate.lock(Shared)) catch {
-    error => {
-      @async.protect_from_cancel(
-        () => lifecycle_gate.close(),
-        resume_on_cancel=true,
-      )
-      raise error
-    }
+  {
+    errdefer @async.protect_from_cancel(
+      () => lifecycle_gate.close(),
+      resume_on_cancel=true,
+    )
+    ignore(lifecycle_gate.lock(Shared))
   }
   if mooncode_session_suspension_requested(book_root, session_id) {
     @async.protect_from_cancel(
@@ -174,39 +172,33 @@ async fn Daemon::mooncode_start_runtime_service(
       },
     })
   }
-  mooncode_require_active_session_state_locked(
-    book_root,
-    session_id,
-    allow_create=true,
-  ) catch {
-    error => {
-      @async.protect_from_cancel(
-        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-        resume_on_cancel=true,
-      )
-      raise error
-    }
+  {
+    errdefer @async.protect_from_cancel(
+      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+      resume_on_cancel=true,
+    )
+    mooncode_require_active_session_state_locked(
+      book_root,
+      session_id,
+      allow_create=true,
+    )
   }
-  let execution_lease = mooncode_open_session_execution_lease(
-    book_root, session_id,
-  ) catch {
-    error => {
-      @async.protect_from_cancel(
-        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-        resume_on_cancel=true,
-      )
-      raise error
-    }
+  let execution_lease = {
+    errdefer @async.protect_from_cancel(
+      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+      resume_on_cancel=true,
+    )
+    mooncode_open_session_execution_lease(book_root, session_id)
   }
-  let owns_execution = execution_lease.try_lock(Exclusive) catch {
-    error => {
+  let owns_execution = {
+    errdefer {
       execution_lease.close()
       @async.protect_from_cancel(
         () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
         resume_on_cancel=true,
       )
-      raise error
     }
+    execution_lease.try_lock(Exclusive)
   }
   if !owns_execution {
     let observed = mooncode_runtime_service_state_payload(
@@ -277,15 +269,8 @@ async fn Daemon::mooncode_start_runtime_service(
   let started = self.mooncode_runtime_service_started_event(
     session_id, book_root, payload,
   )
-  ignore(
-    mooncode_append_session_journal(
-      book_root,
-      session_id,
-      mooncode_journal_event(),
-      started,
-    ),
-  ) catch {
-    error => {
+  {
+    errdefer {
       binding.runtime_service_running = false
       @async.protect_from_cancel(
         () => {
@@ -295,8 +280,15 @@ async fn Daemon::mooncode_start_runtime_service(
         },
         resume_on_cancel=true,
       )
-      raise error
     }
+    ignore(
+      mooncode_append_session_journal(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        started,
+      ),
+    )
   }
   let task = group.spawn(
     () => {
@@ -794,9 +786,11 @@ fn mooncode_runtime_service_rearm_event(
     mooncode_json_object_with_field(
       event,
       "id",
-      (mooncode_json_string(event, "id", default="") +
-      "-rearm-" +
-      rearm_count.to_string()).to_json(),
+      Json(
+        mooncode_json_string(event, "id", default="") +
+        "-rearm-" +
+        rearm_count.to_string(),
+      ),
     )
   }
 }
@@ -984,21 +978,15 @@ fn mooncode_runtime_service_finish_event(
   let base = mooncode_runtime_service_attach(event, book_root, payload)
   match base {
     Object(object) => {
-      object["ran_turn_count"] = mooncode_json_int(
-        result,
-        "ran_turn_count",
-        default=0,
-      ).to_json()
-      object["failed_turn_count"] = mooncode_json_int(
-        result,
-        "failed_turn_count",
-        default=0,
-      ).to_json()
-      object["stopped_by"] = mooncode_json_string(
-        result,
-        "stopped_by",
-        default="",
-      ).to_json()
+      object["ran_turn_count"] = Json(
+        mooncode_json_int(result, "ran_turn_count", default=0),
+      )
+      object["failed_turn_count"] = Json(
+        mooncode_json_int(result, "failed_turn_count", default=0),
+      )
+      object["stopped_by"] = Json(
+        mooncode_json_string(result, "stopped_by", default=""),
+      )
       Json::object(object)
     }
     _ => base

@@ -275,16 +275,16 @@ fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
   let command_id = mooncode_command_id(body)
   let missing : Array[Json] = []
   if protocol != mooncode_protocol_version() {
-    missing.push("protocol".to_json())
+    missing.push(Json("protocol"))
   }
   if body_session != session_id {
-    missing.push("session_id".to_json())
+    missing.push(Json("session_id"))
   }
   if book_root == "" {
-    missing.push("book_root".to_json())
+    missing.push(Json("book_root"))
   }
   if command_id == "" {
-    missing.push("command_id".to_json())
+    missing.push(Json("command_id"))
   }
   let unsupported = mooncode_unsupported_command_fields(body)
   let media_error = match mooncode_command_media_validation(body) {
@@ -332,7 +332,7 @@ fn mooncode_unsupported_command_fields(body : Json) -> Array[Json] {
     Object(fields) =>
       for name, _ in fields.iter2() {
         if !mooncode_command_field_is_supported(name) {
-          unsupported.push(name.to_json())
+          unsupported.push(Json(name))
         }
       }
     _ => ()
@@ -340,7 +340,7 @@ fn mooncode_unsupported_command_fields(body : Json) -> Array[Json] {
   let payload = mooncode_json_object_field_or_empty(body, "payload")
   for name in ["content", "content_parts", "images", "attachments"] {
     if payload is Object(fields) && fields.get(name) is Some(_) {
-      unsupported.push(("payload." + name).to_json())
+      unsupported.push(Json("payload." + name))
     }
   }
   unsupported

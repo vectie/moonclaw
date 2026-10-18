@@ -233,7 +233,7 @@ fn fuzzy_equals(a : String, b : String) -> Bool {
 
 ///|
 fn normalize_punctuation(s : String) -> String {
-  let result = StringBuilder::new()
+  let result = StringBuilder()
   for c in s {
     let normalized = match c {
       '\u{2013}' | '\u{2014}' | '\u{2011}' => '-' // en-dash, em-dash, non-breaking hyphen
@@ -281,3 +281,6 @@ fn resolve_path(cwd : String, path : String) -> String raise ApplyError {
     @pathx.join(cwd, path)
   }
 }
+
+///|
+pub extend ApplyError with @moonbitlang/core/debug.Debug::{to_repr}

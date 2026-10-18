@@ -183,14 +183,8 @@ async fn Daemon::mooncode_stream(
     wait_elapsed_ms=wait.wait_elapsed_ms,
     wait_attempt_count=wait.wait_attempt_count,
   )
-  try mooncode_stream_deliver_spool(w, format, spool, meta, done) catch {
-    error => {
-      spool.cleanup()
-      raise error
-    }
-  } noraise {
-    _ => spool.cleanup()
-  }
+  defer spool.cleanup()
+  mooncode_stream_deliver_spool(w, format, spool, meta, done)
 }
 
 ///|

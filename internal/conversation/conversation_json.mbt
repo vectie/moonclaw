@@ -1,20 +1,20 @@
 ///|
 pub impl ToJson for Conversation with fn to_json(self : Conversation) -> Json {
   let object : Map[String, Json] = { "name": self.name, "id": self.id }
-  object["events"] = self.events.to_json()
+  object["events"] = Json(self.events)
   object["created_at"] = self.created_at.to_json()
   object["updated_at"] = self.updated_at.to_json()
   if self.description is Some(description) {
-    object["description"] = description.to_json()
+    object["description"] = Json(description)
   }
-  object["cwd"] = self.cwd.to_json()
-  object["web_search"] = self.web_search.to_json()
-  object["source_kind"] = self.source_kind.to_json()
-  object["workspace_trust"] = self.workspace_trust.to_json()
+  object["cwd"] = Json(self.cwd)
+  object["web_search"] = Json(self.web_search)
+  object["source_kind"] = Json(self.source_kind)
+  object["workspace_trust"] = Json(self.workspace_trust)
   if !self.optional_input_contexts.is_empty() {
-    object["optional_input_contexts"] = self.optional_input_contexts.to_json()
+    object["optional_input_contexts"] = Json(self.optional_input_contexts)
   }
-  object.to_json()
+  Json(object)
 }
 
 ///|
@@ -146,3 +146,9 @@ pub fn Conversation::display(
   lines.push("Updated: \{show_time(self.updated_at)}")
   lines
 }
+
+///|
+pub extend Conversation with ToJson::{to_json}
+
+///|
+pub extend Conversation with @moonbitlang/core/json.FromJson::{from_json}

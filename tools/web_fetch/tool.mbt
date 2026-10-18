@@ -135,7 +135,7 @@ fn decode_html_entity(entity : String) -> String? {
 
 ///|
 fn strip_html_tags(text : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   let chars = text.to_array()
   let mut i = 0
   let mut in_tag = false
@@ -303,17 +303,17 @@ async fn perform_web_fetch(url : String, max_chars : Int32) -> WebFetchResult {
     (truncated_text, truncated, title, None)
   }
   let metadata : Map[String, Json] = {
-    "scheme": uri.scheme.to_json(),
-    "host": uri.host.to_json(),
-    "path": uri.path.to_json(),
+    "scheme": Json(uri.scheme),
+    "host": Json(uri.host),
+    "path": Json(uri.path),
     "extracted_as_html": match content_type {
-      Some(content_type) => content_type.to_lower().contains("html").to_json()
-      None => false.to_json()
+      Some(content_type) => Json(content_type.to_lower().contains("html"))
+      None => Json(false)
     },
-    "extracted_as_pdf": is_pdf.to_json(),
+    "extracted_as_pdf": Json(is_pdf),
   }
   match extraction_note {
-    Some(note) => metadata.set("extraction_note", note.to_json())
+    Some(note) => metadata.set("extraction_note", Json(note))
     None => ()
   }
   {
@@ -379,3 +379,12 @@ pub fn new() -> @tool.Tool[WebFetchResult] {
     }),
   )
 }
+
+///|
+pub extend WebFetchResult with ToJson::{to_json}
+
+///|
+pub extend WebFetchResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend WebFetchResult with Show::{to_string, output}

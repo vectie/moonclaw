@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/provider_connection"
+
+// Values
+pub async fn import_connection(String, Json) -> Result[Json, ImportError]
+
+// Errors
+
+// Types and methods
+pub(all) enum ImportError {
+  InvalidDescriptor
+  GateUnavailable
+  Failed(String)
+}
+
+// Type aliases
+
+// Traits

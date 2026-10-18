@@ -20,6 +20,8 @@ pub struct WebSearchItem {
   domain : String?
   rank : Int
 } derive(ToJson, @json.FromJson)
+pub fn WebSearchItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WebSearchItem::to_json(Self) -> Json
 
 pub struct WebSearchResult {
   query : String
@@ -28,6 +30,10 @@ pub struct WebSearchResult {
   results : Array[WebSearchItem]
   source : String
 } derive(ToJson, @json.FromJson)
+pub fn WebSearchResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WebSearchResult::output(Self, &Logger) -> Unit
+pub fn WebSearchResult::to_json(Self) -> Json
+pub fn WebSearchResult::to_string(Self) -> String
 pub impl Show for WebSearchResult
 
 // Type aliases

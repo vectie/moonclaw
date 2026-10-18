@@ -19,6 +19,9 @@ pub struct WorkspaceFile {
   path : String
   content : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorkspaceFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorkspaceFile::to_json(Self) -> Json
+pub fn WorkspaceFile::to_repr(Self) -> @debug.Repr
 
 pub struct WorkspaceRuntime {
   home : String
@@ -38,6 +41,9 @@ pub struct WorkspaceSnapshot {
   files : Array[WorkspaceFile]
   prompt_context : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn WorkspaceSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorkspaceSnapshot::to_json(Self) -> Json
+pub fn WorkspaceSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

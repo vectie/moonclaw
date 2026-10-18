@@ -76,3 +76,57 @@ pub(all) struct JobUiSnapshot {
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
 } derive(ToJson, FromJson, Debug)
+
+///|
+pub extend JobUiNodeKind with ToJson::{to_json}
+
+///|
+pub extend JobUiNodeKind with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiNodeKind with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobUiNode with ToJson::{to_json}
+
+///|
+pub extend JobUiNode with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiNode with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobUiTimelineEntry with ToJson::{to_json}
+
+///|
+pub extend JobUiTimelineEntry with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiTimelineEntry with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobUiRemoteLink with ToJson::{to_json}
+
+///|
+pub extend JobUiRemoteLink with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiRemoteLink with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobUiHandoff with ToJson::{to_json}
+
+///|
+pub extend JobUiHandoff with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiHandoff with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend JobUiSnapshot with ToJson::{to_json}
+
+///|
+pub extend JobUiSnapshot with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend JobUiSnapshot with @moonbitlang/core/debug.Debug::{to_repr}

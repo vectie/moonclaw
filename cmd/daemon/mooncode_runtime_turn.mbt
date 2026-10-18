@@ -673,7 +673,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
                 )
                 |> mooncode_json_object_with_field(
                   "approval_id",
-                  approval_id.to_json(),
+                  Json(approval_id),
                 )
               mooncode_runtime_tool_approval_event(
                 session_id,

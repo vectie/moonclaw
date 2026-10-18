@@ -52,3 +52,9 @@ impl @json.FromJson for PromptTokensDetails with fn from_json(
   }
   { cached_tokens, cache_write_tokens, audio_tokens, }
 }
+
+///|
+pub extend PromptTokensDetails with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PromptTokensDetails with ToJson::{to_json}

@@ -23,3 +23,9 @@ impl @json.FromJson for CompletionTokensDetails with fn from_json(
   }
   { reasoning_tokens, }
 }
+
+///|
+pub extend CompletionTokensDetails with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CompletionTokensDetails with ToJson::{to_json}

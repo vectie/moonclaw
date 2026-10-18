@@ -68,6 +68,11 @@ pub(all) struct BoundCommandLiveOutput {
   run_id : String
   step_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn BoundCommandLiveOutput::equal(Self, Self) -> Bool
+pub fn BoundCommandLiveOutput::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BoundCommandLiveOutput::not_equal(Self, Self) -> Bool
+pub fn BoundCommandLiveOutput::to_json(Self) -> Json
+pub fn BoundCommandLiveOutput::to_repr(Self) -> @debug.Repr
 
 pub(all) struct BoundCommandOutput {
   output_id : String
@@ -83,8 +88,18 @@ pub(all) struct BoundCommandOutput {
   output_truncated : Bool
   limit_reason : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn BoundCommandOutput::equal(Self, Self) -> Bool
+pub fn BoundCommandOutput::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BoundCommandOutput::not_equal(Self, Self) -> Bool
+pub fn BoundCommandOutput::to_json(Self) -> Json
+pub fn BoundCommandOutput::to_repr(Self) -> @debug.Repr
 
 type CommandLiveBinding derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn CommandLiveBinding::equal(Self, Self) -> Bool
+pub fn CommandLiveBinding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandLiveBinding::not_equal(Self, Self) -> Bool
+pub fn CommandLiveBinding::to_json(Self) -> Json
+pub fn CommandLiveBinding::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CommandLiveChunk {
   protocol_version : Int
@@ -101,24 +116,49 @@ pub(all) struct CommandLiveChunk {
   retry_after_ms : Int
   next_cursor : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn CommandLiveChunk::equal(Self, Self) -> Bool
+pub fn CommandLiveChunk::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandLiveChunk::not_equal(Self, Self) -> Bool
+pub fn CommandLiveChunk::to_json(Self) -> Json
+pub fn CommandLiveChunk::to_repr(Self) -> @debug.Repr
 
 type CommandOutputBinding derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn CommandOutputBinding::equal(Self, Self) -> Bool
+pub fn CommandOutputBinding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandOutputBinding::not_equal(Self, Self) -> Bool
+pub fn CommandOutputBinding::to_json(Self) -> Json
+pub fn CommandOutputBinding::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CommandOutputOwner {
   run_id : String
   step_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn CommandOutputOwner::equal(Self, Self) -> Bool
+pub fn CommandOutputOwner::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandOutputOwner::not_equal(Self, Self) -> Bool
+pub fn CommandOutputOwner::to_json(Self) -> Json
+pub fn CommandOutputOwner::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortBackendKind {
   LocalOs
   MicroVm
   Unavailable
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortBackendKind::equal(Self, Self) -> Bool
+pub fn MoonFortBackendKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortBackendKind::not_equal(Self, Self) -> Bool
+pub fn MoonFortBackendKind::to_json(Self) -> Json
+pub fn MoonFortBackendKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortCommand {
   Exec(tool~ : String, args~ : Array[String])
   Shell(script~ : String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortCommand::equal(Self, Self) -> Bool
+pub fn MoonFortCommand::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortCommand::not_equal(Self, Self) -> Bool
+pub fn MoonFortCommand::to_json(Self) -> Json
+pub fn MoonFortCommand::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortCommandOutputArtifactRef {
   artifact_id : String
@@ -130,17 +170,32 @@ pub(all) struct MoonFortCommandOutputArtifactRef {
   key_id : String
   signature : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortCommandOutputArtifactRef::equal(Self, Self) -> Bool
+pub fn MoonFortCommandOutputArtifactRef::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortCommandOutputArtifactRef::not_equal(Self, Self) -> Bool
+pub fn MoonFortCommandOutputArtifactRef::to_json(Self) -> Json
+pub fn MoonFortCommandOutputArtifactRef::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortEnforcement {
   Enforced
   Degraded
   Refused
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortEnforcement::equal(Self, Self) -> Bool
+pub fn MoonFortEnforcement::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortEnforcement::not_equal(Self, Self) -> Bool
+pub fn MoonFortEnforcement::to_json(Self) -> Json
+pub fn MoonFortEnforcement::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortEnforcementRequirement {
   RequireEnforced
   AllowDegraded
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortEnforcementRequirement::equal(Self, Self) -> Bool
+pub fn MoonFortEnforcementRequirement::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortEnforcementRequirement::not_equal(Self, Self) -> Bool
+pub fn MoonFortEnforcementRequirement::to_json(Self) -> Json
+pub fn MoonFortEnforcementRequirement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortExecutionGrant {
   protocol_version : Int
@@ -158,14 +213,39 @@ pub(all) struct MoonFortExecutionGrant {
   backend_config_id : String
   expires_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortExecutionGrant::equal(Self, Self) -> Bool
+pub fn MoonFortExecutionGrant::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortExecutionGrant::not_equal(Self, Self) -> Bool
+pub fn MoonFortExecutionGrant::to_json(Self) -> Json
+pub fn MoonFortExecutionGrant::to_repr(Self) -> @debug.Repr
 
 type MoonFortExecutorResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortExecutorResponse::equal(Self, Self) -> Bool
+pub fn MoonFortExecutorResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortExecutorResponse::not_equal(Self, Self) -> Bool
+pub fn MoonFortExecutorResponse::to_json(Self) -> Json
+pub fn MoonFortExecutorResponse::to_repr(Self) -> @debug.Repr
 
 type MoonFortGrantPublicationRequest derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortGrantPublicationRequest::equal(Self, Self) -> Bool
+pub fn MoonFortGrantPublicationRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortGrantPublicationRequest::not_equal(Self, Self) -> Bool
+pub fn MoonFortGrantPublicationRequest::to_json(Self) -> Json
+pub fn MoonFortGrantPublicationRequest::to_repr(Self) -> @debug.Repr
 
 type MoonFortGrantPublicationResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortGrantPublicationResponse::equal(Self, Self) -> Bool
+pub fn MoonFortGrantPublicationResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortGrantPublicationResponse::not_equal(Self, Self) -> Bool
+pub fn MoonFortGrantPublicationResponse::to_json(Self) -> Json
+pub fn MoonFortGrantPublicationResponse::to_repr(Self) -> @debug.Repr
 
 type MoonFortInvocation derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortInvocation::equal(Self, Self) -> Bool
+pub fn MoonFortInvocation::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortInvocation::not_equal(Self, Self) -> Bool
+pub fn MoonFortInvocation::to_json(Self) -> Json
+pub fn MoonFortInvocation::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortLimits {
   wall_clock_ms : Int
@@ -175,8 +255,18 @@ pub(all) struct MoonFortLimits {
   processes : Int
   output_bytes : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortLimits::equal(Self, Self) -> Bool
+pub fn MoonFortLimits::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortLimits::not_equal(Self, Self) -> Bool
+pub fn MoonFortLimits::to_json(Self) -> Json
+pub fn MoonFortLimits::to_repr(Self) -> @debug.Repr
 
 type MoonFortLiveOutputReadResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortLiveOutputReadResponse::equal(Self, Self) -> Bool
+pub fn MoonFortLiveOutputReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortLiveOutputReadResponse::not_equal(Self, Self) -> Bool
+pub fn MoonFortLiveOutputReadResponse::to_json(Self) -> Json
+pub fn MoonFortLiveOutputReadResponse::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortLiveOutputReference {
   stream_id : String
@@ -188,14 +278,29 @@ pub(all) struct MoonFortLiveOutputReference {
   key_id : String
   signature : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortLiveOutputReference::equal(Self, Self) -> Bool
+pub fn MoonFortLiveOutputReference::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortLiveOutputReference::not_equal(Self, Self) -> Bool
+pub fn MoonFortLiveOutputReference::to_json(Self) -> Json
+pub fn MoonFortLiveOutputReference::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortNetworkMode {
   Deny
   AllowList
   Unrestricted
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortNetworkMode::equal(Self, Self) -> Bool
+pub fn MoonFortNetworkMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortNetworkMode::not_equal(Self, Self) -> Bool
+pub fn MoonFortNetworkMode::to_json(Self) -> Json
+pub fn MoonFortNetworkMode::to_repr(Self) -> @debug.Repr
 
 type MoonFortProtocolError derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortProtocolError::equal(Self, Self) -> Bool
+pub fn MoonFortProtocolError::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortProtocolError::not_equal(Self, Self) -> Bool
+pub fn MoonFortProtocolError::to_json(Self) -> Json
+pub fn MoonFortProtocolError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortReceipt {
   run_id : String
@@ -219,6 +324,11 @@ pub(all) struct MoonFortReceipt {
   cleanup_verified : Bool
   retention_id : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortReceipt::equal(Self, Self) -> Bool
+pub fn MoonFortReceipt::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortReceipt::not_equal(Self, Self) -> Bool
+pub fn MoonFortReceipt::to_json(Self) -> Json
+pub fn MoonFortReceipt::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortRunStatus {
   Created
@@ -227,6 +337,11 @@ pub(all) enum MoonFortRunStatus {
   Killed
   Failed
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortRunStatus::equal(Self, Self) -> Bool
+pub fn MoonFortRunStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortRunStatus::not_equal(Self, Self) -> Bool
+pub fn MoonFortRunStatus::to_json(Self) -> Json
+pub fn MoonFortRunStatus::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortScratchChange {
   relative_path : String
@@ -234,12 +349,22 @@ pub(all) struct MoonFortScratchChange {
   before : MoonFortScratchEntry?
   after : MoonFortScratchEntry?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortScratchChange::equal(Self, Self) -> Bool
+pub fn MoonFortScratchChange::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortScratchChange::not_equal(Self, Self) -> Bool
+pub fn MoonFortScratchChange::to_json(Self) -> Json
+pub fn MoonFortScratchChange::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortScratchChangeKind {
   Added
   Modified
   Removed
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortScratchChangeKind::equal(Self, Self) -> Bool
+pub fn MoonFortScratchChangeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortScratchChangeKind::not_equal(Self, Self) -> Bool
+pub fn MoonFortScratchChangeKind::to_json(Self) -> Json
+pub fn MoonFortScratchChangeKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MoonFortScratchEntry {
   relative_path : String
@@ -247,26 +372,51 @@ pub(all) struct MoonFortScratchEntry {
   size_bytes : Int64
   fingerprint : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortScratchEntry::equal(Self, Self) -> Bool
+pub fn MoonFortScratchEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortScratchEntry::not_equal(Self, Self) -> Bool
+pub fn MoonFortScratchEntry::to_json(Self) -> Json
+pub fn MoonFortScratchEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MoonFortScratchEntryKind {
   RegularFile
   DirectoryEntry
   SymbolicLink
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn MoonFortScratchEntryKind::equal(Self, Self) -> Bool
+pub fn MoonFortScratchEntryKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MoonFortScratchEntryKind::not_equal(Self, Self) -> Bool
+pub fn MoonFortScratchEntryKind::to_json(Self) -> Json
+pub fn MoonFortScratchEntryKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SandboxApprovalPlan {
   grant : MoonFortExecutionGrant
   expected_approval_digest : String
   runtime_binding_digest : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SandboxApprovalPlan::equal(Self, Self) -> Bool
+pub fn SandboxApprovalPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SandboxApprovalPlan::not_equal(Self, Self) -> Bool
+pub fn SandboxApprovalPlan::to_json(Self) -> Json
+pub fn SandboxApprovalPlan::to_repr(Self) -> @debug.Repr
 
 type SandboxAuditRecord derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SandboxAuditRecord::equal(Self, Self) -> Bool
+pub fn SandboxAuditRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SandboxAuditRecord::not_equal(Self, Self) -> Bool
+pub fn SandboxAuditRecord::to_json(Self) -> Json
+pub fn SandboxAuditRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SandboxExecution {
   plan : SandboxApprovalPlan
   receipt : MoonFortReceipt
   audit_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SandboxExecution::equal(Self, Self) -> Bool
+pub fn SandboxExecution::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SandboxExecution::not_equal(Self, Self) -> Bool
+pub fn SandboxExecution::to_json(Self) -> Json
+pub fn SandboxExecution::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SandboxExecutorConfig {
   grant_publisher_path : String
@@ -288,6 +438,11 @@ pub(all) struct SandboxExecutorConfig {
   limits : MoonFortLimits
   grant_ttl_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn SandboxExecutorConfig::equal(Self, Self) -> Bool
+pub fn SandboxExecutorConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SandboxExecutorConfig::not_equal(Self, Self) -> Bool
+pub fn SandboxExecutorConfig::to_json(Self) -> Json
+pub fn SandboxExecutorConfig::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -75,3 +75,12 @@ pub fn new(cwd : String) -> @tool.Tool[ExitWorktreeResult] {
     },
   )
 }
+
+///|
+pub extend ExitWorktreeResult with ToJson::{to_json}
+
+///|
+pub extend ExitWorktreeResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ExitWorktreeResult with Show::{to_string, output}

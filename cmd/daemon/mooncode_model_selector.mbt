@@ -21,7 +21,7 @@ fn mooncode_command_with_session_model(
 ) -> Json {
   let inherited = if session_model != "" &&
     mooncode_command_inherits_session_model(command) {
-    mooncode_json_object_with_field(command, "model", session_model.to_json())
+    mooncode_json_object_with_field(command, "model", Json(session_model))
   } else {
     command
   }

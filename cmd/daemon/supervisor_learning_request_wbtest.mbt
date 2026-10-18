@@ -5,7 +5,7 @@ async fn learning_request_write(
   content : String,
 ) -> Unit {
   let parts = path.split("/").to_array()
-  let directory = parts[:parts.length() - 1].to_array().join("/")
+  let directory = parts[:parts.length() - 1].to_owned().join("/")
   if !@fs.exists(root + "/" + directory) {
     @fs.mkdir(root + "/" + directory, recursive=true)
   }
@@ -460,7 +460,7 @@ async test "actual imported Desk and Bookkeeper records reach native serialized 
       assert_false(text.contains("REJECTED_NATIVE_MUST_NOT_SEND"))
       // Decode the exact canonical record array inside the final model message,
       // then compare raw content and digests instead of substring-only evidence.
-      let record_json = snapshot.records.to_json().stringify(indent=2)
+      let record_json = Json(snapshot.records).stringify(indent=2)
       guard text.find(record_json) is Some(record_start) else {
         fail("Complete record array is absent from final request")
       }

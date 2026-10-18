@@ -68,7 +68,7 @@ fn nochange_test_result(
         now=@clock.Timestamp::from_ms(100L),
       ),
       "id",
-      id.to_json(),
+      Json(id),
     ),
   }
 }
@@ -242,14 +242,14 @@ test "nochange policy is immutable versioned and retained without other contract
   )
   for
     (key, value) in [
-      ("contract", "mooncode.completion-outcome.v99".to_json()),
-      ("allowed_outcomes", (["no_change"] : Array[String]).to_json()),
-      ("acceptance_scope", "customer_accepted".to_json()),
+      ("contract", Json("mooncode.completion-outcome.v99")),
+      ("allowed_outcomes", Json((["no_change"] : Array[String]))),
+      ("acceptance_scope", Json("customer_accepted")),
       ("required_checks", Json::array([])),
-      ("alternative_milestone_ids", (["tests"] : Array[String]).to_json()),
+      ("alternative_milestone_ids", Json((["tests"] : Array[String]))),
       (
         "alternative_milestone_ids",
-        (["implementation", "implementation"] : Array[String]).to_json(),
+        Json((["implementation", "implementation"] : Array[String])),
       ),
     ] {
     let invalid = nochange_test_command(
@@ -288,12 +288,12 @@ test "nochange requires exact commands cwd tool exit and supported actual assura
   )
   for
     (key, value) in [
-      ("cmd", "moon test".to_json()),
-      ("cwd", "other-package".to_json()),
-      ("exit_code", (1).to_json()),
-      ("run_id", "".to_json()),
-      ("approval_id", "".to_json()),
-      ("pipeline_exit_ambiguous", true.to_json()),
+      ("cmd", Json("moon test")),
+      ("cwd", Json("other-package")),
+      ("exit_code", Json(1)),
+      ("run_id", Json("")),
+      ("approval_id", Json("")),
+      ("pipeline_exit_ambiguous", Json(true)),
       (
         "sandbox_evidence",
         ({ "cleanup_verified": false, "command_digest": "digest-tests" } : Json),
@@ -409,14 +409,14 @@ test "nochange observation and references cannot be fabricated or inferred from 
   let evidence = nochange_test_evidence()
   for
     (key, value) in [
-      ("reason", "".to_json()),
-      ("observation", "   ".to_json()),
+      ("reason", Json("")),
+      ("observation", Json("   ")),
       ("evidence_refs", Json::array([])),
-      ("evidence_refs", (["fabricated"] : Array[String]).to_json()),
-      ("evidence_refs", (["nochange-read"] : Array[String]).to_json()),
+      ("evidence_refs", Json((["fabricated"] : Array[String]))),
+      ("evidence_refs", Json((["nochange-read"] : Array[String]))),
       (
         "evidence_refs",
-        (["nochange-tests", "nochange-tests"] : Array[String]).to_json(),
+        Json((["nochange-tests", "nochange-tests"] : Array[String])),
       ),
     ] {
     let proposal = mooncode_json_object_with_field(
@@ -448,7 +448,7 @@ test "nochange observation and references cannot be fabricated or inferred from 
   let wrong_type = mooncode_json_object_with_field(
     nochange_test_checkpoint_arguments(),
     "completion_outcome",
-    (42).to_json(),
+    Json(42),
   )
   assert_true(
     mooncode_nochange_proposal_error(command, wrong_type, evidence) != "",
@@ -620,7 +620,7 @@ test "nochange failed required process invalidates earlier success and requires 
   )
   // Even a process accepted under a nonzero expected exit cannot leave an
   // older zero-exit proof current for this exact required command.
-  let nonzero = nochange_test_metadata(evidence[1], "exit_code", (1).to_json())
+  let nonzero = nochange_test_metadata(evidence[1], "exit_code", Json(1))
   assert_eq(
     mooncode_nochange_check_evidence(command, evidence + [nonzero]).length(),
     0,
@@ -735,18 +735,16 @@ test "nochange proposal schemas preserve answer and independent goal semantics" 
     )
     assert_eq(mooncode_json_array_string_items(schema, "required"), ["answer"])
   }
-  let legacy = mooncode_runtime_turn_model_tools_for_command(
+  let legacy = Json(
+    mooncode_runtime_turn_model_tools_for_command(
       nochange_test_command(policy=Json::null()),
-    )
-    .to_json()
-    .stringify()
+    ),
+  ).stringify()
   assert_false(legacy.contains("completion_outcome"))
   assert_false(legacy.contains("already_satisfied"))
-  let opted = mooncode_runtime_turn_model_tools_for_command(
-      nochange_test_command(),
-    )
-    .to_json()
-    .stringify()
+  let opted = Json(
+    mooncode_runtime_turn_model_tools_for_command(nochange_test_command()),
+  ).stringify()
   assert_true(opted.contains("completion_outcome"))
   assert_true(opted.contains("already_satisfied"))
   let metadata = mooncode_json_object_field_or_empty(

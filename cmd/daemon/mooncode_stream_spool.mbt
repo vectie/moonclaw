@@ -40,7 +40,7 @@ async fn mooncode_stream_spool_scan_locked(
         let event = mooncode_json_object_with_field(
           mooncode_json_object_field_or_empty(record, "payload"),
           "journal_sequence",
-          next.text().to_json(),
+          Json(next.text()),
         )
         let stream_record = mooncode_stream_event_record(
           expected_session_id,
@@ -100,32 +100,18 @@ async fn mooncode_stream_create_spool(
   since : MoonCodeJournalSequence,
 ) -> MoonCodeStreamSpool {
   let directory = @fs.tmpdir(prefix="mooncode-stream")
+  errdefer (@fs.rmdir(directory, recursive=true) catch { _ => () })
   let path = @pathx.join(directory, "events.spool")
   let writer = @fs.open(
     path,
     mode=WriteOnly,
     create_mode=CreateOrTruncate,
     permission=0o600,
-  ) catch {
-    error => {
-      @fs.rmdir(directory, recursive=true) catch {
-        _ => ()
-      }
-      raise error
-    }
-  }
+  )
+  defer writer.close()
   let summary = mooncode_stream_spool_summary(
     writer, format, book_root, session_id, since,
-  ) catch {
-    error => {
-      writer.close()
-      @fs.rmdir(directory, recursive=true) catch {
-        _ => ()
-      }
-      raise error
-    }
-  }
-  writer.close()
+  )
   { directory, path, summary, }
 }
 
@@ -154,24 +140,16 @@ async fn mooncode_stream_deliver_spool(
   done : Json,
 ) -> Unit {
   let reader = @fs.open(spool.path, mode=ReadOnly)
-  try {
-    if format == "sse" {
-      w.header().set("Content-Type", "text/event-stream")
-      w.header().set("Cache-Control", "no-cache")
-    } else {
-      w.header().set("Content-Type", "application/x-ndjson")
-    }
-    w.write_header(200)
-    mooncode_stream_write_record(w, format, meta)
-    w.write_reader(reader)
-    mooncode_stream_write_record(w, format, done)
-    w.flush()
-  } catch {
-    error => {
-      reader.close()
-      raise error
-    }
-  } noraise {
-    _ => reader.close()
+  defer reader.close()
+  if format == "sse" {
+    w.header().set("Content-Type", "text/event-stream")
+    w.header().set("Cache-Control", "no-cache")
+  } else {
+    w.header().set("Content-Type", "application/x-ndjson")
   }
+  w.write_header(200)
+  mooncode_stream_write_record(w, format, meta)
+  w.write_reader(reader)
+  mooncode_stream_write_record(w, format, done)
+  w.flush()
 }

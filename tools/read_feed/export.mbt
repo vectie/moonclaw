@@ -1,6 +1,6 @@
 ///|
 fn markdown_text(text : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for c in feed_space(text) {
     if c is ('\\' | '`' | '*' | '_' | '[' | ']' | '#' | '<' | '>' | '!' | '|') {
       out.write_char('\\')
@@ -13,7 +13,7 @@ fn markdown_text(text : String) -> String {
 ///|
 /// Export the currently selected page as a portable reading digest.
 pub fn FeedPage::to_markdown(self : FeedPage) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string("# " + markdown_text(self.title) + "\n\n")
   out.write_string("Source: " + markdown_text(self.source) + "\n\n")
   out.write_string(

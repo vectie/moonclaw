@@ -13,7 +13,7 @@ async test "cancel bypasses absent catalog without changing session model" {
         root, "cancel-no-catalog", "withdrawn",
       )
       if cancel is Object(fields) {
-        fields["model"] = requested_model.to_json()
+        fields["model"] = Json(requested_model)
       }
       mooncode_pending_cancel_test_queue(root, [
         mooncode_pending_cancel_test_prompt(root, "withdrawn"),

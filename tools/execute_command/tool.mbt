@@ -41,7 +41,7 @@ fn render_output(
   output : String,
   max_output_lines~ : Int32,
 ) -> String {
-  let formatted = StringBuilder::new()
+  let formatted = StringBuilder()
   let lines = output.split("\n").collect()
   if lines.length() >= max_output_lines {
     formatted.write_string(
@@ -445,3 +445,18 @@ pub fn new(
     }),
   )
 }
+
+///|
+pub extend CommandOutput with ToJson::{to_json}
+
+///|
+pub extend CommandOutput with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandResult with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandResult with ToJson::{to_json}
+
+///|
+pub extend CommandResult with Show::{to_string, output}

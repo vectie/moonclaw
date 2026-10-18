@@ -318,7 +318,7 @@ pub async fn download_bound_command_output(
     "run_id": audit.receipt.run_id,
     "approval_digest": audit.receipt.approval_digest,
     "command_digest": audit.receipt.command_digest,
-    "offset": 0L.to_json(),
+    "offset": Json(0L),
     "max_bytes": reference.size_bytes.to_int().max(1),
   }
   let probe = client.inspect(request.stringify())
@@ -345,10 +345,51 @@ pub async fn download_bound_command_output(
     value == reference.to_json() else {
     fail("Fort returned a mismatched output reference")
   }
-  let bytes = client.export(request.stringify(), reference.size_bytes.to_int())
+  let bytes = client.export_bytes(
+    request.stringify(),
+    reference.size_bytes.to_int(),
+  )
   guard bytes.length().to_int64() == reference.size_bytes &&
     @crypto.bytes_to_hex_string(@crypto.sha256(bytes)) == reference.sha256 else {
     fail("Downloaded output bytes failed verification")
   }
   bytes
 }
+
+///|
+pub extend CommandOutputOwner with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CommandOutputOwner with Eq::{not_equal, equal}
+
+///|
+pub extend CommandOutputOwner with ToJson::{to_json}
+
+///|
+pub extend CommandOutputOwner with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandOutputBinding with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend CommandOutputBinding with Eq::{not_equal, equal}
+
+///|
+pub extend CommandOutputBinding with ToJson::{to_json}
+
+///|
+pub extend CommandOutputBinding with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend BoundCommandOutput with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend BoundCommandOutput with Eq::{not_equal, equal}
+
+///|
+pub extend BoundCommandOutput with ToJson::{to_json}
+
+///|
+pub extend BoundCommandOutput with @moonbitlang/core/json.FromJson::{from_json}

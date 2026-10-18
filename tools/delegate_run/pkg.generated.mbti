@@ -27,6 +27,11 @@ pub struct DelegateRunResult {
   step_config : Json
   summary : String
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn DelegateRunResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn DelegateRunResult::output(Self, &Logger) -> Unit
+pub fn DelegateRunResult::to_json(Self) -> Json
+pub fn DelegateRunResult::to_repr(Self) -> @debug.Repr
+pub fn DelegateRunResult::to_string(Self) -> String
 pub impl Show for DelegateRunResult
 
 // Type aliases

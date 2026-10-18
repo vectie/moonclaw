@@ -359,7 +359,7 @@ async test "checkpoint store concurrent unique checkpoint IDs at same basis line
       let mut recorded = 0
       let mut conflicts = 0
       @async.with_task_group(async fn(group) {
-        let tasks = Array::new(capacity=16)
+        let tasks = Array(capacity=16)
         for i in 0..<16 {
           tasks.push(
             group.spawn(async fn() {

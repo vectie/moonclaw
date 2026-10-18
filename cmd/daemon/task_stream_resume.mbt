@@ -214,7 +214,7 @@ async fn Daemon::task_stream_write(
   let payload : Json = match event {
     Object(fields) => {
       let copy = fields.copy()
-      copy["cursor"] = cursor.to_json()
+      copy["cursor"] = Json(cursor)
       Json::object(copy)
     }
     _ => event
@@ -282,11 +282,13 @@ async fn Daemon::task_stream_resume(
     let snapshot : Json = match snapshot {
       Object(fields) => {
         let copy = fields.copy()
-        copy["recovery"] = (if recovery == "" {
-          "replay_limit"
-        } else {
-          recovery
-        }).to_json()
+        copy["recovery"] = Json(
+          if recovery == "" {
+            "replay_limit"
+          } else {
+            recovery
+          },
+        )
         Json::object(copy)
       }
       _ => snapshot

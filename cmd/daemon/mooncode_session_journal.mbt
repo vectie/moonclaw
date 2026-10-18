@@ -509,12 +509,12 @@ fn mooncode_journal_entries(
         mooncode_json_object_with_field(
           payload,
           "journal_sequence",
-          mooncode_journal_sequence_checked(
-            record,
-            "Invalid journal record \{index + 1}",
-          )
-          .text()
-          .to_json(),
+          Json(
+            mooncode_journal_sequence_checked(
+              record,
+              "Invalid journal record \{index + 1}",
+            ).text(),
+          ),
         ),
       )
     }

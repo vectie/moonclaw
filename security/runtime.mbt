@@ -564,3 +564,41 @@ pub fn render_approvals(records : Array[ApprovalRecord]) -> String {
     ["Pending approvals:", ..items].join("\n")
   }
 }
+
+///|
+pub extend CommandPolicy with ToJson::{to_json}
+
+///|
+pub extend CommandPolicy with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend CommandPolicy with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PairingRecord with ToJson::{to_json}
+
+///|
+pub extend PairingRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend PairingRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend ApprovalRecord with ToJson::{to_json}
+
+///|
+pub extend ApprovalRecord with @moonbitlang/core/json.FromJson::{from_json}
+
+///|
+pub extend ApprovalRecord with @moonbitlang/core/debug.Debug::{to_repr}
+
+///|
+pub extend PersistedSecurityState with ToJson::{to_json}
+
+///|
+pub extend PersistedSecurityState with @moonbitlang/core/json.FromJson::{
+  from_json,
+}
+
+///|
+pub extend PersistedSecurityState with @moonbitlang/core/debug.Debug::{to_repr}

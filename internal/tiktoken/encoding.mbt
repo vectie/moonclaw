@@ -248,3 +248,6 @@ pub fn Encoding::decode(
     _ => raise MalformedUtf8(contents)
   }
 }
+
+///|
+pub extend DecodingError with @moonbitlang/core/debug.Debug::{to_repr}

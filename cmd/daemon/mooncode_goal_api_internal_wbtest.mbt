@@ -18,7 +18,7 @@ fn goal_internal_assert_error(
   assert_eq(body["kind"], ("mooncode-goal-error" : Json))
   assert_eq(body["protocol"], ("mooncode.v1" : Json))
   assert_eq(body["owner"], ("moonclaw" : Json))
-  assert_eq(body["error"], code.to_json())
+  assert_eq(body["error"], Json(code))
 }
 
 ///|
@@ -95,7 +95,7 @@ async test "mooncode_goal_api_internal: lifecycle is exact and durable" {
     let created = mooncode_goal_api_put_internal(
       root,
       id,
-      goal_api_body((7).to_json()),
+      goal_api_body(Json(7)),
       9007199254740993L,
     )
     assert_eq(created.status_code, 201)
@@ -109,7 +109,7 @@ async test "mooncode_goal_api_internal: lifecycle is exact and durable" {
     let retry = mooncode_goal_api_put_internal(
       root,
       id,
-      goal_api_body((7).to_json()),
+      goal_api_body(Json(7)),
       9223372036854775807L,
     )
     assert_eq(retry.status_code, 200)
@@ -121,7 +121,7 @@ async test "mooncode_goal_api_internal: lifecycle is exact and durable" {
     assert_eq(fetched.body, retry.body)
     assert_eq(@fsx.read_file(journal), journal_bytes)
 
-    let changed = goal_api_body((7).to_json())
+    let changed = goal_api_body(Json(7))
     let changed_object = match changed {
       Object(object) => object
       _ => abort("fixture")
@@ -143,12 +143,12 @@ async test "mooncode_goal_api_internal: clock and parse failures create no journ
       false,
       goal_gate_snapshot(active, root),
     )
-    let clock_body = goal_api_body((7).to_json())
+    let clock_body = goal_api_body(Json(7))
     let clock_object = match clock_body {
       Object(object) => object
       _ => abort("fixture")
     }
-    clock_object["session_id"] = active.to_json()
+    clock_object["session_id"] = Json(active)
     let clock_error = mooncode_goal_api_put_internal(
       root, active, clock_body, -1L,
     )
