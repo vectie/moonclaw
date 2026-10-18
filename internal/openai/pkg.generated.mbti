@@ -376,6 +376,7 @@ pub(all) enum ChatCompletionToolChoice {
   Function(ChatCompletionFunctionToolChoice)
   Custom(ChatCompletionCustomToolChoice)
 }
+pub fn ChatCompletionToolChoice::to_json(Self) -> Json
 pub impl ToJson for ChatCompletionToolChoice
 
 pub struct ChatCompletionToolMessageParam {
