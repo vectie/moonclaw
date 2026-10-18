@@ -428,6 +428,9 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
   if self.stream_options is Some(stream_options) {
     json["stream_options"] = stream_options.to_json()
   }
+  if self.tool_choice is Some(tool_choice) {
+    json["tool_choice"] = tool_choice.to_json()
+  }
   if self.parallel_tool_calls is Some(parallel_tool_calls) {
     json["parallel_tool_calls"] = parallel_tool_calls.to_json()
   }

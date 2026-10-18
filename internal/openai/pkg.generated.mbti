@@ -333,6 +333,7 @@ pub(all) enum ChatCompletionToolChoice {
   Function(ChatCompletionFunctionToolChoice)
   Custom(ChatCompletionCustomToolChoice)
 }
+pub impl ToJson for ChatCompletionToolChoice
 
 pub struct ChatCompletionToolMessageParam {
   content : Array[ChatCompletionContentPartParam]

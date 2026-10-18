@@ -94,11 +94,18 @@ async fn Daemon::moongate_route(
       return
     }
   }
-  let configured_default = @moongate.configured_models_from_suite_status_for_workspace_root(
-      self.home,
-    )
-    .get(0)
-    .map(model => model.id())
+  // Hosted workspaces configure their model after MoonGate starts. Its suite
+  // status manifest can therefore have no defaultModel even when the live
+  // catalog is ready; the deployment's bounded hosted alias is authoritative.
+  let configured_default = match hosted_model_alias() {
+    Some(model) => Some(model)
+    None =>
+      @moongate.configured_models_from_suite_status_for_workspace_root(
+        self.home,
+      )
+      .get(0)
+      .map(model => model.id())
+  }
   let status = match client.model_catalog() {
     Ok(catalog) =>
       moonclaw_moongate_route_status_json(

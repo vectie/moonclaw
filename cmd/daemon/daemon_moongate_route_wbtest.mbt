@@ -46,3 +46,21 @@ test "MoonGate route status fails closed without live catalog" {
   )
   assert_false(mooncode_json_bool(failed, "ready", default=true))
 }
+
+///|
+test "hosted alias becomes ready only when present in live MoonGate catalog" {
+  let ready = moonclaw_moongate_route_status_json(
+    "http://127.0.0.1:15721",
+    ["qwen-qwen3.8-27b-fp8"],
+    "",
+    configured_default="qwen-qwen3.8-27b-fp8",
+  )
+  assert_true(mooncode_json_bool(ready, "ready", default=false))
+  let missing = moonclaw_moongate_route_status_json(
+    "http://127.0.0.1:15721",
+    ["another-model"],
+    "",
+    configured_default="qwen-qwen3.8-27b-fp8",
+  )
+  assert_false(mooncode_json_bool(missing, "ready", default=true))
+}

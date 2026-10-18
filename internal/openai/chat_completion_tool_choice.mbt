@@ -16,3 +16,28 @@ pub(all) enum ChatCompletionToolChoice {
   Function(ChatCompletionFunctionToolChoice)
   Custom(ChatCompletionCustomToolChoice)
 }
+
+///|
+pub impl ToJson for ChatCompletionToolChoice with fn to_json(
+  self : ChatCompletionToolChoice,
+) -> Json {
+  match self {
+    Disallow => Json::string("none")
+    Auto => Json::string("auto")
+    Required => Json::string("required")
+    Function(choice) =>
+      { "type": "function", "function": { "name": choice.name } }
+    Custom(choice) => { "type": "custom", "custom": { "name": choice.name } }
+    AllowedTools(choice) =>
+      {
+        "type": "allowed_tools",
+        "allowed_tools": {
+          "mode": match choice.mode {
+            Auto => Json::string("auto")
+            Required => Json::string("required")
+          },
+          "tools": choice.tools.map(tool => tool.to_json()),
+        },
+      }
+  }
+}
