@@ -93,14 +93,6 @@ fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
 }
 
 ///|
-fn mooncode_runtime_horizon_required_milestones(command : Json) -> Array[Json] {
-  mooncode_json_array_items(
-    mooncode_runtime_horizon_task_contract(command),
-    "milestones",
-  )
-}
-
-///|
 fn mooncode_runtime_horizon_contract(command : Json) -> Json {
   let supplied = mooncode_runtime_horizon_task_contract(command)
   {
@@ -140,16 +132,6 @@ fn mooncode_runtime_horizon_contract_prompt(command : Json) -> String {
     return ""
   }
   "Durable task contract: \{mooncode_runtime_horizon_contract(command).stringify()}\n"
-}
-
-///|
-fn mooncode_runtime_horizon_checkpoint_contract(command : Json) -> Json {
-  {
-    "horizon_id": mooncode_runtime_horizon_id(command),
-    "milestones": Json::array(
-      mooncode_runtime_horizon_required_milestones(command),
-    ),
-  }
 }
 
 ///|
@@ -289,7 +271,6 @@ fn mooncode_runtime_horizon_retained_evidence(command : Json) -> Array[Json] {
 fn mooncode_runtime_horizon_checkpoint_error(
   command : Json,
   arguments : Json,
-  _results : Array[Json],
 ) -> String {
   if mooncode_json_string(arguments, "horizon_id", default="") !=
     mooncode_runtime_horizon_id(command) {
@@ -312,43 +293,16 @@ fn mooncode_runtime_horizon_checkpoint_error(
 }
 
 ///|
-fn mooncode_runtime_horizon_checkpoint_all_done(checkpoint : Json) -> Bool {
-  let milestones = mooncode_json_array_items(checkpoint, "milestones")
-  milestones.length() > 0 &&
-  milestones.all(milestone => {
-    mooncode_json_string(milestone, "status", default="") == "done"
-  })
-}
-
-///|
-fn mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(
-  command : Json,
-  results : Array[Json],
-) -> Bool {
-  if mooncode_runtime_horizon_explicit_id(command) == "" {
-    return false
-  }
-  let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
-  mooncode_json_array_items(checkpoint, "milestones").any(milestone => {
-    let status = mooncode_json_string(milestone, "status", default="")
-    status == "active" || status == "pending"
-  })
-}
-
-///|
 fn mooncode_runtime_horizon_checkpoint_execution(
   command : Json,
   session_id : String,
   book_root : String,
   command_id : String,
   tool_call : Json,
-  prior_results : Array[Json],
   now~ : @clock.Timestamp,
 ) -> Json {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let error = mooncode_runtime_horizon_checkpoint_error(
-    command, arguments, prior_results,
-  )
+  let error = mooncode_runtime_horizon_checkpoint_error(command, arguments)
   let checkpoint : Json = {
     "horizon_id": mooncode_runtime_horizon_id(command),
     "milestones": Json::array(
@@ -364,16 +318,12 @@ fn mooncode_runtime_horizon_checkpoint_execution(
       metadata={
         "horizon_id": mooncode_runtime_horizon_id(command),
         "checkpoint": checkpoint,
-        "all_done": mooncode_runtime_horizon_checkpoint_all_done(checkpoint),
       },
     )
   } else {
     mooncode_tool_error_result("checkpoint", message=error, metadata={
       "horizon_id": mooncode_runtime_horizon_id(command),
       "checkpoint": checkpoint,
-      "required_checkpoint_contract": mooncode_runtime_horizon_checkpoint_contract(
-        command,
-      ),
     })
   }
   {

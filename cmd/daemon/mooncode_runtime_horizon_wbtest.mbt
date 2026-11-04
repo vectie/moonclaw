@@ -1,38 +1,4 @@
 ///|
-fn mooncode_horizon_test_milestones(
-  scope : String,
-  implementation : String,
-  tests : String,
-) -> Array[Json] {
-  [
-    {
-      "id": "scope",
-      "title": "Locate the owned implementation surface",
-      "status": scope,
-      "evidence_kind": "scope",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "implementation",
-      "title": "Implement the requested behavior",
-      "status": implementation,
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "tests",
-      "title": "Pass the requested typed tests",
-      "status": tests,
-      "evidence_kind": "test",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-}
-
-///|
 test "mooncode dirty continuation derives exact mutation evidence from commit" {
   let milestones : Array[Json] = [
     {
@@ -108,36 +74,6 @@ test "mooncode dirty continuation derives exact mutation evidence from commit" {
   let retained = mooncode_runtime_horizon_retained_evidence(attached)
   assert_eq(retained.length(), 1)
   assert_true(mooncode_runtime_turn_result_is_mutation(retained[0]))
-  let completed : Array[Json] = [
-    {
-      "id": "implementation",
-      "title": "Implement the repair",
-      "status": "done",
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "tests",
-      "title": "Pass tests",
-      "status": "active",
-      "evidence_kind": "test",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-  assert_eq(
-    mooncode_runtime_horizon_checkpoint_error(
-      attached,
-      {
-        "horizon_id": "dirty-continuation",
-        "milestones": Json::array(completed),
-        "next_action": "Run tests.",
-      },
-      retained,
-    ),
-    "",
-  )
 }
 
 ///|
@@ -235,22 +171,6 @@ test "mooncode retained commit evidence stays within its active horizon" {
 
 ///|
 test "mooncode terminal matching accepts retained commit and later verification" {
-  let milestones : Array[Json] = [
-    {
-      "id": "implementation",
-      "title": "Implement the repair",
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "tests",
-      "title": "Pass tests",
-      "evidence_kind": "test",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
   let command : Json = {
     "command": "prompt",
     "text": "Finish the implementation and run tests.",
@@ -259,7 +179,6 @@ test "mooncode terminal matching accepts retained commit and later verification"
       "task_contract": {
         "horizon_id": "terminal-commit",
         "objective": "Finish and validate the repair",
-        "milestones": Json::array(milestones),
       },
     },
   }
@@ -280,176 +199,14 @@ test "mooncode terminal matching accepts retained commit and later verification"
     "arguments": { "command": "test" },
     "result": { "metadata": {} },
   }
-  let all_done : Array[Json] = [
-    {
-      "id": "implementation",
-      "title": "Implement the repair",
-      "status": "done",
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "tests",
-      "title": "Pass tests",
-      "status": "done",
-      "evidence_kind": "test",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-  let checkpoint : Json = {
-    "tool": "checkpoint",
-    "accepted": true,
-    "result": {
-      "metadata": {
-        "horizon_id": "terminal-commit",
-        "checkpoint": {
-          "horizon_id": "terminal-commit",
-          "milestones": Json::array(all_done),
-          "next_action": "Finish.",
-        },
-      },
-    },
-  }
   let finish : Json = {
     "tool": "finish",
     "accepted": true,
     "result": { "metadata": {} },
   }
-  let results = [commit, verification, checkpoint, finish]
-  assert_eq(
-    mooncode_runtime_horizon_checkpoint_error(
-      command,
-      {
-        "horizon_id": "terminal-commit",
-        "milestones": Json::array(all_done),
-        "next_action": "Finish.",
-      },
-      [commit, verification],
-    ),
-    "",
-  )
+  let results = [commit, verification, finish]
   assert_true(
     mooncode_runtime_turn_completion_verdict(command, results).accepted,
-  )
-}
-
-///|
-test "mooncode finish accepts an all-done checkpoint after a verified commit seal" {
-  let milestones : Array[Json] = [
-    {
-      "id": "implementation",
-      "title": "Implement the repair",
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "tests",
-      "title": "Pass tests",
-      "evidence_kind": "test",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-  let command : Json = {
-    "command": "prompt",
-    "text": "Implement the repair and run tests.",
-    "payload": {
-      "horizon_id": "verified-commit-finish",
-      "task_contract": {
-        "horizon_id": "verified-commit-finish",
-        "objective": "Finish the verified repair",
-        "milestones": Json::array(milestones),
-      },
-    },
-  }
-  let source_change : Json = {
-    "tool": "apply_patch",
-    "accepted": true,
-    "result": {
-      "metadata": {
-        "changed": true,
-        "files": [
-          {
-            "changed": true,
-            "path": "src/runtime.mbt",
-            "before_fingerprint": "before",
-            "after_fingerprint": "after",
-          },
-        ],
-      },
-    },
-  }
-  let verification : Json = {
-    "tool": "moon_cmd",
-    "accepted": true,
-    "arguments": { "command": "test" },
-    "result": { "metadata": {} },
-  }
-  let commit : Json = {
-    "tool": "shell",
-    "accepted": true,
-    "result": {
-      "metadata": {
-        "post_commit_boundary": true,
-        "post_commit_capture_valid": true,
-        "commit_sha": "ccf291e8",
-        "changed_paths": ["src/runtime.mbt"],
-      },
-    },
-  }
-  let checkpoint : Json = {
-    "tool": "checkpoint",
-    "accepted": true,
-    "result": {
-      "metadata": {
-        "horizon_id": "verified-commit-finish",
-        "checkpoint": {
-          "horizon_id": "verified-commit-finish",
-          "milestones": [
-            {
-              "id": "implementation",
-              "title": "Implement the repair",
-              "status": "done",
-              "evidence_kind": "mutation",
-              "path": "",
-              "context_paths": [],
-            },
-            {
-              "id": "tests",
-              "title": "Pass tests",
-              "status": "done",
-              "evidence_kind": "test",
-              "path": "",
-              "context_paths": [],
-            },
-          ],
-          "next_action": "Finish without another test or mutation.",
-        },
-      },
-    },
-  }
-  let finish : Json = {
-    "tool": "finish",
-    "accepted": true,
-    "result": { "metadata": {} },
-  }
-  let results = [source_change, verification, commit, checkpoint, finish]
-  let verdict = mooncode_runtime_turn_completion_verdict(command, results)
-  assert_true(verdict.accepted)
-  assert_eq(
-    verdict.reason,
-    "coding completion has successful current typed test evidence",
-  )
-  assert_false(
-    mooncode_runtime_turn_recoverable_horizon_finish(
-      command,
-      { "planner_mode": "model-tool-calls" },
-      [{ "tool": "finish", "arguments": { "answer": "done" } }],
-      results,
-    ),
   )
 }
 

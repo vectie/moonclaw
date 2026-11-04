@@ -693,6 +693,9 @@ checkpoint instead of forcing a premature `finish`. A content mismatch reports
 the affected path so the same agent can refresh evidence and correct the patch.
 There is no mutation quota, mandatory milestone protocol or separate native
 tool-search/loading state machine.
+An empty follow-up response saves a resumable planner checkpoint with the same
+claim and completed results. The service can continue without a progress plan
+or an all-done checkpoint; cancellation and explicit service limits still apply.
 Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also
@@ -789,8 +792,9 @@ task/goal completion are separate facts.
 `scripts/mooncode-patient-harness.sh` is a thin client around `turns`,
 `runtime-service`, and `stream`. It accepts a complete turn request rather than
 encoding a task plan. The request prompt remains the source of intent, and
-callers may add an optional `task_contract` with milestone, constraint, and
-context-path hints.
+callers may add an optional `task_contract` with objective, constraint, output,
+required-check and context-path hints. Advisory milestones belong in optional
+progress checkpoints and do not control completion or retries.
 
 The harness has no task-duration or model-step ceiling. It follows durable
 journal sequence, retries transport interruptions without cancelling the turn,

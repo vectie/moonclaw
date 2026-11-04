@@ -580,7 +580,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               session_id,
               command_id,
               retained_plan,
-              finish_rejected=false,
+              finish_rejected=mooncode_json_bool(
+                continuation,
+                "finish_rejected",
+                default=false,
+              ),
               planner_steps,
               tool_results,
               mooncode_json_array_items(continuation, "step_results"),
@@ -933,7 +937,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               book_root,
               command_id,
               tool_call,
-              tool_results,
               now=self.clock.now(),
             )
           } else {

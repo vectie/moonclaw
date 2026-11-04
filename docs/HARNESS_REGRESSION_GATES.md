@@ -14,6 +14,7 @@ acceptance engine or model role. See the [runtime boundary](executable_book_runt
 | Completion | Necessary native checks and current tracked inputs support `finish`; repairable gaps return to the same agent. |
 | Context | Task instructions, tool-call pairing and recent verification survive compaction. |
 | Recovery | Checkpoints retain position, intent and completed-result references. Reuse results and reconcile uncertain effects. |
+| Empty model follow-up | Preserve the claim and resume from existing results without requiring milestones; cancellation remains effective. |
 | Authority | Actual sandbox grants, approval bindings and cancellation remain enforced. |
 
 The retired bundle/search experiment and its simulated baseline/variant

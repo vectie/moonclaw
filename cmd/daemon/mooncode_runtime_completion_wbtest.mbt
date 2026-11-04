@@ -47,25 +47,35 @@ test "checkpoint is editable progress and does not grant completion" {
     "horizon_id": "completion-command",
     "milestones": [{ "id": "work", "status": "active" }],
   }
-  assert_eq(mooncode_runtime_horizon_checkpoint_error(command, done, []), "")
+  assert_eq(mooncode_runtime_horizon_checkpoint_error(command, done), "")
   let saved = mooncode_runtime_horizon_checkpoint_execution(
     command,
     "completion-session",
     "/synthetic/source",
     "completion-command",
     { "arguments": done },
-    [],
     now=@clock.epoch.now(),
   )
-  assert_eq(
-    mooncode_runtime_horizon_checkpoint_error(command, reopened, [saved]),
-    "",
-  )
+  assert_eq(mooncode_runtime_horizon_checkpoint_error(command, reopened), "")
   assert_false(
     mooncode_runtime_turn_completion_verdict(command, [
       saved,
       completion_test_finish(),
     ]).accepted,
+  )
+  let active = mooncode_runtime_horizon_checkpoint_execution(
+    command,
+    "completion-session",
+    "/synthetic/source",
+    "completion-command",
+    { "arguments": reopened },
+    now=@clock.epoch.now(),
+  )
+  assert_true(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      completion_test_evidence() + [active, completion_test_finish()],
+    ).accepted,
   )
 }
 

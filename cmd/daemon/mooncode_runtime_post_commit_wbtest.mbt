@@ -43,7 +43,7 @@ async fn mooncode_post_commit_test_fixture() -> (String, Json) {
 }
 
 ///|
-async test "sealed raw shell commit retains multi-path checkpoint evidence" {
+async test "sealed raw shell commit retains exact changed paths and permits finish" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-paths-XXXXXX"),
   )
@@ -136,61 +136,6 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
       now=@clock.Timestamp::from_ms(2L),
     )
     assert_true(mooncode_json_bool(verification, "accepted", default=false))
-    let milestones : Array[Json] = [
-      {
-        "id": "proof-document",
-        "title": "Retain exact hosted artifact evidence",
-        "evidence_kind": "path_changed",
-        "path": proof_path,
-        "context_paths": [],
-      },
-      {
-        "id": "phase-plan",
-        "title": "Record the exact release gate status",
-        "evidence_kind": "path_changed",
-        "path": plan_path,
-        "context_paths": [],
-      },
-      {
-        "id": "verification",
-        "title": "Pass release validation",
-        "evidence_kind": "check",
-        "path": "",
-        "context_paths": [],
-      },
-    ]
-    let command : Json = {
-      "command": "prompt",
-      "text": "Close the release evidence documentation.",
-      "payload": {
-        "horizon_id": "phase2-evidence-doc-closeout",
-        "task_contract": {
-          "horizon_id": "phase2-evidence-doc-closeout",
-          "objective": "Close release evidence",
-          "milestones": Json::array(milestones),
-        },
-      },
-    }
-    let all_done = milestones.map(milestone => {
-      let milestone = mooncode_json_object_with_field(
-        milestone,
-        "status",
-        Json("done"),
-      )
-      milestone
-    })
-    assert_eq(
-      mooncode_runtime_horizon_checkpoint_error(
-        command,
-        {
-          "horizon_id": "phase2-evidence-doc-closeout",
-          "milestones": Json::array(all_done),
-          "next_action": "Finish.",
-        },
-        [commit, verification],
-      ),
-      "",
-    )
     let boundary = mooncode_runtime_post_commit_boundary([commit])
     assert_true(mooncode_json_bool(boundary, "capture_valid", default=false))
     let seal_verdict = mooncode_runtime_post_commit_guard(

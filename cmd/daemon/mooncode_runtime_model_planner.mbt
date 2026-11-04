@@ -2445,44 +2445,29 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         response_json,
       )
       if next_tool_calls.length() == 0 {
-        if mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(
-            command, all_tool_results,
-          ) {
-          let guidance = "The previous follow-up produced no usable MoonCode tool call while the retained checkpoint still has active or pending milestones. Continue the same claimed task from retained evidence now: choose one causally relevant supported tool call. Do not summarize, abandon, or call finish until the active milestone is repaired or completed and an all-done checkpoint is accepted."
-          let replanning = mooncode_event(
-            session_id~,
-            command_id~,
-            lane="runtime",
-            kind="runtime.planner_replan_requested",
-            title="MoonCode model planner retained unfinished work",
-            status="paused",
-            detail="MoonClaw retained the claimed command and will ask the model to replan because its accepted checkpoint is unfinished.",
-            now~,
-          )
-          return {
-            "kind": mooncode_kind_runtime_turn_planner(),
-            "protocol": mooncode_protocol_version(),
-            "planner_mode": mooncode_planner_mode_model_tool_calls(),
-            "patient_replan": true,
-            "model": model_name,
-            "tool_calls": Json::array([]),
-            "events": Json::array([started, replanning]),
-            "message": "model planner follow-up returned no usable MoonCode tool calls while retained milestones remain unfinished",
-            "patient_replan_guidance": guidance,
-            "semantic_compaction_lifecycle": semantic_compaction.metrics,
-          }
-        }
-        return mooncode_json_object_with_field(
-          mooncode_runtime_turn_failed_planner_result(
-            command,
-            model_name,
-            "model planner follow-up returned no usable MoonCode tool calls",
-            started,
-            now~,
-          ),
-          "semantic_compaction_lifecycle",
-          semantic_compaction.metrics,
+        let guidance = "The previous follow-up produced no usable MoonCode tool call. Continue the current task from retained results without replaying completed effects. Choose the next relevant supported tool, or call finish when the deliverable and required checks are ready."
+        let replanning = mooncode_event(
+          session_id~,
+          command_id~,
+          lane="runtime",
+          kind="runtime.planner_replan_requested",
+          title="MoonCode model planner will retry an empty response",
+          status="paused",
+          detail="MoonClaw retained the claimed command and completed results for another planner request.",
+          now~,
         )
+        return {
+          "kind": mooncode_kind_runtime_turn_planner(),
+          "protocol": mooncode_protocol_version(),
+          "planner_mode": mooncode_planner_mode_model_tool_calls(),
+          "patient_replan": true,
+          "model": model_name,
+          "tool_calls": Json::array([]),
+          "events": Json::array([started, replanning]),
+          "message": "model planner follow-up returned no usable MoonCode tool calls",
+          "patient_replan_guidance": guidance,
+          "semantic_compaction_lifecycle": semantic_compaction.metrics,
+        }
       }
       let selected = mooncode_event(
         session_id~,

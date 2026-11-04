@@ -52,15 +52,19 @@ into additional implementation requirements.
   native `tool_search`, deferred receipt validation and their simulated
   benchmarks were deleted. Read-only subsets, explicit tool selection and MCP
   inventory/calls remain. Workers are absent from the default catalog.
+- Empty follow-ups retain the claim and results for autonomous retry regardless
+  of progress notes. Milestone predicates, `all_done` receipts and required
+  checkpoint contracts were removed; advisory checkpoints inspect no evidence.
 
 ## Validation 2026-11-04
 
-- Preceding baseline: MoonClaw `cb1c5228`, MoonDesk `5f6174bc`, on `main` across
-  all configured remotes. MoonDesk's real producer/consumer probe passed there.
-- After native catalog cleanup, the full native suite passed 1931/1931.
-  The real MoonDesk producer/consumer probe and focused compaction tests also
-  passed. Interfaces are unchanged. Retained tests cover completion repair,
-  stale checks, restart, uncertain effects, tool selection, output and compaction.
+- After removing milestone-dependent recovery, native check and the full native
+  suite passed 1929/1929 (`--target native --strip -j 2 --warn-list -all`).
+  The existing restart fixture now covers repeated empty follow-ups after a
+  rejected finish without any progress checkpoints, followed by valid delivery.
+- The real MoonDesk producer/consumer probe passed. `moon info`, formatting and
+  whitespace checks passed; interfaces are unchanged. Retained tests cover
+  completion repair, stale checks, restart, uncertain effects and cancellation.
 - This is fixture validation, not deployment or live-model delivery-quality
   qualification. MoonDesk's strict release gate still has existing warning
   debt; do not describe it as a warning-clean release.
@@ -71,6 +75,9 @@ into additional implementation requirements.
   they were retired. Confirm current source rather than reusing their test counts.
 - Context provenance writes v2; v1 describes an existing reader path.
 - A milestone checkpoint does not discard the actual planner transcript.
+- Repeated empty follow-ups after rejected `finish` must preserve the retained
+  `finish_rejected` flag. Resetting it made the next continuation invalid and
+  raised `InvalidJournal`; the restart fixture now covers two empty responses.
 - Runtime service/loop execution already has a cross-process session lease.
 - Physical journal sequences are positive exact decimals; derived cursors may
   be zero. Neither bounded integer conversion nor payload shadowing is valid.

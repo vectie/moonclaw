@@ -288,7 +288,6 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
           "next_action": "Finish.",
         },
       },
-      results,
       now=@clock.Timestamp::from_ms(83L),
     )
     assert_true(mooncode_json_bool(checkpoint, "accepted", default=false))

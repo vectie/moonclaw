@@ -271,76 +271,6 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
 }
 
 ///|
-fn mooncode_runtime_patient_test_retained_checkpoint(status : String) -> Json {
-  {
-    "accepted": true,
-    "tool": "checkpoint",
-    "result": {
-      "metadata": {
-        "horizon_id": "patient-replan",
-        "checkpoint": {
-          "horizon_id": "patient-replan",
-          "milestones": [
-            {
-              "id": "implementation",
-              "title": "Implement the change",
-              "status": status,
-              "evidence_kind": "path_changed",
-              "path": "patient-result.txt",
-              "context_paths": [],
-            },
-          ],
-        },
-      },
-    },
-  }
-}
-
-///|
-test "patient replanning requires retained active or pending milestones" {
-  let milestone : Json = {
-    "id": "implementation",
-    "title": "Implement the change",
-    "evidence_kind": "path_changed",
-    "path": "patient-result.txt",
-    "context_paths": [],
-  }
-  let command : Json = {
-    "command": "prompt",
-    "text": "Implement the requested code change.",
-    "payload": {
-      "horizon_id": "patient-replan",
-      "task_contract": {
-        "horizon_id": "patient-replan",
-        "objective": "Implement the requested change",
-        "milestones": [milestone],
-      },
-    },
-  }
-  assert_true(
-    mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(command, [
-      mooncode_runtime_patient_test_retained_checkpoint("active"),
-    ]),
-  )
-  assert_true(
-    mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(command, [
-      mooncode_runtime_patient_test_retained_checkpoint("pending"),
-    ]),
-  )
-  assert_false(
-    mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(command, [
-      mooncode_runtime_patient_test_retained_checkpoint("done"),
-    ]),
-  )
-  assert_false(
-    mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(
-      { "command": "prompt", "text": "Answer the question." },
-      [mooncode_runtime_patient_test_retained_checkpoint("active")],
-    ),
-  )
-}
-
-///|
 test "planner transport checkpoints preserve initial and follow-up resume state" {
   let initial = mooncode_runtime_planner_transport_continuation_event(
     "session-transport",
@@ -530,18 +460,6 @@ fn mooncode_runtime_quantum_test_empty_completion() -> Json {
 }
 
 ///|
-fn mooncode_runtime_patient_test_milestone(status : String) -> Json {
-  {
-    "id": "implementation",
-    "title": "Write the patient replan result",
-    "status": status,
-    "evidence_kind": "path_changed",
-    "path": "patient-result.txt",
-    "context_paths": [],
-  }
-}
-
-///|
 fn mooncode_runtime_patient_test_command(
   root : String,
   session_id : String,
@@ -555,15 +473,7 @@ fn mooncode_runtime_patient_test_command(
     "text": "Implement the code result and verify it.",
     "model": "test-planner",
     "packet": { "command_id": command_id },
-    "payload": {
-      "horizon_id": "patient-replan",
-      "planner_timeout_ms": 5000,
-      "task_contract": {
-        "horizon_id": "patient-replan",
-        "objective": "Write and verify the patient replan result",
-        "milestones": [mooncode_runtime_patient_test_milestone("active")],
-      },
-    },
+    "payload": { "planner_timeout_ms": 5000 },
   }
 }
 
@@ -749,37 +659,21 @@ async test "planner max steps is a resumable quantum without tool replay" {
 }
 
 ///|
-async test "unfinished checkpoint patiently replans without a ceiling or claim loss" {
+async test "empty follow-up recovers after restart without milestones or claim loss" {
   @fsx.with_temporary_directory("mooncode-patient-replan-XXXXXX", async fn(
     root,
   ) {
     let model_server = @httpx.Server::new("[::1]", 0, reuse_addr=true)
     defer model_server.close()
     let calls = Ref::Ref(0)
-    let request_bodies : Array[String] = []
     let router = @httpx.Router::new()
-    router.add_handler(Post, "/v1/chat/completions", (r, w) => {
-      let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
-      let body : Json = reader.read()
-      request_bodies.push(body.stringify())
+    router.add_handler(Post, "/v1/chat/completions", (_, w) => {
       let response = match calls.val {
-        0 => {
-          let arguments : Json = {
-            "horizon_id": "patient-replan",
-            "milestones": [mooncode_runtime_patient_test_milestone("active")],
-            "next_action": "Write and verify patient-result.txt.",
-          }
-          mooncode_runtime_quantum_test_completion(
-            "call-checkpoint-active",
-            "checkpoint",
-            arguments.stringify(),
-          )
-        }
-        1 =>
+        0 =>
           mooncode_runtime_quantum_test_completion(
             "call-finish-rejected", "finish", "{\"answer\":\"premature\"}",
           )
-        2 => mooncode_runtime_quantum_test_empty_completion()
+        1 | 2 => mooncode_runtime_quantum_test_empty_completion()
         3 =>
           mooncode_runtime_quantum_test_completion(
             "call-write", "write", "{\"path\":\"patient-result.txt\",\"content\":\"once\"}",
@@ -788,19 +682,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           mooncode_runtime_quantum_test_completion(
             "call-check", "shell", "{\"cmd\":\"test -f patient-result.txt\",\"verification_kind\":\"check\"}",
           )
-        5 => {
-          let arguments : Json = {
-            "horizon_id": "patient-replan",
-            "milestones": [mooncode_runtime_patient_test_milestone("done")],
-            "next_action": "Finish.",
-          }
-          mooncode_runtime_quantum_test_completion(
-            "call-checkpoint-done",
-            "checkpoint",
-            arguments.stringify(),
-          )
-        }
-        6 =>
+        5 =>
           mooncode_runtime_quantum_test_completion(
             "call-finish", "finish", "{\"answer\":\"patient replan completed\"}",
           )
@@ -995,7 +877,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           {
             "service_id": "patient-second-service",
             "consumer_id": "patient-restart-claim",
-            "max_turns": 1,
+            "max_turns": 2,
             "live_wait_ms": 0,
           },
         )
@@ -1004,9 +886,9 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           second, "runtime_loop",
         )
         let second_turns = mooncode_json_array_items(second_loop, "turns")
-        assert_eq(second_turns.length(), 1)
+        assert_eq(second_turns.length(), 2)
         let final_execution = mooncode_json_object_field_or_empty(
-          second_turns[0],
+          second_turns[second_turns.length() - 1],
           "execution",
         )
         assert_true(
@@ -1020,18 +902,10 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         assert_false(
           mooncode_json_bool(final_execution, "paused", default=false),
         )
-        assert_eq(calls.val, 7)
+        assert_eq(calls.val, 6)
         assert_eq(
           @fsx.read_file(@pathx.join(root, "patient-result.txt")),
           "once",
-        )
-        assert_true(
-          request_bodies
-          .join("\n")
-          .contains("previous follow-up produced no usable MoonCode tool call"),
-        )
-        assert_false(
-          request_bodies.join("\n").contains("Planner opportunities remaining"),
         )
         let final_journal = mooncode_read_session_journal(root, session_id)
         let final_state = second_daemon.mooncode_runtime_claim_state_payload(
@@ -1073,7 +947,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
             "runtime.planner_replan_requested"
           })
           .length(),
-          1,
+          2,
         )
         assert_eq(
           final_events
@@ -1144,11 +1018,11 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           [terminal_result],
           now=@clock.Timestamp::from_ms(8L),
         )
-        assert_true(mooncode_json_bool(terminal, "failed", default=false))
-        assert_false(
+        assert_false(mooncode_json_bool(terminal, "failed", default=false))
+        assert_true(
           mooncode_json_bool(terminal, "patient_replan", default=false),
         )
-        assert_eq(calls.val, 8)
+        assert_eq(calls.val, 7)
         group.return_immediately(())
       })
     })
@@ -1166,15 +1040,8 @@ async test "cancel settles a claim paused for patient replanning" {
     let router = @httpx.Router::new()
     router.add_handler(Post, "/v1/chat/completions", (_, w) => {
       let response = if calls.val == 0 {
-        let arguments : Json = {
-          "horizon_id": "patient-replan",
-          "milestones": [mooncode_runtime_patient_test_milestone("active")],
-          "next_action": "Write patient-result.txt.",
-        }
         mooncode_runtime_quantum_test_completion(
-          "call-checkpoint-active",
-          "checkpoint",
-          arguments.stringify(),
+          "call-finish-rejected", "finish", "{\"answer\":\"premature\"}",
         )
       } else {
         mooncode_runtime_quantum_test_empty_completion()

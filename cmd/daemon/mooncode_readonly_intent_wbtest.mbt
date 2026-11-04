@@ -49,10 +49,6 @@ test "read-only natural requests permit discovery and a model finish without mut
       mooncode_runtime_turn_requires_verification(command),
       msg=request,
     )
-    assert_true(
-      mooncode_runtime_horizon_required_milestones(command).is_empty(),
-      msg=request,
-    )
     let results = readonly_intent_results()
     assert_true(
       mooncode_runtime_turn_completion_verdict(command, results).accepted,
@@ -110,9 +106,6 @@ test "coding and scoped restrictions retain mutation completion requirements" {
         readonly_intent_results(),
       ).accepted,
       msg=request,
-    )
-    assert_true(
-      mooncode_runtime_horizon_required_milestones(command).is_empty(),
     )
   }
 }

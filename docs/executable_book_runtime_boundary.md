@@ -50,6 +50,10 @@ turns -> durable command queue -> runtime service
   counts, all-done checkpoints and consumed mutations do not prove completion.
 - Automatic service execution continues resumable planner quanta and transient
   interruptions. Explicit service limits remain caller-controlled bounds.
+- An empty model follow-up retains the claim and completed results for another
+  planner request, whether progress notes are absent, active or done. Recovery
+  does not require a milestone or an all-done checkpoint. The same `finish`
+  boundary still checks the current task and necessary verification facts.
 - Completed tool results and the actual model transcript survive milestone
   checkpoints. Context projection is handled separately; a checkpoint does not
   itself justify discarding source observations.
