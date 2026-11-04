@@ -940,16 +940,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             let candidate = if parallel_read_executions.length() ==
               tool_calls.length() {
               parallel_read_executions[tool_index]
-            } else if mooncode_json_string(tool_call, "tool", default="") ==
-              "tool_search" {
-              mooncode_runtime_turn_deferred_tool_search_execution(
-                command,
-                session_id,
-                book_root,
-                command_id,
-                tool_call,
-                now=self.clock.now(),
-              )
             } else {
               mooncode_execute_tool_call_in_runtime(
                 group.map(group => (self, group)),

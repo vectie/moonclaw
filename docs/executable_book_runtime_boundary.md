@@ -80,8 +80,8 @@ directory synchronization on supported platforms. These are ordinary
 process/crash guarantees, not strongest sudden-power-loss qualification.
 
 Each serial tool position records its checkpoint and execution intent in one
-journal append. Its ordinary
-tool-result event carries the operation identity and compact execution metadata;
+journal append. Its ordinary tool-result event carries the operation identity
+and compact execution metadata;
 the output is stored once. Recovery reuses that committed result. If an effect
 has an intent but no result, the agent receives an unknown-outcome error and
 must inspect the workspace or backend receipt before choosing another action.
@@ -111,8 +111,8 @@ The legacy Goal reducer and the separate Goal Runtime API, genesis, projection
 and supervisor were removed. The separate nine-step lifecycle report, which
 required edits, review and packaging for every session, was also removed.
 There is no Goal compatibility reader, dual authority, quality-trial gate or
-independent desktop acceptance reducer. Existing loop,
-journal, sandbox and continuation remain the execution path. All continuation
+independent desktop acceptance reducer. Existing loop, journal, sandbox and
+continuation remain the execution path. All continuation
 reasons share one writer and reference completed results instead of copying
 their accumulated output.
 
@@ -136,12 +136,17 @@ and whether an uncertain external effect has been reconciled.
 Serial execution combines checkpoint and intent in one synchronized append
 before a tool effect, followed by its ordinary result event. Recovery reuses an
 already committed checkpoint instead of rewriting its stable identity.
-Fingerprint cost scales with touched
-and declared input files, rather than all workspace files. The regression suite
-covers behavior and schema size; it does not establish live-provider latency or
-delivery-quality improvements.
+Fingerprint cost scales with touched and declared input files, rather than all
+workspace files. The regression suite covers execution behavior and observable
+metrics; it does not establish live-provider latency or delivery-quality
+improvements.
 
-The default planner exposes no worker tools. Invalid, unknown and truncated
+Native tools use one catalog for initial and follow-up requests; the
+keyword-selected bundle flag, native `tool_search` and receipt-driven schema
+expansion have been removed. Default coding capabilities remain available
+without another discovery turn. Read-only selection, explicit tool lists and
+the existing MCP tool inventory/call path remain. The default planner exposes
+no worker tools. Invalid, unknown and truncated
 tool calls return errors for repair; the runtime does not infer another tool
 name or split concatenated arguments. There is no discovery counter that forces
 a file edit. Repeating an immediately failed verification requests diagnosis;

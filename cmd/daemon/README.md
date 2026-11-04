@@ -127,8 +127,9 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_runtime_model_planner.mbt` owns explicit/model tool-call planning,
   OpenAI tool schemas, model planner request/response decoding, bounded
   follow-up turns, and planner request/result contracts.
-- `mooncode_runtime_horizon.mbt` owns compact task contracts, durable milestone
-  checkpoints, evidence validation, and bounded follow-up context.
+- `mooncode_runtime_horizon.mbt` owns task context and advisory progress
+  checkpoints; completion and verification facts live in
+  `mooncode_runtime_completion.mbt` and the existing planner boundary.
 - `mooncode_runtime_planner_events.mbt` owns planner progress/failure event
   projection, reasoning/assistant deltas, and pre-execution tool-call events.
 - `mooncode_runtime_prompt_fallback.mbt` owns deterministic command planning
@@ -649,8 +650,10 @@ contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
-`moon_check`, and `finish`. Coding turns carry a task contract and
-evidence-backed milestone checkpoint.
+`moon_check`, and `finish`. Coding turns carry a task contract; optional
+checkpoints save advisory progress. Native tools come from one catalog, with
+read-only subsets and explicit `planner_allowed_tools` selection. Worker tools
+are absent by default. MCP tools retain their own existing inventory/call path.
 The actual planner transcript and tool results remain available after a
 checkpoint; recording a milestone does not itself discard earlier source
 observations. Separate context projection and opt-in pressure-based compaction
@@ -659,14 +662,14 @@ Tool failures are fed back to the model for diagnosis and recovery.
 Shell commands may declare `verification_kind=check|test|build` only when a
 zero exit status directly proves that exact gate, such as a hosted check
 watcher. Untyped inspection commands remain evidence but cannot complete a
-typed verification milestone.
+required verification check.
 When an earlier call ends a selected multi-tool batch, the model transcript
 settles every remaining provider tool call with an explicit skipped result.
 Those calls are not recorded as executions or evidence; the planner must select
 each still-needed call again. This keeps provider transcripts valid without
 claiming that skipped work occurred.
-An explicit long-horizon
-`finish` that does not satisfy the durable milestone and verification contract
+An explicit
+`finish` that does not satisfy the task's required verification
 is also fed back as planner evidence instead of terminating the command; the
 same turn continues until completion is accepted or the command is cancelled.
 When assistant prose is projected as a synthetic `finish`, recovery appends the
@@ -685,15 +688,11 @@ Commands have no command-wide planner-step ceiling by default; their accepted
 task and verification evidence is the completion boundary, while every model
 request remains independently bounded. Callers may set a positive
 `planner_max_steps` scheduling quantum explicitly, or leave it at zero for
-milestone-driven execution. Reaching an explicit quantum persists a resumable
-checkpoint instead of forcing a premature `finish`. If a content-based mutation
-fails, runtime-turn forces an
-exact read of the affected path before another model-selected mutation can run;
-this prevents milestone-driven tasks from spinning on guessed stale hunks.
-For a verification-sensitive implementation task, a documentation-only
-mutation cannot prove the implementation milestone; at least one net mutation
-to behavior, configuration, tests, workflows, or another non-documentation
-artifact is required.
+continuous execution. Reaching an explicit quantum persists a resumable
+checkpoint instead of forcing a premature `finish`. A content mismatch reports
+the affected path so the same agent can refresh evidence and correct the patch.
+There is no mutation quota, mandatory milestone protocol or separate native
+tool-search/loading state machine.
 Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also

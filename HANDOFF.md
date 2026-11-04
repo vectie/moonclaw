@@ -18,7 +18,7 @@ The complete discussion is retained in the optional sibling MoonDesk checkout
 at `docs/mooncode-discussion-2026-11-04/`. Do not combine superseded proposals
 into additional implementation requirements.
 
-## Single-Agent Consolidation 2026-11-04
+## Current MoonCode Implementation
 
 - Legacy Goal and Goal Runtime were removed, including API/store/supervisor,
   public reducers, dual authority and dedicated old tests. Ordinary `finish`
@@ -38,13 +38,6 @@ into additional implementation requirements.
   inference and an endless finish-repair loop in the steering fixture.
 - Check fingerprints cover touched files and declared check inputs only. They
   are not a dependency-complete snapshot or semantic acceptance proof.
-- Final validation: native suite 1953/1953, including daemon 606/606. Interfaces
-  were regenerated and formatting/diff whitespace checks passed. Removed public
-  interfaces belong to Goal and duplicate review/proof vocabulary. This is
-  fixture-backed validation, not live-model delivery-quality qualification.
-
-## Documentation Pitfalls
-
 - Checkpoint and operation intent now share one journal record. When resuming
   an interrupted safe read, reuse the committed checkpoint; do not append the
   same stable checkpoint ID with a new timestamp or payload.
@@ -55,16 +48,24 @@ into additional implementation requirements.
   They marked ordinary sessions blocked for missing edits/review/packages and
   duplicated task completion. Keep canonical conversation/runtime receipts and
   explicit Book acceptance facts; do not restore the independent readiness test.
+- Native initial and follow-up requests share one catalog. Keyword bundles,
+  native `tool_search`, deferred receipt validation and their simulated
+  benchmarks were deleted. Read-only subsets, explicit tool selection and MCP
+  inventory/calls remain. Workers are absent from the default catalog.
 
-## Continued Cleanup Validation
+## Validation 2026-11-04
 
-- Native suite passed 1950/1950 after removing obsolete lifecycle/net-mutation
-  policy tests. Coverage includes restarting after a claim or a committed read
-  intent, uncertain effects, recovered observations and failed required checks.
-- MoonDesk's local producer/consumer probe passed against this checkout.
-  Interfaces were regenerated; the only additional public API removal is the
-  retired executable-book lifecycle declaration. No new runtime package,
-  database, agent role or approval step was added.
+- Preceding baseline: MoonClaw `cb1c5228`, MoonDesk `5f6174bc`, on `main` across
+  all configured remotes. MoonDesk's real producer/consumer probe passed there.
+- After native catalog cleanup, the full native suite passed 1931/1931.
+  The real MoonDesk producer/consumer probe and focused compaction tests also
+  passed. Interfaces are unchanged. Retained tests cover completion repair,
+  stale checks, restart, uncertain effects, tool selection, output and compaction.
+- This is fixture validation, not deployment or live-model delivery-quality
+  qualification. MoonDesk's strict release gate still has existing warning
+  debt; do not describe it as a warning-clean release.
+
+## Documentation Pitfalls
 
 - Old Goal/journal diaries mixed intermediate and completed migration states;
   they were retired. Confirm current source rather than reusing their test counts.
@@ -75,13 +76,3 @@ into additional implementation requirements.
   be zero. Neither bounded integer conversion nor payload shadowing is valid.
 - Independent observers belong to explicit qualification, not every task's
   completion. Execution success does not by itself adopt accepted book truth.
-
-## Pre-refactor Checkpoint 2026-11-04
-
-- Existing runtime, Book resources/skills, saved-diff work, and documentation
-  cleanup are preserved before the planned MoonCode consolidation.
-- Native check passed with existing warning debt. Full native tests passed
-  2306/2306; saved-diff JavaScript tests passed 7/7. Interfaces were regenerated
-  and formatting completed. This does not claim a warning-clean release.
-- Use the GitHub remote for the main baseline; the older Gitee origin was
-  behind the already-published GitHub main when this checkpoint was prepared.

@@ -501,3 +501,58 @@ test "old inline replan continuation remains unchanged and active" {
   assert_eq(decoded.stringify(), inline.stringify())
   assert_true(mooncode_runtime_planner_replan_continuation_is_active(decoded))
 }
+
+///|
+test "follow-up compaction retains task and latest verification evidence" {
+  let original_task = "Implement the complete harness; preserve user work; run the focused verifier."
+  let messages : Array[Json] = [
+    { "role": "system", "content": "planner contract" },
+    { "role": "user", "content": original_task },
+  ]
+  for index in 0..<32 {
+    messages.push({
+      "role": "assistant",
+      "content": if index == 0 {
+        "obsolete discovery"
+      } else {
+        "bounded planner step \{index}"
+      },
+      "tool_calls": [
+        {
+          "id": "harness-call-\{index}",
+          "type": "function",
+          "function": { "name": "read", "arguments": "{}" },
+        },
+      ],
+    })
+    messages.push({
+      "role": "tool",
+      "tool_call_id": "harness-call-\{index}",
+      "content": if index == 31 {
+        "latest focused verifier passed"
+      } else {
+        "inspection \{index}"
+      },
+    })
+  }
+  let compacted = mooncode_runtime_turn_compact_followup_transcript(
+    messages,
+    task_contract=original_task,
+  )
+  let repeated = mooncode_runtime_turn_compact_followup_transcript(
+    messages,
+    task_contract=original_task,
+  )
+  assert_eq(compacted, repeated)
+  let before_chars = Json::array(messages).stringify().length()
+  // Provenance is durable harness evidence but is stripped before provider
+  // transport. Compare the model-facing projection so metadata growth cannot
+  // masquerade as context growth.
+  let after_text = Json::array(
+    mooncode_runtime_context_visible_messages(compacted),
+  ).stringify()
+  assert_true(after_text.length() < before_chars)
+  assert_true(after_text.contains(original_task))
+  assert_true(after_text.contains("latest focused verifier passed"))
+  assert_false(after_text.contains("obsolete discovery"))
+}
