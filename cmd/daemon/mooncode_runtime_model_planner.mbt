@@ -814,57 +814,6 @@ fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
 }
 
 ///|
-fn mooncode_runtime_turn_has_net_mutation(results : Array[Json]) -> Bool {
-  let paths : Array[Json] = []
-  let mut untracked_mutation = false
-  for result in results {
-    if !mooncode_runtime_turn_result_is_mutation(result) {
-      continue
-    }
-    let metadata = mooncode_json_object_field_or_empty(
-      mooncode_json_object_field_or_empty(result, "result"),
-      "metadata",
-    )
-    if !mooncode_json_bool(metadata, "changed", default=true) {
-      continue
-    }
-    let states = mooncode_runtime_turn_result_mutation_states(result)
-    if states.is_empty() {
-      // Older continuations and explicit test fixtures predate fingerprints.
-      // Keep them compatible, while all newly executed native mutations carry
-      // enough evidence to compare the first and final content state.
-      untracked_mutation = true
-      continue
-    }
-    for state in states {
-      let path = mooncode_json_string(state, "path", default="")
-      let mut found = false
-      for index, existing in paths {
-        if mooncode_json_string(existing, "path", default="") == path {
-          paths[index] = {
-            "path": path,
-            "before": mooncode_json_string(existing, "before", default=""),
-            "after": mooncode_json_string(state, "after", default=""),
-          }
-          found = true
-          break
-        }
-      }
-      if !found {
-        paths.push(state)
-      }
-    }
-  }
-  for state in paths {
-    if mooncode_json_string(state, "before", default="") !=
-      mooncode_json_string(state, "after", default="") {
-      return true
-    }
-  }
-  untracked_mutation
-}
-
-///|
 fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
   if !mooncode_json_bool(result, "accepted", default=false) {
     return ""
@@ -981,7 +930,7 @@ fn mooncode_runtime_turn_completion_verdict(
     if mooncode_json_string(result, "approval_state", default="") == "rejected" {
       operator_rejected = true
       last_failure = index
-    } else if !accepted {
+    } else if !accepted && tool != "finish" && tool != "checkpoint" {
       last_failure = index
     } else if tool != "finish" {
       coding_evidence = coding_evidence ||
@@ -1009,6 +958,16 @@ fn mooncode_runtime_turn_completion_verdict(
       }
     }
   }
+  if last_failure >= 0 &&
+    !results[last_failure + 1:].any(result => {
+      mooncode_json_bool(result, "accepted", default=false) &&
+      mooncode_json_string(result, "tool", default="") != "finish"
+    }) {
+    return {
+      accepted: false,
+      reason: "the last failed tool has no successful recovery evidence",
+    }
+  }
   if requires_verification {
     let required_verification = if requires_tests {
       last_test
@@ -1025,13 +984,13 @@ fn mooncode_runtime_turn_completion_verdict(
         },
       }
     }
-    if required_verification < last_failure {
+    if required_verification < mooncode_runtime_verification_boundary(results) {
       return {
         accepted: false,
         reason: if requires_tests {
-          "coding completion has no successful typed test after the last failed tool"
+          "coding completion has no successful typed test after the last failed check"
         } else {
-          "coding completion has no successful verification after the last failed tool"
+          "coding completion has no successful verification after the last failed check"
         },
       }
     }
@@ -1050,18 +1009,6 @@ fn mooncode_runtime_turn_completion_verdict(
     return {
       accepted: false,
       reason: "the coding request has no accepted coding-tool evidence",
-    }
-  }
-  if last_failure >= 0 {
-    let recovered = results[last_failure + 1:].any(result => {
-      mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") != "finish"
-    })
-    if !recovered {
-      return {
-        accepted: false,
-        reason: "the last failed tool has no successful recovery evidence",
-      }
     }
   }
   {
@@ -1945,21 +1892,8 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
                   "type": "string",
                   "enum": ["pending", "active", "done"],
                 },
-                "evidence_kind": {
-                  "type": "string",
-                  "enum": [
-                    "scope", "mutation", "path_changed", "check", "test", "build",
-                  ],
-                },
-                "path": { "type": "string" },
-                "context_paths": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                },
               },
-              "required": [
-                "id", "title", "status", "evidence_kind", "path", "context_paths",
-              ],
+              "required": ["id", "title", "status"],
               "additionalProperties": false,
             },
           },

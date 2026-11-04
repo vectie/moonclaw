@@ -1,17 +1,17 @@
 ///|
 /// Exercises the existing AllowDegraded fixture executor with an actual native
 /// MoonBit test command. No daemon, sockets, model, credentials or Git is used.
-async test "nochange actual required test through existing degraded executor" {
-  @fsx.with_temporary_directory("mooncode-nochange-process-XXXXXX", async fn(
+async test "already-satisfied task uses ordinary finish after an actual required test through existing degraded executor" {
+  @fsx.with_temporary_directory("mooncode-completion-process-XXXXXX", async fn(
     root,
   ) {
     let source = "///|\ntest \"already satisfied\" { assert_eq(2 + 2, 4) }\n"
-    @fsx.write_to_file(root + "/moon.mod", "name = \"fixture/nochange\"\n")
+    @fsx.write_to_file(root + "/moon.mod", "name = \"fixture/completion\"\n")
     @fsx.write_to_file(root + "/moon.pkg", "")
     @fsx.write_to_file(root + "/already_test.mbt", source)
     let process_command = "moon test --target native --frozen --strip -j1 --no-render"
-    let policy = mooncode_json_object_with_field(
-      nochange_test_policy(),
+    let contract = mooncode_json_object_with_field(
+      completion_test_contract(),
       "required_checks",
       [
         {
@@ -24,7 +24,7 @@ async test "nochange actual required test through existing degraded executor" {
       ],
     )
     let command = mooncode_json_object_with_field(
-      nochange_test_command(policy~),
+      completion_test_command(contract~),
       "book_root",
       Json(root),
     )
@@ -48,14 +48,14 @@ async test "nochange actual required test through existing degraded executor" {
           mooncode_json_object_with_field(
             mooncode_json_object_with_field(call, "protocol", "mooncode.v1"),
             "session_id",
-            "nochange-session",
+            "completion-session",
           ),
           "command_id",
-          "nochange-command",
+          "completion-command",
         )
         let execution = mooncode_fixture_execute_tool_call(
           config,
-          "nochange-session",
+          "completion-session",
           root,
           body,
           now=@clock.Timestamp::from_ms(10L + index.to_int64()),
@@ -82,57 +82,28 @@ async test "nochange actual required test through existing degraded executor" {
         metadata, "sandbox_evidence",
       )
       assert_true(sandbox.stringify().contains("Degraded"))
-      let proposal = mooncode_json_object_with_field(
-        nochange_test_proposal(),
-        "evidence_refs",
-        Json::array(
-          evidence.map(result => {
-            Json(mooncode_runtime_result_event_id(command, result))
-          }),
-        ),
-      )
-      let arguments = mooncode_json_object_with_field(
-        nochange_test_checkpoint_arguments(),
-        "no_change",
-        proposal,
-      )
-      let checkpoint = mooncode_runtime_horizon_checkpoint_execution(
-        command,
-        "nochange-session",
-        root,
-        "nochange-command",
-        { "tool": "checkpoint", "arguments": arguments },
-        evidence,
-        now=@clock.Timestamp::from_ms(12L),
-      )
-      assert_true(
-        mooncode_json_bool(checkpoint, "accepted", default=false),
-        msg=checkpoint.stringify(),
-      )
       let finish_arguments : Json = {
-        "answer": "No net source change; required checks passed.",
-        "completion_outcome": "no_change",
-        "no_change": proposal,
+        "answer": "The existing implementation satisfies the request; its tests passed.",
       }
       let finish = mooncode_execute_tool_call(
-        "nochange-session",
+        "completion-session",
         root,
         {
           "protocol": "mooncode.v1",
-          "session_id": "nochange-session",
-          "command_id": "nochange-command",
+          "session_id": "completion-session",
+          "command_id": "completion-command",
           "tool": "finish",
           "arguments": finish_arguments,
         },
         now=@clock.Timestamp::from_ms(13L),
       )
-      let completed = evidence + [checkpoint, finish]
+      let completed = evidence + [finish]
       let verdict = mooncode_runtime_turn_completion_verdict(command, completed)
       assert_true(verdict.accepted, msg=verdict.reason)
       assert_eq(@fsx.read_file(root + "/already_test.mbt"), source)
       assert_eq(
         @fsx.read_file(root + "/moon.mod"),
-        "name = \"fixture/nochange\"\n",
+        "name = \"fixture/completion\"\n",
       )
       assert_eq(
         mooncode_runtime_required_check_evidence(command, completed).length(),

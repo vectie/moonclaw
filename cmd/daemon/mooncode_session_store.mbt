@@ -583,7 +583,7 @@ async fn mooncode_session_record_from_parts_locked(
   } else {
     "durable"
   }
-  let record_without_lifecycle : Json = {
+  let record : Json = {
     "kind": "mooncode-session-record",
     "contract_id": @mooncode_core.session_record_contract_id(),
     "protocol": mooncode_protocol_version(),
@@ -641,23 +641,15 @@ async fn mooncode_session_record_from_parts_locked(
     "book_result_log_count": book_results.length(),
     "resume_state": resume_state,
   }
-  let record_with_conversation = mooncode_json_object_with_field(
-    record_without_lifecycle,
+  mooncode_json_object_with_field(
+    record,
     "mooncode_conversation",
     mooncode_session_conversation(
-      record_without_lifecycle,
+      record,
       commands,
       runtime_receipts,
       events,
       journal_sequence=mooncode_journal_last_sequence_exact(journal),
-    ),
-  )
-  mooncode_json_object_with_field(
-    record_with_conversation,
-    "executable_book_lifecycle",
-    mooncode_executable_book_lifecycle_report(
-      record_without_lifecycle, commands, runtime_receipts, events, package_results,
-      book_results,
     ),
   )
 }

@@ -79,7 +79,8 @@ derived empty/read cursors may be zero. File data is synchronized, with
 directory synchronization on supported platforms. These are ordinary
 process/crash guarantees, not strongest sudden-power-loss qualification.
 
-Each tool position has a durable checkpoint and execution intent. Its ordinary
+Each serial tool position records its checkpoint and execution intent in one
+journal append. Its ordinary
 tool-result event carries the operation identity and compact execution metadata;
 the output is stored once. Recovery reuses that committed result. If an effect
 has an intent but no result, the agent receives an unknown-outcome error and
@@ -107,15 +108,19 @@ ordinary tasks do not acquire a mandatory independent reviewer.
 ## Completion And Verification
 
 The legacy Goal reducer and the separate Goal Runtime API, genesis, projection
-and supervisor were removed. There is no Goal compatibility reader, dual authority,
-quality-trial gate or independent desktop acceptance reducer. Existing loop,
+and supervisor were removed. The separate nine-step lifecycle report, which
+required edits, review and packaging for every session, was also removed.
+There is no Goal compatibility reader, dual authority, quality-trial gate or
+independent desktop acceptance reducer. Existing loop,
 journal, sandbox and continuation remain the execution path. All continuation
 reasons share one writer and reference completed results instead of copying
 their accumulated output.
 
 An explicit `task_contract.required_checks` entry names `id`, `tool` (`shell`
 or `moon_cmd`), exact `command` and `cwd`. Successful native sandbox receipts
-after the latest mutation/failure must match those entries. Optional
+after the latest mutation, failed check or uncertain effect must match those
+entries. A recovered failed observation does not invalidate checks of unchanged
+inputs; rejected finish or progress metadata is not an execution failure. Optional
 `input_paths` identify files relevant to those checks. Typed check/test/build
 results also support normal coding verification; arbitrary successful shell
 observations do not make a package verified. Existing task-intent inference is
@@ -128,8 +133,10 @@ provenance, not a complete dependency graph or workspace snapshot. The agent
 still owns semantic quality, adequate check selection, rendered UI validation
 and whether an uncertain external effect has been reconciled.
 
-Serial execution adds a checkpoint and an intent append before a tool effect;
-both use the existing synchronized journal. Fingerprint cost scales with touched
+Serial execution combines checkpoint and intent in one synchronized append
+before a tool effect, followed by its ordinary result event. Recovery reuses an
+already committed checkpoint instead of rewriting its stable identity.
+Fingerprint cost scales with touched
 and declared input files, rather than all workspace files. The regression suite
 covers behavior and schema size; it does not establish live-provider latency or
 delivery-quality improvements.

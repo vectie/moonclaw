@@ -12,10 +12,10 @@ The deterministic native suite covers seven representative request shapes:
 | Cohort | Required contract |
 | --- | --- |
 | Read-only inspection | `read`, `finish`, and `read_skill` remain available; completion does not require mutation evidence. |
-| Generic edit | Core read/write/edit/patch/checkpoint capabilities and bounded deferred `tool_search` remain available; successful mutation plus verification is accepted. |
+| Generic edit | Core read/write/edit/patch/checkpoint capabilities and bounded deferred `tool_search` remain available; current necessary verification is required without a mutation quota. |
 | MoonBit validation | `moon_ide`, `moon_cmd`, and `moon_check` remain available in catalog order. |
 | UI/browser | `browser` and `view_image` remain available without losing core edit and verification tools. |
-| Delegated workers | `spawn_workers` and `wait_workers` remain available with the normal coding capabilities. |
+| Delegation defaults | Ordinary coding catalogs omit `spawn_workers` and `wait_workers`; explicit authorized tool selection can expose them. |
 | Long-context follow-up | The canonical task and latest verifier evidence survive bounded transcript compaction deterministically. |
 | Failure/retry | A failed attempt followed by mutation and typed verification produces the same accepted completion contract while recording retry and closed outcome fields. |
 
@@ -77,13 +77,10 @@ moon run --target native \
 ```
 
 The complete daemon matrix also contains native command, commit, eval, build,
-test-proof, and task-scope cohorts. Nineteen legacy cases still create a fresh
-temporary MoonBook and therefore need migration to an injected, per-fixture
-MoonFort deployment; one process-wide operator config cannot safely authorize
-their unrelated roots. Without that fixture they must fail closed. Do not skip
-them or restore a host fallback to make the matrix green. A release candidate
-is green only after the migrated cases pass through the real grant/executor
-boundary in a configured MoonFort integration environment.
+test-proof, task-scope and restart cohorts. Temporary MoonBooks use their own
+MoonFort fixture configuration; they do not inherit a host-shell fallback.
+Passing the native suite establishes fixture behavior. Qualification against a
+configured production MoonFort deployment and live providers remains separate.
 
 Run `moon fmt cmd/daemon/mooncode_harness_benchmark_wbtest.mbt` after changing
 the suite. `moon info` should not alter the daemon interface for test-only

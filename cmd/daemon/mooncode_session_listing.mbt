@@ -205,9 +205,6 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "package_result_log_count",
     default=0,
   )
-  let lifecycle = mooncode_json_object_field_or_empty(
-    record, "executable_book_lifecycle",
-  )
   let conversation = mooncode_json_object_field_or_empty(
     record, "mooncode_conversation",
   )
@@ -259,23 +256,6 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "command_count": command_count,
     "event_count": event_count,
     "package_result_count": package_result_count,
-    "lifecycle_status": mooncode_json_string(lifecycle, "status", default=""),
-    "lifecycle_ready": mooncode_json_bool(lifecycle, "ready", default=false),
-    "lifecycle_completed_step_count": mooncode_json_int(
-      lifecycle,
-      "completed_step_count",
-      default=0,
-    ),
-    "lifecycle_step_count": mooncode_json_int(
-      lifecycle,
-      "step_count",
-      default=0,
-    ),
-    "lifecycle_first_blocker_id": mooncode_json_string(
-      lifecycle,
-      "first_blocker_id",
-      default="",
-    ),
     "session_url": "/v1/code/sessions/\{session_id}?book_root=<path>",
     "stream_url": "/v1/code/sessions/\{session_id}/stream?book_root=<path>&format=jsonl",
     "source": if source == "" {

@@ -69,6 +69,12 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-11-04`: consolidated MoonCode around one primary agent and `finish`.
+  Removed Goal state machines, duplicate quality/no-change gates and the
+  nine-step lifecycle report. Progress checkpoints remain advisory; execution
+  intent shares the existing durable checkpoint rather than a second journal
+  write. See [the runtime boundary](docs/executable_book_runtime_boundary.md).
+
 - `2026-07-31`: exposed the exact installed-pack seam at loopback-only
   `/v1/capability/submit`, `/reconcile`, and `/status`. The gateway reads
   authority and provider routes from host-owned policy, returns canonical

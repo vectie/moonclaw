@@ -45,6 +45,27 @@ into additional implementation requirements.
 
 ## Documentation Pitfalls
 
+- Checkpoint and operation intent now share one journal record. When resuming
+  an interrupted safe read, reuse the committed checkpoint; do not append the
+  same stable checkpoint ID with a new timestamp or payload.
+- Completed checks survive an ordinary observation failure after successful
+  recovery. Mutations, failed checks and unknown effects still invalidate them;
+  rejecting optional progress or a finish proposal is not an executed effect.
+- The nine-step executable-book lifecycle report and contract were removed.
+  They marked ordinary sessions blocked for missing edits/review/packages and
+  duplicated task completion. Keep canonical conversation/runtime receipts and
+  explicit Book acceptance facts; do not restore the independent readiness test.
+
+## Continued Cleanup Validation
+
+- Native suite passed 1950/1950 after removing obsolete lifecycle/net-mutation
+  policy tests. Coverage includes restarting after a claim or a committed read
+  intent, uncertain effects, recovered observations and failed required checks.
+- MoonDesk's local producer/consumer probe passed against this checkout.
+  Interfaces were regenerated; the only additional public API removal is the
+  retired executable-book lifecycle declaration. No new runtime package,
+  database, agent role or approval step was added.
+
 - Old Goal/journal diaries mixed intermediate and completed migration states;
   they were retired. Confirm current source rather than reusing their test counts.
 - Context provenance writes v2; v1 describes an existing reader path.

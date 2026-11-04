@@ -16,7 +16,7 @@ fn mooncode_runtime_operation_record(
   for event in events.rev() {
     if mooncode_json_string(event, "operation_id", default="") == operation_id &&
       mooncode_json_string(event, "operation_state", default="") == kind &&
-      ["moonclaw-native-runtime-operation", "moonclaw-native-tool-exec"].contains(
+      ["moonclaw-native-runtime-continuation", "moonclaw-native-tool-exec"].contains(
         mooncode_json_string(event, "source", default=""),
       ) {
       return Some(mooncode_runtime_unproject_journal_event(event))
@@ -26,27 +26,18 @@ fn mooncode_runtime_operation_record(
 }
 
 ///|
-fn mooncode_runtime_operation_intent(
-  session_id : String,
-  command_id : String,
+fn mooncode_runtime_checkpoint_with_intent(
+  checkpoint : Json,
   operation_id : String,
   call : Json,
-  now~ : @clock.Timestamp,
 ) -> Json {
-  {
-    "id": operation_id + ":intent",
-    "kind": "runtime.operation_started",
-    "operation_state": "started",
-    "session_id": session_id,
-    "command_id": command_id,
-    "operation_id": operation_id,
-    "call_digest": mooncode_sha256_hex(call.stringify()),
-    "tool_call": call,
-    "lane": "runtime-control",
-    "status": "running",
-    "created_at": now,
-    "source": "moonclaw-native-runtime-operation",
-  }
+  checkpoint
+  |> mooncode_json_object_with_field("operation_id", Json(operation_id))
+  |> mooncode_json_object_with_field("operation_state", "started")
+  |> mooncode_json_object_with_field(
+    "call_digest",
+    Json(mooncode_sha256_hex(call.stringify())),
+  )
 }
 
 ///|

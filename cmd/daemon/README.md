@@ -72,7 +72,7 @@ daemon.serve()
 MoonCode daemon code is split by runtime responsibility rather than by route
 alone:
 
-Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task*` remains for background jobs. See [Executable Book Runtime Boundary](../../docs/executable_book_runtime_boundary.md) for current behavior and the approved, pending single-agent simplification. This API reference does not make those planned changes implemented.
+Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task*` remains for background jobs. See [Executable Book Runtime Boundary](../../docs/executable_book_runtime_boundary.md) for the implemented single-agent path, completion checks and recovery limits.
 
 - `mooncode/core` owns the MoonCode contract surface shared with
   MoonDesk: the `mooncode.v1` protocol marker, native capability contract id,
@@ -703,27 +703,22 @@ clients can render live live coding-agent progress from the native event log.
 The explicit/model planner contract lives in
 `mooncode_runtime_model_planner.mbt`; runtime-turn calls that boundary and owns
 only execution sequencing around the selected tool calls.
-Coding-intent prompt completion is evidence-gated for both model-planned and
-explicit tool batches. The final result must be an accepted `finish`, an
-accepted `write`, `edit`, `apply_patch`, or `revert_patch` must precede it, and
-the accepted mutation sequence must leave at least one file in a different
-content state when the turn finishes. Native mutation results record
-before/after content fingerprints for single-file and multi-file changes, and
-completion compares the first and final state of every touched path. A
-speculative edit that is later fully reverted therefore cannot be reported as
-completed implementation. A successful typed verification must also occur at
-or after the final mutation and after every failed tool. `moon_check` and
-`moon_cmd check|test|build` are typed verification. A patch may prove its own
-mutation when its nested `metadata.verification.ok` is true. When the prompt
-requests tests, only a successful `moon_cmd test` satisfies the gate. A later
-read cannot recover a failed check or test. Explanation and other read-only
-prompts still permit an accepted `finish` without inventing mutation work.
+Completion uses one accepted `finish` for model-planned and explicit coding
+batches. It does not require a file modification or an all-done checkpoint.
+Coding tasks need successful current verification; explicit required checks
+match native sandbox receipts. `moon_check`, `moon_cmd check|test|build`,
+recognized shell verification and verified patches provide typed results.
+Requested tests need typed test evidence. Mutations and failed verification
+invalidate earlier checks; a failed ordinary observation requires recovery but
+does not invalidate checks of unchanged inputs. A later read cannot turn a
+failed test into a pass. File fingerprints and the task revision detect stale
+verification within the tracked input scope.
 
 Runtime responses expose the structured `completion_verdict`; compact
 projections preserve it; `runtime.turn_finished` includes the reason; and the
-terminal receipt is `runtime-failed` when the gate rejects completion. This
-gate is distinct from the replay proof policy for proof-sensitive command
-actions: it protects ordinary coding prompts at native execution time.
+same agent receives repairable gaps and continues rather than emitting a
+terminal receipt for each rejected finish. Deterministic explicit batches can
+return `runtime-failed` when their supplied plan does not meet the contract.
 Durable terminal receipts keep that verdict and the final `finish` result used
 for conversation projection, but do not duplicate tool payloads or events that
 already have their own journal records. This keeps long-horizon journal growth

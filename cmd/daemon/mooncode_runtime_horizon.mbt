@@ -286,37 +286,6 @@ fn mooncode_runtime_horizon_retained_evidence(command : Json) -> Array[Json] {
 }
 
 ///|
-fn mooncode_runtime_horizon_last_failure(results : Array[Json]) -> Int32 {
-  let mut failure = -1
-  for index, result in results {
-    if !mooncode_json_bool(result, "accepted", default=false) {
-      failure = index
-    }
-  }
-  failure
-}
-
-///|
-fn mooncode_runtime_horizon_last_mutation(results : Array[Json]) -> Int32 {
-  let mut mutation = -1
-  for index, result in results {
-    if mooncode_runtime_turn_result_is_mutation(result) {
-      mutation = index
-    }
-  }
-  mutation
-}
-
-///|
-fn mooncode_runtime_horizon_documentation_path(path : String) -> Bool {
-  let normalized = path.to_lower().to_string()
-  normalized.has_prefix("docs/") ||
-  normalized.has_suffix(".md") ||
-  normalized.has_suffix(".mdx") ||
-  normalized.has_suffix(".rst")
-}
-
-///|
 fn mooncode_runtime_horizon_checkpoint_error(
   command : Json,
   arguments : Json,

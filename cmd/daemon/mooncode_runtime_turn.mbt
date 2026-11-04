@@ -169,9 +169,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let execution_started = existing_events.any(event => {
     mooncode_json_string(event, "command_id", default="") == command_id &&
     (
-      mooncode_json_string(event, "kind", default="") ==
-      "runtime.operation_started" ||
-      mooncode_json_string(event, "event", default="") == "tool_result"
+      (
+        mooncode_json_string(event, "source", default="") ==
+        "moonclaw-native-runtime-continuation" &&
+        mooncode_json_string(event, "operation_state", default="") == "started"
+      ) ||
+      (
+        mooncode_json_string(event, "source", default="") ==
+        "moonclaw-native-tool-exec" &&
+        mooncode_json_string(event, "event", default="") == "tool_result"
+      )
     )
   })
   if claim_receipts.is_empty() && !continuation_active && execution_started {
@@ -793,23 +800,18 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           let operation_id = mooncode_runtime_operation_id(
             command_id, step_index, tool_index,
           )
-          self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_continuation_event(
-              session_id,
-              command_id,
-              plan,
-              planner_steps,
-              tool_results,
-              step_results,
-              Json::object({}),
-              step_index~,
-              tool_index~,
-              planner_turn_end_step~,
-              now=self.clock.now(),
-            ),
+          let checkpoint = mooncode_runtime_continuation_event(
+            session_id,
+            command_id,
+            plan,
+            planner_steps,
+            tool_results,
+            step_results,
+            Json::object({}),
+            step_index~,
+            tool_index~,
+            planner_turn_end_step~,
+            now=self.clock.now(),
           )
           let recovered = mooncode_runtime_operation_recovery(
             existing_events,
@@ -838,18 +840,20 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           } else {
             ""
           }
-          if recovered is None && parallel_read_executions.is_empty() {
+          let resuming_execution = resuming_step &&
+            tool_index == resume_tool_index &&
+            mooncode_json_string(continuation, "state", default="") ==
+            "executing-tool"
+          if recovered is None && !resuming_execution {
+            let checkpoint = if parallel_read_executions.is_empty() {
+              mooncode_runtime_checkpoint_with_intent(
+                checkpoint, operation_id, tool_call,
+              )
+            } else {
+              checkpoint
+            }
             self.mooncode_runtime_turn_record_event(
-              binding,
-              events,
-              persisted_event_ids,
-              mooncode_runtime_operation_intent(
-                session_id,
-                command_id,
-                operation_id,
-                tool_call,
-                now=self.clock.now(),
-              ),
+              binding, events, persisted_event_ids, checkpoint,
             )
           }
           let execution : Json = if validation_error != "" || finish_error != "" {

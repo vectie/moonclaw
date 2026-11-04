@@ -155,12 +155,6 @@ pub fn event_progress_lanes() -> Array[String]
 
 pub fn exact_cursor_is_canonical_nonnegative_decimal(String) -> Bool
 
-pub fn executable_book_lifecycle_contract_id() -> String
-
-pub fn executable_book_lifecycle_contract_json() -> Json
-
-pub fn executable_book_lifecycle_steps() -> Array[String]
-
 pub fn journal_contract_id() -> String
 
 pub fn journal_read_contract_ids() -> Array[String]

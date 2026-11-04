@@ -333,22 +333,7 @@ async test "mooncode durable sidecars list and show without live binding" (
   assert_true(text.contains("\"event_log_count\":1"))
   assert_true(text.contains("\"package_result_log_count\":1"))
   assert_true(text.contains("\"live_binding_ready\":false"))
-  let lifecycle = mooncode_json_object_field_or_empty(
-    record, "executable_book_lifecycle",
-  )
-  assert_eq(
-    mooncode_json_string(lifecycle, "kind", default=""),
-    "mooncode-executable-book-lifecycle-report",
-  )
-  assert_eq(
-    mooncode_json_string(lifecycle, "contract_id", default=""),
-    mooncode_executable_book_lifecycle_contract_id(),
-  )
-  assert_false(mooncode_json_bool(lifecycle, "ready", default=true))
-  assert_eq(
-    mooncode_json_string(lifecycle, "first_blocker_id", default=""),
-    "edit_code",
-  )
+  assert_false(text.contains("executable_book_lifecycle"))
   let listing = mooncode_session_listing_row(record)
   assert_eq(mooncode_json_string(listing, "id", default=""), "session/resume:1")
   assert_eq(mooncode_json_string(listing, "status", default=""), "durable")
@@ -367,14 +352,6 @@ async test "mooncode durable sidecars list and show without live binding" (
   assert_eq(mooncode_json_int(listing, "command_count", default=0), 1)
   assert_eq(mooncode_json_int(listing, "event_count", default=0), 1)
   assert_eq(mooncode_json_int(listing, "package_result_count", default=0), 1)
-  assert_eq(
-    mooncode_json_string(listing, "lifecycle_status", default=""),
-    "blocked",
-  )
-  assert_eq(
-    mooncode_json_string(listing, "lifecycle_first_blocker_id", default=""),
-    "edit_code",
-  )
   assert_true(
     mooncode_json_string(listing, "stream_url", default="").contains(
       "format=jsonl",
@@ -582,162 +559,6 @@ async test "mooncode durable session record exposes canonical conversation" (
       default="",
     ),
     "turn:cmd-chat-1:assistant",
-  )
-}
-
-///|
-async test "mooncode durable lifecycle completes from book-local evidence" (
-  t : @test.Test,
-) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-lifecycle-XXXXXX"),
-  )
-  let binding = MoonCodeSessionBinding::{
-    session_id: "session/lifecycle:1",
-    book_root,
-    workspace_id: "book-code-lab",
-    workspace_name: "Code Lab",
-    model: "",
-    model_workspace: "",
-    command_count: 1,
-    first_user_prompt: "Create an executable tool",
-    custom_title: "",
-    last_command_id: "cmd-life",
-    last_updated: @clock.Timestamp::from_ms(88L),
-    runtime_service_running: false,
-    runtime_service_wake_pending: false,
-    runtime_service_task: None,
-    active_command_id: "",
-    events: @broadcast.Broadcast::new(),
-  }
-  @fsx.make_directory(
-    mooncode_session_dir(binding.book_root, binding.session_id),
-    recursive=true,
-    exists_ok=true,
-  )
-  @fsx.write_to_file(
-    mooncode_session_snapshot_path(binding.book_root, binding.session_id),
-    mooncode_session_snapshot(binding).stringify(),
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "command": "prompt",
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:00Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_runtime_receipt(),
-    {
-      "kind": mooncode_kind_runtime_receipt(),
-      "command_id": "cmd-life",
-      "status": "runtime-completed",
-      "completed_at": "2026-07-15T00:02:01Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_event(),
-    {
-      "kind": "tool.write",
-      "lane": "diff",
-      "command_id": "cmd-life",
-      "path": "tools/demo/main.mbt",
-      "created_at": "2026-07-15T00:02:02Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_event(),
-    {
-      "event": mooncode_event_test_result(),
-      "lane": "test",
-      "status": "passed",
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:03Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_event(),
-    {
-      "kind": "receipt.accept",
-      "lane": "review",
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:04Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_event(),
-    {
-      "event": mooncode_event_package_verified(),
-      "lane": "artifact",
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:05Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_package_result(),
-    {
-      "kind": "mooncode-package-result",
-      "event": mooncode_event_package_verified(),
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:06Z",
-    },
-  )
-  mooncode_append_session_journal(
-    binding.book_root,
-    binding.session_id,
-    mooncode_journal_book_result(),
-    {
-      "kind": "mooncode-book-result",
-      "requires_review": false,
-      "event_type": "knowledge_accepted",
-      "command_id": "cmd-life",
-      "created_at": "2026-07-15T00:02:07Z",
-    },
-  )
-  let record = mooncode_session_record_from_parts(
-    binding.session_id,
-    binding.book_root,
-    None,
-    Some(mooncode_load_session_snapshot(binding.book_root, binding.session_id)),
-    source="sidecar",
-  )
-  let lifecycle = mooncode_json_object_field_or_empty(
-    record, "executable_book_lifecycle",
-  )
-  assert_true(mooncode_json_bool(lifecycle, "ready", default=false))
-  assert_eq(mooncode_json_string(lifecycle, "status", default=""), "complete")
-  assert_eq(
-    mooncode_json_int(lifecycle, "completed_step_count", default=0),
-    mooncode_executable_book_lifecycle_steps().length(),
-  )
-  assert_eq(
-    mooncode_json_string(lifecycle, "first_blocker_id", default="x"),
-    "",
-  )
-  assert_false(lifecycle.stringify().contains("MoonDesk"))
-  assert_false(lifecycle.stringify().contains("Rabbita"))
-  let listing = mooncode_session_listing_row(record)
-  assert_true(mooncode_json_bool(listing, "lifecycle_ready", default=false))
-  assert_eq(
-    mooncode_json_string(listing, "lifecycle_status", default=""),
-    "complete",
   )
 }
 

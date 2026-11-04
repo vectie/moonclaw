@@ -2,7 +2,8 @@
 
 This document describes the production-safe rollout surface for prompt/cache
 metrics, tool bundles, read batching, atomic edits, output retention, and
-long-horizon compaction. Compatibility remains the default unless noted.
+long-context compaction. The single-agent runtime boundary is described in
+[Executable book runtime boundary](executable_book_runtime_boundary.md).
 
 The executable cohort matrix and quality-first promotion order are documented
 in [HARNESS_REGRESSION_GATES.md](HARNESS_REGRESSION_GATES.md).
@@ -13,9 +14,9 @@ documented in [HARNESS_REPLAY.md](HARNESS_REPLAY.md).
 
 | Control | Default | Effect |
 | --- | --- | --- |
-| `payload.planner_dynamic_tool_bundles` | `false` | Selects a task-specific initial schema and exposes bounded `tool_search` discovery for omitted capabilities. The default still sends the complete coding catalog and does not expose `tool_search`. |
+| `payload.planner_dynamic_tool_bundles` | `false` | Selects a task-specific initial schema and exposes bounded `tool_search` discovery for omitted capabilities. Default coding requests omit worker tools; explicit `planner_allowed_tools` selects authorized tools. |
 | `payload.planner_tool_output_chars` | absent | Supplies a default inline output cap for tools that did not specify one. Absence preserves 12,000 characters. Values are bounded to 200,000; explicit tool arguments win. |
-| parallel model-planned `read` calls | enabled for safe batches | Runs independent paths concurrently and commits results/events in model-call order. Resumed, approval-gated, mixed, duplicate, post-commit-sealed, or discovery-budget-crossing batches stay sequential. |
+| parallel model-planned `read` calls | enabled for safe batches | Runs independent paths concurrently and commits results/events in model-call order. Resumed, approval-gated, mixed, duplicate, or post-commit-sealed batches stay sequential. There is no discovery quota. |
 | `edit.arguments.edits` | optional | Applies ordered replacements in memory and performs one write only after every replacement validates. Legacy `old_string`/`new_string` remains supported. |
 | `payload.planner_hybrid_semantic_compaction_trial` | `false` | Emits shadow evaluation data only; no additional model call and no transcript replacement. Eligibility also requires measured context pressure. |
 | `payload.planner_hybrid_semantic_compaction_active` | `false` | Applies the deterministic long-context projection only after the very-long-task and measured-pressure gates pass. The durable journal is unchanged and invariant failures return the exact input projection. |
@@ -80,10 +81,10 @@ prompts, paths, tool names, and tool arguments remain local. The MoonGate
 aggregation mapping and cardinality policy live in
 `../moongate/docs/MOONCLAW_HARNESS_METRICS.md`.
 
-## Local native benchmark, 2026-08-23
+## Historical native benchmark, 2026-08-23
 
-The reproducible benchmark tests use the same tool-catalog selector and
-parallel-read executor as production.
+These are historical observations, not the current catalog size or release
+status. Rerun the benchmark tests for the current tool selector and executor.
 
 Dynamic bundle schema size:
 
@@ -128,7 +129,7 @@ rollout should compare success and verification first, then fresh input tokens,
 cache ratio, request bytes, latency, and tool-call count by the representative
 cohorts listed in the MoonGate metrics document.
 
-## Validation state
+## Historical validation state
 
 - deferred discovery and bundle tests pass 13/13; the combined deferred,
   bundle, benchmark, and regression selection passes 16/16;

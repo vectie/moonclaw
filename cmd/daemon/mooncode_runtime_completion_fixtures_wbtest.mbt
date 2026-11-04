@@ -1,5 +1,5 @@
 ///|
-fn nochange_test_policy() -> Json {
+fn completion_test_contract() -> Json {
   {
     "required_checks": [
       {
@@ -13,29 +13,22 @@ fn nochange_test_policy() -> Json {
 }
 
 ///|
-fn nochange_test_command(policy~ : Json = nochange_test_policy()) -> Json {
+fn completion_test_command(
+  contract~ : Json = completion_test_contract(),
+) -> Json {
   {
     "protocol": "mooncode.v1",
     "command": "prompt",
-    "session_id": "nochange-session",
+    "session_id": "completion-session",
     "book_root": "/synthetic/source",
-    "packet": { "command_id": "nochange-command" },
+    "packet": { "command_id": "completion-command" },
     "text": "Implement the requested behavior and run tests.",
-    "payload": { "task_intent": "workspace_change", "task_contract": policy },
+    "payload": { "task_intent": "workspace_change", "task_contract": contract },
   }
 }
 
 ///|
-fn nochange_test_proposal() -> Json {
-  {
-    "reason": "already_satisfied",
-    "observation": "The inspected implementation already contains the requested behavior.",
-    "evidence_refs": ["nochange-read", "nochange-tests"],
-  }
-}
-
-///|
-fn nochange_test_result(
+fn completion_test_result(
   tool : String,
   id : String,
   arguments : Json,
@@ -49,9 +42,9 @@ fn nochange_test_result(
     "result": result,
     "event": mooncode_json_object_with_field(
       mooncode_tool_result_event(
-        "nochange-session",
+        "completion-session",
         "/synthetic/source",
-        "nochange-command",
+        "completion-command",
         tool,
         result,
         now=@clock.Timestamp::from_ms(100L),
@@ -63,14 +56,17 @@ fn nochange_test_result(
 }
 
 ///|
-fn nochange_test_evidence() -> Array[Json] {
+fn completion_test_evidence() -> Array[Json] {
   [
-    nochange_test_result("read", "nochange-read", { "path": "src/main.mbt" }, {
-      "path": "src/main.mbt",
-    }),
-    nochange_test_result(
+    completion_test_result(
+      "read",
+      "completion-read",
+      { "path": "src/main.mbt" },
+      { "path": "src/main.mbt" },
+    ),
+    completion_test_result(
       "shell",
-      "nochange-tests",
+      "completion-tests",
       {
         "cmd": "moon test --no-render",
         "cwd": ".",
@@ -95,45 +91,9 @@ fn nochange_test_evidence() -> Array[Json] {
 }
 
 ///|
-fn nochange_test_checkpoint_arguments() -> Json {
-  let milestones = mooncode_horizon_test_milestones("done", "done", "done")
-  milestones[1] = mooncode_json_object_with_field(
-    milestones[1],
-    "resolution",
-    "already_satisfied",
-  )
-  {
-    "horizon_id": "nochange-command",
-    "milestones": milestones,
-    "next_action": "",
-    "completion_outcome": "no_change",
-    "no_change": nochange_test_proposal(),
-  }
-}
-
-///|
-fn nochange_test_checkpoint(
-  command : Json,
-  evidence : Array[Json],
-  arguments~ : Json = nochange_test_checkpoint_arguments(),
-) -> Json {
-  mooncode_runtime_horizon_checkpoint_execution(
-    command,
-    "nochange-session",
-    "/synthetic/source",
-    "nochange-command",
-    { "tool": "checkpoint", "arguments": arguments },
-    evidence,
-    now=@clock.Timestamp::from_ms(1000L),
-  )
-}
-
-///|
-fn nochange_test_finish() -> Json {
+fn completion_test_finish() -> Json {
   let arguments : Json = {
-    "answer": "No net source change; required checks passed.",
-    "completion_outcome": "no_change",
-    "no_change": nochange_test_proposal(),
+    "answer": "The existing implementation satisfies the request; its tests passed.",
   }
   let result = mooncode_tool_finish(arguments)
   {
@@ -145,7 +105,7 @@ fn nochange_test_finish() -> Json {
 }
 
 ///|
-fn nochange_test_metadata(result : Json, key : String, value : Json) -> Json {
+fn completion_test_metadata(result : Json, key : String, value : Json) -> Json {
   let payload = mooncode_runtime_turn_result_payload(result)
   let metadata = mooncode_json_object_with_field(
     mooncode_json_object_field_or_empty(payload, "metadata"),
@@ -166,7 +126,7 @@ fn nochange_test_metadata(result : Json, key : String, value : Json) -> Json {
 }
 
 ///|
-fn nochange_test_edit(before : String, after : String) -> Json {
+fn completion_test_edit(before : String, after : String) -> Json {
   {
     "tool": "edit",
     "accepted": true,

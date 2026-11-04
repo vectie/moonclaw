@@ -1,15 +1,15 @@
 ///|
 test "finish requires current checks without manufacturing a mutation or checkpoint" {
-  let command = nochange_test_command()
-  let evidence = nochange_test_evidence()
-  let finish = nochange_test_finish()
+  let command = completion_test_command()
+  let evidence = completion_test_evidence()
+  let finish = completion_test_finish()
   assert_true(
     mooncode_runtime_turn_completion_verdict(command, evidence + [finish]).accepted,
   )
   assert_false(
     mooncode_runtime_turn_completion_verdict(command, [finish]).accepted,
   )
-  let failed = nochange_test_metadata(evidence[1], "exit_code", Json(1))
+  let failed = completion_test_metadata(evidence[1], "exit_code", Json(1))
   assert_false(
     mooncode_runtime_turn_completion_verdict(command, [
       evidence[0],
@@ -17,13 +17,13 @@ test "finish requires current checks without manufacturing a mutation or checkpo
       finish,
     ]).accepted,
   )
-  let stale = evidence + [nochange_test_edit("old", "new"), finish]
+  let stale = evidence + [completion_test_edit("old", "new"), finish]
   assert_false(
     mooncode_runtime_turn_completion_verdict(command, stale).accepted,
   )
   let repaired = evidence +
     [
-      nochange_test_edit("old", "new"),
+      completion_test_edit("old", "new"),
       evidence[1],
       {
         "tool": "finish",
@@ -38,21 +38,21 @@ test "finish requires current checks without manufacturing a mutation or checkpo
 
 ///|
 test "checkpoint is editable progress and does not grant completion" {
-  let command = nochange_test_command()
+  let command = completion_test_command()
   let done : Json = {
-    "horizon_id": "nochange-command",
+    "horizon_id": "completion-command",
     "milestones": [{ "id": "work", "status": "done" }],
   }
   let reopened : Json = {
-    "horizon_id": "nochange-command",
+    "horizon_id": "completion-command",
     "milestones": [{ "id": "work", "status": "active" }],
   }
   assert_eq(mooncode_runtime_horizon_checkpoint_error(command, done, []), "")
   let saved = mooncode_runtime_horizon_checkpoint_execution(
     command,
-    "nochange-session",
+    "completion-session",
     "/synthetic/source",
-    "nochange-command",
+    "completion-command",
     { "arguments": done },
     [],
     now=@clock.epoch.now(),
@@ -64,7 +64,7 @@ test "checkpoint is editable progress and does not grant completion" {
   assert_false(
     mooncode_runtime_turn_completion_verdict(command, [
       saved,
-      nochange_test_finish(),
+      completion_test_finish(),
     ]).accepted,
   )
 }
@@ -166,7 +166,7 @@ test "package verification needs a real verification tool after the final change
   )
   assert_false(
     mooncode_runtime_turn_package_verified({
-      "tool_results": [checked, nochange_test_edit("a", "b")],
+      "tool_results": [checked, completion_test_edit("a", "b")],
     }),
   )
 }
@@ -234,7 +234,23 @@ test "operation recovery reuses committed results and never replays an unknown e
     "arguments": { "path": "a", "content": "value" },
   }
   let now = @clock.Timestamp::from_ms(1L)
-  let intent = mooncode_runtime_operation_intent("s", "c", "c:0:0", call, now~)
+  let plan : Json = { "tool_calls": [call] }
+  let checkpoint = mooncode_runtime_continuation_event(
+    "s",
+    "c",
+    plan,
+    [plan],
+    [],
+    [],
+    {},
+    step_index=0,
+    tool_index=0,
+    planner_turn_end_step=0,
+    now~,
+  )
+  let intent = mooncode_runtime_checkpoint_with_intent(
+    checkpoint, "c:0:0", call,
+  )
   let unknown = mooncode_runtime_operation_recovery(
     [intent],
     "s",
@@ -294,61 +310,183 @@ test "operation recovery reuses committed results and never replays an unknown e
     _ => false
   }
   assert_true(rejected)
+  assert_true(
+    mooncode_runtime_continuation_is_active(
+      mooncode_runtime_continuation_for_command([intent], "c"),
+    ),
+  )
 }
 
 ///|
-async test "restart after claim and before planning resumes without a second user request" {
-  @fsx.with_temporary_directory("mooncode-claim-before-plan-XXXXXX", async fn(
-    root,
-  ) {
-    @fsx.write_to_file(root + "/answer.txt", "retained input")
-    let command : Json = {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "claim-restart",
-      "book_root": root,
-      "command": "prompt",
-      "text": "Read answer.txt",
-      "model": "fixture/mooncode",
-      "packet": { "command_id": "before-plan" },
-      "runtime_tool_calls": [
-        { "tool": "read", "arguments": { "path": "answer.txt" } },
-        { "tool": "finish", "arguments": { "answer": "retained input" } },
-      ],
-    }
-    mooncode_append_session_journal(
+async test "restart before planning or after a read intent resumes without another user request" {
+  for interrupted_read in [false, true] {
+    @fsx.with_temporary_directory("mooncode-claim-before-plan-XXXXXX", async fn(
       root,
-      "claim-restart",
-      mooncode_journal_command(),
-      {
-        "kind": "mooncode-command",
+    ) {
+      @fsx.write_to_file(root + "/answer.txt", "retained input")
+      let command : Json = {
         "protocol": mooncode_protocol_version(),
         "session_id": "claim-restart",
-        "command_id": "before-plan",
-        "command": command,
-        "created_at": @clock.Timestamp::from_ms(1L),
-      },
-    )
-    ignore(
-      mooncode_runtime_claim_atomic(
+        "book_root": root,
+        "command": "prompt",
+        "text": "Read answer.txt",
+        "model": "fixture/mooncode",
+        "packet": { "command_id": "before-plan" },
+        "runtime_tool_calls": [
+          { "tool": "read", "arguments": { "path": "answer.txt" } },
+          { "tool": "finish", "arguments": { "answer": "retained input" } },
+        ],
+      }
+      mooncode_append_session_journal(
         root,
         "claim-restart",
-        {},
-        @clock.Timestamp::from_ms(2L),
-      ),
-    )
-    let daemon = mooncode_control_test_daemon(root)
-    let result = daemon.mooncode_runtime_turn_execute("claim-restart", root, {})
-    assert_true(
-      mooncode_json_bool(result, "accepted", default=false),
-      msg=result.stringify(),
-    )
-    let events = mooncode_journal_entries(
-      mooncode_read_session_journal(root, "claim-restart"),
-      mooncode_journal_event(),
-    )
-    let completed = events.filter(e => {
-      mooncode_json_string(e, "operation_state", default="") == "completed"
+        mooncode_journal_command(),
+        {
+          "kind": "mooncode-command",
+          "protocol": mooncode_protocol_version(),
+          "session_id": "claim-restart",
+          "command_id": "before-plan",
+          "command": command,
+          "created_at": @clock.Timestamp::from_ms(1L),
+        },
+      )
+      ignore(
+        mooncode_runtime_claim_atomic(
+          root,
+          "claim-restart",
+          {},
+          @clock.Timestamp::from_ms(2L),
+        ),
+      )
+      if interrupted_read {
+        let calls = mooncode_json_array_items(command, "runtime_tool_calls")
+        let plan : Json = {
+          "planner_mode": "explicit-tool-calls",
+          "tool_calls": Json::array(calls),
+        }
+        let checkpoint = mooncode_runtime_continuation_event(
+          "claim-restart",
+          "before-plan",
+          plan,
+          [plan],
+          [],
+          [],
+          {},
+          step_index=0,
+          tool_index=0,
+          planner_turn_end_step=0,
+          now=@clock.Timestamp::from_ms(3L),
+        )
+        mooncode_append_session_journal(
+          root,
+          "claim-restart",
+          mooncode_journal_event(),
+          mooncode_runtime_checkpoint_with_intent(
+            checkpoint,
+            "before-plan:0:0",
+            calls[0],
+          ),
+        )
+      }
+      let daemon = mooncode_control_test_daemon(root)
+      let result = daemon.mooncode_runtime_turn_execute("claim-restart", root, {})
+      assert_true(
+        mooncode_json_bool(result, "accepted", default=false),
+        msg=result.stringify(),
+      )
+      let events = mooncode_journal_entries(
+        mooncode_read_session_journal(root, "claim-restart"),
+        mooncode_journal_event(),
+      )
+      let completed = events.filter(e => {
+        mooncode_json_string(e, "operation_state", default="") == "completed"
+      })
+      assert_eq(completed.length(), 2)
+      let intents = events.filter(e => {
+        mooncode_json_string(e, "operation_state", default="") == "started"
+      })
+      assert_eq(intents.length(), 2)
+      assert_true(
+        intents.all(e => {
+          mooncode_json_string(e, "kind", default="") ==
+          mooncode_runtime_continuation_kind()
+        }),
+      )
     })
-    assert_eq(completed.length(), 2)
+  }
+}
+
+///|
+test "recovered observation failures do not invalidate successful required checks" {
+  let command = completion_test_command()
+  let evidence = completion_test_evidence()
+  let failed_read : Json = {
+    "tool": "read",
+    "accepted": false,
+    "arguments": { "path": "missing.mbt" },
+    "result": { "ok": false },
+  }
+  let finish = completion_test_finish()
+  assert_false(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      evidence + [failed_read, finish],
+    ).accepted,
+  )
+  let recovered = evidence + [failed_read, evidence[0], finish]
+  assert_eq(
+    mooncode_runtime_required_check_evidence(command, recovered).length(),
+    1,
+  )
+  assert_true(
+    mooncode_runtime_turn_completion_verdict(command, recovered).accepted,
+  )
+  let failed_test = mooncode_json_object_with_field(
+    evidence[1],
+    "accepted",
+    Json(false),
+  )
+  assert_false(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      evidence + [failed_test, evidence[0], finish],
+    ).accepted,
+  )
+  let rejected_finish : Json = {
+    "tool": "finish",
+    "accepted": false,
+    "result": { "ok": false },
+  }
+  let rejected_note : Json = {
+    "tool": "checkpoint",
+    "accepted": false,
+    "result": { "ok": false },
+  }
+  assert_true(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      evidence + [rejected_finish, rejected_note, finish],
+    ).accepted,
+  )
+  let unknown = mooncode_json_object_with_field(failed_read, "result", {
+    "ok": false,
+    "metadata": { "outcome_unknown": true },
   })
+  assert_false(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      evidence + [unknown, evidence[0], finish],
+    ).accepted,
+  )
+  let commit : Json = {
+    "tool": "commit",
+    "accepted": true,
+    "result": { "metadata": { "evidence_kind": "runtime.commit_created" } },
+  }
+  assert_true(
+    mooncode_runtime_turn_completion_verdict(
+      command,
+      evidence + [commit, finish],
+    ).accepted,
+  )
 }

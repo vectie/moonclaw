@@ -61,15 +61,6 @@ test "mooncode capabilities expose native daemon endpoints" {
     mooncode_native_capability_contract_id(),
     "mooncode-native-capability-surface.v2",
   )
-  assert_eq(
-    mooncode_executable_book_lifecycle_contract_id(),
-    "mooncode-executable-book-lifecycle.v2",
-  )
-  assert_false(
-    mooncode_capabilities_payload()
-    .stringify()
-    .contains("mooncode-executable-book-lifecycle.v1"),
-  )
   assert_eq(mooncode_native_capability_surface_fingerprint().length(), 64)
   let surface = mooncode_native_capability_surface_json().stringify()
   assert_true(
@@ -105,29 +96,6 @@ test "mooncode capabilities expose native daemon endpoints" {
       default="",
     ),
     mooncode_native_capability_surface_fingerprint(),
-  )
-  assert_eq(
-    mooncode_json_string(
-      payload_json,
-      "executable_book_lifecycle_contract_id",
-      default="",
-    ),
-    mooncode_executable_book_lifecycle_contract_id(),
-  )
-  let lifecycle_contract = mooncode_json_object_field_or_empty(
-    payload_json, "executable_book_lifecycle_contract",
-  )
-  assert_eq(
-    mooncode_json_string(lifecycle_contract, "runtime_owner", default=""),
-    "moonclaw",
-  )
-  assert_eq(
-    mooncode_json_string(lifecycle_contract, "artifact_owner", default=""),
-    "moonbook",
-  )
-  assert_eq(
-    mooncode_json_array_items(lifecycle_contract, "required_steps").length(),
-    mooncode_executable_book_lifecycle_steps().length(),
   )
   assert_eq(
     mooncode_json_string(
@@ -187,8 +155,9 @@ test "mooncode capabilities expose native daemon endpoints" {
     ),
   )
   assert_true(payload.contains("\"capability_surface\""))
-  assert_true(payload.contains("\"executable_book_lifecycle_contract\""))
-  assert_true(payload.contains("mooncode-executable-book-lifecycle.v2"))
+  assert_false(payload.contains("\"executable_book_lifecycle_contract\""))
+  assert_false(payload.contains("mooncode-executable-book-lifecycle.v2"))
+  assert_false(payload.contains("completion_outcome_contract"))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
   assert_true(
     payload.contains("\"runtime_mode\":\"moonclaw-daemon-native-mooncode\""),

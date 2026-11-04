@@ -72,16 +72,43 @@ fn mooncode_runtime_check_cwd(command : Json, value : String) -> String {
 }
 
 ///|
-/// Select exact successful process receipts only after the final known native
-/// mutation/failure. Consumer validation additionally attributes sandbox source
-/// changes against its independently captured source inventory.
+// Ordinary failed observations need recovery, but do not invalidate checks of
+// unchanged inputs. Mutations, failed checks and uncertain effects invalidate
+// those results.
+fn mooncode_runtime_verification_boundary(results : Array[Json]) -> Int32 {
+  let mut boundary = -1
+  for index, result in results {
+    let metadata = mooncode_json_object_field_or_empty(
+      mooncode_runtime_turn_result_payload(result),
+      "metadata",
+    )
+    let tool = mooncode_json_string(result, "tool", default="")
+    if (
+        mooncode_runtime_turn_result_is_mutation(result) &&
+        !mooncode_runtime_turn_result_is_commit_boundary(result)
+      ) ||
+      (
+        !mooncode_json_bool(result, "accepted", default=false) &&
+        (
+          mooncode_runtime_turn_call_is_verification(result) ||
+          ["write", "edit", "apply_patch", "revert_patch"].contains(tool) ||
+          mooncode_json_bool(metadata, "outcome_unknown", default=false)
+        )
+      ) {
+      boundary = index
+    }
+  }
+  boundary
+}
+
+///|
+/// Match declared checks to successful native process receipts after the latest
+/// input-changing operation, failed verification or uncertain effect.
 fn mooncode_runtime_required_check_evidence(
   command : Json,
   results : Array[Json],
 ) -> Array[Json] {
-  let boundary = mooncode_runtime_horizon_last_mutation(results).max(
-    mooncode_runtime_horizon_last_failure(results),
-  )
+  let boundary = mooncode_runtime_verification_boundary(results)
   let proofs : Array[Json] = []
   for
     check in mooncode_json_array_items(
@@ -234,9 +261,7 @@ async fn mooncode_runtime_finish_input_error(
   command : Json,
   results : Array[Json],
 ) -> String {
-  let boundary = mooncode_runtime_horizon_last_mutation(results).max(
-    mooncode_runtime_horizon_last_failure(results),
-  )
+  let boundary = mooncode_runtime_verification_boundary(results)
   let required = mooncode_runtime_required_check_evidence(command, results)
   let seen : Map[String, Bool] = Map([])
   for index = results.length() - 1; index > boundary; index = index - 1 {

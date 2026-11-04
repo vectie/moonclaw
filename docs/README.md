@@ -48,7 +48,7 @@ and MoonLib defines shared paths.
 2. [Responsibility and testability](RESPONSIBILITY_AND_TESTABILITY.md):
    product-owned policy, installed packs, and focused/release checks.
 3. [Executable book runtime boundary](executable_book_runtime_boundary.md):
-   current MoonCode execution, recovery, and approved simplification.
+   current single-agent MoonCode execution, completion, and recovery.
 4. [Daemon reference](../cmd/daemon/README.md) and
    [daemon/gateway selection](daemon_vs_gateway.md): service entry points.
 5. [System architecture](system_architecture.md) and
@@ -72,7 +72,7 @@ For MoonCode, reuse the current loop, journal, continuation, tool results, and
 decision. Return repairable errors to that agent; request human input only for
 real authority or decision gaps. Remove duplicate mechanisms before adding
 abstractions. The [runtime boundary](executable_book_runtime_boundary.md)
-separates current implementation from approved but pending changes.
+describes the implemented path and the limits of its verification evidence.
 
 Do not introduce a permanent agent Router, a checker registry, a second
 operation database, or a new runtime framework. Optional generic job and worker
