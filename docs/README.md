@@ -49,6 +49,9 @@ and MoonLib defines shared paths.
    product-owned policy, installed packs, and focused/release checks.
 3. [Executable book runtime boundary](executable_book_runtime_boundary.md):
    agent machine model, shared working method, completion and recovery.
+   The optional sibling MoonDesk [design synthesis](../../moondesk/docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md)
+   covers later data-model and dynamic-graph decisions; it is not a runtime
+   dependency or a claim that graph presentation has shipped.
 4. [Daemon reference](../cmd/daemon/README.md) and
    [daemon/gateway selection](daemon_vs_gateway.md): service entry points.
 5. [System architecture](system_architecture.md) and

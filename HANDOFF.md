@@ -18,6 +18,12 @@ The complete discussion is retained in the optional sibling MoonDesk checkout
 at `docs/mooncode-discussion-2026-11-04/`. Do not combine superseded proposals
 into additional implementation requirements.
 
+The 2026-11-05 synthesis lives in optional sibling MoonDesk at
+`docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md`. It consolidates system
+primitives, data models, framework comparisons and runtime graph construction.
+Graph UI and complete dependency analysis remain planned; graphs should project
+existing execution facts rather than introduce another execution authority.
+
 ## Current MoonCode Implementation
 
 - Legacy Goal and Goal Runtime were removed, including API/store/supervisor,

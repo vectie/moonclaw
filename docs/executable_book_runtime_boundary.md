@@ -211,6 +211,10 @@ caller-supplied review or success claims as deliverable acceptance.
 
 The complete discussion and final plan are retained in the optional sibling
 [MoonDesk archive](../../moondesk/docs/mooncode-discussion-2026-11-04/README.md).
+The later [agent machine and dynamic graph synthesis](../../moondesk/docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md)
+records the OS/compiler/database/dataflow analysis and task-driven interpreter
+design. Dynamic graph presentation and complete dependency analysis are not
+implemented runtime guarantees.
 The runtime and the summary above remain usable without that checkout.
 
 ## Validation
