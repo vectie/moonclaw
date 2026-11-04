@@ -19,6 +19,7 @@ pub fn Loader::new(home? : String, cwd~ : String, logger? : @pino.Logger) -> Sel
 pub fn Loader::skills(Self) -> Map[String, Skill]
 
 pub struct Skill {
+  id : String
   name : String
   description : String
   license : String?

@@ -239,6 +239,29 @@ POST /v1/agent
 ```text
 Gateway::execute_agent_async
   -> Gateway::execute_agent
+    -> resolve cwd
+    -> resolve session_key
+    -> sessions.get_or_create(...)
+    -> resolve model override / default model
+    -> @model.load(...)
+    -> @agent.new(...)
+    -> attach event listener
+    -> agent.start()
+    -> agent.close()
+    -> store final run payload into agent_runs
+    -> store dedupe entry
+    -> emit gateway events
+```
+
+The final run payload currently includes:
+
+- `run_id`
+- `status`
+- `session_key`
+- `model`
+- `content`
+- `conversation_id`
+- `completed_at`
 
 ## Job and Controller Routing Notes
 
@@ -268,29 +291,6 @@ The preferred board-shaping metadata is:
 
 - `board_lane`
 - `board_order`
-    -> resolve cwd
-    -> resolve session_key
-    -> sessions.get_or_create(...)
-    -> resolve model override / default model
-    -> @model.load(...)
-    -> @agent.new(...)
-    -> attach event listener
-    -> agent.start()
-    -> agent.close()
-    -> store final run payload into agent_runs
-    -> store dedupe entry
-    -> emit gateway events
-```
-
-The final run payload currently includes:
-
-- `run_id`
-- `status`
-- `session_key`
-- `model`
-- `content`
-- `conversation_id`
-- `completed_at`
 
 ## Job Execution Call Chain
 
@@ -392,100 +392,12 @@ job/runtime.mbt + job/system_storage.mbt
   -> persistent job definitions, runs, artifacts, proposals, bindings, events
 ```
 
-## Research Job Family
+## Product-Owned Job Families
 
-`job/research.mbt` is the first concrete job family built on the generic job platform.
-
-Implemented research step kinds:
-
-- `research.topic.sync`
-- `research.paper.fetch`
-- `research.paper.parse`
-- `research.paper.analyze`
-
-Implemented research chat bindings:
-
-- `research.topic.ask:<topic_id>`
-- `research.paper.ask:<paper_id>`
-
-Research call chain:
-
-```text
-job definition or workflow bundle
-  -> gateway job runtime / workflow engine
-    -> research.topic.sync
-      -> ArxivClient.search(...)
-      -> persist topic feed artifact
-      -> persist paper metadata artifacts
-      -> optionally download PDF artifacts
-      -> create/update topic chat binding
-    -> research.paper.fetch
-      -> fetch one paper from arXiv
-      -> persist paper metadata + PDF artifacts
-      -> create/update paper chat binding
-    -> research.paper.parse
-      -> load paper metadata + PDF artifact
-      -> PaperTextExtractor.extract(...)
-      -> persist `research.paper.text`
-      -> persist `research.paper.chunks`
-    -> research.paper.analyze
-      -> load paper metadata + parsed text artifacts
-      -> AnalysisExecutor.run(...)
-      -> persist analysis report + structured result artifacts
-```
-
-Research artifact types currently persisted include:
-
-- `research.topic.feed`
-- `research.paper.meta`
-- `research.paper.pdf`
-- `research.paper.text`
-- `research.paper.chunks`
-- `research.paper.analysis.summary.report`
-- `research.paper.analysis.summary.result`
-
-The default parse path uses `pdftotext` when it is available, and falls back to metadata-derived text when PDF text extraction is unavailable.
-
-```text
-POST /v1/jobs/{id}/run or RPC jobs.run
-  -> Gateway::handle_run_job / handle_jobs_run_method
-  -> Gateway::trigger_job_definition(job_id)
-  -> RuntimeManager::trigger_definition(...)
-  -> persist JobRun
-  -> Gateway::launch_job_run(run_id)
-  -> spawn background execute_job_run_async(...)
-  -> WorkflowEngine::execute_run(...)
-  -> registered step handlers run
-  -> ArtifactStore persists outputs
-  -> JobRun / JobStepRun state saved back to disk
-```
-
-### Scheduled path
-
-```text
-gateway tick
-  -> Gateway::schedule_due_jobs()
-  -> RuntimeManager::trigger_due_definitions(...)
-  -> create due JobRun values
-  -> Gateway::launch_job_run(run_id) for each due run
-  -> WorkflowEngine::execute_run(...)
-```
-
-### Cancellation path
-
-```text
-POST /v1/jobs/{id}/cancel or RPC jobs.cancel
-  -> Gateway::cancel_job_definition_run(job_id, force=false)
-  -> pending run: mark cancelled immediately
-  -> active run: set cooperative cancel flag
-  -> WorkflowExecutionControl observes the flag and exits cleanly
-
-POST /v1/jobs/{id}/force-cancel or RPC jobs.force_cancel
-  -> Gateway::cancel_job_definition_run(job_id, force=true)
-  -> active run sees force-stop flag through WorkflowExecutionControl
-```
-
-Current built-in step registration is intentionally narrow: the gateway workflow engine registers the generic analysis step handler by default. Additional job-family step kinds can be registered on top of the same runtime later without changing the gateway control plane.
+The gateway's current workflow factory registers generic `job.analysis` and
+`job.delegate` handlers. Domain steps and acceptance policy belong to their
+installed product packs; the removed `job/research.mbt` family is not a current
+built-in handler. See [Capability invocation](CAPABILITY_INVOCATION.md).
 
 ## Session Routing and Write-Back Flow
 
@@ -742,7 +654,7 @@ It does not currently provide:
 
 These are the most important corrections relative to older drafts:
 
-- gateway default port is `18123`, not `18123`
+- gateway default port is `18123`
 - gateway CLI supports `start`, `connect`, `agent`, `health`, `help`, `version`
 - no built-in `gateway status` subcommand exists
 - no built-in gateway detach/background flag exists

@@ -1,118 +1,37 @@
-# Daemon vs Gateway
+# Daemon And Gateway
 
-This comparison reflects the current codebase.
+These are service entry points into the existing runtime, not two layers of
+agents or a required Router/Worker topology.
 
-## Short Version
+## Choose An Entry Point
 
-- use `daemon` when you want the older task/process supervisor model
-- use `gateway` when you want HTTP/RPC, SSE, channels, mailboxes, and orchestration APIs
-- do not merge them right now; Feishu/channel work should continue in `gateway`
+| Need | Entry point |
+| --- | --- |
+| Native MoonCode sessions, canonical conversation, tool controls, and runtime-service execution | Daemon `/v1/code/*` |
+| Existing local task/process supervision and task API | Daemon `/v1/task*` |
+| Gateway HTTP/JSON-RPC, agent events, channels, extensions, mailboxes, coordination, and pipelines | Gateway |
+| Product-owned automation or domain actions | The installed pack/capability boundary, using the appropriate host |
 
-## Current Focus
+The daemon is not merely an older supervisor. It owns the native coding
+session path used by desktop clients. Gateway channel/orchestration facilities
+remain optional and do not become mandatory stages of MoonCode execution.
 
-### Daemon
+## Ownership
 
-Primary traits:
+Both entry points compose runtime capabilities. Neither owns accepted book
+truth or another product's domain policy. A client cannot substitute generic
+task chat for the native MoonCode conversation protocol.
 
-- process-oriented
-- workspace/task supervision
-- OAuth-related flows
-- task registry and daemon lock handling
+Native session journal, lease, approval, and restart semantics are documented
+in [Executable book runtime boundary](executable_book_runtime_boundary.md).
+Detailed endpoints remain in the [daemon reference](../cmd/daemon/README.md)
+and [gateway reference](../cmd/gateway/README.md).
 
-### Gateway
+## Operational Notes
 
-Primary traits:
+Gateway's default port is `18123`. Its CLI does not provide a built-in
+`status` subcommand or detach/background flag. Channel setup and long-lived
+connections belong to the configured gateway service lifecycle.
 
-- HTTP + JSON-RPC
-- agent run tracking
-- SSE event stream
-- channel extension hosting
-- mailbox, coordination, pipeline APIs
-
-## Current Gateway Structure
-
-```text
-Gateway
-  -> HTTP server
-  -> sessions
-  -> dedupe cache
-  -> agent_runs
-  -> agent_events broadcast
-  -> channel_manager
-  -> extension_registry
-  -> mailbox_manager
-  -> coordinator
-  -> pipeline_manager
-```
-
-## Current Daemon Structure
-
-See `cmd/daemon/*` for the actual implementation, but conceptually:
-
-```text
-Daemon
-  -> HTTP server
-  -> process manager
-  -> by_cwd / by_id task maps
-  -> conversation manager
-  -> auth providers
-```
-
-## Feature Comparison
-
-| Capability | Daemon | Gateway |
-|---|---|---|
-| Long-running service | yes | yes |
-| HTTP API | yes | yes |
-| JSON-RPC | yes | yes |
-| SSE | limited / task oriented | yes, `/v1/events` |
-| Agent run registry | task-centric | `agent_runs` |
-| Idempotent agent requests | not the main abstraction | yes, dedupe cache |
-| Channel extension hosting | no | yes |
-| Feishu webhook integration | no | yes |
-| Agent mailboxes | no | yes |
-| Coordination API | no | yes |
-| Pipeline API | no | yes |
-
-## Operational Differences
-
-### Daemon
-
-- oriented around task lifecycle and local process management
-- more supervisor-like
-
-### Gateway
-
-- oriented around request/response and integration surfaces
-- more suitable for external clients or channel adapters
-
-## Important Corrections
-
-Older drafts had these wrong:
-
-- gateway default port is `18123`
-- gateway does not have a built-in `--detach` mode
-- gateway does not have a built-in `status` subcommand
-- gateway is no longer “HTTP API only”; it also exposes channels/extensions/mailboxes/orchestration
-
-## When to Choose Gateway
-
-Choose gateway if you need:
-
-- RPC-friendly remote control
-- a stable HTTP surface
-- SSE agent events
-- webhook-hosted channels such as Feishu
-- mailbox or orchestration APIs
-- Feishu or other channel runtime that should survive as a background service
-
-For an MoonClaw always-on Feishu backend, `gateway` is the correct service entrypoint. Keep `daemon` separate; strengthen `gateway` instead of merging the two runtimes.
-The current Feishu websocket startup path also lives in `gateway`: it can resolve the upstream Feishu websocket endpoint from `appId` / `appSecret` and keep that long-lived connection under the gateway-managed extension runtime.
-
-## When to Choose Daemon
-
-Choose daemon if you need:
-
-- process/task supervision semantics
-- existing daemon-oriented operational flows
-- the daemon-specific task APIs and lock-file model
+Do not infer persistence or replay guarantees for gateway mailboxes from the
+durable native MoonCode journal. Check each API's implementation and contract.

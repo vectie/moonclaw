@@ -686,6 +686,8 @@ moon run cmd/main -- tui
 
 Start here:
 
+- [docs/README.md](docs/README.md)
+- [docs/executable_book_runtime_boundary.md](docs/executable_book_runtime_boundary.md)
 - [docs/system_architecture.md](docs/system_architecture.md)
 - [docs/job_system_architecture.md](docs/job_system_architecture.md)
 - [docs/GATEWAY_USAGE.md](docs/GATEWAY_USAGE.md)
@@ -706,10 +708,15 @@ Useful commands:
 
 ```bash
 moon check
-moon test
+moon test --target native --strip -j 2
 moon info
 moon fmt
 ```
+
+The native test command runs the full suite while omitting debug symbols from
+test executables. For focused local work, select the relevant package or test
+file with the same `--strip` flag. Omit `--strip` when native stack-symbol
+debugging is needed; the large test drivers can take much longer to compile.
 
 ## 💡 Positioning
 

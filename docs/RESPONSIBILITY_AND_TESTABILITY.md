@@ -61,17 +61,33 @@ domain policy to MoonClaw.
 - A pack policy mismatch fails before model execution, preventing unowned work
   and avoidable provider cost.
 
+## MoonCode execution direction
+
+Use [Executable book runtime boundary](executable_book_runtime_boundary.md)
+for current coding execution and the approved simplification. Default to one
+primary agent completing authorized work through checks and repair. A separate
+book/product acceptance receipt does not impose per-step human review on every
+task. Keep reusable completion rules in their owning package and `cmd/` as a
+composition root; remove duplicate mechanisms before adding a new framework.
+
 ## Focused verification
 
 The proportional validation pass for the capability boundary is:
 
 ```sh
 moon check packtool --target native
-moon test packtool/capability_invocation_wbtest.mbt --target native
-moon test suite_adapter_test.mbt --target native
+moon test packtool/capability_invocation_wbtest.mbt --target native --strip -j 1
+moon test suite_adapter_test.mbt --target native --strip -j 1
 moon info
 moon fmt
 ```
+
+The repository-wide native release gate uses
+`moon test --target native --strip -j 2`. The focused checks above avoid
+compiling unrelated test packages during ordinary development. `--strip`
+retains the assertions while removing native debug symbols. Run without it
+only when stack-symbol debugging is necessary. Keep the full suite as a release
+gate; focused checks do not replace it.
 
 The repository still has pre-existing warning debt, mostly in the vendored
 async dependency, so warning cleanup is tracked separately from this boundary

@@ -1,5 +1,10 @@
 # MoonCode long-horizon prompt comparison — 2026-07-28
 
+Historical experiment as of 2026-07-28. Its models, test counts, failures,
+and observer verdict describe that run, not current release status or a
+mandatory review policy. Current execution and next work are in
+[Executable book runtime boundary](executable_book_runtime_boundary.md).
+
 ## Purpose
 
 This is a prompt-by-prompt comparison of one real long-horizon MoonCode turn

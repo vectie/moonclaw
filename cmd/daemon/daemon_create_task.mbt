@@ -107,7 +107,7 @@ impl @json.FromJson for CreateTaskRequest with fn from_json(
 ///   request structure
 /// * 404 Not Found: Specified model doesn't exist or working directory path
 ///   doesn't exist
-/// * 409 Conflict: A task already exists for the specified working directory
+/// * 409 Conflict: A task is generating or accepting input in this directory
 /// * 500 Internal Server Error: Filesystem operations fail, process spawning
 ///   fails, task registration timeout (5 minutes), or communication with the
 ///   spawned task fails
@@ -134,25 +134,15 @@ async fn Daemon::create_task(
   }
   // Create temporary working directory if not specified
   let cwd = check_working_directory(request.cwd)
-  // Check if a running task already exists for the specified cwd, if not
-  // spawn a new task.
+  // Idle children retain their saved conversations while releasing this cwd
+  // for a fresh task. The child performs the final active-generation check.
   let task_list = self.by_cwd.get_or_init(cwd, () => TaskLock::new())
-  // Check if a running task already exists for the specified cwd. If so, raise
-  // a 409 Conflict error.
-  guard task_list.running is None else {
-    raise json_error(409, "Conflict", {
-      "error": {
-        "code": -1,
-        "message": "A running task already exists for the specified 'cwd': \{cwd}",
-        "metadata": { "cwd": cwd },
-      },
-    })
-  }
+  task_list.spawn_mutex.acquire()
+  // Hold through the first message handoff so a concurrent creation cannot
+  // retire the fresh child before its initial input reaches the worker.
+  defer task_list.spawn_mutex.release()
   let task = {
-    task_list.spawn_mutex.acquire()
-    // Deferring the release of the mutex to ensure it is released even if an
-    // error occurs during task spawning.
-    defer task_list.spawn_mutex.release()
+    self.retire_idle_task(task_list)
     let task = self.spawn_task(
       group~,
       name?=request.name,

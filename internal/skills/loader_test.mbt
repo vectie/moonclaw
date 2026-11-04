@@ -50,18 +50,21 @@ async test "load" (t : @test.Test) {
     loader.load()
     json_inspect(mock.json(loader.skills()), content={
       "moonbit-agent-guide": {
+        "id": "moonbit-agent-guide",
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
+        "id": "pdf-processing",
         "name": "pdf-processing",
         "description": "A skill to process PDF documents.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md",
       },
       "text-summarization": {
+        "id": "text-summarization",
         "name": "text-summarization",
         "description": "A skill to summarize text documents.",
         "allowed_tools": [],
@@ -123,7 +126,8 @@ async test "load" (t : @test.Test) {
         #|available skills list below.
         #|
         #|2. Next, You should load the identified skills into your working context,
-        #|by reading their SKILL.md files. Note that you probably want to defer
+        #|by calling read_skill with the installed <id> as its name argument.
+        #|The frontmatter <name> is a display label and may repeat. Defer
         #|the loading of resources such as scripts, references, templates until they
         #|are actually needed.
         #|
@@ -133,16 +137,19 @@ async test "load" (t : @test.Test) {
         #|the skill folders to accomplish the task.
         #|<available_skills>
         #|  <skill>
+        #|    <id>moonbit-agent-guide</id>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|  <skill>
+        #|    <id>pdf-processing</id>
         #|    <name>pdf-processing</name>
         #|    <description>A skill to process PDF documents.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md</location>
         #|  </skill>
         #|  <skill>
+        #|    <id>text-summarization</id>
         #|    <name>text-summarization</name>
         #|    <description>A skill to summarize text documents.</description>
         #|    <location>(mock:cwd)/cwd/.moonsuite/products/moonclaw/skills/text-summarization/SKILL.md</location>
@@ -222,7 +229,8 @@ async test "load/empty" (t : @test.Test) {
         #|available skills list below.
         #|
         #|2. Next, You should load the identified skills into your working context,
-        #|by reading their SKILL.md files. Note that you probably want to defer
+        #|by calling read_skill with the installed <id> as its name argument.
+        #|The frontmatter <name> is a display label and may repeat. Defer
         #|the loading of resources such as scripts, references, templates until they
         #|are actually needed.
         #|
@@ -232,6 +240,7 @@ async test "load/empty" (t : @test.Test) {
         #|the skill folders to accomplish the task.
         #|<available_skills>
         #|  <skill>
+        #|    <id>moonbit-agent-guide</id>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
@@ -327,7 +336,8 @@ async test "load/lowercase" (t : @test.Test) {
         #|available skills list below.
         #|
         #|2. Next, You should load the identified skills into your working context,
-        #|by reading their SKILL.md files. Note that you probably want to defer
+        #|by calling read_skill with the installed <id> as its name argument.
+        #|The frontmatter <name> is a display label and may repeat. Defer
         #|the loading of resources such as scripts, references, templates until they
         #|are actually needed.
         #|
@@ -337,11 +347,13 @@ async test "load/lowercase" (t : @test.Test) {
         #|the skill folders to accomplish the task.
         #|<available_skills>
         #|  <skill>
+        #|    <id>moonbit-agent-guide</id>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|  <skill>
+        #|    <id>pdf-processing</id>
         #|    <name>pdf-processing</name>
         #|    <description>A skill to process PDF documents.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/skill.md</location>
@@ -434,7 +446,8 @@ async test "load/invalid-skill" (t : @test.Test) {
         #|available skills list below.
         #|
         #|2. Next, You should load the identified skills into your working context,
-        #|by reading their SKILL.md files. Note that you probably want to defer
+        #|by calling read_skill with the installed <id> as its name argument.
+        #|The frontmatter <name> is a display label and may repeat. Defer
         #|the loading of resources such as scripts, references, templates until they
         #|are actually needed.
         #|
@@ -444,6 +457,7 @@ async test "load/invalid-skill" (t : @test.Test) {
         #|the skill folders to accomplish the task.
         #|<available_skills>
         #|  <skill>
+        #|    <id>moonbit-agent-guide</id>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
         #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
@@ -483,12 +497,14 @@ async test "reload" (t : @test.Test) {
     loader.load()
     json_inspect(mock.json(loader.skills()), content={
       "moonbit-agent-guide": {
+        "id": "moonbit-agent-guide",
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
+        "id": "pdf-processing",
         "name": "pdf-processing",
         "description": "A skill to process PDF documents.",
         "allowed_tools": [],
@@ -523,18 +539,21 @@ async test "reload" (t : @test.Test) {
     loader.load()
     json_inspect(mock.json(loader.skills()), content={
       "moonbit-agent-guide": {
+        "id": "moonbit-agent-guide",
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
+        "id": "pdf-processing",
         "name": "pdf-processing",
         "description": "An updated skill to process PDF documents.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md",
       },
       "text-summarization": {
+        "id": "text-summarization",
         "name": "text-summarization",
         "description": "A skill to summarize text documents.",
         "allowed_tools": [],
@@ -627,24 +646,28 @@ async test "load/parent-directories" (t : @test.Test) {
     // ancestors down to cwd. That means project + sub, and still global.
     json_inspect(mock.json(loader.skills()), content={
       "moonbit-agent-guide": {
+        "id": "moonbit-agent-guide",
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "global-skill": {
+        "id": "global-skill",
         "name": "global-skill",
         "description": "Global skill.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/global-skill/SKILL.md",
       },
       "project-skill": {
+        "id": "project-skill",
         "name": "project-skill",
         "description": "Project skill.",
         "allowed_tools": [],
         "location": "(mock:cwd)/project/.moonsuite/products/moonclaw/skills/project-skill/SKILL.md",
       },
       "sub-skill": {
+        "id": "sub-skill",
         "name": "sub-skill",
         "description": "Sub skill.",
         "allowed_tools": [],
@@ -710,18 +733,21 @@ async test "load/no-git-loads-cwd-and-home" (t : @test.Test) {
     loader.load()
     json_inspect(mock.json(loader.skills()), content={
       "moonbit-agent-guide": {
+        "id": "moonbit-agent-guide",
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "global-skill": {
+        "id": "global-skill",
         "name": "global-skill",
         "description": "Global skill.",
         "allowed_tools": [],
         "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/global-skill/SKILL.md",
       },
       "local-skill": {
+        "id": "local-skill",
         "name": "local-skill",
         "description": "Local skill.",
         "allowed_tools": [],

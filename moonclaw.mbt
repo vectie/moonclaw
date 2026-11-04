@@ -13,11 +13,15 @@ fn setup_agent(
   cwd~ : String,
   home~ : String,
   restricted_workspace~ : Bool,
+  workspace_trust~ : String,
   web_search~ : Bool,
   command_approval_scope? : String,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
+  if !restricted_workspace && workspace_trust == "trusted" {
+    agent.add_tools(@book_runtime.tools(cwd))
+  }
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   if restricted_workspace {
     // Flow capsules deliberately omit shell, search, OCR, and patch tools.
@@ -142,6 +146,7 @@ pub async fn Moonclaw::new(
     cwd~,
     home=home.unwrap_or(cwd),
     restricted_workspace~,
+    workspace_trust~,
     web_search~,
     command_approval_scope?,
     sandbox_config?,
@@ -224,6 +229,7 @@ pub async fn Moonclaw::resume_(
     cwd=conversation.cwd(),
     home~,
     restricted_workspace=false,
+    workspace_trust=conversation.workspace_trust(),
     web_search~,
     command_approval_scope?,
     sandbox_config?,

@@ -128,7 +128,7 @@ async fn Loader::load_skills_from_directory(
       }
     }
     self.logger.info("Loaded skill '\{skill.name}' from '\{skill_dir}'.")
-    self.skills[skill.name] = skill
+    self.skills[skill.id] = skill
   }
 }
 
@@ -198,6 +198,12 @@ pub async fn Loader::load(self : Loader) -> Unit {
   for dir in dirs.rev() {
     let local_path = moonclaw_skills_root(dir)
     self.load_skills_from_directory(local_path)
+    // MoonSuite product layout can resolve a Book to its suite root. Explicit
+    // Book-local resources override that compatible global catalog.
+    let book_local = @pathx.join(dir, ".moonsuite/products/moonclaw/skills")
+    if book_local != local_path {
+      self.load_skills_from_directory(book_local)
+    }
   }
 }
 
@@ -256,7 +262,8 @@ fn Loader::format_prompt(self : Loader) -> String {
       #|available skills list below.
       #|
       #|2. Next, You should load the identified skills into your working context,
-      #|by reading their SKILL.md files. Note that you probably want to defer
+      #|by calling read_skill with the installed <id> as its name argument.
+      #|The frontmatter <name> is a display label and may repeat. Defer
       #|the loading of resources such as scripts, references, templates until they
       #|are actually needed.
       #|
@@ -270,6 +277,7 @@ fn Loader::format_prompt(self : Loader) -> String {
   sb.write_string("<available_skills>\n")
   for _, skill in self.skills {
     sb.write_string("  <skill>\n")
+    sb.write_string("    <id>" + skill.id + "</id>\n")
     sb.write_string("    <name>")
     sb.write_string(skill.name)
     sb.write_string("</name>\n")

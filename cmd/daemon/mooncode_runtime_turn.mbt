@@ -214,6 +214,13 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let command = mooncode_goal_runtime_attach_context(
     book_root, session_id, command,
   )
+  let command = mooncode_task_attach_context(book_root, session_id, command)
+  let command = mooncode_json_object_with_field(
+    command,
+    "personal_memory",
+    Json(mooncode_personal_memory_read(self.home)),
+  )
+  let command = mooncode_attach_book_instructions(book_root, command)
   let control_state = self.mooncode_runtime_control_payload(
     session_id, book_root,
   )
@@ -1595,7 +1602,8 @@ fn mooncode_runtime_turn_stops_tool_batch(
       default=false,
     ) &&
     !mooncode_json_bool(result, "ok", default=false)
-  if mooncode_runtime_tool_effect_is_batch_seal(execution) ||
+  if mooncode_json_string(execution, "tool", default="") == "ask_user" ||
+    mooncode_runtime_tool_effect_is_batch_seal(execution) ||
     approval_state == "rejected" ||
     ambiguous_failed_verification {
     return true

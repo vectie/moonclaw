@@ -519,7 +519,11 @@ fn mooncode_journal_entries(
       )
     }
   }
-  entries
+  if record_kind == mooncode_journal_command() {
+    mooncode_task_controls_project_commands(entries, records)
+  } else {
+    entries
+  }
 }
 
 ///|

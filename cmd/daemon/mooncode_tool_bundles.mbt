@@ -18,7 +18,13 @@ fn mooncode_runtime_turn_dynamic_coding_tool_names(
 ) -> Array[String] {
   let names = [
     "read", "write", "edit", "shell", "finish", "apply_patch", "checkpoint", "read_skill",
+    "mcp_list_tools", "mcp_call_tool",
   ]
+  if mooncode_runtime_turn_text_contains_any(request, [
+      "plan", "question", "choose", "decide",
+    ]) {
+    names.push("ask_user")
+  }
   if mooncode_runtime_turn_text_contains_any(request, [
       "moonbit", ".mbt", "moon.mod", "moon.pkg", "moon check", "moon test", "moon fmt",
       "moon info", "moon build", "moon ide",

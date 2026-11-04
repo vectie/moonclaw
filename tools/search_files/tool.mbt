@@ -101,12 +101,39 @@ fn matches_pattern(filename : String, pattern : String) -> Bool {
 }
 
 ///|
+/// Preserve a matching location without copying an entire minified record into
+/// the model context. The original file and line number remain the authority.
+fn search_line_excerpt(
+  line : StringView,
+  match_offset : Int32,
+  limit : Int32,
+) -> (String, Bool) {
+  if line.length() <= limit {
+    return (line.to_owned(), false)
+  }
+  let start = Int32::max(
+    0,
+    Int32::min(match_offset - limit / 4, line.length() - limit),
+  )
+  let end = Int32::min(line.length(), start + limit)
+  (
+    "[line excerpt columns \{start + 1}–\{end} of \{line.length()}] " +
+    line[start:end].to_owned(),
+    true,
+  )
+}
+
+///|
 /// Perform regex search in file content
 async fn search_in_file(
   file_path : String,
   regex : @regexp.Regexp,
   context_lines : Int32,
   base_dir : String,
+  maximum_results~ : Int32,
+  remaining_chars~ : Ref[Int32],
+  total_matches~ : Ref[Int32],
+  truncated~ : Ref[Bool],
 ) -> Array[SearchResult] raise SearchError {
   let content = @fsx.read_file(file_path) catch {
     @encoding/utf8.Malformed(_) => return []
@@ -122,19 +149,52 @@ async fn search_in_file(
     let line = lines[i]
     let match_result = regex.execute(line)
     if match_result.matched() { // Use execute and check matched()
+      total_matches.val += 1
+      if results.length() >= maximum_results || remaining_chars.val <= 0 {
+        truncated.val = true
+        i += 1
+        continue
+      }
+      let (match_line, match_excerpted) = search_line_excerpt(
+        line,
+        match_result.before().length(),
+        2048,
+      )
+      if match_excerpted {
+        truncated.val = true
+      }
       // Generate context
       let context_start = Int32::max(0, i - context_lines)
       let context_end = Int32::min(lines.length(), i + context_lines + 1)
       let context_lines_arr = []
       let mut j = context_start
       while j < context_end {
-        context_lines_arr.push("\{j + 1}: \{lines[j]}")
+        let (excerpt, excerpted) = if j == i {
+          (match_line, match_excerpted)
+        } else {
+          search_line_excerpt(lines[j], 0, 512)
+        }
+        if excerpted {
+          truncated.val = true
+        }
+        context_lines_arr.push("\{j + 1}: \{excerpt}")
         j += 1
       }
+      let context = context_lines_arr.join("\n")
+      let cost = context.length() +
+        match_line.length() +
+        relative_path.length() +
+        128
+      if cost > remaining_chars.val {
+        truncated.val = true
+        i += 1
+        continue
+      }
+      remaining_chars.val -= cost
       let result = SearchResult::{
-        context: context_lines_arr.join("\n"),
+        context,
         line_number: i + 1,
-        match_line: line.to_owned(), // Convert StringView to String
+        match_line,
         path: relative_path,
       }
       results.push(result)
@@ -243,7 +303,8 @@ async fn search_files_impl(
     )
   }
   let context_lines = match args {
-    { "context_lines": Number(cl, ..), .. } => Int32::max(0, cl.to_int())
+    { "context_lines": Number(cl, ..), .. } =>
+      Int32::min(5, Int32::max(0, cl.to_int()))
     _ => 2
   }
   let file_pattern = match args {
@@ -320,32 +381,30 @@ async fn search_files_impl(
 
           // Search through files
           let all_results = []
+          let remaining_chars = Ref::Ref(32000)
+          let total_matches = Ref::Ref(0)
+          let result_truncated = Ref::Ref(false)
           for file_path in files_to_search {
             let file_results = search_in_file(
-              file_path, regex_result, context_lines, cwd,
+              file_path,
+              regex_result,
+              context_lines,
+              cwd,
+              maximum_results=200 - all_results.length(),
+              remaining_chars~,
+              total_matches~,
+              truncated=result_truncated,
             )
             all_results.append(file_results)
           }
 
-          // Limit to 200 results if needed
-          let truncated = all_results.length() > 200
-          let limited_results = if truncated {
-            let limited = []
-            let mut i = 0
-            while i < 200 {
-              limited.push(all_results[i])
-              i += 1
-            }
-            limited
-          } else {
-            all_results
-          }
-          let mut message = if all_results.length() == 0 {
+          let truncated = result_truncated.val
+          let mut message = if total_matches.val == 0 {
             "No matches found."
           } else if truncated {
-            "Search completed. Found \{all_results.length()} matches, showing only the first 200."
+            "Search completed. Found \{total_matches.val} matching lines; returning \{all_results.length()} bounded matches. Long lines are excerpts centered on the match; path, line and excerpt columns identify the original. Output is limited to 200 results and 32000 characters across match/context fields. Narrow the query or use a structured data tool to retrieve additional records."
           } else {
-            "Search completed. Found \{all_results.length()} matches."
+            "Search completed. Found \{total_matches.val} matches."
           }
           if want_respect_gitignore {
             if does_respect_gitignore.val {
@@ -362,8 +421,8 @@ async fn search_files_impl(
             path: search_path,
             file_pattern,
             context_lines,
-            total_matches: all_results.length(),
-            results: limited_results,
+            total_matches: total_matches.val,
+            results: all_results,
             truncated,
             message,
           }

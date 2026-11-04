@@ -75,9 +75,6 @@ Current responsibilities:
 
 Current families/templates include:
 
-- `research.topic_watch`
-- `research.topic_review`
-- delegated research variants
 - `generic.analysis`
 - `generic.tool_workflow`
 - delegated generic variants
@@ -246,10 +243,9 @@ Current workflow engine handlers include:
 
 - `job.analysis`
 - `job.delegate`
-- `research.topic.sync`
-- `research.paper.fetch`
-- `research.paper.parse`
-- `research.paper.analyze`
+
+Product-specific step kinds require an installed owning adapter. The old
+built-in research family is not registered by the current workflow factory.
 
 ### 4. Notifications during execution
 

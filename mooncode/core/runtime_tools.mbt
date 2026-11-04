@@ -119,6 +119,9 @@ pub fn runtime_tool_names() -> Array[String] {
     runtime_tool_shell(),
     runtime_tool_read(),
     runtime_tool_read_skill(),
+    "mcp_list_tools",
+    "ask_user",
+    "mcp_call_tool",
     runtime_tool_edit(),
     runtime_tool_write(),
     runtime_tool_moon_ide(),
@@ -372,6 +375,34 @@ pub fn runtime_tool_contract_tool_ids(contract : Json) -> Array[String] {
 pub fn runtime_tool_capability_specs() -> Array[Json] {
   [
     runtime_tool_capability_spec(
+      id="mcp_list_tools",
+      owner="moonclaw",
+      lane=event_lane_tool(),
+      approval="auto",
+      purpose="Discover actual tool schemas on enabled MoonBook MCP integrations.",
+      outputs=[runtime_event_tool_result()],
+    ),
+    runtime_tool_capability_spec(
+      id="mcp_call_tool",
+      owner="moonclaw",
+      lane=event_lane_tool(),
+      approval="auto",
+      purpose="Call an enabled MoonBook MCP integration using its discovered schema and the user's authority.",
+      outputs=[runtime_event_tool_result()],
+    ),
+    runtime_tool_capability_spec(
+      id="ask_user",
+      owner="moonclaw",
+      lane="session",
+      approval="auto",
+      purpose="Persist a necessary question and await the user's answer or task cancellation.",
+      outputs=[
+        "session.question.asked",
+        "session.question.answered",
+        runtime_event_tool_result(),
+      ],
+    ),
+    runtime_tool_capability_spec(
       id=runtime_tool_read(),
       owner="moonclaw",
       lane=event_lane_tool(),
@@ -550,6 +581,91 @@ pub fn runtime_tool_capability_specs() -> Array[Json] {
 ///|
 fn runtime_tool_contract_entries() -> Array[Json] {
   [
+    runtime_tool_contract_entry(
+      id="mcp_list_tools",
+      lane=event_lane_tool(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "server",
+          "string",
+          required=false,
+          "Optional enabled MCP server identifier; omit to list all enabled servers.",
+        ),
+        runtime_tool_field(
+          "cursor",
+          "string",
+          required=false,
+          "Pagination cursor for the selected server.",
+        ),
+      ],
+      output_events=[runtime_event_tool_result()],
+      safety_policy="Read configuration only from the selected MoonBook's confined paths; query enabled configured integrations and preserve their schema metadata.",
+    ),
+    runtime_tool_contract_entry(
+      id="mcp_call_tool",
+      lane=event_lane_tool(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "server",
+          "string",
+          required=true,
+          "Selected enabled MCP server identifier.",
+        ),
+        runtime_tool_field(
+          "name",
+          "string",
+          required=true,
+          "Exact tool name discovered with mcp_list_tools.",
+        ),
+        runtime_tool_field(
+          "arguments",
+          "object",
+          required=true,
+          "Arguments matching the discovered tool schema.",
+        ),
+      ],
+      output_events=[runtime_event_tool_result()],
+      safety_policy="Call only the selected enabled configured server using the discovered tool schema and existing user authority. Preserve source and result metadata; redact configured tokens.",
+    ),
+    runtime_tool_contract_entry(
+      id="ask_user",
+      lane="session",
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "id",
+          "string",
+          required=true,
+          "Stable question identifier within the current command.",
+        ),
+        runtime_tool_field(
+          "question",
+          "string",
+          required=true,
+          "Necessary product or planning question; never a tool approval request.",
+        ),
+        runtime_tool_field(
+          "options",
+          "array",
+          required=true,
+          "Short answer choices when useful.",
+        ),
+      ],
+      output_events=[
+        "session.question.asked",
+        "session.question.answered",
+        runtime_event_tool_result(),
+      ],
+      safety_policy="Record the question once in the selected session, wait for its matching answer before dependent work, and honor task cancellation.",
+    ),
     runtime_tool_contract_entry(
       id=runtime_tool_read(),
       lane=event_lane_tool(),

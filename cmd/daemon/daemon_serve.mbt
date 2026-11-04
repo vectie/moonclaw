@@ -187,6 +187,8 @@ async fn Daemon::handle_http_request(
         self.mooncode_goal_runtime_method_not_allowed(w)
       (Post, ["", "v1", "code", "sessions", session_id, "lifecycle"]) =>
         self.mooncode_manage_session(session_id~, r, w)
+      (Post, ["", "v1", "code", "sessions", session_id, "task-controls"]) =>
+        self.mooncode_task_controls(group~, session_id~, r, w)
       (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>
         self.mooncode_runtime_control(session_id~, r, w)
       (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>

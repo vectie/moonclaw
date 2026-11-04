@@ -122,8 +122,14 @@ async fn mooncode_execute_tool_call_in_runtime(
       None =>
         match tool {
           "read" => mooncode_tool_read(book_root, arguments)
+          "ask_user" =>
+            mooncode_task_ask_user(
+              session_id, book_root, command_id, arguments, now,
+            )
           "view_image" => mooncode_tool_view_image(book_root, arguments)
           "read_skill" => mooncode_tool_read_skill(book_root, arguments)
+          "mcp_list_tools" | "mcp_call_tool" =>
+            mooncode_tool_mcp(book_root, tool, arguments)
           "write" => mooncode_tool_write(book_root, arguments)
           "edit" => mooncode_tool_edit(book_root, arguments)
           "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
@@ -209,6 +215,8 @@ fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "read" ||
   tool == "view_image" ||
   tool == "read_skill" ||
+  tool == "mcp_list_tools" ||
+  tool == "mcp_call_tool" ||
   tool == "edit" ||
   tool == "write" ||
   tool == "apply_patch" ||
@@ -219,6 +227,7 @@ fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "moon_cmd" ||
   tool == "moon_check" ||
   tool == "finish" ||
+  tool == "ask_user" ||
   tool == "spawn_workers" ||
   tool == "wait_workers"
 }

@@ -45,7 +45,7 @@ jobs:
         working-directory: ui/rabbita-job
         run: moon check --target js
       - name: Test native packages
-        run: moon test --target native --warn-list +73
+        run: moon test --target native --strip --jobs 2 --warn-list +73
       - name: Verify generated interfaces
         if: matrix.channel == 'nightly'
         run: |

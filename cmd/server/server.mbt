@@ -15,6 +15,10 @@ struct Server {
   /// Handle to the currently running moonclaw task (when any) so we can cancel or
   /// report busy/idle status.
   mut task : @async.Task[Unit]?
+  /// Accepted inputs that have not reached the agent worker yet.
+  mut pending_messages : Int32
+  /// An idle child is retiring; no new input may enter its queue.
+  mut retiring : Bool
   /// Directory served as static assets (usually `cmd/server`).
   serve : String
   /// TCP port bound by the underlying HTTP server.
@@ -106,6 +110,8 @@ pub async fn Server::new(
     broadcast,
     message_queue: Queue(kind=Unbounded),
     task: None,
+    pending_messages: 0,
+    retiring: false,
     serve,
     port,
     http_server,
@@ -115,7 +121,10 @@ pub async fn Server::new(
 ///|
 /// Central HTTP router that handles static files, REST endpoints, and SSE
 /// streams behind the necessary CORS wrapper.
-async fn Server::serve_http(self : Server) -> Unit {
+async fn Server::serve_http(
+  self : Server,
+  group~ : @async.TaskGroup[Unit],
+) -> Unit {
   let file_server = @httpx.FileServer::new(self.serve)
   self.http_server.serve(
     @httpx.cors((r, w) => {
@@ -138,6 +147,21 @@ async fn Server::serve_http(self : Server) -> Unit {
               "optional_context": self.moonclaw.agent.optional_context_statuses(),
             })
           (Post, "/v1/cancel") => self.cancel_moonclaw(w)
+          (Post, "/v1/retire") => {
+            guard self.task is None && self.pending_messages == 0 else {
+              raise json_error(409, "Conflict", {
+                "error": {
+                  "code": -1,
+                  "message": "Cannot retire a task while generation or queued input is active",
+                },
+              })
+            }
+            self.retiring = true
+            w.send_json(code=200, { "retired": true })
+            w.flush()
+            w.close()
+            group.return_immediately(())
+          }
           (Get, "/v1/queued-messages") => self.get_queued_messages(w)
           (Get, "/v1/events") => self.get_events(w)
           (Post, "/v1/external-event/cancel") => self.send_cancellation_event(w)
@@ -203,6 +227,7 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
           while true {
             let (msg, idq) = self.message_queue.get()
             let id = msg.queue_on(self.moonclaw.agent)
+            self.pending_messages -= 1
             idq.put((id, true))
           }
         },
@@ -237,6 +262,7 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
         allow_failure=true,
       )
       self.task = Some(task)
+      self.pending_messages -= 1
       defer {
         self.task = None
       }
@@ -281,7 +307,7 @@ async fn Server::cancel_moonclaw(
 pub async fn Server::start(self : Server) -> Unit {
   @async.with_task_group(group => {
     group.spawn_bg(() => self.start_moonclaw(), allow_failure=true)
-    self.serve_http()
+    self.serve_http(group~)
   })
 }
 

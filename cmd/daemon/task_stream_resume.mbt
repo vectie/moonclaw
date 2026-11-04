@@ -150,6 +150,74 @@ fn task_stream_project(event : @server.ServerStreamEvent) -> Json? {
           })
         _ => None
       }
+    Some(String("PreToolCall")) | Some(String("PostToolCall")) => {
+      let started = desc.get("msg") == Some(Json::string("PreToolCall"))
+      let fields : Map[String, Json] = {
+        "contract": Json(TASK_STREAM_CONTRACT),
+        "kind": Json(if started { "tool_started" } else { "tool_finished" }),
+        "created": created,
+      }
+      if desc.get("name") is Some(name) {
+        fields["name"] = name
+      }
+      if desc.get("tool_call") is Some({ "id": id, .. }) {
+        fields["tool_call_id"] = id
+      }
+      if started {
+        if desc.get("args") is Some(args) {
+          fields["args"] = args
+        }
+      } else {
+        if desc.get("result") is Some(result) {
+          fields["result"] = result
+          if result is Object(output) {
+            if output.get("artifacts") is Some(artifacts) {
+              fields["artifacts"] = artifacts
+            } else if output.get("files") is Some(files) {
+              fields["artifacts"] = files
+            }
+          }
+        }
+        if desc.get("error") is Some(error) {
+          fields["error"] = error
+        }
+        if desc.get("text") is Some(String(content)) {
+          fields["content"] = Json(task_stream_content(content))
+        }
+      }
+      Some(Json::object(fields))
+    }
+    Some(String("SandboxOutputProgress")) => {
+      let fields : Map[String, Json] = {
+        "contract": Json(TASK_STREAM_CONTRACT),
+        "kind": Json::string("progress"),
+        "created": created,
+      }
+      for key in ["available_bytes", "terminal"] {
+        if desc.get(key) is Some(value) {
+          fields[key] = value
+        }
+      }
+      Some(Json::object(fields))
+    }
+    Some(String("MessageQueued")) | Some(String("MessageUnqueued")) => {
+      let fields : Map[String, Json] = {
+        "contract": Json(TASK_STREAM_CONTRACT),
+        "kind": Json::string("progress"),
+        "state": Json(
+          if desc.get("msg") == Some(Json::string("MessageQueued")) {
+            "queued"
+          } else {
+            "unqueued"
+          },
+        ),
+        "created": created,
+      }
+      if desc.get("message") is Some({ "id": id, .. }) {
+        fields["message_id"] = id
+      }
+      Some(Json::object(fields))
+    }
     Some(String("PostConversation")) =>
       Some({
         "contract": TASK_STREAM_CONTRACT,
@@ -261,6 +329,7 @@ async fn Daemon::task_stream_resume(
     "contract": TASK_STREAM_CONTRACT,
     "kind": "meta",
     "cursor": self.task_stream_cursor(task_id, boundary),
+    "head_cursor": self.task_stream_cursor(task_id, head),
     "replay_limit": replay_limit,
     "live": live,
   }

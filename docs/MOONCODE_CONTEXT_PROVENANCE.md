@@ -1,47 +1,45 @@
-# MoonCode context provenance
+# MoonCode Context Provenance
 
-MoonCode attaches internal provenance metadata to every model message that it
-constructs or recovers. The metadata is deliberately out of band: it is
-removed when the typed provider request is serialized, so enabling provenance
-does not change the text, images, roles, tool calls, or tool results visible to
-the model.
+MoonCode keeps internal provenance beside model messages. Provider serialization
+removes the private metadata; it is not an authorization token or an instruction
+channel for retrieved content.
 
-## Contract
+## Current Contract
 
-The private message field `_moonclaw_context` uses contract
-`moonclaw.context-fragment.v1` and contains:
+New messages use `_moonclaw_context` with
+`moonclaw.context-fragment.v2`:
 
-- `kind`: `system`, `skill`, `environment`, `warning`, `tool_result`, `user`,
-  or `assistant`;
-- `source`: a stable, low-cardinality producer name such as
-  `skill.loaded_receipt` or `environment.horizon_progress`;
-- `contract`: the contract identifier above.
+- `kind`: the closed set `system`, `skill`, `environment`, `warning`,
+  `tool_result`, `user`, or `assistant`.
+- `source`: a producer identifier such as `skill.loaded_receipt`.
+- `content_items`: one provenance entry per visible content item, with a
+  recognized kind and valid source.
+- `requires_separate_message`: a Boolean preserving required message boundaries.
 
-The kind namespace is open. A well-formed future kind is retained as an
-unknown kind rather than rejected or rewritten. Extra metadata fields are also
-retained. Kind values are limited to 64 ASCII identifier characters and source
-values to 160; letters, digits, `_`, `-`, `.`, and `:` are accepted.
+Kind/source tokens use ASCII letters, digits, `_`, `-`, `.`, and `:`;
+kind length is at most 64 characters and source length at most 160. V2 validates
+the content-item count against the message.
 
-Malformed, missing, or unsupported metadata fails soft. MoonCode preserves the
-complete visible message, infers a conservative kind from its role and known
-runtime anchors, and records `legacy.inferred` as the source. Provenance must
-never make a recoverable transcript unreadable.
+The current reader also accepts v1 metadata. Unlike v2, that older contract has
+an open kind namespace and no v2 content-item/boundary requirements. This
+describes the existing reader, not a compatibility requirement for future work.
 
-## Alignment and durability
+## Projection And Recovery
 
-Typed OpenAI request construction intentionally strips private fields. After a
-provider request has been shaped, MoonCode reattaches metadata by matching its
-visible messages to the original source sequence. Exact message equality is
-the normal path. Tool messages additionally use `tool_call_id`, which preserves
-their origin when overload recovery truncates tool output. Inserted,
-compacted, reordered, or otherwise unmatched messages receive conservative
-inferred metadata; a length mismatch never rejects content.
+Malformed or absent metadata normalizes conservatively without dropping the
+visible message. Provider shaping reattaches origin by visible-message matching
+and, for tool messages, `tool_call_id`. Unmatched material receives inferred
+metadata rather than invented provenance.
 
-Durable journal and continuation payloads retain the metadata. Image payload
-projection and tool-output compaction preserve the originating metadata while
-changing only the already-existing durable or bounded visible representation.
-Recovery accepts both typed and legacy untyped checkpoints.
+Journal and continuation records retain the internal metadata. Output
+truncation, image projection, and compaction must preserve the associated
+origin while retaining valid tool-call/result relationships. Provenance
+structure does not prove that a summary is semantically lossless.
 
-Planner metrics and semantic-compaction pressure are calculated from the
-provider-visible projection. Internal metadata therefore cannot inflate token
-pressure, change cache measurements, or trigger compaction.
+Metrics and context pressure use the provider-visible projection, excluding
+internal metadata. A provenance label cannot grant tool authority or upgrade an
+external result into trusted verification.
+
+The implementation is `cmd/daemon/mooncode_context_provenance.mbt`; focused
+coverage is in `mooncode_context_provenance_wbtest.mbt`. Compaction behavior is
+documented in [Long-context compaction](LONG_CONTEXT_COMPACTION.md).

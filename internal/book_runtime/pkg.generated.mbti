@@ -3,18 +3,25 @@ package "vectie/moonclaw/internal/book_runtime"
 
 import {
   "moonbitlang/async/fs",
+  "vectie/moonclaw/tool",
 }
 
 // Values
 pub async fn call_mcp(String, String, Json) -> Json
 
+pub async fn instructions(String) -> String
+
 pub fn mcp_servers(String) -> Array[Json] raise
 
 pub fn read_resource(String) -> String? raise
 
+pub async fn read_skill(String, Json) -> Json
+
 pub fn response_json(String, Int) -> Result[Json, String]
 
 pub async fn storage_file(String, create? : Bool) -> @fs.File?
+
+pub fn tools(String) -> Array[@tool.AgentTool]
 
 // Errors
 

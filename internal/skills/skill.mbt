@@ -1,5 +1,7 @@
 ///|
 pub struct Skill {
+  /// Stable installed folder identity; frontmatter name remains the display name.
+  id : String
   name : String
   description : String
   license : String?
@@ -12,10 +14,7 @@ pub struct Skill {
 } derive(Debug, ToJson)
 
 ///|
-fn validate_name(
-  name : String,
-  directory~ : String,
-) -> Unit raise SkillFormatError {
+fn validate_name(name : String) -> Unit raise SkillFormatError {
   if name.is_empty() {
     raise SkillFormatError("Field 'name' must be a non-empty string")
   }
@@ -27,9 +26,6 @@ fn validate_name(
   }
   if name.contains("--") {
     raise SkillFormatError("Skill name cannot contain consecutive hyphens")
-  }
-  if !directory.is_empty() && directory != name {
-    raise SkillFormatError("Directory name must match skill name")
   }
 }
 
@@ -56,8 +52,7 @@ priv suberror SkillFormatError {
 ///
 /// * `content` : The YAML frontmatter content containing skill metadata and
 ///   description.
-/// * `directory` : The directory name where the skill file is located, used for
-///   validation against the skill name.
+/// * `directory` : The stable installed folder identity, independent of display name.
 /// * `location` : The file path where the skill is located.
 ///
 /// Returns a `Skill` object populated with the parsed metadata and content.
@@ -67,7 +62,7 @@ priv suberror SkillFormatError {
 /// * Required fields (`name` or `description`) are missing from the frontmatter
 /// * Field types are incorrect (e.g., `name` or `description` is not a string)
 /// * The skill name fails validation (empty, too long, invalid format, or
-///   doesn't match directory name)
+///   contains consecutive hyphens)
 /// * The description fails validation (empty or too long)
 /// * The `allowed-tools` field is neither a space-delimited string nor a valid
 ///   JSON array of strings
@@ -87,7 +82,7 @@ fn parse_skill_from_content(
       )
     None => raise SkillFormatError("Missing field 'name'")
   }
-  validate_name(name, directory~)
+  validate_name(name)
   let description = match meta.get("description") {
     Some(String(s)) => s
     Some(s) =>
@@ -118,6 +113,11 @@ fn parse_skill_from_content(
   }
   let metadata : Json? = meta.get("metadata")
   {
+    id: if directory.is_empty() {
+      name
+    } else {
+      directory
+    },
     name,
     description,
     license,

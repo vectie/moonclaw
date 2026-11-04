@@ -171,3 +171,19 @@ async test "MCP removes configured token echoed in results keys and provider err
     })
   })
 }
+
+///|
+async test "book instruction edits are loaded on the next coding turn" {
+  @fsx.with_temporary_directory("mooncode-instructions-XXXXXX", root => {
+    @fsx.write_to_file(@pathx.join(root, "AGENTS.md"), "Use clear labels.")
+    let first = mooncode_attach_book_instructions(root, {
+      "task_context": { "goal": "Ship" },
+    })
+    assert_true(first.stringify().contains("Use clear labels."))
+    assert_true(first.stringify().contains("Ship"))
+    @fsx.write_to_file(@pathx.join(root, "AGENTS.md"), "Use readable controls.")
+    let second = mooncode_attach_book_instructions(root, first)
+    assert_true(second.stringify().contains("Use readable controls."))
+    assert_false(second.stringify().contains("Use clear labels."))
+  })
+}

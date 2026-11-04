@@ -18,7 +18,8 @@ fn mooncode_runtime_tool_effect(tool_call : Json) -> MoonCodeToolEffect {
     // may finish, while later mutations wait for the model to consume the
     // skill. Keep them exclusive without bypassing that finer predicate.
     "read_skill" => ExclusiveMutation
-    "read" | "view_image" | "moon_ide" | "moon_check" => ConcurrentRead
+    "read" | "view_image" | "moon_ide" | "moon_check" | "mcp_list_tools" =>
+      ConcurrentRead
     "browser" => {
       let action = mooncode_json_string(arguments, "action", default="")
       if action == "snapshot" ||

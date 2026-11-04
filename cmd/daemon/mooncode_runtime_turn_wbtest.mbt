@@ -954,7 +954,17 @@ test "mooncode model planner sends a compact request envelope" {
   assert_true(prompt.length() < 1000)
 
   let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
-  assert_eq(chat_tools.length(), 2)
+  assert_eq(chat_tools.length(), 4)
+  let chat_tool_names = chat_tools.map(tool => {
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(tool.to_json(), "function"),
+      "name",
+      default="",
+    )
+  })
+  assert_eq(chat_tool_names, [
+    "finish", "read_skill", "mcp_list_tools", "mcp_call_tool",
+  ])
   assert_true(Json(chat_tools).stringify().contains("finish"))
   assert_false(Json(chat_tools).stringify().contains("goal_runtime"))
   assert_false(Json(chat_tools).stringify().contains("achieved"))
@@ -984,7 +994,17 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Read README.md and summarize it.",
   }
   let summary_tools = mooncode_runtime_turn_model_tools_for_command(summary)
-  assert_eq(summary_tools.length(), 5)
+  assert_eq(summary_tools.length(), 6)
+  let summary_tool_names = summary_tools.map(tool => {
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(tool.to_json(), "function"),
+      "name",
+      default="",
+    )
+  })
+  assert_eq(summary_tool_names, [
+    "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
+  ])
   let summary_json = Json(summary_tools).stringify()
   assert_true(summary_json.contains("read"))
   assert_true(summary_json.contains("finish"))
@@ -1047,9 +1067,19 @@ test "mooncode model planner sends a compact request envelope" {
       "text": text,
       "payload": { "task_intent": "read_only" },
     }
+    let review_tools = mooncode_runtime_turn_model_tools_for_command(command)
+    assert_eq(review_tools.length(), 6)
     assert_eq(
-      mooncode_runtime_turn_model_tools_for_command(command).length(),
-      5,
+      review_tools.map(tool => {
+        mooncode_json_string(
+          mooncode_json_object_field_or_empty(tool.to_json(), "function"),
+          "name",
+          default="",
+        )
+      }),
+      [
+        "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
+      ],
     )
     assert_false(mooncode_runtime_turn_requires_verification(command))
   }

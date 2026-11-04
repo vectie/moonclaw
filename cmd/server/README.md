@@ -24,6 +24,10 @@ registering flags (`--register-*`) when wiring into a daemon.
 - `GET /v1/status` → `{ "status": "idle" | "generating", "web_search": <bool> }`.
 - `POST /v1/cancel` → Cancels the active run and returns
   `{ "pending_messages": [...] }`. Responds with 404 when nothing is running.
+- `POST /v1/retire` → Returns `{ "retired": true }` and shuts down this child
+  only when generation and accepted pending inputs are absent. Otherwise it
+  returns 409. Saved conversation history is retained. The daemon uses this
+  for fresh tasks that need the same working directory.
 
 ### Messaging lifecycle
 

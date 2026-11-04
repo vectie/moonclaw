@@ -4,7 +4,12 @@ import {
   "moonbitlang/async/http",
   "moonbitlang/async/fs",
   "moonbitlang/core/json",
-  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+  "vectie/moonlib/fsx",
+  "vectie/moonclaw/internal/skills",
+  "vectie/moonclaw/tool",
+  "moonbitlang/x/crypto",
+  "moonbitlang/x/codec/base64",
 }
 
 import {

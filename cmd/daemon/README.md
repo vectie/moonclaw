@@ -72,7 +72,7 @@ daemon.serve()
 MoonCode daemon code is split by runtime responsibility rather than by route
 alone:
 
-Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task*` remains for background jobs. See [Executable Book Runtime Boundary](../../docs/executable_book_runtime_boundary.md).
+Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task*` remains for background jobs. See [Executable Book Runtime Boundary](../../docs/executable_book_runtime_boundary.md) for current behavior and the approved, pending single-agent simplification. This API reference does not make those planned changes implemented.
 
 - `mooncode/core` owns the MoonCode contract surface shared with
   MoonDesk: the `mooncode.v1` protocol marker, native capability contract id,
@@ -252,8 +252,11 @@ Response:
   }
   ```
 
-- If there is already an existing task on the specified cwd, returns HTTP 409
-  Conflict.
+- If the cwd has an idle child, the daemon retires that child and preserves its
+  saved conversation before creating a fresh task. Active generation or queued
+  input still returns HTTP 409 Conflict. Creation is serialized through the
+  initial message handoff, so consecutive scheduled jobs do not share context
+  or require a daemon restart.
 
   ```json
   {
@@ -646,14 +649,13 @@ contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
-`moon_check`, and `finish`. Coding turns carry a compact task contract and
-evidence-backed milestone checkpoint instead of replaying their full prior
-transcript. Between checkpoints, the actual planner messages and tool results
-remain in the model conversation so source reads and diagnostics survive the
-next planning call. An accepted checkpoint is the semantic compaction boundary:
-the older transcript is discarded and the durable checkpoint plus current
-evidence become the new working context. Tool results, including failures, are
-fed back to the model for diagnosis and recovery.
+`moon_check`, and `finish`. Coding turns carry a task contract and
+evidence-backed milestone checkpoint.
+The actual planner transcript and tool results remain available after a
+checkpoint; recording a milestone does not itself discard earlier source
+observations. Separate context projection and opt-in pressure-based compaction
+are described in [Long-context compaction](../../docs/LONG_CONTEXT_COMPACTION.md).
+Tool failures are fed back to the model for diagnosis and recovery.
 Shell commands may declare `verification_kind=check|test|build` only when a
 zero exit status directly proves that exact gate, such as a hosted check
 watcher. Untyped inspection commands remain evidence but cannot complete a
@@ -766,28 +768,27 @@ only calls that persistence boundary when it has produced package proof.
 
 ### `POST /v1/code/sessions/{id}/runtime-loop`
 
-Runs a bounded MoonCode queue supervisor for the selected `book_root`. The loop
-reuses the native `runtime-turn` primitive, so each command still records normal
-claim receipts, runtime events, tool results, package proof, and terminal
-`runtime-completed` or `runtime-failed` receipts. It stops when the queue is
-idle, a turn fails, a cancel command is processed, or `max_turns` is reached.
-By default it preserves immediate-idle behavior. Callers that need an
-MoonCode live supervisor can pass `live_wait_ms` and `poll_ms` in the
-JSON body; the loop then polls the authoritative session journal for newly
-appended prompt, steer, or cancel commands before returning idle. The response
-includes `live_wait_attempt_count`, `live_wait_elapsed_ms`, and per-iteration
-`waits` records so MoonDesk can render whether the loop actually waited or
-found work immediately.
+Runs a bounded queue loop using the existing `runtime-turn`. The loop holds
+the stable per-session execution lease; a competing daemon/runtime owner
+receives HTTP 409. Idle, failure, cancellation, approval, retryable interruption,
+and the local `max_turns` quantum are distinct stop reasons.
+
+`live_wait_ms` and `poll_ms` control bounded journal polling. The response
+reports actual waits. Ending one loop invocation does not by itself settle an
+active goal or prove that a task completed.
 
 ### `POST /v1/code/sessions/{id}/runtime-service`
 
-Starts the bounded runtime loop in the daemon task group instead of holding the
-HTTP request open. The endpoint writes `runtime.service_started` immediately,
-returns `202 Accepted`, then records `runtime.service_finished` or
-`runtime.service_failed` in the selected book's session journal. It uses the
-same durable queue, claim receipts, turn execution, and `max_turns` /
-`live_wait_ms` / `poll_ms` limits as `runtime-loop`, with a default
-`live_wait_ms` of 5000 ms for live steering.
+Starts or reuses execution in the daemon task group and returns without holding
+the HTTP request for the whole task. The service holds the per-session execution
+lease from before started persistence through its terminal service record;
+another owner receives HTTP 409.
+
+The durable queue, turn execution, results, and continuation remain authoritative.
+The default live wait is 5000 ms. For an active criteria-only goal, the service
+takes further local quanta while claimable work remains. Ordinary automatic
+`/turns` submissions can drain their accepted queue. Service settlement and
+task/goal completion are separate facts.
 
 ### Patient long-horizon harness
 
@@ -814,12 +815,12 @@ remain outside the worker.
 
 Pass `--evidence <path>.jsonl` to preserve the unchanged request, exact
 command-related events, service lifecycle, checkpoints, tool results, and a
-terminal harness summary for a separate read-only observer. The observer
-receives that evidence and the repository through its prompt-defined contract;
-the harness does not encode product phases or let observer opinions steer or
-cancel the worker. A successful worker exit is explicitly a candidate result,
-not contract acceptance: the task closes only after the independent observer
-compares the evidence and resulting repository state with the original prompt.
+terminal harness summary for a separate read-only observer. An optional observer
+can inspect that evidence and repository state for an explicit qualification
+trial. The harness does not encode product phases or let observer opinions
+steer or cancel the worker. Independent observation is not a mandatory stage
+of ordinary coding tasks. Book adoption or requested product acceptance remains
+separate from engineering completion and delivery.
 
 ### `POST /v1/task/{id}/publish`
 

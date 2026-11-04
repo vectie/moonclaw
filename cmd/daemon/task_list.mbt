@@ -10,11 +10,10 @@ priv struct TaskLock {
   ///
   /// Life cycle:
   ///
-  /// 1. Check if a running task exists without acquiring the mutex.
-  /// 2. Acquire `spawn_mutex` before spawning a new task.
-  /// 3. Spawn the task process.
-  /// 4. Register the task in `running` field.
-  /// 5. Release `spawn_mutex`.
+  /// 1. Acquire `spawn_mutex` before inspecting or replacing the cwd owner.
+  /// 2. New task creation retires the old child only if it is idle.
+  /// 3. Spawn the task process and register it in `running`.
+  /// 4. Hand off any initial message before releasing `spawn_mutex`.
   ///
   /// FIXME: this should be refactored into `Mutex[T]` for safer access
   spawn_mutex : @semaphore.Semaphore

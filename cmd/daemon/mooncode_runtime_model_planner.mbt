@@ -570,15 +570,17 @@ fn mooncode_runtime_turn_model_tools_for_command(
   }
   if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
     return mooncode_runtime_turn_select_model_tools(tools, [
-      "read", "view_image", "moon_ide", "finish", "read_skill",
+      "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
     ])
   }
   if path != "" && mooncode_runtime_turn_read_needs_model(request) {
     return mooncode_runtime_turn_select_model_tools(tools, [
-      "read", "finish", "read_skill",
+      "read", "finish", "read_skill", "mcp_list_tools", "mcp_call_tool",
     ])
   }
-  mooncode_runtime_turn_select_model_tools(tools, ["finish", "read_skill"])
+  mooncode_runtime_turn_select_model_tools(tools, [
+    "finish", "read_skill", "mcp_list_tools", "mcp_call_tool",
+  ])
 }
 
 ///|
@@ -1732,6 +1734,10 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   steering +
   capability_context +
   goal_context +
+  "\nConversation context and user plan: " +
+  mooncode_json_object_field_or_empty(command, "task_context").stringify() +
+  "\nUser-saved personal preferences (follow current instructions when they differ): " +
+  mooncode_json_string(command, "personal_memory", default="") +
   mooncode_runtime_turn_language_grounding(command) +
   "\n\nChoose one dependency-aware bounded tool batch. Batch every independent inspection or mutation that can run from current evidence; do not spend a new inference round on a trivial action unless its result is required first. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
 }
@@ -1824,6 +1830,20 @@ fn mooncode_runtime_turn_model_tools(
     "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause."
   }
   [
+    mooncode_runtime_turn_model_tool(
+      "ask_user",
+      "Ask a necessary product or planning question and wait for the user's answer before dependent work. Give short choices when useful; use a stable id for this question. Do not use this for tool approvals.",
+      {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "question": { "type": "string" },
+          "options": { "type": "array", "items": { "type": "string" } },
+        },
+        "required": ["id", "question", "options"],
+        "additionalProperties": false,
+      },
+    ),
     mooncode_runtime_turn_model_tool(
       "read",
       "Read a whole file or an inclusive line range inside the selected MoonBook. Prefer start_line/end_line over shell-based sed slices.",
@@ -2114,6 +2134,32 @@ fn mooncode_runtime_turn_model_tools(
           "path": { "type": "string" },
         },
         "required": ["name"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "mcp_list_tools",
+      "Discover tools and their input schemas on enabled MCP integrations. Omit server to list all configured connections. Use cursor with server to fetch the next page.",
+      {
+        "type": "object",
+        "properties": {
+          "server": { "type": "string" },
+          "cursor": { "type": "string" },
+        },
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "mcp_call_tool",
+      "Call a configured MCP integration tool. First inspect its schema with mcp_list_tools; provide the exact server, tool name and arguments.",
+      {
+        "type": "object",
+        "properties": {
+          "server": { "type": "string" },
+          "name": { "type": "string" },
+          "arguments": { "type": "object", "additionalProperties": true },
+        },
+        "required": ["server", "name", "arguments"],
         "additionalProperties": false,
       },
     ),

@@ -17,6 +17,7 @@ import {
   "vectie/moonclaw/tools/web_search",
   "vectie/moonclaw/tools/web_fetch",
   "vectie/moonclaw/internal/conversation",
+  "vectie/moonclaw/internal/book_runtime",
   "vectie/moonclaw/internal/moonfort_config",
   "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonlib/uuid",

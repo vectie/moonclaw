@@ -23,7 +23,7 @@ extern "c" fn same_file(left : Int32, right : Int32) -> Bool = "moonclaw_book_sa
 ///|
 /// Duplicate our owned pinned descriptor through the supported native file API.
 pub async fn storage_file(path : String, create~ : Bool = false) -> @fs.File? {
-  let bytes = @utf8.encode(path)
+  let bytes = @encoding/utf8.encode(path)
   let fd = storage_open(bytes, bytes.length(), create)
   if fd == -1 {
     return None
@@ -44,7 +44,7 @@ pub async fn storage_file(path : String, create~ : Bool = false) -> @fs.File? {
 /// Only fixed owner-derived Book-local/suite paths are supplied by callers.
 /// Native open walks every component without symlink following; reads pin that fd.
 pub fn read_resource(path : String) -> String? raise {
-  let bytes = @utf8.encode(path)
+  let bytes = @encoding/utf8.encode(path)
   let fd = resource_open(bytes, bytes.length())
   if fd == -1 {
     return None
@@ -58,5 +58,5 @@ pub fn read_resource(path : String) -> String? raise {
   if status.val != 0 {
     fail("Book resource is invalid, changed, or exceeds 16 MiB")
   }
-  Some(@utf8.decode(content))
+  Some(@encoding/utf8.decode(content))
 }

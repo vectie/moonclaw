@@ -18,7 +18,7 @@ For nested exported observations, [select exact JSON or JSON Lines values](SELEC
 by document and JSON Pointer. Inspect complete subtrees, preserve large numeric
 IDs and original syntax, and preview only the chosen values in the task draft.
 
-MoonClaw is the bounded agent runtime for MoonSuite. It owns agent execution,
+MoonClaw is the agent execution runtime for MoonSuite. It owns agent execution,
 job/session state, tool use, runtime evidence, gateway APIs, and MoonCode
 execution behavior. It should not become a desktop shell, durable knowledge
 store, town scheduler, or shared filesystem contract library.
@@ -38,85 +38,67 @@ MoonClaw owns:
 
 MoonClaw does not own accepted book truth, scheduled cross-book routing, desktop
 file browsing, suite metrics, or layout contracts. MoonBook accepts durable
-outputs, MoonTown schedules work, MoonDesk projects the UI, MoonGate observes
-health/usage, and MoonLib defines shared paths.
+outputs, MoonTown owns recurring coordination, MoonFlow owns cross-product workflow
+execution, MoonDesk projects the UI, MoonGate owns authority/provider control,
+and MoonLib defines shared paths.
 
 ## Reading Order
 
-1. [../README.mbt.md](../README.mbt.md): product overview and current news.
-2. [executable_book_runtime_boundary.md](executable_book_runtime_boundary.md):
-   MoonCode and executable-book runtime boundary.
-3. [events.md](events.md): runtime event model.
-4. [MOONCODE_STREAM_RESUME.md](MOONCODE_STREAM_RESUME.md): bounded,
-   user-facing resume cursors and stream privacy.
-5. [http.md](http.md): HTTP surface.
-6. [daemon_vs_gateway.md](daemon_vs_gateway.md): service boundary.
-7. [job_system_architecture.md](job_system_architecture.md): job runtime
-   internals.
-8. [e2e_architecture.md](e2e_architecture.md): end-to-end test direction.
-9. [expected_behaviors/README.md](expected_behaviors/README.md): expected
-   operator and job behavior.
-10. [evidence_quality.md](evidence_quality.md): dossier policy, local retrieval
-   artifacts, and fail-closed workspace containment.
-11. [RESPONSIBILITY_AND_TESTABILITY.md](RESPONSIBILITY_AND_TESTABILITY.md):
-    product-neutral runtime ownership, pack boundaries, and focused tests.
-12. [CAPABILITY_INVOCATION.md](CAPABILITY_INVOCATION.md): canonical installed
-    pack/tool resolution, health verification, durable invocation receipts and
-    restart reconciliation.
+1. [Product contract](PRODUCT_CONTRACT.md): runtime scope and capability status.
+2. [Responsibility and testability](RESPONSIBILITY_AND_TESTABILITY.md):
+   product-owned policy, installed packs, and focused/release checks.
+3. [Executable book runtime boundary](executable_book_runtime_boundary.md):
+   current MoonCode execution, recovery, and approved simplification.
+4. [Daemon reference](../cmd/daemon/README.md) and
+   [daemon/gateway selection](daemon_vs_gateway.md): service entry points.
+5. [System architecture](system_architecture.md) and
+   [job architecture](job_system_architecture.md): existing runtime call chains.
+6. [Execution sandbox](EXECUTION_SANDBOX.md): existing Fort integration,
+   authorization, receipts, and uncertain outcomes.
+7. [Context provenance](MOONCODE_CONTEXT_PROVENANCE.md),
+   [compaction](LONG_CONTEXT_COMPACTION.md), and
+   [stream resume](MOONCODE_STREAM_RESUME.md): current context/transport contracts.
+8. [Harness regression](HARNESS_REGRESSION_GATES.md) and
+   [paired replay](HARNESS_REPLAY.md): fixtures, qualification, and measured comparison.
+9. [Capability invocation](CAPABILITY_INVOCATION.md): pack resolution, health,
+   execution receipts, and restart reconciliation.
+10. [Events](events.md), [HTTP](http.md), and
+    [expected behaviors](expected_behaviors/README.md): API and operator behavior.
 
-## Implementation Guidance
+## Implementation Direction
 
-Keep native MoonCode behavior separate from generic task/job behavior.
-MoonCode commands should append to durable session queues, emit normalized
-runtime events, and close with explicit proof. Generic task events are not a
-substitute for a book-scoped coding transcript.
+For MoonCode, reuse the current loop, journal, continuation, tool results, and
+`finish`. Keep one primary agent, one task definition, and one completion
+decision. Return repairable errors to that agent; request human input only for
+real authority or decision gaps. Remove duplicate mechanisms before adding
+abstractions. The [runtime boundary](executable_book_runtime_boundary.md)
+separates current implementation from approved but pending changes.
 
-Use product-home paths derived from the selected book or suite root. Runtime
-artifacts belong under `.moonsuite/products/moonclaw`; disposable traces belong
-under `.tmp/products/moonclaw`.
+Do not introduce a permanent agent Router, a checker registry, a second
+operation database, or a new runtime framework. Optional generic job and worker
+capabilities remain available without defining the default coding path.
 
-## Testing Guidance
+Runtime files use MoonLib-resolved product homes. The journal owns ordered
+facts; the desktop consumes canonical conversation projections rather than
+merging raw events or claiming independent completion.
 
-```sh
-moon check
-moon test
-moon info
-moon fmt
-```
+## Validation And Evidence
 
-For MoonCode changes, test first-turn and multi-turn sessions, command queue
-claiming, stream order, tool events, patch proof, test proof, package proof,
-reload/cold-session reads, steering, approval, rejection, and cancellation. An
-approval test must prove that approve resumes the same command and reject does
-not execute the tool. A cancellation test must use a real long-running child
-process and prove that it is terminated before settlement. For gateway changes,
-include auth, redaction, startup, and failure-path tests.
+Use focused checks for changed packages and the release gate in
+[Responsibility and testability](RESPONSIBILITY_AND_TESTABILITY.md). Verify
+relevant first/multiple turns, completion repair, stale evidence, approval
+rejection, cancellation, and restart recovery. Ordinary authorized work should
+not acquire additional user-confirmation steps.
 
-Approval recovery must also discard the in-memory daemon between request and
-decision. The fresh daemon must load the command-owned continuation checkpoint,
-preserve the original approval id and selected plan, avoid replaying completed
-pre-approval tools, and settle the same canonical turn.
+Fixture results, historical test counts, and dated experiments do not establish
+current deployment or live task quality. Keep task success, user intervention,
+rework, latency, and total cost visible. The dated
+[long-horizon comparison](MOONCODE_LONG_HORIZON_PROMPT_COMPARISON_2026-07-28.md)
+is historical evidence, not a current execution policy.
 
-## Worth Noticing
-
-- A UI saying "working" is not enough; progress should come from a runtime
-  event or explicit daemon state.
-- Native MoonCode sessions must not silently spawn duplicate generic tasks.
-- Event order matters because MoonDesk renders directly from the transcript
-  stream.
-- Approval and cancel commands are hidden controls; only their stable canonical
-  work/cancellation projection belongs in the visible turn.
-- Provider-backed execution should preserve partial artifacts and failure
-  evidence instead of dropping runs.
-
-## Future Plan
-
-- Harden persistent MoonCode agent service behavior across long sessions.
-- Expand model-backed coding eval coverage.
-- Tighten stream attribution so every UI turn can link user command, thinking,
-  tools, tests, package, and final assistant output.
-- Keep operator surfaces focused on actionable runtime state rather than raw
-  debug noise.
+Old Goal/journal migration diaries and unimplemented distributed/controller
+expansion proposals were retired. Current source and the focused contract
+documents above replace their conflicting intermediate status reports.
 
 ## Retained revision comparison
 

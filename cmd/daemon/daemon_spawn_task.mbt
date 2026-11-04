@@ -105,11 +105,20 @@ async fn Daemon::spawn_task(
     source_kind~,
     workspace_trust~,
   )
-  // FIXME: The daemon does not ends anyway, so this cleanup code is never run.
   group.spawn_bg(() => {
-    defer self.by_cwd.remove(cwd)
-    defer self.by_id.remove(task.id)
     let exit_code = process.wait()
+    // Keep saved history addressable, without clearing a newer child sharing
+    // this cwd (or a newly resumed child sharing this conversation ID).
+    if self.by_cwd.get(cwd) is Some(lock) &&
+      lock.running is Some(current) &&
+      current.id == task.id &&
+      current.port == task.port {
+      lock.running = None
+    }
+    if self.by_id.get(task.id) is Some(Running(current)) &&
+      current.port == task.port {
+      self.by_id[task.id] = Stopped(task.to_stopped())
+    }
     if exit_code != 0 {
       logger.error("server process exited with code \{exit_code}")
     }

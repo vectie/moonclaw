@@ -2,6 +2,11 @@
 
 This document defines the intended boundary between deterministic runtime code and AI-driven reasoning in MoonClaw.
 
+The layers below describe existing generic job code responsibilities. They
+are not a required team of agents or a permanent Router/Worker topology.
+MoonCode's single-agent coding path is described separately in
+[Executable book runtime boundary](executable_book_runtime_boundary.md).
+
 ## Goal
 
 MoonClaw should hardcode workflow mechanics, not domain thinking.

@@ -189,6 +189,14 @@ async fn Server::create_message(
   body_json : Json,
   w : @httpx.ResponseWriter,
 ) -> Unit {
+  guard !self.retiring else {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "This task is retiring; start or resume a conversation through the daemon",
+      },
+    })
+  }
   let request : CreateMessageRequest = @json.from_json(body_json) catch {
     JsonDecodeError(_) as error =>
       raise json_error(400, "BadRequest", {
@@ -201,6 +209,7 @@ async fn Server::create_message(
   }
   let (id, queued) = {
     let idq = @aqueue.Queue(kind=Unbounded)
+    self.pending_messages += 1
     self.message_queue.put((request, idq))
     idq.get()
   }

@@ -4,6 +4,7 @@ import { textArtifacts } from './artifact-rework.js'
 import { sourceKey, retainedReader } from './retained-sources.js'
 import { exportSourceProject, readSourceProjectFile, checkSourceProjectContext, describeSourceProject, downloadSourceProject } from './source-project.js'
 import { mountSourceRefresh, bindSourceRefresh } from './source-refresh-controls.js'
+import { mountSavedDiff, bindSavedDiff } from './saved-diff-controls.js'
 const need = (ok, message) => { if (!ok) throw new Error(message) }
 export function mountSourceBrief(document, anchor) {
   const root = document.createElement('details'); root.id = 'claw-sources-panel'; root.className = 'procedure-panel'
@@ -13,6 +14,7 @@ export function mountSourceBrief(document, anchor) {
   add('summary', '', 'Choose focused source excerpts')
   add('p', '', 'Bring local UTF-8 text and passages from this thread’s retained outputs into the next task. Inspect numbered lines, keep the relevant ranges, and preview exactly what you will add. Unsent work stays in this tab unless you explicitly download a source project.')
   const files = field('input', 'files', 'Import local text files (up to eight, 256 KiB each)'); files.type = 'file'; files.multiple = true
+  mountSavedDiff(document, root)
   button('load-retained', 'Load linked run outputs')
   field('select', 'retained', 'Retained text output (up to 32 KiB)')
   button('inspect-retained', 'Inspect and add retained source')
@@ -71,7 +73,7 @@ export function bindSourceBrief(document, options = {}) {
   const transport = options.transport || (() => globalThis.__moonclawTransport)
   const ownership = () => JSON.stringify([contextText(), transport()?.base?.() || '', transport()?.epoch?.() || 0])
   const events = new AbortController(), listen = (target, type, handler) => target.addEventListener(type, handler, { signal: events.signal })
-  let session = new SourceBrief(), scope = ownership(), generation = 0, pending = false, preview = null, detail = null, controller = null, comparison = null, projectPreview = null, refresh = null
+  let session = new SourceBrief(), scope = ownership(), generation = 0, pending = false, preview = null, detail = null, controller = null, comparison = null, projectPreview = null, refresh = null, diff = null
   const status = message => { if (node('status').textContent !== message) node('status').textContent = message }
   const invalidate = (keepRefresh = false) => { controller?.abort(); controller = null; generation++; pending = false; preview = null; node('preview-text').textContent = ''; node('apply').disabled = true; projectPreview = null; node('project-text').textContent = ''; node('project-info').textContent = 'Preview a source project to save or reopen it. Saved snapshots have unverified freshness.'; node('project-download').disabled = true; node('project-restore').disabled = true; refresh?.invalidate(keepRefresh) }
   const selectOptions = (target, entries, selected) => {
@@ -109,7 +111,7 @@ export function bindSourceBrief(document, options = {}) {
   }
   const sync = () => {
     if (scope !== ownership()) {
-      invalidate(); clearComparison(); session = new SourceBrief(); detail = null; node('retained').replaceChildren(); node('retained-info').textContent = 'Reload linked outputs for this Work thread.'; scope = ownership()
+      invalidate(); clearComparison(); diff?.reset(); session = new SourceBrief(); detail = null; node('retained').replaceChildren(); node('retained-info').textContent = 'Reload linked outputs for this Work thread.'; scope = ownership()
       for (const key of ['files', 'project-file', 'query', 'purpose']) node(key).value = ''
       node('start').value = '1'; node('end').value = '1'; node('budget').value = '8192'; render()
       status('Work thread, folder or gateway access changed. Import sources for this task again; the main draft was kept.')
@@ -191,6 +193,12 @@ export function bindSourceBrief(document, options = {}) {
   listen(node('source'), 'change', action(() => { node('query').value = ''; node('start').value = '1'; node('end').value = '1'; node('purpose').value = ''; status('Inspect this source and choose a line range.') }))
   const picked = () => { need(node('excerpt').value !== '', 'Select an excerpt'); return Number(node('excerpt').value) }
   const budget = () => session.setBudget(Number(node('budget').value))
+  diff = bindSavedDiff(document, { listen, status, action, perform, stage(source, end, purpose) {
+    // Prepare transactionally: a too-large selection must leave existing sources intact.
+    const next = new SourceBrief(); next.sources = [...session.sources]; next.excerpts = [...session.excerpts]; next.setBudget(Number(node('budget').value))
+    next.import([source]); next.excerpts = next.excerpts.filter(item => sourceKey(item) !== sourceKey(source))
+    next.put(sourceKey(source), 1, end, purpose); session = next; render(); node('source').value = sourceKey(source); sourceView()
+  } })
   listen(node('project-preview-save'), 'click', perform(async (_, valid) => {
     budget(); const raw = await exportSourceProject(session); valid()
     projectPreview = { mode: 'save', raw }; node('project-text').textContent = raw; node('project-info').textContent = describeSourceProject(session); node('project-download').disabled = false

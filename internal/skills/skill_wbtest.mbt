@@ -31,6 +31,7 @@ test "parse_skill_from_content" {
     location="/tmp/skill/SKILL.md",
   )
   json_inspect(skill, content={
+    "id": "pdf-processing",
     "name": "pdf-processing",
     "description": "Extract text and tables from PDF files.",
     "license": "Apache-2.0",
@@ -57,6 +58,7 @@ test "parse_skill_from_content/space-delimited-allowed-tools" {
     location="/tmp/skill/SKILL.md",
   )
   json_inspect(skill, content={
+    "id": "sample-skill",
     "name": "sample-skill",
     "description": "A sample skill.",
     "allowed_tools": ["tool1", "tool2", "tool3"],
@@ -143,7 +145,13 @@ test "parse_skill_from_content/name-mismatches-directory" {
     location="/tmp/skill/SKILL.md",
   )
   json_inspect(result, content={
-    "Err": ["SkillFormatError", "Directory name must match skill name"],
+    "Ok": {
+      "id": "different-directory",
+      "name": "mismatch-directory",
+      "description": "A skill with mismatched directory name.",
+      "allowed_tools": [],
+      "location": "/tmp/skill/SKILL.md",
+    },
   })
 }
 

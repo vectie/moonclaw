@@ -1,0 +1,9 @@
+ui/rabbita-job/saved-diff.js
+ui/rabbita-job/saved-diff-controls.js
+ui/rabbita-job/saved-diff.test.mjs
+ui/rabbita-job/source-brief-controls.js
+docs/SAVED_DIFF_INTAKE.md
+docs/examples/saved-diff-demo.patch
+evidence/R798/RESULT.md
+evidence/R798/functional-tests.txt
+evidence/R798/changed-files.txt

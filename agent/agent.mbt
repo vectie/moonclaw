@@ -141,8 +141,17 @@ async fn Agent::prepare_messages_for_request(
   // tokenizing every normal request twice and keeps pruning projection-only.
   // Existing Pruned events remain respected by Conversation::messages.
   let messages = agent.history.messages(include_system=true)
-  agent.skills.load_and_apply(messages)
-  agent.rules.apply(messages)
+  if agent.history.workspace_trust() == "trusted" {
+    agent.skills.load_and_apply(messages)
+    agent.rules.apply(messages)
+    let instructions = @book_runtime.instructions(agent.cwd)
+    for i, message in messages {
+      if message is System(content) {
+        messages[i] = @ai.system_message(content=content + instructions)
+        break
+      }
+    }
+  }
   let openai_messages = messages.map(fn(msg) { msg.to_openai() })
 
   let compiled = agent.compile_optional_contexts(

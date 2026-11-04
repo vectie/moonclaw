@@ -10,6 +10,12 @@ MoonClaw is MoonSuite's sole agent runtime. It turns an approved request into a
 durable session or job, runs the model/tool loop, and records events, artifacts,
 control decisions and memory.
 
+Authorized agent work should progress through execution, checks, repair, and
+delivery without unnecessary human intervention. Actual authority or decision
+gaps may require user input; product-owned acceptance remains separate. The
+approved MoonCode consolidation and its current implementation boundaries are
+in [Executable book runtime boundary](executable_book_runtime_boundary.md).
+
 ## Users and jobs
 
 - Operators run, inspect, steer, cancel and recover agent work.

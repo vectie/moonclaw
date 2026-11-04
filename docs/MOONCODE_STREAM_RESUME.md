@@ -3,8 +3,10 @@
 `mooncode-stream-resume.v1` is an opt-in, bounded replay contract for MoonDesk
 and other user-facing clients. It projects the durable MoonCode journal into
 planner, assistant, and tool-output events without exposing the raw journal.
+Availability does not mean the desktop currently uses a sustained SSE stream;
+clients may consume canonical snapshots and watch polling.
 
-## Compatibility seam
+## Current Transport
 
 The existing endpoint remains the integration point:
 
