@@ -657,14 +657,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             continue
           }
           let occurrence = step_index * 1000 + tool_index
-          match
-            mooncode_guardian_trial_event(command, tool_call, self.clock.now()) {
-            Some(event) =>
-              self.mooncode_runtime_turn_record_event(
-                binding, events, persisted_event_ids, event,
-              )
-            None => ()
-          }
           let approval_id = mooncode_runtime_tool_approval_id(
             command_id,
             tool_call,
@@ -793,9 +785,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           } else {
             mooncode_runtime_bind_sandbox_approval_plan(book_root, tool_call)
           }
-          let post_commit_guard = mooncode_runtime_post_commit_guard(
-            book_root, tool_call, tool_results,
-          )
           let validation_error = mooncode_json_string(
             tool_call,
             "validation_error",
@@ -891,19 +880,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           } else if approval_state == "rejected" {
             mooncode_runtime_rejected_tool_execution(
               session_id, book_root, command_id, tool_call, approval,
-            )
-          } else if !mooncode_json_bool(
-              post_commit_guard,
-              "allowed",
-              default=false,
-            ) {
-            mooncode_runtime_post_commit_rejected_execution(
-              session_id,
-              book_root,
-              command_id,
-              tool_call,
-              post_commit_guard,
-              now=self.clock.now(),
             )
           } else if mooncode_runtime_turn_repeats_failed_verification(
               tool_call, tool_results,
@@ -1685,7 +1661,7 @@ fn mooncode_runtime_turn_stops_tool_batch(
     ) &&
     !mooncode_json_bool(result, "ok", default=false)
   if mooncode_json_string(execution, "tool", default="") == "ask_user" ||
-    mooncode_runtime_tool_effect_is_batch_seal(execution) ||
+    mooncode_json_string(execution, "tool", default="") == "finish" ||
     approval_state == "rejected" ||
     ambiguous_failed_verification {
     return true
@@ -1721,19 +1697,7 @@ fn mooncode_runtime_turn_stops_tool_batch(
 fn mooncode_runtime_turn_tool_call_is_safe_after_skill(
   tool_call : Json,
 ) -> Bool {
-  let tool = mooncode_json_string(tool_call, "tool", default="")
-  match tool {
-    "read" | "glob" | "grep" | "web_fetch" | "web_search" | "view_image" => true
-    "shell" => {
-      let arguments = mooncode_json_object_field_or_empty(
-        tool_call, "arguments",
-      )
-      mooncode_shell_is_demonstrably_read_only(
-        mooncode_json_string(arguments, "cmd", default=""),
-      )
-    }
-    _ => false
-  }
+  mooncode_runtime_tool_policy(tool_call).after_skill
 }
 
 ///|
@@ -2139,7 +2103,7 @@ fn mooncode_runtime_turn_call_is_verification(tool_call : Json) -> Bool {
     return false
   }
   let kind = mooncode_json_string(arguments, "verification_kind", default="")
-  mooncode_shell_verifies_kind(
+  @mooncode_tools.shell_verifies_kind(
     mooncode_json_string(arguments, "cmd", default=""),
     kind,
   )

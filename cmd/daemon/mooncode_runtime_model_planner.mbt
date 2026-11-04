@@ -837,7 +837,7 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
       "verification_kind",
       default="",
     )
-    if mooncode_shell_verifies_kind(
+    if @mooncode_tools.shell_verifies_kind(
         mooncode_json_string(arguments, "cmd", default=""),
         claimed,
       ) {
@@ -931,7 +931,7 @@ fn mooncode_runtime_turn_completion_verdict(
         tool == "moon_check"
     }
     if mooncode_runtime_turn_result_is_mutation(result) {
-      // Creating an exact commit seal does not change the source tree that
+      // Recording a clean commit does not change the source tree that
       // earlier checks exercised. It remains mutation evidence, but it must
       // not invalidate successful verification of that same tree.
       if !mooncode_runtime_turn_result_is_commit_boundary(result) {
@@ -2783,40 +2783,6 @@ fn mooncode_runtime_turn_model_plan_request(
     tools=mooncode_runtime_turn_model_tools_for_command(command),
     reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
   )
-}
-
-///|
-#warnings("-unused_value")
-fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int32 {
-  let mut count = 0
-  for message in messages {
-    if mooncode_json_string(message, "role", default="") == "assistant" &&
-      mooncode_json_array_items(message, "tool_calls").length() > 0 {
-      count += 1
-    }
-  }
-  count
-}
-
-///|
-#warnings("-unused_value")
-fn mooncode_runtime_turn_model_transcript_has_mutation(
-  messages : Array[Json],
-) -> Bool {
-  for message in messages {
-    if mooncode_json_string(message, "role", default="") == "assistant" {
-      for tool_call in mooncode_json_array_items(message, "tool_calls") {
-        let function = mooncode_json_object_field_or_empty(
-          tool_call, "function",
-        )
-        let name = mooncode_json_string(function, "name", default="")
-        if name == "write" || name == "edit" || name == "apply_patch" {
-          return true
-        }
-      }
-    }
-  }
-  false
 }
 
 ///|

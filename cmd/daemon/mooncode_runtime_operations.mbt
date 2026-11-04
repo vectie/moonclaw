@@ -78,9 +78,7 @@ fn mooncode_runtime_operation_recovery(
   // Repeating a local observation is safe. An uncommitted effect is not a
   // failure receipt: let the same agent inspect the workspace/backend first.
   let tool = mooncode_json_string(call, "tool", default="")
-  if [
-      "read", "view_image", "read_skill", "mcp_list_tools", "finish", "checkpoint",
-    ].contains(tool) {
+  if mooncode_runtime_tool_policy(call).replay {
     return None
   }
   let result = mooncode_tool_error_result(

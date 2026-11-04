@@ -23,32 +23,6 @@ fn Daemon::mooncode_tool_execute(
 }
 
 ///|
-async fn mooncode_execute_guarded_tool_call(
-  session_id : String,
-  book_root : String,
-  body : Json,
-  prior_results : Array[Json],
-  now~ : @clock.Timestamp,
-) -> Json {
-  let command_id = mooncode_tool_command_id(body)
-  let post_commit_guard = mooncode_runtime_post_commit_guard(
-    book_root, body, prior_results,
-  )
-  if mooncode_json_bool(post_commit_guard, "allowed", default=false) {
-    mooncode_execute_tool_call(session_id, book_root, body, now~)
-  } else {
-    mooncode_runtime_post_commit_rejected_execution(
-      session_id,
-      book_root,
-      command_id,
-      body,
-      post_commit_guard,
-      now~,
-    )
-  }
-}
-
-///|
 fn mooncode_validate_tool_call_body(
   session_id : String,
   book_root : String,
@@ -2962,21 +2936,9 @@ async test "mooncode native patch verification failure fails the tool result" (
 }
 
 ///|
-#warnings("-unused_value")
-async fn mooncode_tool_prior_command_results(
-  book_root : String,
-  session_id : String,
-  command_id : String,
-) -> Array[Json] {
-  let prior_results : Array[Json] = []
-  for
-    event in mooncode_journal_entries(
-      mooncode_read_session_journal(book_root, session_id),
-      mooncode_journal_event(),
-    ) {
-    if mooncode_json_string(event, "command_id", default="") == command_id {
-      prior_results.push(event)
-    }
-  }
-  prior_results
+fn mooncode_runtime_tool_policy(call : Json) -> @mooncode_tools.Policy {
+  @mooncode_tools.classify(
+    mooncode_json_string(call, "tool", default=""),
+    mooncode_json_object_field_or_empty(call, "arguments"),
+  )
 }

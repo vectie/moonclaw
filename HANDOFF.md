@@ -67,6 +67,31 @@ existing execution facts rather than introduce another execution authority.
   clear, act, verify and repair. Kimi's duplicate builder, keyword language
   primer and prompt-phrase tests were removed; provider transport stays separate.
 
+## Tool boundary cleanup 2026-11-05
+
+- Pure execution properties and shell analysis now belong to
+  `internal/mooncode_tools`, with no IO imports. Concurrency, instruction
+  consumption, replay and local execution/validation are independent; the
+  daemon still owns authorization, execution and durable facts.
+- The Guardian shadow trial, old effect wrappers, unused shell-observation
+  helper and test-only transcript counters were removed with their obsolete
+  tests. Pure shell tests moved to their owning module; runtime tests retain
+  actual process, authority, cancellation and recovery checks.
+- A commit is an execution fact, not the end of the command's repair cycle.
+  The command-wide post-commit seal and terminal-commit parser were removed.
+  Keep commit identity/path capture and current input verification; do not
+  reintroduce per-tool HEAD/tree/status subprocess checks or require another
+  user turn to repair after a commit.
+- Native suite passed 1917/1917. The pure module passed 17/17 with a clean
+  module check; two sandbox/runtime commit tests passed, including same-command
+  repair and rejection of changed inputs after validation. The real MoonDesk
+  producer/consumer probe passed. `moon info`, formatting and whitespace checks
+  passed; only the new internal module adds an interface, existing `.mbti`
+  files are unchanged. Production `.mbt` net -623 lines; tests net -498.
+- No new model round, approval phase, database or service was introduced.
+  Existing repository warning debt and deployment/live-provider limitations
+  remain; fixture results do not establish semantic delivery quality.
+
 ## Validation 2026-11-04
 
 - After sharing the primary-agent program, native check and the full native

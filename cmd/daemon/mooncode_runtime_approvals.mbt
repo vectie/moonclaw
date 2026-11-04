@@ -1,28 +1,27 @@
 ///|
 fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let planner_local_validation = mooncode_runtime_planner_local_validation(
-    tool_call,
-  )
+  let policy = mooncode_runtime_tool_policy(tool_call)
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let planner_generated = mooncode_json_string(tool_call, "planner", default="") ==
     "model-tool-call"
+  let planner_local_validation = planner_generated && policy.local_validation
   if tool == "shell" {
     let raw_command = mooncode_json_string(arguments, "cmd", default="")
     let command = raw_command.to_lower().to_string()
-    if mooncode_shell_has_git_commit(command) {
+    if @mooncode_tools.shell_has_git_commit(command) {
       return "Creating a git commit changes durable repository history and requires operator approval."
     }
-    if mooncode_shell_has_git_worktree_overwrite(command) {
+    if @mooncode_tools.shell_has_git_worktree_overwrite(command) {
       return "This git command can overwrite tracked worktree content and requires operator approval."
     }
-    if mooncode_shell_has_clean_dependency_install(command) {
+    if @mooncode_tools.shell_has_clean_dependency_install(command) {
       return "A clean dependency install can replace local dependency state and requires operator approval."
     }
-    if mooncode_shell_has_sensitive_command(command) {
+    if @mooncode_tools.shell_has_sensitive_command(command) {
       return "This shell command can affect external systems, dependencies, or broad workspace state."
     }
-    if mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
+    if policy.local_operation {
       let explicit_operator_boundary = mooncode_json_bool(
           tool_call,
           "requires_approval",
@@ -44,22 +43,21 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   if tool == "browser" {
     let action = mooncode_json_string(arguments, "action", default="")
     let url = mooncode_json_string(arguments, "url", default="")
-    if action == "open" && !mooncode_browser_loopback_url(url) {
+    if action == "open" && !@mooncode_tools.browser_loopback_url(url) {
       return "Navigating the native browser to a non-loopback destination requires operator approval."
     }
   }
   if tool == "moon_cmd" {
     let serialized = arguments.stringify().to_lower().to_string()
-    if mooncode_moon_cmd_is_test_update(arguments) ||
+    if @mooncode_tools.moon_cmd_is_test_update(arguments) ||
       serialized.contains("publish") {
       return "This Moon command can update accepted outputs or publish a package."
     }
   }
   // Approval annotations are requests, not authority facts. The runtime keeps
-  // them for mutation-capable and unclassified operations, but a planner cannot
-  // turn an operation the runtime can prove read-only into a teacher pause.
-  if planner_generated &&
-    mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
+  // them for unclassified operations. Local execution eligibility is separate
+  // from side effects, concurrency and the actual sandbox grant.
+  if planner_generated && policy.local_operation {
     return ""
   }
   // Preserve caller-controlled authorization for operations whose authority
@@ -121,76 +119,6 @@ fn mooncode_runtime_authorized_tool_call(
     "tool": tool,
     "arguments": mooncode_json_object_field_or_empty(approval, "arguments"),
   }
-}
-
-///|
-fn mooncode_runtime_tool_is_demonstrably_read_only(tool_call : Json) -> Bool {
-  if mooncode_runtime_tool_effect(tool_call) is ConcurrentRead {
-    return true
-  }
-  let tool = mooncode_json_string(tool_call, "tool", default="")
-  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  match tool {
-    "read"
-    | "read_skill"
-    | "view_image"
-    | "moon_ide"
-    | "moon_check"
-    | "checkpoint"
-    | "finish" => true
-    "browser" => {
-      let action = mooncode_json_string(arguments, "action", default="")
-      action == "snapshot" ||
-      action == "screenshot" ||
-      action == "set_viewport" ||
-      action == "get" ||
-      action == "eval" ||
-      action == "console" ||
-      action == "errors" ||
-      action == "reload" ||
-      action == "close" ||
-      (
-        action == "open" &&
-        mooncode_browser_loopback_url(
-          mooncode_json_string(arguments, "url", default=""),
-        )
-      )
-    }
-    "shell" =>
-      mooncode_shell_is_demonstrably_read_only(
-        mooncode_json_string(arguments, "cmd", default=""),
-      )
-    "moon_cmd" => {
-      let command = mooncode_json_string(arguments, "command", default="")
-      (command == "check" || command == "test" || command == "build") &&
-      !mooncode_moon_cmd_is_test_update(arguments)
-    }
-    _ => false
-  }
-}
-
-///|
-fn mooncode_runtime_planner_local_validation(tool_call : Json) -> Bool {
-  if mooncode_json_string(tool_call, "planner", default="") != "model-tool-call" {
-    return false
-  }
-  let tool = mooncode_json_string(tool_call, "tool", default="")
-  if tool == "moon_check" {
-    return true
-  }
-  if tool != "moon_cmd" {
-    return false
-  }
-  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let command = mooncode_json_string(arguments, "command", default="")
-  (
-    command == "check" ||
-    command == "test" ||
-    command == "info" ||
-    command == "fmt" ||
-    command == "build"
-  ) &&
-  !mooncode_moon_cmd_is_test_update(arguments)
 }
 
 ///|

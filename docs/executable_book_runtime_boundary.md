@@ -143,6 +143,14 @@ execution can start planning again. This is not universal exactly-once execution
 
 ## Tools And Human Decisions
 
+Pure tool-call properties and shell analysis live in `internal/mooncode_tools`.
+The daemon composes them with parameter validation, runtime authorization,
+providers, journal writes and execution. This module performs no IO and does
+not grant permissions. Concurrency, skill-consumption order, interrupted-call
+replay, local execution and local validation are independent properties;
+`read_skill` is not a mutation. Unknown calls remain serial and cannot be
+replayed merely because their parameters match.
+
 File and process tools stay within their declared scope and authorization.
 Process execution requires the configured MoonFort route; missing configuration
 does not select a host-shell fallback. Direct `/tool-exec` currently returns 503.
@@ -157,6 +165,14 @@ Ordinary errors should be repaired by the same agent when possible. Human
 intervention is for real authority or decision gaps. Explicit book adoption or
 product acceptance is separate from engineering completion and delivery;
 ordinary tasks do not acquire a mandatory independent reviewer.
+
+The Guardian shadow trial and its duplicate approval observations were removed.
+The actual authorization and sandbox checks remain. Git commit records the
+created revision and paths; it no longer seals the whole command or has to be
+the final shell operation. The same agent can repair, format and recheck within
+the current authorized task. Completion still checks current task/input
+versions. Removing the per-call post-commit guard also removes its repeated
+HEAD, tree and worktree subprocess queries.
 
 ## Completion And Verification
 
@@ -216,6 +232,8 @@ records the OS/compiler/database/dataflow analysis and task-driven interpreter
 design. Dynamic graph presentation and complete dependency analysis are not
 implemented runtime guarantees.
 The runtime and the summary above remain usable without that checkout.
+The synthesis includes the concrete simplification checklist and verification
+evidence for this cleanup; it does not turn runtime checks into new user gates.
 
 ## Validation
 

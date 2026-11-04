@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/mooncode_tools"
+
+// Values
+pub const SHELL_BOUNDARY_TOKEN : String = "\x00mooncode-shell-boundary\x00"
+
+pub fn browser_loopback_url(String) -> Bool
+
+pub fn classify(String, Json) -> Policy
+
+pub fn moon_cmd_is_test_update(Json) -> Bool
+
+pub fn shell_has_clean_dependency_install(String) -> Bool
+
+pub fn shell_has_file_output_redirection(String) -> Bool
+
+pub fn shell_has_git_commit(String) -> Bool
+
+pub fn shell_has_git_workspace_mutation(String) -> Bool
+
+pub fn shell_has_git_worktree_overwrite(String) -> Bool
+
+pub fn shell_has_in_place_authoring(String) -> Bool
+
+pub fn shell_has_inline_interpreter_authoring(String) -> Bool
+
+pub fn shell_has_sensitive_command(String) -> Bool
+
+pub fn shell_pipeline_exit_ambiguous(String) -> Bool
+
+pub fn shell_segment_executable_index(Array[String]) -> Int
+
+pub fn shell_verifies_kind(String, String) -> Bool
+
+pub fn shell_words(String) -> Array[String]
+
+// Errors
+
+// Types and methods
+pub struct Policy {
+  parallel_read : Bool
+  after_skill : Bool
+  replay : Bool
+  local_operation : Bool
+  local_validation : Bool
+}
+
+// Type aliases
+
+// Traits

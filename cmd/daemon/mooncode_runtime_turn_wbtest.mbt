@@ -2528,21 +2528,6 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   })
   assert_true(oversized_source.length() < 40100)
   assert_true(oversized_source.contains("truncated for planner context"))
-  let transcript : Array[Json] = [
-    {
-      "role": "assistant",
-      "tool_calls": [{ "function": { "name": "read", "arguments": "{}" } }],
-    },
-    {
-      "role": "assistant",
-      "tool_calls": [{ "function": { "name": "edit", "arguments": "{}" } }],
-    },
-  ]
-  assert_eq(mooncode_runtime_turn_model_completed_steps(transcript), 2)
-  assert_true(mooncode_runtime_turn_model_transcript_has_mutation(transcript))
-  assert_false(
-    mooncode_runtime_turn_model_transcript_has_mutation([transcript[0]]),
-  )
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
   assert_eq(
     mooncode_runtime_turn_pipeline_evidence_warning([

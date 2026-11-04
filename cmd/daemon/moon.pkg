@@ -1,4 +1,5 @@
 import {
+  "vectie/moonclaw/internal/mooncode_tools",
   "vectie/moonclaw/internal/book_runtime",
   "vectie/moonclaw/internal/provider_connection",
   "vectie/moonclaw/internal/promotion_recovery",

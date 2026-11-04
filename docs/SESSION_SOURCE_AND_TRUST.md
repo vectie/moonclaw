@@ -17,4 +17,4 @@ explicitly rather than borrowing the user source.
 Project rules and workspace skills are loaded only for trusted general-agent
 conversations. Source is routing/provenance evidence, not authorization:
 neither `source_kind` nor `workspace_trust` can mint a sandbox grant, approve a
-tool, bypass Guardian qualification, or weaken MoonFort enforcement.
+tool or weaken MoonFort enforcement.

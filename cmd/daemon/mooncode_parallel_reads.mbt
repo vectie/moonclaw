@@ -11,9 +11,6 @@ fn mooncode_runtime_parallel_read_identity(
 ) -> String {
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let effect = mooncode_runtime_tool_effect_key(
-    mooncode_runtime_tool_effect(tool_call),
-  )
   if tool == "read" || tool == "view_image" {
     let path = mooncode_json_string(arguments, "path", default="")
     if path == "" {
@@ -23,9 +20,7 @@ fn mooncode_runtime_parallel_read_identity(
     if !mooncode_json_bool(resolved, "ok", default=false) {
       return ""
     }
-    return effect +
-      ":" +
-      tool +
+    return tool +
       ":path:" +
       mooncode_json_string(resolved, "absolute_path", default="")
   }
@@ -34,8 +29,7 @@ fn mooncode_runtime_parallel_read_identity(
     if !mooncode_json_bool(cwd, "ok", default=false) {
       return ""
     }
-    return effect +
-      ":shell:cwd:" +
+    return "shell:cwd:" +
       mooncode_json_string(cwd, "absolute_path", default="") +
       ":cmd:" +
       mooncode_json_string(arguments, "cmd", default="")
@@ -44,7 +38,7 @@ fn mooncode_runtime_parallel_read_identity(
     tool == "moon_ide" ||
     tool == "moon_cmd" ||
     tool == "moon_check" {
-    return effect + ":" + tool + ":arguments:" + arguments.stringify()
+    return tool + ":arguments:" + arguments.stringify()
   }
   ""
 }
@@ -70,16 +64,11 @@ async fn mooncode_runtime_turn_parallel_read_batch_allowed(
   let seen_identities : Map[String, Unit] = Map([])
   for tool_call in tool_calls {
     if mooncode_json_string(tool_call, "validation_error", default="") != "" ||
-      !mooncode_runtime_tool_effect_is_concurrent_read(tool_call) ||
+      !mooncode_runtime_tool_policy(tool_call).parallel_read ||
       !mooncode_tool_supported(
         mooncode_json_string(tool_call, "tool", default=""),
       ) ||
       mooncode_runtime_tool_requires_approval(tool_call) ||
-      !mooncode_json_bool(
-        mooncode_runtime_post_commit_guard(book_root, tool_call, prior_results),
-        "allowed",
-        default=false,
-      ) ||
       mooncode_runtime_turn_repeats_complete_read(
         tool_call,
         prior_results,

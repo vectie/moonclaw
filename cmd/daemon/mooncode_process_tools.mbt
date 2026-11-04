@@ -49,16 +49,7 @@ fn mooncode_tool_shell_preflight_error(
       ),
     )
   }
-  if mooncode_shell_has_git_commit(cmd) &&
-    !mooncode_shell_git_commit_is_terminal(cmd) {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message="git commit must be the terminal command in a shell tool call so the runtime can seal the exact committed state",
-      ),
-    )
-  }
-  if mooncode_shell_has_file_output_redirection(cmd) {
+  if @mooncode_tools.shell_has_file_output_redirection(cmd) {
     return Some(
       mooncode_tool_error_result(
         "shell",
@@ -66,7 +57,7 @@ fn mooncode_tool_shell_preflight_error(
       ),
     )
   }
-  if mooncode_shell_has_inline_interpreter_authoring(cmd) {
+  if @mooncode_tools.shell_has_inline_interpreter_authoring(cmd) {
     return Some(
       mooncode_tool_error_result(
         "shell",
@@ -74,7 +65,7 @@ fn mooncode_tool_shell_preflight_error(
       ),
     )
   }
-  if mooncode_shell_has_in_place_authoring(cmd) {
+  if @mooncode_tools.shell_has_in_place_authoring(cmd) {
     return Some(
       mooncode_tool_error_result(
         "shell",
@@ -152,7 +143,9 @@ async fn mooncode_tool_shell_with_config(
       "cmd": cmd,
       "cwd": mooncode_json_string(cwd, "relative_path", default="."),
       "timeout_ms": timeout,
-      "pipeline_exit_ambiguous": mooncode_shell_pipeline_exit_ambiguous(cmd),
+      "pipeline_exit_ambiguous": @mooncode_tools.shell_pipeline_exit_ambiguous(
+        cmd,
+      ),
     },
   )
   let verification_pipeline = mooncode_json_string(
@@ -162,7 +155,7 @@ async fn mooncode_tool_shell_with_config(
     ) !=
     "" ||
     mooncode_shell_pipeline_looks_like_verification(cmd)
-  if mooncode_shell_pipeline_exit_ambiguous(cmd) &&
+  if @mooncode_tools.shell_pipeline_exit_ambiguous(cmd) &&
     verification_pipeline &&
     mooncode_json_bool(result, "ok", default=false) {
     mooncode_tool_error_result(
@@ -314,15 +307,15 @@ fn mooncode_shell_parent_path_escapes(
 
 ///|
 fn mooncode_shell_segment_is_cd(segment : Array[String]) -> Bool {
-  let executable_index = mooncode_shell_segment_executable_index(segment)
+  let executable_index = @mooncode_tools.shell_segment_executable_index(segment)
   executable_index >= 0 && segment[executable_index] == "cd"
 }
 
 ///|
 fn mooncode_shell_has_cd_command(cmd : String) -> Bool {
   let segment : Array[String] = []
-  for word in mooncode_shell_words(cmd) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+  for word in @mooncode_tools.shell_words(cmd) {
+    if word == @mooncode_tools.SHELL_BOUNDARY_TOKEN {
       if mooncode_shell_segment_is_cd(segment) {
         return true
       }
@@ -349,12 +342,12 @@ fn mooncode_shell_leading_static_cd_cwd(
     return None
   }
   let segment : Array[String] = []
-  for word in mooncode_shell_words(leading) {
-    if word != MOONCODE_SHELL_BOUNDARY_TOKEN {
+  for word in @mooncode_tools.shell_words(leading) {
+    if word != @mooncode_tools.SHELL_BOUNDARY_TOKEN {
       segment.push(word)
     }
   }
-  let executable_index = mooncode_shell_segment_executable_index(segment)
+  let executable_index = @mooncode_tools.shell_segment_executable_index(segment)
   if executable_index < 0 ||
     segment[executable_index] != "cd" ||
     executable_index + 1 >= segment.length() {
@@ -693,7 +686,7 @@ async fn mooncode_tool_moon_cmd(
       message="moon_cmd expected_exit_code must be between 0 and 255",
     )
   }
-  if mooncode_moon_cmd_is_test_update(arguments) &&
+  if @mooncode_tools.moon_cmd_is_test_update(arguments) &&
     (
       mooncode_json_string(arguments, "test_update_kind", default="") == "" ||
       mooncode_json_string(arguments, "test_update_reason", default="") == ""
@@ -1013,23 +1006,6 @@ fn mooncode_moon_cmd_path_relative_to_cwd(
   @pathx.relative(cwd_path, absolute) catch {
     _ => path
   }
-}
-
-///|
-fn mooncode_moon_cmd_is_test_update(arguments : Json) -> Bool {
-  if mooncode_json_string(arguments, "command", default="") != "test" {
-    return false
-  }
-  let arg = mooncode_json_string(arguments, "arg", default="")
-  if arg == "--update" || arg == "-u" {
-    return true
-  }
-  for arg in mooncode_json_array_string_items(arguments, "args") {
-    if arg == "--update" || arg == "-u" {
-      return true
-    }
-  }
-  false
 }
 
 ///|

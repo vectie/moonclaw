@@ -217,19 +217,6 @@ async test "mooncode shell retains complete and partial local file observations"
     )
     assert_eq(mooncode_json_string(observation, "scope", default=""), "partial")
   }
-  let outside_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-shell-observation-outside-XXXXXX"),
-  )
-  let outside_path = @pathx.join(outside_root, "outside.txt")
-  @fsx.write_to_file(outside_path, "outside\n")
-  let outside = mooncode_shell_file_observation(
-    book_root,
-    book_root,
-    "cat \{outside_path}",
-    "outside\n",
-    false,
-  )
-  assert_eq(mooncode_json_string(outside, "path", default=""), "")
 }
 
 ///|
@@ -758,10 +745,13 @@ test "mooncode normalizes command-specific moon arguments" {
     ]),
   )
   assert_true(
-    mooncode_moon_cmd_is_test_update({ "command": "test", "arg": "-u" }),
+    @mooncode_tools.moon_cmd_is_test_update({ "command": "test", "arg": "-u" }),
   )
   assert_true(
-    mooncode_moon_cmd_is_test_update({ "command": "test", "args": ["-u"] }),
+    @mooncode_tools.moon_cmd_is_test_update({
+      "command": "test",
+      "args": ["-u"],
+    }),
   )
   assert_true(
     mooncode_moon_cmd_args(

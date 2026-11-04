@@ -20,8 +20,8 @@ async test "mooncode exposes bounded image evidence without journaling bytes" {
   assert_false(serialized.contains("base64"))
   assert_true(serialized.contains("model_image_evidence"))
   assert_true(mooncode_tool_supported("browser"))
-  assert_true(mooncode_browser_loopback_url("http://127.0.0.1:4199/"))
-  assert_false(mooncode_browser_loopback_url("https://example.com/"))
+  assert_true(@mooncode_tools.browser_loopback_url("http://127.0.0.1:4199/"))
+  assert_false(@mooncode_tools.browser_loopback_url("https://example.com/"))
 }
 
 ///|

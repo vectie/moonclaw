@@ -79,7 +79,7 @@ fn mooncode_task_scope_preflight_error(
   }
   if tool == "shell" &&
     !scopes.contains(".") &&
-    mooncode_shell_has_git_workspace_mutation(
+    @mooncode_tools.shell_has_git_workspace_mutation(
       mooncode_json_string(arguments, "cmd", default=""),
     ) {
     return Some(

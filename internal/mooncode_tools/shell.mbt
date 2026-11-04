@@ -1,11 +1,8 @@
 ///|
-const MOONCODE_SHELL_BOUNDARY_TOKEN = "\u{0}mooncode-shell-boundary\u{0}"
+pub const SHELL_BOUNDARY_TOKEN = "\u{0}mooncode-shell-boundary\u{0}"
 
 ///|
-fn mooncode_shell_push_word(
-  words : Array[String],
-  current : StringBuilder,
-) -> Unit {
+fn shell_push_word(words : Array[String], current : StringBuilder) -> Unit {
   if !current.is_empty() {
     words.push(current.to_string())
     current.reset()
@@ -16,7 +13,7 @@ fn mooncode_shell_push_word(
 /// Tokenize enough POSIX shell syntax to classify executable commands without
 /// matching quoted prose. Operators become explicit boundary tokens so words
 /// from separate commands cannot be combined into a false match.
-fn mooncode_shell_words(command : String) -> Array[String] {
+pub fn shell_words(command : String) -> Array[String] {
   let words : Array[String] = []
   let current = StringBuilder()
   let mut single_quoted = false
@@ -52,10 +49,10 @@ fn mooncode_shell_words(command : String) -> Array[String] {
       '\\' => escaped = true
       '\'' => single_quoted = true
       '"' => double_quoted = true
-      ' ' | '\t' | '\r' => mooncode_shell_push_word(words, current)
+      ' ' | '\t' | '\r' => shell_push_word(words, current)
       '\n' | ';' | '|' | '&' => {
-        mooncode_shell_push_word(words, current)
-        words.push(MOONCODE_SHELL_BOUNDARY_TOKEN)
+        shell_push_word(words, current)
+        words.push(SHELL_BOUNDARY_TOKEN)
       }
       _ => current.write_char(ch)
     }
@@ -63,22 +60,22 @@ fn mooncode_shell_words(command : String) -> Array[String] {
   if escaped {
     current.write_char('\\')
   }
-  mooncode_shell_push_word(words, current)
+  shell_push_word(words, current)
   words
 }
 
 ///|
-fn mooncode_shell_word_is_assignment(word : String) -> Bool {
+fn shell_word_is_assignment(word : String) -> Bool {
   word.contains("=") && !word.has_prefix("=")
 }
 
 ///|
-fn mooncode_shell_git_executable(word : String) -> Bool {
+fn shell_git_executable(word : String) -> Bool {
   word == "git" || word.has_suffix("/git")
 }
 
 ///|
-fn mooncode_shell_segment_executable_index_from(
+fn shell_segment_executable_index_from(
   segment : Array[String],
   start : Int32,
 ) -> Int32 {
@@ -86,8 +83,7 @@ fn mooncode_shell_segment_executable_index_from(
     return -1
   }
   let mut index = start
-  while index < segment.length() &&
-        mooncode_shell_word_is_assignment(segment[index]) {
+  while index < segment.length() && shell_word_is_assignment(segment[index]) {
     index += 1
   }
   if index < segment.length() && segment[index] == "command" {
@@ -101,7 +97,7 @@ fn mooncode_shell_segment_executable_index_from(
     while index < segment.length() &&
           (
             segment[index].has_prefix("-") ||
-            mooncode_shell_word_is_assignment(segment[index])
+            shell_word_is_assignment(segment[index])
           ) {
       index += 1
     }
@@ -114,17 +110,17 @@ fn mooncode_shell_segment_executable_index_from(
 }
 
 ///|
-fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int32 {
-  mooncode_shell_segment_executable_index_from(segment, 0)
+pub fn shell_segment_executable_index(segment : Array[String]) -> Int32 {
+  shell_segment_executable_index_from(segment, 0)
 }
 
 ///|
-fn mooncode_shell_segment_has_git_subcommand(
+fn shell_segment_has_git_subcommand(
   segment : Array[String],
   subcommands : ArrayView[String],
 ) -> Bool {
-  let mut index = mooncode_shell_segment_executable_index(segment)
-  if index < 0 || !mooncode_shell_git_executable(segment[index]) {
+  let mut index = shell_segment_executable_index(segment)
+  if index < 0 || !shell_git_executable(segment[index]) {
     return false
   }
   index += 1
@@ -158,14 +154,14 @@ fn mooncode_shell_segment_has_git_subcommand(
 }
 
 ///|
-fn mooncode_shell_has_git_subcommand(
+fn shell_has_git_subcommand(
   command : String,
   subcommands : ArrayView[String],
 ) -> Bool {
   let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_git_subcommand(segment, subcommands) {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
+      if shell_segment_has_git_subcommand(segment, subcommands) {
         return true
       }
       segment.clear()
@@ -173,36 +169,34 @@ fn mooncode_shell_has_git_subcommand(
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_git_subcommand(segment, subcommands)
+  shell_segment_has_git_subcommand(segment, subcommands)
 }
 
 ///|
-fn mooncode_shell_segment_has_git_commit(segment : Array[String]) -> Bool {
-  if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
+fn shell_segment_has_git_commit(segment : Array[String]) -> Bool {
+  if shell_segment_has_git_subcommand(segment, ["commit"]) {
     return true
   }
-  let executable_index = mooncode_shell_segment_executable_index(segment)
+  let executable_index = shell_segment_executable_index(segment)
   if executable_index < 0 {
     return false
   }
   let executable = segment[executable_index]
-  if !mooncode_shell_executable_is(executable, "sh") &&
-    !mooncode_shell_executable_is(executable, "bash") &&
-    !mooncode_shell_executable_is(executable, "zsh") {
+  if !shell_executable_is(executable, "sh") &&
+    !shell_executable_is(executable, "bash") &&
+    !shell_executable_is(executable, "zsh") {
     return false
   }
-  let nested_index = mooncode_shell_nested_command_index(
-    segment, executable_index,
-  )
-  nested_index >= 0 && mooncode_shell_has_git_commit(segment[nested_index])
+  let nested_index = shell_nested_command_index(segment, executable_index)
+  nested_index >= 0 && shell_has_git_commit(segment[nested_index])
 }
 
 ///|
-fn mooncode_shell_has_git_commit(command : String) -> Bool {
+pub fn shell_has_git_commit(command : String) -> Bool {
   let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_git_commit(segment) {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
+      if shell_segment_has_git_commit(segment) {
         return true
       }
       segment.clear()
@@ -210,42 +204,12 @@ fn mooncode_shell_has_git_commit(command : String) -> Bool {
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_git_commit(segment)
+  shell_segment_has_git_commit(segment)
 }
 
 ///|
-fn mooncode_shell_git_commit_is_terminal(command : String) -> Bool {
-  let segment : Array[String] = []
-  let mut commit_seen = false
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if !segment.is_empty() {
-        if commit_seen {
-          return false
-        }
-        if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
-          commit_seen = true
-        }
-        segment.clear()
-      }
-    } else {
-      segment.push(word)
-    }
-  }
-  if !segment.is_empty() {
-    if commit_seen {
-      return false
-    }
-    if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
-      commit_seen = true
-    }
-  }
-  commit_seen
-}
-
-///|
-fn mooncode_shell_has_git_workspace_mutation(command : String) -> Bool {
-  mooncode_shell_has_git_subcommand(command, [
+pub fn shell_has_git_workspace_mutation(command : String) -> Bool {
+  shell_has_git_subcommand(command, [
     "add", "am", "apply", "branch", "checkout", "cherry-pick", "clean", "commit",
     "config", "init", "merge", "mv", "rebase", "reset", "restore", "revert", "rm",
     "stash", "switch", "tag",
@@ -253,37 +217,21 @@ fn mooncode_shell_has_git_workspace_mutation(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_has_workspace_mutation(command : String) -> Bool {
-  mooncode_shell_has_file_output_redirection(command) ||
-  mooncode_shell_has_in_place_authoring(command) ||
-  mooncode_shell_has_git_workspace_mutation(command) ||
-  mooncode_shell_has_clean_dependency_install(command) ||
-  mooncode_shell_has_sensitive_command(command)
+pub fn shell_has_git_worktree_overwrite(command : String) -> Bool {
+  shell_has_git_subcommand(command, ["restore", "checkout"])
 }
 
 ///|
-fn mooncode_shell_has_git_worktree_overwrite(command : String) -> Bool {
-  mooncode_shell_has_git_subcommand(command, ["restore", "checkout"])
-}
-
-///|
-fn mooncode_shell_segment_has_clean_dependency_install(
-  segment : Array[String],
-) -> Bool {
-  let index = mooncode_shell_segment_executable_index(segment)
+fn shell_segment_has_clean_dependency_install(segment : Array[String]) -> Bool {
+  let index = shell_segment_executable_index(segment)
   if index < 0 || index + 1 >= segment.length() {
     return false
   }
   let executable = segment[index]
-  let command_index = mooncode_shell_subcommand_index_after_options(
-    segment,
-    index,
-    [
-      "--cache", "--prefix", "--registry", "--userconfig", "--workspace", "-C", "-w",
-    ],
-  )
-  if command_index < 0 ||
-    mooncode_shell_segment_requests_help(segment, command_index) {
+  let command_index = shell_subcommand_index_after_options(segment, index, [
+    "--cache", "--prefix", "--registry", "--userconfig", "--workspace", "-C", "-w",
+  ])
+  if command_index < 0 || shell_segment_requests_help(segment, command_index) {
     return false
   }
   let command = segment[command_index]
@@ -307,11 +255,11 @@ fn mooncode_shell_segment_has_clean_dependency_install(
 }
 
 ///|
-fn mooncode_shell_has_clean_dependency_install(command : String) -> Bool {
+pub fn shell_has_clean_dependency_install(command : String) -> Bool {
   let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_clean_dependency_install(segment) {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
+      if shell_segment_has_clean_dependency_install(segment) {
         return true
       }
       segment.clear()
@@ -319,16 +267,16 @@ fn mooncode_shell_has_clean_dependency_install(command : String) -> Bool {
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_clean_dependency_install(segment)
+  shell_segment_has_clean_dependency_install(segment)
 }
 
 ///|
-fn mooncode_shell_executable_is(word : String, name : String) -> Bool {
+fn shell_executable_is(word : String, name : String) -> Bool {
   word == name || word.has_suffix("/" + name)
 }
 
 ///|
-fn mooncode_shell_subcommand_index_after_options(
+fn shell_subcommand_index_after_options(
   segment : Array[String],
   executable_index : Int32,
   options_with_values : ArrayView[String],
@@ -357,7 +305,7 @@ fn mooncode_shell_subcommand_index_after_options(
 }
 
 ///|
-fn mooncode_shell_segment_requests_help(
+fn shell_segment_requests_help(
   segment : Array[String],
   subcommand_index : Int32,
 ) -> Bool {
@@ -374,7 +322,7 @@ fn mooncode_shell_segment_requests_help(
 }
 
 ///|
-fn mooncode_shell_nested_command_index(
+fn shell_nested_command_index(
   segment : Array[String],
   executable_index : Int32,
 ) -> Int32 {
@@ -403,34 +351,32 @@ fn mooncode_shell_nested_command_index(
 }
 
 ///|
-fn mooncode_shell_segment_verification_kind(segment : Array[String]) -> String {
-  let executable_index = mooncode_shell_segment_executable_index(segment)
+fn shell_segment_verification_kind(segment : Array[String]) -> String {
+  let executable_index = shell_segment_executable_index(segment)
   if executable_index < 0 {
     return ""
   }
   let executable = segment[executable_index]
-  if mooncode_shell_executable_is(executable, "sh") ||
-    mooncode_shell_executable_is(executable, "bash") ||
-    mooncode_shell_executable_is(executable, "zsh") {
-    let nested_index = mooncode_shell_nested_command_index(
-      segment, executable_index,
-    )
+  if shell_executable_is(executable, "sh") ||
+    shell_executable_is(executable, "bash") ||
+    shell_executable_is(executable, "zsh") {
+    let nested_index = shell_nested_command_index(segment, executable_index)
     return if nested_index < 0 {
       ""
     } else {
-      mooncode_shell_verification_kind(segment[nested_index])
+      shell_verification_kind(segment[nested_index])
     }
   }
-  if mooncode_shell_executable_is(executable, "test") || executable == "[" {
+  if shell_executable_is(executable, "test") || executable == "[" {
     return "check"
   }
-  if mooncode_shell_executable_is(executable, "git") &&
-    mooncode_shell_segment_has_git_subcommand(segment, ["diff"]) &&
+  if shell_executable_is(executable, "git") &&
+    shell_segment_has_git_subcommand(segment, ["diff"]) &&
     segment.contains("--check") {
     return "check"
   }
-  if mooncode_shell_executable_is(executable, "gh") {
-    let subcommand_index = mooncode_shell_subcommand_index_after_options(
+  if shell_executable_is(executable, "gh") {
+    let subcommand_index = shell_subcommand_index_after_options(
       segment,
       executable_index,
       ["--hostname", "-R", "--repo"],
@@ -443,18 +389,15 @@ fn mooncode_shell_segment_verification_kind(segment : Array[String]) -> String {
     }
     return ""
   }
-  let moon_index = if mooncode_shell_executable_is(executable, "time") {
-    mooncode_shell_subcommand_index_after_options(segment, executable_index, [
-      "-f", "-o",
-    ])
+  let moon_index = if shell_executable_is(executable, "time") {
+    shell_subcommand_index_after_options(segment, executable_index, ["-f", "-o"])
   } else {
     executable_index
   }
-  if moon_index < 0 ||
-    !mooncode_shell_executable_is(segment[moon_index], "moon") {
+  if moon_index < 0 || !shell_executable_is(segment[moon_index], "moon") {
     return ""
   }
-  let subcommand_index = mooncode_shell_subcommand_index_after_options(
+  let subcommand_index = shell_subcommand_index_after_options(
     segment,
     moon_index,
     ["--source-dir", "--target-dir"],
@@ -475,13 +418,13 @@ fn mooncode_shell_segment_verification_kind(segment : Array[String]) -> String {
 }
 
 ///|
-fn mooncode_shell_verification_kind(command : String) -> String {
+fn shell_verification_kind(command : String) -> String {
   let segment : Array[String] = []
   let mut kind = ""
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
       if !segment.is_empty() {
-        kind = mooncode_shell_segment_verification_kind(segment)
+        kind = shell_segment_verification_kind(segment)
         segment.clear()
       }
     } else {
@@ -489,81 +432,75 @@ fn mooncode_shell_verification_kind(command : String) -> String {
     }
   }
   if !segment.is_empty() {
-    kind = mooncode_shell_segment_verification_kind(segment)
+    kind = shell_segment_verification_kind(segment)
   }
   kind
 }
 
 ///|
-fn mooncode_shell_verifies_kind(command : String, expected : String) -> Bool {
+pub fn shell_verifies_kind(command : String, expected : String) -> Bool {
   if expected != "check" && expected != "test" && expected != "build" {
     return false
   }
-  mooncode_shell_verification_kind(command) == expected
+  shell_verification_kind(command) == expected
 }
 
 ///|
-fn mooncode_shell_segment_has_sensitive_command(
-  segment : Array[String],
-) -> Bool {
-  let index = mooncode_shell_segment_executable_index(segment)
+fn shell_segment_has_sensitive_command(segment : Array[String]) -> Bool {
+  let index = shell_segment_executable_index(segment)
   if index < 0 {
     return false
   }
   let executable = segment[index]
-  if mooncode_shell_executable_is(executable, "curl") {
-    return !mooncode_shell_segment_is_safe_loopback_curl(segment, index)
+  if shell_executable_is(executable, "curl") {
+    return !shell_segment_is_safe_loopback_curl(segment, index)
   }
-  if mooncode_shell_executable_is(executable, "sudo") ||
-    mooncode_shell_executable_is(executable, "rm") ||
-    mooncode_shell_executable_is(executable, "wget") ||
-    mooncode_shell_executable_is(executable, "ssh") ||
-    mooncode_shell_executable_is(executable, "scp") ||
-    mooncode_shell_executable_is(executable, "brew") {
+  if shell_executable_is(executable, "sudo") ||
+    shell_executable_is(executable, "rm") ||
+    shell_executable_is(executable, "wget") ||
+    shell_executable_is(executable, "ssh") ||
+    shell_executable_is(executable, "scp") ||
+    shell_executable_is(executable, "brew") {
     return true
   }
-  if mooncode_shell_executable_is(executable, "git") {
-    return mooncode_shell_segment_has_git_subcommand(segment, ["push", "reset"])
+  if shell_executable_is(executable, "git") {
+    return shell_segment_has_git_subcommand(segment, ["push", "reset"])
   }
-  if mooncode_shell_executable_is(executable, "sh") ||
-    mooncode_shell_executable_is(executable, "bash") ||
-    mooncode_shell_executable_is(executable, "zsh") {
-    let nested_index = mooncode_shell_nested_command_index(segment, index)
+  if shell_executable_is(executable, "sh") ||
+    shell_executable_is(executable, "bash") ||
+    shell_executable_is(executable, "zsh") {
+    let nested_index = shell_nested_command_index(segment, index)
     return nested_index >= 0 &&
-      mooncode_shell_has_sensitive_command(segment[nested_index])
+      shell_has_sensitive_command(segment[nested_index])
   }
-  let subcommand_index = mooncode_shell_subcommand_index_after_options(
-    segment,
-    index,
-    [
-      "--cache", "--cwd", "--dir", "--prefix", "--registry", "--userconfig", "--workspace",
-      "-C", "-w",
-    ],
-  )
+  let subcommand_index = shell_subcommand_index_after_options(segment, index, [
+    "--cache", "--cwd", "--dir", "--prefix", "--registry", "--userconfig", "--workspace",
+    "-C", "-w",
+  ])
   if subcommand_index < 0 ||
-    mooncode_shell_segment_requests_help(segment, subcommand_index) {
+    shell_segment_requests_help(segment, subcommand_index) {
     return false
   }
   let subcommand = segment[subcommand_index]
-  if mooncode_shell_executable_is(executable, "gh") {
+  if shell_executable_is(executable, "gh") {
     return subcommand == "run" &&
       subcommand_index + 1 < segment.length() &&
       segment[subcommand_index + 1] == "rerun"
   }
-  if mooncode_shell_executable_is(executable, "moon") {
+  if shell_executable_is(executable, "moon") {
     return subcommand == "publish"
   }
-  if mooncode_shell_executable_is(executable, "npm") {
+  if shell_executable_is(executable, "npm") {
     return subcommand == "publish" || subcommand == "install"
   }
-  if mooncode_shell_executable_is(executable, "pnpm") {
+  if shell_executable_is(executable, "pnpm") {
     return subcommand == "publish" || subcommand == "add"
   }
-  if mooncode_shell_executable_is(executable, "yarn") {
+  if shell_executable_is(executable, "yarn") {
     return subcommand == "add"
   }
-  if mooncode_shell_executable_is(executable, "pip") ||
-    mooncode_shell_executable_is(executable, "pip3") {
+  if shell_executable_is(executable, "pip") ||
+    shell_executable_is(executable, "pip3") {
     return subcommand == "install"
   }
   false
@@ -573,7 +510,7 @@ fn mooncode_shell_segment_has_sensitive_command(
 /// A GET/HEAD-only request to a loopback preview is local observation. Any
 /// upload, body, output-file, custom mutating method, or remote URL remains
 /// sensitive.
-fn mooncode_shell_segment_is_safe_loopback_curl(
+fn shell_segment_is_safe_loopback_curl(
   segment : Array[String],
   executable_index : Int32,
 ) -> Bool {
@@ -628,7 +565,7 @@ fn mooncode_shell_segment_is_safe_loopback_curl(
       return false
     }
     if word.has_prefix("http://") || word.has_prefix("https://") {
-      if !mooncode_browser_loopback_url(word) {
+      if !browser_loopback_url(word) {
         return false
       }
       url_seen = true
@@ -639,22 +576,22 @@ fn mooncode_shell_segment_is_safe_loopback_curl(
 }
 
 ///|
-fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
-  let (substitutions_valid, outer_command, substitutions) = mooncode_shell_extract_command_substitutions(
+pub fn shell_has_sensitive_command(command : String) -> Bool {
+  let (substitutions_valid, outer_command, substitutions) = shell_extract_command_substitutions(
     command,
   )
   if !substitutions_valid {
     return true
   }
   for substitution in substitutions {
-    if !mooncode_shell_is_demonstrably_read_only(substitution) {
+    if !shell_is_demonstrably_read_only(substitution) {
       return true
     }
   }
   let segment : Array[String] = []
-  for word in mooncode_shell_words(outer_command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_sensitive_command(segment) {
+  for word in shell_words(outer_command) {
+    if word == SHELL_BOUNDARY_TOKEN {
+      if shell_segment_has_sensitive_command(segment) {
         return true
       }
       segment.clear()
@@ -662,11 +599,11 @@ fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_sensitive_command(segment)
+  shell_segment_has_sensitive_command(segment)
 }
 
 ///|
-fn mooncode_shell_segment_is_read_only_awk(
+fn shell_segment_is_read_only_awk(
   segment : Array[String],
   executable_index : Int32,
 ) -> Bool {
@@ -710,8 +647,8 @@ fn mooncode_shell_segment_is_read_only_awk(
 }
 
 ///|
-fn mooncode_shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
-  mooncode_shell_segment_has_git_subcommand(segment, [
+fn shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
+  shell_segment_has_git_subcommand(segment, [
     "annotate", "blame", "cat-file", "describe", "diff", "diff-files", "diff-index",
     "diff-tree", "for-each-ref", "grep", "log", "ls-files", "ls-tree", "merge-base",
     "name-rev", "rev-list", "rev-parse", "show", "show-ref", "status", "verify",
@@ -719,7 +656,7 @@ fn mooncode_shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
 }
 
 ///|
-fn mooncode_shell_segment_is_read_only_gh(
+fn shell_segment_is_read_only_gh(
   segment : Array[String],
   index : Int32,
 ) -> Bool {
@@ -731,15 +668,13 @@ fn mooncode_shell_segment_is_read_only_gh(
 }
 
 ///|
-fn mooncode_shell_segment_read_only_executable_index(
-  segment : Array[String],
-) -> Int32 {
-  let mut index = mooncode_shell_segment_executable_index(segment)
+fn shell_segment_read_only_executable_index(segment : Array[String]) -> Int32 {
+  let mut index = shell_segment_executable_index(segment)
   if index < 0 {
     return -1
   }
   let executable = segment[index]
-  if !mooncode_shell_executable_is(executable, "time") {
+  if !shell_executable_is(executable, "time") {
     return index
   }
   index += 1
@@ -762,35 +697,33 @@ fn mooncode_shell_segment_read_only_executable_index(
 }
 
 ///|
-fn mooncode_shell_segment_is_demonstrably_read_only(
-  segment : Array[String],
-) -> Bool {
+fn shell_segment_is_demonstrably_read_only(segment : Array[String]) -> Bool {
   if segment.is_empty() {
     return true
   }
-  let index = mooncode_shell_segment_read_only_executable_index(segment)
+  let index = shell_segment_read_only_executable_index(segment)
   if index < 0 {
     return false
   }
   let executable = segment[index]
-  if mooncode_shell_executable_is(executable, "git") {
-    return mooncode_shell_segment_is_read_only_git(segment[index:].to_owned())
+  if shell_executable_is(executable, "git") {
+    return shell_segment_is_read_only_git(segment[index:].to_owned())
   }
-  if mooncode_shell_executable_is(executable, "gh") {
-    return mooncode_shell_segment_is_read_only_gh(segment, index)
+  if shell_executable_is(executable, "gh") {
+    return shell_segment_is_read_only_gh(segment, index)
   }
-  if mooncode_shell_executable_is(executable, "npm") ||
-    mooncode_shell_executable_is(executable, "pnpm") ||
-    mooncode_shell_executable_is(executable, "yarn") ||
-    mooncode_shell_executable_is(executable, "bun") {
+  if shell_executable_is(executable, "npm") ||
+    shell_executable_is(executable, "pnpm") ||
+    shell_executable_is(executable, "yarn") ||
+    shell_executable_is(executable, "bun") {
     return segment[index + 1:].contains("--help") ||
       segment[index + 1:].contains("-h")
   }
-  if mooncode_shell_executable_is(executable, "curl") {
-    return mooncode_shell_segment_is_safe_loopback_curl(segment, index)
+  if shell_executable_is(executable, "curl") {
+    return shell_segment_is_safe_loopback_curl(segment, index)
   }
-  if mooncode_shell_executable_is(executable, "moon") {
-    let subcommand_index = mooncode_shell_subcommand_index_after_options(
+  if shell_executable_is(executable, "moon") {
+    let subcommand_index = shell_subcommand_index_after_options(
       segment,
       index,
       ["-C", "--directory"],
@@ -804,14 +737,14 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return !segment.contains("--update") && !segment.contains("-u")
   }
-  if mooncode_shell_executable_is(executable, "sh") ||
-    mooncode_shell_executable_is(executable, "bash") ||
-    mooncode_shell_executable_is(executable, "zsh") {
-    let nested_index = mooncode_shell_nested_command_index(segment, index)
+  if shell_executable_is(executable, "sh") ||
+    shell_executable_is(executable, "bash") ||
+    shell_executable_is(executable, "zsh") {
+    let nested_index = shell_nested_command_index(segment, index)
     return nested_index >= 0 &&
-      mooncode_shell_is_demonstrably_read_only(segment[nested_index])
+      shell_is_demonstrably_read_only(segment[nested_index])
   }
-  if mooncode_shell_executable_is(executable, "find") {
+  if shell_executable_is(executable, "find") {
     for word in segment[index + 1:] {
       if word == "-delete" ||
         word == "-exec" ||
@@ -826,7 +759,7 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return true
   }
-  if mooncode_shell_executable_is(executable, "sort") {
+  if shell_executable_is(executable, "sort") {
     for word in segment[index + 1:] {
       if word == "-o" || word == "--output" || word.has_prefix("--output=") {
         return false
@@ -834,7 +767,7 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return true
   }
-  if mooncode_shell_executable_is(executable, "sed") {
+  if shell_executable_is(executable, "sed") {
     for word in segment[index + 1:] {
       if word == "-i" ||
         word.has_prefix("-i") ||
@@ -847,8 +780,8 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return true
   }
-  if mooncode_shell_executable_is(executable, "awk") {
-    return mooncode_shell_segment_is_read_only_awk(segment, index)
+  if shell_executable_is(executable, "awk") {
+    return shell_segment_is_read_only_awk(segment, index)
   }
   for
     name in [
@@ -856,7 +789,7 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
       "ls", "printf", "pwd", "rg", "set", "stat", "tail", "test", "tr", "true", "type",
       "uniq", "wc", "which",
     ] {
-    if mooncode_shell_executable_is(executable, name) {
+    if shell_executable_is(executable, name) {
       return true
     }
   }
@@ -864,32 +797,32 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
 }
 
 ///|
-fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
+fn shell_is_demonstrably_read_only(command : String) -> Bool {
   if command.trim().is_empty() ||
     command.contains("<(") ||
     command.contains(">(") {
     return false
   }
-  let (substitutions_valid, outer_command, substitutions) = mooncode_shell_extract_command_substitutions(
+  let (substitutions_valid, outer_command, substitutions) = shell_extract_command_substitutions(
     command,
   )
   if !substitutions_valid ||
-    mooncode_shell_has_file_output_redirection(outer_command) ||
-    mooncode_shell_has_in_place_authoring(outer_command) {
+    shell_has_file_output_redirection(outer_command) ||
+    shell_has_in_place_authoring(outer_command) {
     return false
   }
   for substitution in substitutions {
-    if !mooncode_shell_is_demonstrably_read_only(substitution) {
+    if !shell_is_demonstrably_read_only(substitution) {
       return false
     }
   }
   let segment : Array[String] = []
   let mut executable_seen = false
-  for word in mooncode_shell_words(outer_command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+  for word in shell_words(outer_command) {
+    if word == SHELL_BOUNDARY_TOKEN {
       if !segment.is_empty() {
         executable_seen = true
-        if !mooncode_shell_segment_is_demonstrably_read_only(segment) {
+        if !shell_segment_is_demonstrably_read_only(segment) {
           return false
         }
         segment.clear()
@@ -900,7 +833,7 @@ fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
   }
   if !segment.is_empty() {
     executable_seen = true
-    if !mooncode_shell_segment_is_demonstrably_read_only(segment) {
+    if !shell_segment_is_demonstrably_read_only(segment) {
       return false
     }
   }
@@ -908,7 +841,7 @@ fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_command_substitution_at(
+fn shell_command_substitution_at(
   chars : Array[Char],
   start : Int32,
 ) -> (String, Int32)? {
@@ -975,7 +908,7 @@ fn mooncode_shell_command_substitution_at(
 }
 
 ///|
-fn mooncode_shell_extract_command_substitutions(
+fn shell_extract_command_substitutions(
   command : String,
 ) -> (Bool, String, Array[String]) {
   let chars = command.to_array()
@@ -1023,7 +956,7 @@ fn mooncode_shell_extract_command_substitutions(
       return (false, "", [])
     }
     if ch == '$' && index + 1 < chars.length() && chars[index + 1] == '(' {
-      match mooncode_shell_command_substitution_at(chars, index) {
+      match shell_command_substitution_at(chars, index) {
         Some((content, next_index)) => {
           substitutions.push(content)
           outer.write_string("mooncode-substitution")
@@ -1043,9 +976,7 @@ fn mooncode_shell_extract_command_substitutions(
 }
 
 ///|
-fn mooncode_shell_compound_command_executable_index(
-  segment : Array[String],
-) -> Int32 {
+fn shell_compound_command_executable_index(segment : Array[String]) -> Int32 {
   let mut index = 0
   while index < segment.length() &&
         ["!", "(", "{", "do", "then", "else", "elif", "if", "while", "until"].contains(
@@ -1053,11 +984,11 @@ fn mooncode_shell_compound_command_executable_index(
         ) {
     index += 1
   }
-  mooncode_shell_segment_executable_index_from(segment, index)
+  shell_segment_executable_index_from(segment, index)
 }
 
 ///|
-fn mooncode_shell_sed_short_option(option : String) -> (Bool, Bool) {
+fn shell_sed_short_option(option : String) -> (Bool, Bool) {
   let chars = option.to_array()
   if chars.length() < 2 || chars[0] != '-' || chars[1] == '-' {
     return (false, false)
@@ -1073,30 +1004,26 @@ fn mooncode_shell_sed_short_option(option : String) -> (Bool, Bool) {
 }
 
 ///|
-fn mooncode_shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
-  let executable_index = mooncode_shell_compound_command_executable_index(
-    segment,
-  )
+fn shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
+  let executable_index = shell_compound_command_executable_index(segment)
   if executable_index < 0 {
     return false
   }
   let executable = segment[executable_index]
-  if mooncode_shell_executable_is(executable, "sh") ||
-    mooncode_shell_executable_is(executable, "bash") ||
-    mooncode_shell_executable_is(executable, "zsh") {
-    let nested_index = mooncode_shell_nested_command_index(
-      segment, executable_index,
-    )
+  if shell_executable_is(executable, "sh") ||
+    shell_executable_is(executable, "bash") ||
+    shell_executable_is(executable, "zsh") {
+    let nested_index = shell_nested_command_index(segment, executable_index)
     return nested_index >= 0 &&
-      mooncode_shell_has_in_place_authoring(segment[nested_index])
+      shell_has_in_place_authoring(segment[nested_index])
   }
   let mut option_index = executable_index + 1
-  if mooncode_shell_executable_is(executable, "busybox") {
+  if shell_executable_is(executable, "busybox") {
     if option_index >= segment.length() || segment[option_index] != "sed" {
       return false
     }
     option_index += 1
-  } else if !mooncode_shell_executable_is(executable, "sed") {
+  } else if !shell_executable_is(executable, "sed") {
     return false
   }
   while option_index < segment.length() {
@@ -1115,7 +1042,7 @@ fn mooncode_shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
       option_index += 1
       continue
     }
-    let (in_place, consumes_next) = mooncode_shell_sed_short_option(option)
+    let (in_place, consumes_next) = shell_sed_short_option(option)
     if in_place {
       return true
     }
@@ -1125,11 +1052,11 @@ fn mooncode_shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
 }
 
 ///|
-fn mooncode_shell_has_in_place_authoring(command : String) -> Bool {
+pub fn shell_has_in_place_authoring(command : String) -> Bool {
   let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_in_place_sed(segment) {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
+      if shell_segment_has_in_place_sed(segment) {
         return true
       }
       segment.clear()
@@ -1137,22 +1064,22 @@ fn mooncode_shell_has_in_place_authoring(command : String) -> Bool {
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_in_place_sed(segment)
+  shell_segment_has_in_place_sed(segment)
 }
 
 ///|
-fn mooncode_shell_word_is_interpreter(word : String) -> Bool {
-  mooncode_shell_executable_is(word, "python") ||
-  mooncode_shell_executable_is(word, "python3") ||
+fn shell_word_is_interpreter(word : String) -> Bool {
+  shell_executable_is(word, "python") ||
+  shell_executable_is(word, "python3") ||
   word.contains("/python3.") ||
-  mooncode_shell_executable_is(word, "pypy") ||
-  mooncode_shell_executable_is(word, "pypy3") ||
-  mooncode_shell_executable_is(word, "node") ||
-  mooncode_shell_executable_is(word, "deno") ||
-  mooncode_shell_executable_is(word, "bun") ||
-  mooncode_shell_executable_is(word, "ruby") ||
-  mooncode_shell_executable_is(word, "perl") ||
-  mooncode_shell_executable_is(word, "php")
+  shell_executable_is(word, "pypy") ||
+  shell_executable_is(word, "pypy3") ||
+  shell_executable_is(word, "node") ||
+  shell_executable_is(word, "deno") ||
+  shell_executable_is(word, "bun") ||
+  shell_executable_is(word, "ruby") ||
+  shell_executable_is(word, "perl") ||
+  shell_executable_is(word, "php")
 }
 
 ///|
@@ -1160,11 +1087,10 @@ fn mooncode_shell_word_is_interpreter(word : String) -> Bool {
 /// their file-writing APIs must not bypass MoonCode's reviewable mutation
 /// tools. This recognizes the concrete write primitives rather than rejecting
 /// all interpreter use.
-fn mooncode_shell_has_inline_interpreter_authoring(command : String) -> Bool {
+pub fn shell_has_inline_interpreter_authoring(command : String) -> Bool {
   let mut has_interpreter = false
-  for word in mooncode_shell_words(command) {
-    if word != MOONCODE_SHELL_BOUNDARY_TOKEN &&
-      mooncode_shell_word_is_interpreter(word) {
+  for word in shell_words(command) {
+    if word != SHELL_BOUNDARY_TOKEN && shell_word_is_interpreter(word) {
       has_interpreter = true
       break
     }
@@ -1202,7 +1128,7 @@ fn mooncode_shell_has_inline_interpreter_authoring(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_chars_match(
+fn shell_chars_match(
   chars : Array[Char],
   start : Int32,
   expected : String,
@@ -1220,7 +1146,7 @@ fn mooncode_shell_chars_match(
 }
 
 ///|
-fn mooncode_shell_has_file_output_redirection(command : String) -> Bool {
+pub fn shell_has_file_output_redirection(command : String) -> Bool {
   let chars = command.to_array()
   let mut single_quoted = false
   let mut double_quoted = false
@@ -1259,9 +1185,7 @@ fn mooncode_shell_has_file_output_redirection(command : String) -> Bool {
         }
         let target_is_descriptor = target < chars.length() &&
           (chars[target] == '&' || chars[target] == '(')
-        let target_is_dev_null = mooncode_shell_chars_match(
-          chars, target, "/dev/null",
-        )
+        let target_is_dev_null = shell_chars_match(chars, target, "/dev/null")
         if !target_is_descriptor && !target_is_dev_null {
           return true
         }
@@ -1273,7 +1197,7 @@ fn mooncode_shell_has_file_output_redirection(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_has_pipeline(command : String) -> Bool {
+fn shell_has_pipeline(command : String) -> Bool {
   let chars = command.to_array()
   let mut single_quoted = false
   let mut double_quoted = false
@@ -1315,10 +1239,10 @@ fn mooncode_shell_has_pipeline(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_pipefail_enabled(command : String) -> Bool {
+fn shell_pipefail_enabled(command : String) -> Bool {
   let prefix : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+  for word in shell_words(command) {
+    if word == SHELL_BOUNDARY_TOKEN {
       break
     }
     prefix.push(word)
@@ -1343,67 +1267,6 @@ fn mooncode_shell_pipefail_enabled(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_pipeline_exit_ambiguous(command : String) -> Bool {
-  mooncode_shell_has_pipeline(command) &&
-  !mooncode_shell_pipefail_enabled(command)
-}
-
-///|
-/// Resolve ordinary shell arguments that name local files. The observation is
-/// intentionally derived from existing files under the selected book instead
-/// of from a command-name allowlist: successful analysis commands can then
-/// retain the files they actually exposed even when they use different viewers
-/// or filters.
-#warnings("-unused_value")
-async fn mooncode_shell_file_observation(
-  book_root : String,
-  cwd_path : String,
-  command : String,
-  output : String,
-  truncated : Bool,
-) -> Json {
-  let root = @pathx.normalize(book_root)
-  let mut observed_path = ""
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN ||
-      word == "" ||
-      word == "-" ||
-      word.has_prefix("-") ||
-      mooncode_shell_word_is_assignment(word) {
-      continue
-    }
-    let absolute = if @pathx.is_absolute(word) {
-      @pathx.normalize(word)
-    } else {
-      @pathx.join(cwd_path, word)
-    }
-    let exists_as_file = @fsx.exists_as_file(absolute) catch { _ => false }
-    if (absolute != root && !absolute.has_prefix(root + "/")) || !exists_as_file {
-      continue
-    }
-    let relative = if absolute == root {
-      "."
-    } else {
-      absolute[root.length() + 1:].to_owned()
-    }
-    if observed_path != "" && observed_path != relative {
-      return {}
-    }
-    observed_path = relative
-  }
-  if observed_path == "" {
-    return {}
-  }
-  let content = @fsx.read_file(@pathx.join(root, observed_path)) catch {
-    _ => return {}
-  }
-  {
-    "path": observed_path,
-    "scope": if !truncated && output == content {
-      "complete"
-    } else {
-      "partial"
-    },
-    "source": "shell",
-  }
+pub fn shell_pipeline_exit_ambiguous(command : String) -> Bool {
+  shell_has_pipeline(command) && !shell_pipefail_enabled(command)
 }

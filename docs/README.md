@@ -85,6 +85,11 @@ Runtime files use MoonLib-resolved product homes. The journal owns ordered
 facts; the desktop consumes canonical conversation projections rather than
 merging raw events or claiming independent completion.
 
+Pure MoonCode tool properties and shell analysis belong to
+`internal/mooncode_tools`; daemon code binds execution and durable IO. Commit
+does not end the authorized repair cycle. The duplicate Guardian shadow trial
+and post-commit command seal were removed.
+
 ## Validation And Evidence
 
 Use focused checks for changed packages and the release gate in

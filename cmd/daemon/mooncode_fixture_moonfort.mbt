@@ -234,25 +234,6 @@ async fn mooncode_fixture_execute_tool_call(
 
 ///|
 #warnings("-unused_value")
-async fn mooncode_fixture_execute_guarded_tool_call(
-  config : @execution_sandbox.SandboxExecutorConfig,
-  session_id : String,
-  book_root : String,
-  body : Json,
-  prior_results : Array[Json],
-  now~ : @clock.Timestamp,
-) -> Json {
-  mooncode_execute_guarded_tool_call(
-    session_id,
-    book_root,
-    mooncode_fixture_authorized_tool_body(config, book_root, body),
-    prior_results,
-    now~,
-  )
-}
-
-///|
-#warnings("-unused_value")
 async fn mooncode_fixture_authorized_runtime_command(
   config : @execution_sandbox.SandboxExecutorConfig,
   book_root : String,
