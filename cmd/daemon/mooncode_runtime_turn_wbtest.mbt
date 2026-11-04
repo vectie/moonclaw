@@ -1018,7 +1018,7 @@ test "mooncode model planner sends a compact request envelope" {
   let coding_tools = mooncode_runtime_turn_model_tools_for_command(coding).map(tool => {
     tool.to_json().stringify()
   })
-  for tool_name in ["edit", "apply_patch", "spawn_workers", "wait_workers"] {
+  for tool_name in ["edit", "apply_patch"] {
     assert_true(
       coding_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
     )
@@ -1047,10 +1047,7 @@ test "mooncode model planner sends a compact request envelope" {
     }
     let tools = mooncode_runtime_turn_model_tools_for_command(command)
     let serialized_tools = tools.map(tool => tool.to_json().stringify())
-    for
-      tool_name in [
-        "edit", "apply_patch", "shell", "spawn_workers", "wait_workers",
-      ] {
+    for tool_name in ["edit", "apply_patch", "shell"] {
       assert_true(
         serialized_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
       )
@@ -1107,7 +1104,7 @@ test "mooncode model planner sends a compact request envelope" {
   let coding_with_path_tools = mooncode_runtime_turn_model_tools_for_command(
     coding_with_path,
   ).map(tool => tool.to_json().stringify())
-  for tool_name in ["edit", "apply_patch", "spawn_workers", "wait_workers"] {
+  for tool_name in ["edit", "apply_patch"] {
     assert_true(
       coding_with_path_tools.any(tool => {
         tool.contains("\"name\":\"\{tool_name}\"")
@@ -1136,121 +1133,8 @@ test "mooncode model planner sends a compact request envelope" {
     .stringify()
     .contains("never through read, shell, glob, grep, find, ls, or web tools"),
   )
-  assert_true(system.contains("Never ask for tool approval in assistant prose"))
-  assert_true(
-    system.contains(
-      "read their authoritative local implementation or specification",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "never invent fields or call a synthetic subset a captured runtime payload",
-    ),
-  )
-  assert_true(system.contains("Before any replace-all or repeated replacement"))
-  assert_true(system.contains("rerun the nearest affected tests"))
-  assert_true(
-    system.contains(
-      "Never create marker files, no-op edits, comments, or other artifacts",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "Interpret `no cleanup` and similar scope constraints as forbidding unrelated refactors",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "not as permission to skip the repository's canonical formatter",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "Do not set `requires_approval` or `approval=operator` for read, view_image, local browser observation, moon_ide, moon_check",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "`moon fmt` accepts path/paths but never target or package selectors",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "a path inside a nested module lets the runtime infer its nearest module root",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "Treat exact paths named by the user and task-contract `context_paths` as authoritative starting evidence",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "that failed lookup is not a blocker while a causally different next action remains",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "If any required milestone is pending or active, choose the next useful tool batch",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "Batch independent inspections in one response; start another inference round only when a later action depends on an earlier result",
-    ),
-  )
-  assert_false(system.contains("MoonBit baseline:"))
-
-  let codex = @model.codex_oauth_model(
-    access_token="test",
-    account_id="test",
-    refresh_token="test",
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(codex, command) is None,
-  )
-  let direct = @model.Model::new(
-    api_key="test",
-    base_url="https://example.invalid/v1",
-    name="test-model",
-    safe_zone_tokens=1000,
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(direct, command)
-    is Some(60000),
-  )
-  let slow_command : Json = { "payload": { "planner_timeout_ms": 300000 } }
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(direct, slow_command)
-    is Some(120000),
-  )
-  let kimi = @model.Model::new(
-    api_key="test",
-    base_url="http://127.0.0.1:15721/v1",
-    name="moongate/kimi-k3",
-    model_name="kimi-k3",
-    safe_zone_tokens=1000,
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(kimi, command) is None,
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(kimi, slow_command) is None,
-  )
-  let deepseek = @model.Model::new(
-    api_key="test",
-    base_url="http://127.0.0.1:15721/v1",
-    name="moongate/deepseek-v4-flash",
-    model_name="deepseek-v4-flash",
-    safe_zone_tokens=1000,
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(deepseek, command) is None,
-  )
-  assert_true(
-    mooncode_runtime_turn_model_timeout_for_provider(deepseek, slow_command)
-    is None,
-  )
+  assert_true(system.contains("primary agent"))
+  assert_true(system.contains("Checkpoints are optional"))
 }
 
 ///|
@@ -1305,12 +1189,8 @@ test "mooncode planner permits parallel tool calls" {
     "content",
     default="",
   )
-  assert_true(planner_system.contains("at most six broad and twelve total"))
-  assert_true(
-    planner_system.contains(
-      "the next tool batch must contain edit, write, or apply_patch",
-    ),
-  )
+  assert_true(planner_system.contains("batch independent work"))
+  assert_false(planner_system.contains("at most six broad"))
 }
 
 ///|
@@ -1343,25 +1223,6 @@ test "mooncode planner scopes prompt cache identity to MoonGate sessions" {
   )
   assert_true(
     mooncode_runtime_turn_model_extra_body(moongate, { "session_id": "   " }).is_empty(),
-  )
-}
-
-///|
-test "mooncode discovery saturation locks implementation until mutation" {
-  let saturated : Json = {
-    "accepted": false,
-    "tool": "read",
-    "result": { "ok": false, "metadata": { "discovery_saturated": true } },
-  }
-  assert_true(mooncode_runtime_turn_discovery_saturation_active([saturated]))
-  let mutation : Json = {
-    "accepted": true,
-    "tool": "edit",
-    "arguments": { "path": "src/main.mbt" },
-    "result": { "ok": true },
-  }
-  assert_false(
-    mooncode_runtime_turn_discovery_saturation_active([saturated, mutation]),
   )
 }
 
@@ -1480,63 +1341,6 @@ test "mooncode line-range reads remain partial observations" {
 }
 
 ///|
-test "mooncode planner has no implicit budget and scopes goal settlement" {
-  let command : Json = {
-    "command": "prompt",
-    "text": "Continue implementation until the requested work is complete.",
-  }
-  let system = mooncode_json_string(
-    mooncode_runtime_turn_model_initial_messages(command)[0],
-    "content",
-    default="",
-  )
-  assert_true(system.contains("no implicit token, turn, time, step"))
-  assert_true(system.contains("Difficulty, elapsed work, a large context"))
-  assert_true(system.contains("Honor real caller-supplied budgets exactly"))
-  assert_true(system.contains("time-budget-exhausted"))
-  assert_true(
-    system.contains("unless that exact caller-supplied budget exists"),
-  )
-  assert_true(system.contains("genuine external dependency"))
-  assert_true(
-    system.contains(
-      "Never include finish.goal_runtime unless active goal_runtime context is explicitly present",
-    ),
-  )
-  assert_false(
-    Json(mooncode_runtime_turn_model_tools_for_command(command))
-    .stringify()
-    .contains("goal_runtime"),
-  )
-
-  let goal_command : Json = {
-    "command": "prompt",
-    "text": "Continue the goal",
-    "goal_runtime": {
-      "goal_id": "goal-1",
-      "objective": "Complete all work",
-      "criteria": [{ "id": "criterion-1", "criterion": "tests pass" }],
-      "status": { "terminal": false },
-    },
-  }
-  let goal_prompt = mooncode_runtime_turn_model_prompt(goal_command)
-  assert_true(goal_prompt.contains("Active long-running goal"))
-  assert_true(goal_prompt.contains("criterion-1"))
-  assert_true(goal_prompt.contains("There is no implicit task budget"))
-  assert_true(
-    goal_prompt.contains("genuine external or user-authority blocker"),
-  )
-  let goal_tools_json = Json(
-    mooncode_runtime_turn_model_tools_for_command(goal_command),
-  ).stringify()
-  assert_true(goal_tools_json.contains("goal_runtime"))
-  assert_true(goal_tools_json.contains("achieved"))
-  assert_true(goal_tools_json.contains("blocked"))
-  assert_true(goal_tools_json.contains("genuine external dependency"))
-  assert_true(goal_tools_json.contains("implicit token, turn, time, step"))
-}
-
-///|
 test "kimi planner uses a concise autonomous execution envelope" {
   let command : Json = {
     "command": "prompt",
@@ -1552,34 +1356,6 @@ test "kimi planner uses a concise autonomous execution envelope" {
   assert_true(
     mooncode_json_string(messages[2], "content", default="").contains(
       "Redesign the complete interface",
-    ),
-  )
-}
-
-///|
-async test "mooncode finish rejects goal settlement without active authority" {
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-no-implicit-goal-XXXXXX"),
-  )
-  let ordinary = mooncode_tool_finish({ "answer": "completed ordinary task" })
-  assert_true(mooncode_json_bool(ordinary, "ok", default=false))
-
-  let invented = mooncode_tool_finish_for_session("no-active-goal", book_root, {
-    "answer": "blocked by invented budget",
-    "goal_runtime": {
-      "type": "blocked",
-      "reason": {
-        "code": "time-budget-exhausted",
-        "detail": "No caller supplied a time budget.",
-      },
-      "attempted_alternatives": ["continue useful work"],
-      "required_event": null,
-    },
-  })
-  assert_false(mooncode_json_bool(invented, "ok", default=true))
-  assert_true(
-    mooncode_json_string(invented, "message", default="").contains(
-      "requires an active runtime goal",
     ),
   )
 }
@@ -1778,9 +1554,8 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     "content",
     default="",
   )
-  assert_true(recovery.contains("Authoritative immutable checkpoint contract"))
-  assert_true(recovery.contains("\"id\": \"implementation\""))
-  assert_true(recovery.contains("Recent runtime evidence"))
+  assert_true(recovery.contains("Saved progress (advisory)"))
+  assert_true(recovery.contains("Recent results"))
   assert_true(recovery.contains("Loaded-skill receipt"))
   assert_true(recovery.contains("moonbit-agent-guide/SKILL.md"))
   assert_true(
@@ -2306,7 +2081,10 @@ test "mooncode native runtime turn decodes model-selected tool calls" {
       },
     ],
   })
-  assert_eq(calls.length(), 2)
+  assert_eq(calls.length(), 3)
+  assert_true(
+    mooncode_json_string(calls[2], "validation_error", default="") != "",
+  )
   assert_eq(mooncode_json_string(calls[0], "tool", default=""), "write")
   assert_eq(
     mooncode_json_string(calls[0], "tool_call_id", default=""),
@@ -2318,176 +2096,6 @@ test "mooncode native runtime turn decodes model-selected tool calls" {
     "tools/model-plan/run.sh",
   )
   assert_eq(mooncode_json_string(calls[1], "tool", default=""), "finish")
-}
-
-///|
-test "mooncode native runtime recovers adjacent provider tool arguments" {
-  let response : Json = {
-    "choices": [
-      {
-        "message": {
-          "tool_calls": [
-            {
-              "id": "shell-0",
-              "type": "function",
-              "function": {
-                "name": "shell",
-                "arguments": "{\"cmd\":\"pwd\"}{\"cmd\":\"git status --short\"}",
-              },
-            },
-          ],
-        },
-      },
-    ],
-  }
-  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
-  assert_eq(calls.length(), 2)
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(calls[0], "arguments"),
-      "cmd",
-      default="",
-    ),
-    "pwd",
-  )
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(calls[1], "arguments"),
-      "cmd",
-      default="",
-    ),
-    "git status --short",
-  )
-  assert_eq(
-    mooncode_json_string(calls[0], "tool_call_id", default=""),
-    "shell-0-1",
-  )
-  assert_eq(
-    mooncode_json_string(calls[1], "tool_call_id", default=""),
-    "shell-0-2",
-  )
-  let assistant = mooncode_runtime_turn_model_response_message(
-    response,
-    normalized_tool_calls=calls,
-  )
-  let normalized = mooncode_json_array_items(assistant, "tool_calls")
-  assert_eq(normalized.length(), 2)
-  assert_eq(mooncode_json_string(normalized[1], "id", default=""), "shell-0-2")
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(normalized[1], "function"),
-      "arguments",
-      default="",
-    ),
-    "{\"cmd\":\"git status --short\"}",
-  )
-}
-
-///|
-test "mooncode native runtime normalizes heterogeneous adjacent provider calls" {
-  let response : Json = {
-    "choices": [
-      {
-        "message": {
-          "tool_calls": [
-            {
-              "id": "mixed-0",
-              "type": "function",
-              "function": {
-                "name": "edit",
-                "arguments": "{\"path\":\"src/ui.mbt\",\"old_string\":\"old\",\"new_string\":\"new\"}{\"cmd\":\"git diff --check\"}",
-              },
-            },
-          ],
-        },
-      },
-    ],
-  }
-  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
-  assert_eq(calls.length(), 2)
-  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "edit")
-  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "shell")
-  let assistant = mooncode_runtime_turn_model_response_message(
-    response,
-    normalized_tool_calls=calls,
-  )
-  let normalized = mooncode_json_array_items(assistant, "tool_calls")
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(normalized[1], "function"),
-      "name",
-      default="",
-    ),
-    "shell",
-  )
-}
-
-///|
-test "mooncode native runtime recovers checkpoint followed by path read" {
-  let response : Json = {
-    "choices": [
-      {
-        "message": {
-          "tool_calls": [
-            {
-              "id": "checkpoint-read-0",
-              "type": "function",
-              "function": {
-                "name": "checkpoint",
-                "arguments": "{\"horizon_id\":\"horizon\",\"milestones\":[],\"next_action\":\"read exact file\"}{\"path\":\"src/ui/types.mbt\"}",
-              },
-            },
-          ],
-        },
-      },
-    ],
-  }
-  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
-  assert_eq(calls.length(), 2)
-  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "checkpoint")
-  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "read")
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(calls[1], "arguments"),
-      "path",
-      default="",
-    ),
-    "src/ui/types.mbt",
-  )
-}
-
-///|
-test "mooncode native runtime recovers read followed by named skill" {
-  let response : Json = {
-    "choices": [
-      {
-        "message": {
-          "tool_calls": [
-            {
-              "id": "read-skill-0",
-              "type": "function",
-              "function": {
-                "name": "read",
-                "arguments": "{\"path\":\"src/ui.mbt\"}{\"name\":\"moonbit-agent-guide\"}",
-              },
-            },
-          ],
-        },
-      },
-    ],
-  }
-  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
-  assert_eq(calls.length(), 2)
-  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "read")
-  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "read_skill")
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(calls[1], "arguments"),
-      "name",
-      default="",
-    ),
-    "moonbit-agent-guide",
-  )
 }
 
 ///|
@@ -2598,7 +2206,7 @@ test "mooncode coding completion requires mutation followed by verification" {
 }
 
 ///|
-test "mooncode coding completion rejects mutations reverted before finish" {
+test "mooncode completion accepts an inspected baseline after fresh verification" {
   let command : Json = {
     "command": "prompt",
     "text": "Implement the MoonBit fix and run focused tests.",
@@ -2636,8 +2244,7 @@ test "mooncode coding completion rejects mutations reverted before finish" {
   let reverted = mooncode_runtime_turn_completion_verdict(command, [
     first_edit, test_result, revert_edit, test_result, finish,
   ])
-  assert_false(reverted.accepted)
-  assert_true(reverted.reason.contains("no net mutation"))
+  assert_true(reverted.accepted)
   let retained_edit = mooncode_json_object_with_field(revert_edit, "result", {
     "metadata": {
       "path": "src/runtime.mbt",
@@ -3415,161 +3022,6 @@ test "mooncode model planner rejects only stale duplicate complete reads" {
 }
 
 ///|
-test "mooncode implementation discovery bounds broad and total reads until mutation" {
-  let implementation : Json = {
-    "command": "prompt",
-    "text": "Implement the requested UI behavior and run checks.",
-    "payload": { "task_intent": "workspace_change" },
-  }
-  let discoveries : Array[Json] = []
-  for _ in 0..<6 {
-    discoveries.push({
-      "accepted": true,
-      "tool": "shell",
-      "arguments": { "cmd": "find src -maxdepth {index + 1} -type f" },
-      "result": { "ok": true, "output": "src/main.mbt" },
-    })
-  }
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "shell", "arguments": { "cmd": "ls -la src" } },
-      discoveries,
-    ),
-  )
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
-      discoveries,
-    ),
-  )
-  assert_false(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      {
-        "tool": "read",
-        "arguments": {
-          "path": "src/main.mbt",
-          "start_line": 40,
-          "end_line": 80,
-        },
-      },
-      discoveries,
-    ),
-  )
-  assert_false(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      {
-        "tool": "shell",
-        "arguments": { "cmd": "rg -n 'render_agent' src/main.mbt" },
-      },
-      discoveries,
-    ),
-  )
-  let targeted = discoveries.copy()
-  for index in 0..<6 {
-    targeted.push({
-      "accepted": true,
-      "tool": "read",
-      "arguments": {
-        "path": "src/main.mbt",
-        "start_line": index * 20 + 1,
-        "end_line": index * 20 + 20,
-      },
-      "result": { "ok": true, "output": "source range" },
-    })
-  }
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      {
-        "tool": "read",
-        "arguments": {
-          "path": "src/other.mbt",
-          "start_line": 1,
-          "end_line": 20,
-        },
-      },
-      targeted,
-    ),
-  )
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      {
-        "tool": "moon_ide",
-        "arguments": { "action": "outline", "path": "src/main.mbt" },
-      },
-      targeted,
-    ),
-  )
-  let failed_edit : Json = {
-    "accepted": false,
-    "tool": "edit",
-    "arguments": {
-      "path": "src/main.mbt",
-      "old_string": "stale bytes",
-      "new_string": "replacement",
-    },
-    "result": {
-      "ok": false,
-      "message": "old_string not found",
-      "metadata": { "context_mismatch": true, "path": "src/main.mbt" },
-    },
-  }
-  let after_failed_edit = targeted.copy()
-  after_failed_edit.push(failed_edit)
-  assert_false(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
-      after_failed_edit,
-    ),
-  )
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "read", "arguments": { "path": "src/other.mbt" } },
-      after_failed_edit,
-    ),
-  )
-  let after_recovery_read = after_failed_edit.copy()
-  after_recovery_read.push({
-    "accepted": true,
-    "tool": "read",
-    "arguments": { "path": "src/main.mbt" },
-    "result": {
-      "ok": true,
-      "output": "current source bytes",
-      "metadata": { "path": "src/main.mbt", "truncated": false },
-    },
-  })
-  assert_true(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
-      after_recovery_read,
-    ),
-  )
-  let after_mutation = discoveries.copy()
-  after_mutation.push({
-    "accepted": true,
-    "tool": "edit",
-    "arguments": { "path": "src/main.mbt" },
-    "result": { "ok": true },
-  })
-  assert_false(
-    mooncode_runtime_turn_discovery_saturated(
-      implementation,
-      { "tool": "shell", "arguments": { "cmd": "ls -la src" } },
-      after_mutation,
-    ),
-  )
-}
-
-///|
 test "mooncode compacted provider context retains complete-read receipts and permits ranges" {
   let read_call : Json = {
     "tool": "read",
@@ -3834,82 +3286,6 @@ test "mooncode shell observation ordering preserves causal narrow rereads" {
 }
 
 ///|
-test "mooncode rejects comment-only implementation mutations before execution" {
-  let repair : Json = {
-    "command": "prompt",
-    "text": "Implement the runtime defect repair and run tests.",
-  }
-  let comment_edit : Json = {
-    "tool": "edit",
-    "arguments": {
-      "path": "src/runtime.mbt",
-      "old_string": "pub fn supported(name : String) -> Bool {",
-      "new_string": "/// Returns whether the name is supported.\n/// Aliases are normalized before lookup.\npub fn supported(name : String) -> Bool {",
-    },
-  }
-  assert_true(mooncode_runtime_turn_comment_only_repair(repair, comment_edit))
-  let rejected = mooncode_runtime_turn_comment_only_repair_execution(
-    "session-comment-only",
-    "/tmp/book",
-    "command-comment-only",
-    comment_edit,
-    now=@clock.Timestamp::from_ms(1L),
-  )
-  assert_false(mooncode_json_bool(rejected, "accepted", default=true))
-  assert_true(
-    mooncode_json_bool(
-      mooncode_json_object_field_or_empty(
-        mooncode_json_object_field_or_empty(rejected, "result"),
-        "metadata",
-      ),
-      "comment_only_repair",
-      default=false,
-    ),
-  )
-  let substantive_edit : Json = {
-    "tool": "edit",
-    "arguments": {
-      "path": "src/runtime.mbt",
-      "old_string": "runtime_tool_names().contains(name)",
-      "new_string": "runtime_tool_names().contains(canonical_name(name))",
-    },
-  }
-  assert_false(
-    mooncode_runtime_turn_comment_only_repair(repair, substantive_edit),
-  )
-  let comment_patch : Json = {
-    "tool": "apply_patch",
-    "arguments": {
-      "diff": "--- a/src/runtime.mbt\n+++ b/src/runtime.mbt\n@@\n+/// Aliases are normalized before lookup.\n",
-    },
-  }
-  assert_true(mooncode_runtime_turn_comment_only_repair(repair, comment_patch))
-  let explanation : Json = {
-    "command": "prompt",
-    "text": "Document how the runtime alias lookup works.",
-  }
-  assert_false(
-    mooncode_runtime_turn_comment_only_repair(explanation, comment_edit),
-  )
-  let initial = mooncode_runtime_turn_model_initial_messages(repair)
-  assert_true(
-    mooncode_json_string(initial[0], "content", default="").contains(
-      "comment-only or documentation-only mutation does not satisfy",
-    ),
-  )
-  assert_true(
-    mooncode_json_string(initial[0], "content", default="").contains(
-      "do not repeat it against the same intended dirty state",
-    ),
-  )
-  assert_true(
-    mooncode_json_string(initial[0], "content", default="").contains(
-      "Never guess a toolchain or dependency-management command",
-    ),
-  )
-}
-
-///|
 async test "mooncode native runtime turn packages an explicit executable tool plan" (
   t : @test.Test,
 ) {
@@ -4013,14 +3389,10 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
     assert_true(@fsx.exists(script_path))
     assert_true(@fsx.exists(readme_path))
     let package_results = mooncode_json_array_items(result, "package_results")
-    assert_eq(package_results.length(), 2)
+    assert_eq(package_results.length(), 1)
     assert_eq(
       mooncode_json_string(package_results[0], "event", default=""),
       "package_built",
-    )
-    assert_eq(
-      mooncode_json_string(package_results[1], "event", default=""),
-      "package_verified",
     )
     let manifest_path = @pathx.join(
       book_root, "portable/app-tool/mooncode/session-runtime-prompt/package-cmd-runtime-prompt.json",
@@ -4053,7 +3425,7 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
       mooncode_session_journal_path(book_root, session_id),
     )
     assert_true(package_log.contains("\"package_built\""))
-    assert_true(package_log.contains("\"package_verified\""))
+    assert_false(package_log.contains("\"event\":\"package_verified\""))
     let book_results = mooncode_json_array_items(result, "book_results")
     assert_eq(book_results.length(), 1)
     let book_result_record = book_results[0]
@@ -4120,7 +3492,7 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
     assert_true(events_log.contains("\"tool_result\""))
     assert_true(events_log.contains("\"finish\""))
     assert_true(events_log.contains("\"runtime.package_built\""))
-    assert_true(events_log.contains("\"runtime.package_verified\""))
+    assert_false(events_log.contains("\"runtime.package_verified\""))
     assert_true(events_log.contains("\"runtime.turn_finished\""))
   })
 }

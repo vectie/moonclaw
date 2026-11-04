@@ -352,7 +352,7 @@ async test "pending withdrawal preserves an active approval claim and its eventu
       mooncode_json_bool(result, "interrupted_runtime", default=true),
     )
     assert_false(
-      mooncode_goal_runtime_is_active_cancel_source(
+      mooncode_runtime_is_active_cancel_source(
         mooncode_json_object_field_or_empty(result, "cancelled_event"),
       ),
     )

@@ -51,22 +51,10 @@ fn mooncode_runtime_commit_event_horizon_id(event : Json) -> String {
 ///|
 fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
-  let nested = mooncode_json_object_field_or_empty(payload, "task_contract")
-  if mooncode_json_string(nested, "objective", default="") != "" ||
-    mooncode_json_array_items(nested, "milestones").length() > 0 ||
-    mooncode_json_array_items(nested, "scope").length() > 0 {
-    nested
-  } else {
-    let direct = mooncode_json_object_field_or_empty(command, "task_contract")
-    let policy = mooncode_nochange_field(nested, "completion_policy")
-    if policy == Json::null() {
-      direct
-    } else if direct is Object(fields) && !fields.is_empty() {
-      // A policy-only extension must not discard original direct milestones.
-      mooncode_json_object_with_field(direct, "completion_policy", policy)
-    } else {
-      nested
-    }
+  match payload {
+    Object(fields) if fields.get("task_contract") is Some(Object(_) as contract) =>
+      contract
+    _ => mooncode_json_object_field_or_empty(command, "task_contract")
   }
 }
 
@@ -106,141 +94,43 @@ fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
 
 ///|
 fn mooncode_runtime_horizon_required_milestones(command : Json) -> Array[Json] {
-  if !mooncode_runtime_turn_requires_verification(command) {
-    return []
-  }
-  let explicit = mooncode_json_array_items(
+  mooncode_json_array_items(
     mooncode_runtime_horizon_task_contract(command),
     "milestones",
   )
-  if explicit.length() > 0 {
-    let milestones : Array[Json] = []
-    for index, item in explicit {
-      let id = mooncode_json_string(
-        item,
-        "id",
-        default="milestone-\{index + 1}",
-      )
-      let title = mooncode_json_string(item, "title", default=id)
-      let evidence_kind = mooncode_json_string(
-        item,
-        "evidence_kind",
-        default=if mooncode_json_string(item, "path", default="") == "" {
-          "mutation"
-        } else {
-          "path_changed"
-        },
-      )
-      milestones.push({
-        "id": id,
-        "title": title,
-        "evidence_kind": evidence_kind,
-        "path": mooncode_json_string(item, "path", default=""),
-        "context_paths": Json::array(
-          mooncode_json_array_string_items(item, "context_paths").map(value => {
-            Json(value)
-          }),
-        ),
-      })
-    }
-    return milestones
-  }
-  let request = mooncode_runtime_horizon_compact_request(command)
-    .to_lower()
-    .to_string()
-  let final_kind = if mooncode_runtime_turn_requests_tests(request) {
-    "test"
-  } else {
-    "check"
-  }
-  let milestones : Array[Json] = [
-    {
-      "id": "scope",
-      "title": "Locate the owned implementation surface",
-      "evidence_kind": "scope",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": "implementation",
-      "title": "Implement the requested behavior",
-      "evidence_kind": "mutation",
-      "path": "",
-      "context_paths": [],
-    },
-    {
-      "id": if final_kind == "test" {
-        "tests"
-      } else {
-        "verification"
-      },
-      "title": if final_kind == "test" {
-        "Pass the requested typed tests"
-      } else {
-        "Pass typed verification"
-      },
-      "evidence_kind": final_kind,
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-  if request.contains("build") {
-    milestones.push({
-      "id": "build",
-      "title": "Assemble the runnable distribution",
-      "evidence_kind": "build",
-      "path": "",
-      "context_paths": [],
-    })
-  }
-  if request.contains("ui-to-ui") ||
-    request.contains("visual validation") ||
-    request.contains("visually validate") ||
-    request.contains("rendered validation") ||
-    request.contains("desktop and phone") ||
-    request.contains("screenshot") {
-    milestones.push({
-      "id": "visual-validation",
-      "title": "Validate the rendered interaction on target viewports",
-      "evidence_kind": "visual",
-      "path": "",
-      "context_paths": [],
-    })
-  }
-  milestones
 }
 
 ///|
 fn mooncode_runtime_horizon_contract(command : Json) -> Json {
   let supplied = mooncode_runtime_horizon_task_contract(command)
-  let objective = mooncode_json_string(
-    supplied,
-    "objective",
-    default=mooncode_runtime_horizon_compact_request(command),
-  )
-  let contract : Json = {
-    "kind": "mooncode-long-horizon-task.v1",
-    "horizon_id": mooncode_runtime_horizon_id(command),
-    "objective": objective,
+  {
+    "kind": "mooncode-task",
+    "id": mooncode_runtime_horizon_id(command),
+    "revision": mooncode_json_string(
+      command,
+      "task_revision",
+      default=mooncode_json_string(
+        supplied,
+        "revision",
+        default=mooncode_command_id(command),
+      ),
+    ),
+    "objective": mooncode_json_string(
+      supplied,
+      "objective",
+      default=mooncode_runtime_horizon_compact_request(command),
+    ),
     "constraints": Json::array(
-      mooncode_json_array_string_items(supplied, "constraints").map(value => {
-        Json(value)
-      }),
+      mooncode_json_array_items(supplied, "constraints"),
     ),
+    "outputs": Json::array(mooncode_json_array_items(supplied, "outputs")),
+    "required_checks": Json::array(
+      mooncode_json_array_items(supplied, "required_checks"),
+    ),
+    "updates": Json::array(mooncode_json_array_items(command, "task_updates")),
     "context_paths": Json::array(
-      mooncode_json_array_string_items(supplied, "context_paths").map(value => {
-        Json(value)
-      }),
+      mooncode_json_array_items(supplied, "context_paths"),
     ),
-    "milestones": Json::array(
-      mooncode_runtime_horizon_required_milestones(command),
-    ),
-  }
-  let policy = mooncode_nochange_policy(command)
-  if policy == Json::null() {
-    contract
-  } else {
-    mooncode_json_object_with_field(contract, "completion_policy", policy)
   }
 }
 
@@ -254,17 +144,11 @@ fn mooncode_runtime_horizon_contract_prompt(command : Json) -> String {
 
 ///|
 fn mooncode_runtime_horizon_checkpoint_contract(command : Json) -> Json {
-  let contract : Json = {
+  {
     "horizon_id": mooncode_runtime_horizon_id(command),
     "milestones": Json::array(
       mooncode_runtime_horizon_required_milestones(command),
     ),
-  }
-  let policy = mooncode_nochange_policy(command)
-  if policy == Json::null() {
-    contract
-  } else {
-    mooncode_json_object_with_field(contract, "completion_policy", policy)
   }
 }
 
@@ -424,91 +308,6 @@ fn mooncode_runtime_horizon_last_mutation(results : Array[Json]) -> Int32 {
 }
 
 ///|
-fn mooncode_runtime_horizon_has_scope_evidence(results : Array[Json]) -> Bool {
-  results.any(result => {
-    mooncode_json_bool(result, "accepted", default=false) &&
-    (
-      mooncode_json_string(result, "tool", default="") == "read" ||
-      mooncode_json_string(result, "tool", default="") == "moon_ide"
-    )
-  })
-}
-
-///|
-fn mooncode_runtime_horizon_path_changed(
-  results : Array[Json],
-  path : String,
-) -> Bool {
-  let normalized = path.trim(chars="/").to_owned()
-  if normalized == "" {
-    return false
-  }
-  for result in results {
-    for state in mooncode_runtime_turn_result_mutation_states(result) {
-      let changed_path = mooncode_json_string(state, "path", default="")
-        .trim(chars="/")
-        .to_owned()
-      if (
-          changed_path == normalized ||
-          changed_path.has_prefix(normalized + "/")
-        ) &&
-        mooncode_json_string(state, "before", default="") !=
-        mooncode_json_string(state, "after", default="") {
-        return true
-      }
-    }
-  }
-  false
-}
-
-///|
-fn mooncode_runtime_horizon_has_verification(
-  results : Array[Json],
-  evidence_kind : String,
-) -> Bool {
-  let boundary = {
-    let mutation = mooncode_runtime_horizon_last_mutation(results)
-    let failure = mooncode_runtime_horizon_last_failure(results)
-    if mutation > failure {
-      mutation
-    } else {
-      failure
-    }
-  }
-  for index, result in results {
-    if index > boundary &&
-      mooncode_runtime_turn_result_verification_kind(result) == evidence_kind {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn mooncode_runtime_horizon_has_visual_validation(
-  results : Array[Json],
-) -> Bool {
-  let boundary = {
-    let mutation = mooncode_runtime_horizon_last_mutation(results)
-    let failure = mooncode_runtime_horizon_last_failure(results)
-    if mutation > failure {
-      mutation
-    } else {
-      failure
-    }
-  }
-  for index, result in results {
-    let tool = mooncode_json_string(result, "tool", default="")
-    if index > boundary &&
-      mooncode_json_bool(result, "accepted", default=false) &&
-      (tool == "browser" || tool == "view_image") {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn mooncode_runtime_horizon_documentation_path(path : String) -> Bool {
   let normalized = path.to_lower().to_string()
   normalized.has_prefix("docs/") ||
@@ -518,218 +317,27 @@ fn mooncode_runtime_horizon_documentation_path(path : String) -> Bool {
 }
 
 ///|
-fn mooncode_runtime_horizon_has_substantive_mutation(
-  command : Json,
-  results : Array[Json],
-) -> Bool {
-  if !mooncode_runtime_turn_requires_verification(command) {
-    return mooncode_runtime_turn_has_net_mutation(results)
-  }
-  for result in results {
-    for state in mooncode_runtime_turn_result_mutation_states(result) {
-      let path = mooncode_json_string(state, "path", default="")
-      if mooncode_json_string(state, "before", default="") !=
-        mooncode_json_string(state, "after", default="") &&
-        !mooncode_runtime_horizon_documentation_path(path) {
-        return true
-      }
-    }
-  }
-  false
-}
-
-///|
-fn mooncode_runtime_horizon_has_documentation_mutation(
-  results : Array[Json],
-) -> Bool {
-  for result in results {
-    for state in mooncode_runtime_turn_result_mutation_states(result) {
-      let path = mooncode_json_string(state, "path", default="")
-      if mooncode_json_string(state, "before", default="") !=
-        mooncode_json_string(state, "after", default="") &&
-        mooncode_runtime_horizon_documentation_path(path) {
-        return true
-      }
-    }
-  }
-  false
-}
-
-///|
-fn mooncode_runtime_horizon_result_is_substantive_mutation(
-  command : Json,
-  result : Json,
-) -> Bool {
-  if !mooncode_runtime_turn_requires_verification(command) {
-    return mooncode_runtime_turn_result_is_mutation(result)
-  }
-  mooncode_runtime_turn_result_mutation_states(result).any(state => {
-    let path = mooncode_json_string(state, "path", default="")
-    mooncode_json_string(state, "before", default="") !=
-    mooncode_json_string(state, "after", default="") &&
-    !mooncode_runtime_horizon_documentation_path(path)
-  })
-}
-
-///|
-fn mooncode_runtime_horizon_checkpoint_milestone_status(
-  checkpoint : Json,
-  id : String,
-) -> String {
-  for milestone in mooncode_json_array_items(checkpoint, "milestones") {
-    if mooncode_json_string(milestone, "id", default="") == id {
-      return mooncode_json_string(milestone, "status", default="")
-    }
-  }
-  ""
-}
-
-///|
-fn mooncode_runtime_horizon_milestone_proven(
-  command : Json,
-  milestone : Json,
-  results : Array[Json],
-) -> Bool {
-  let kind = mooncode_json_string(
-    milestone,
-    "evidence_kind",
-    default="mutation",
-  )
-  match kind {
-    "scope" => mooncode_runtime_horizon_has_scope_evidence(results)
-    "mutation" =>
-      mooncode_runtime_horizon_has_substantive_mutation(command, results)
-    "path_changed" =>
-      mooncode_runtime_horizon_path_changed(
-        results,
-        mooncode_json_string(milestone, "path", default=""),
-      )
-    "check" | "test" | "build" =>
-      mooncode_runtime_horizon_has_verification(results, kind)
-    "visual" => mooncode_runtime_horizon_has_visual_validation(results)
-    _ => false
-  }
-}
-
-///|
 fn mooncode_runtime_horizon_checkpoint_error(
   command : Json,
   arguments : Json,
-  results : Array[Json],
+  _results : Array[Json],
 ) -> String {
-  let expected_id = mooncode_runtime_horizon_id(command)
-  if mooncode_json_string(arguments, "horizon_id", default="") != expected_id {
+  if mooncode_json_string(arguments, "horizon_id", default="") !=
+    mooncode_runtime_horizon_id(command) {
     return "checkpoint horizon_id does not match the active task"
   }
-  let proposal_error = mooncode_nochange_proposal_error(
-    command, arguments, results,
-  )
-  if proposal_error != "" {
-    return proposal_error
-  }
-  let supplied = mooncode_json_array_items(arguments, "milestones")
-  if supplied.length() == 0 {
-    return "checkpoint milestones must be non-empty"
-  }
-  let mut active_count = 0
-  let mut pending_count = 0
   let seen : Map[String, Bool] = Map([])
-  for milestone in supplied {
+  for milestone in mooncode_json_array_items(arguments, "milestones") {
     let id = mooncode_json_string(milestone, "id", default="")
-    let status = mooncode_json_string(milestone, "status", default="")
-    if id == "" {
-      return "checkpoint milestone id must be non-empty"
-    }
-    if seen.contains(id) {
-      return "checkpoint milestone ids must be unique"
+    if id == "" || seen.contains(id) {
+      return "checkpoint milestone ids must be nonempty and unique"
     }
     seen[id] = true
-    if status == "active" {
-      active_count += 1
-    } else if status == "pending" {
-      pending_count += 1
-    } else if status != "done" {
-      return "checkpoint milestone status must be pending, active, or done"
+    if !["pending", "active", "done"].contains(
+        mooncode_json_string(milestone, "status", default=""),
+      ) {
+      return "invalid milestone status"
     }
-  }
-  if active_count > 1 || (pending_count > 0 && active_count != 1) {
-    return "checkpoint must have exactly one active milestone while work remains"
-  }
-  let previous = mooncode_runtime_horizon_latest_checkpoint(command, results)
-  let mut newly_done_mutations = 0
-  let mut previously_done_mutations = 0
-  for required in mooncode_runtime_horizon_required_milestones(command) {
-    let required_id = mooncode_json_string(required, "id", default="")
-    let mut matched = Json::object({})
-    for milestone in supplied {
-      if mooncode_json_string(milestone, "id", default="") == required_id {
-        matched = milestone
-        break
-      }
-    }
-    if mooncode_json_string(matched, "id", default="") == "" {
-      return "checkpoint is missing required milestone `\{required_id}`"
-    }
-    if mooncode_json_string(matched, "evidence_kind", default="") !=
-      mooncode_json_string(required, "evidence_kind", default="") ||
-      mooncode_json_string(matched, "path", default="") !=
-      mooncode_json_string(required, "path", default="") {
-      return "checkpoint changed the evidence contract for milestone `\{required_id}`"
-    }
-    let previous_status = mooncode_runtime_horizon_checkpoint_milestone_status(
-      previous, required_id,
-    )
-    let matched_status = mooncode_json_string(matched, "status", default="")
-    let alternative = mooncode_nochange_alternative(command, arguments, matched)
-    let resolution = mooncode_json_string(matched, "resolution", default="")
-    if resolution != "" && (!alternative || matched_status != "done") {
-      return "checkpoint alternative resolution is not permitted for milestone `\{required_id}`"
-    }
-    if matched_status == "done" &&
-      mooncode_json_string(arguments, "completion_outcome", default="") ==
-      "no_change" &&
-      ["mutation", "path_changed"].contains(
-        mooncode_json_string(required, "evidence_kind", default=""),
-      ) &&
-      !alternative {
-      return "no_change cannot waive the original mutation requirement for milestone `\{required_id}`"
-    }
-    if previous_status == "done" &&
-      !alternative &&
-      mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
-      previously_done_mutations += 1
-    }
-    if previous_status == "done" && matched_status != "done" {
-      return "checkpoint cannot reopen completed milestone `\{required_id}`"
-    }
-    if matched_status == "done" &&
-      !alternative &&
-      !mooncode_runtime_horizon_milestone_proven(command, required, results) {
-      if mooncode_runtime_turn_requires_verification(command) &&
-        mooncode_json_string(required, "evidence_kind", default="") ==
-        "mutation" &&
-        mooncode_runtime_horizon_has_documentation_mutation(results) &&
-        !mooncode_runtime_horizon_has_substantive_mutation(command, results) {
-        return "checkpoint milestone `\{required_id}` is blocked by the immutable task contract: documentation-only changes do not satisfy evidence_kind `mutation`; a documentation deliverable must be declared as evidence_kind `path_changed` with its exact path in the initial task contract"
-      }
-      return "checkpoint milestone `\{required_id}` has no matching runtime evidence"
-    }
-    if matched_status == "done" &&
-      !alternative &&
-      previous_status != "done" &&
-      mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
-      newly_done_mutations += 1
-    }
-  }
-  let mut total_mutations = 0
-  for result in results {
-    if mooncode_runtime_horizon_result_is_substantive_mutation(command, result) {
-      total_mutations += 1
-    }
-  }
-  let available_mutations = total_mutations - previously_done_mutations
-  if newly_done_mutations > available_mutations {
-    return "checkpoint completes \{newly_done_mutations} new mutation milestone(s) with only \{available_mutations} unconsumed substantive mutation result(s) across the task"
   }
   ""
 }
@@ -772,16 +380,13 @@ fn mooncode_runtime_horizon_checkpoint_execution(
   let error = mooncode_runtime_horizon_checkpoint_error(
     command, arguments, prior_results,
   )
-  let checkpoint : Json = mooncode_nochange_copy_proposal(
-    {
-      "horizon_id": mooncode_runtime_horizon_id(command),
-      "milestones": Json::array(
-        mooncode_json_array_items(arguments, "milestones"),
-      ),
-      "next_action": mooncode_json_string(arguments, "next_action", default=""),
-    },
-    arguments,
-  )
+  let checkpoint : Json = {
+    "horizon_id": mooncode_runtime_horizon_id(command),
+    "milestones": Json::array(
+      mooncode_json_array_items(arguments, "milestones"),
+    ),
+    "next_action": mooncode_json_string(arguments, "next_action", default=""),
+  }
   let result = if error == "" {
     mooncode_tool_ok_result(
       "checkpoint",
@@ -848,74 +453,21 @@ fn mooncode_runtime_horizon_result_summary(result : Json) -> String {
 fn mooncode_runtime_horizon_progress_message(
   command : Json,
   results : Array[Json],
-  remaining_steps : Int32,
+  _remaining_steps : Int32,
 ) -> Json {
-  let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
-  let checkpoint_contract = mooncode_runtime_horizon_checkpoint_contract(
-    command,
-  )
-  let summaries : Array[String] = []
-  let start = if results.length() > 4 { results.length() - 4 } else { 0 }
-  for index in start..<results.length() {
-    summaries.push(mooncode_runtime_horizon_result_summary(results[index]))
-  }
-  let recovery = if mooncode_runtime_horizon_last_failure(results) >= 0 {
-    "\nRecovery rule: use the latest diagnostics, repair the active milestone before unrelated discovery, then rerun the same typed verification."
-  } else {
-    ""
-  }
-  let horizon = if remaining_steps <= 0 {
-    "Planner horizon: milestone-driven with no command-wide step ceiling. Continue until every required milestone has accepted evidence, then write the all-done checkpoint and finish. Do not rediscover completed milestones."
-  } else {
-    "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones."
-  }
-  let path_guidance = "\nPath guidance: exact user-supplied paths and task-contract context_paths remain authoritative starting points. Use them before broader discovery; if one fails, consume its exact error and resolve it with narrow discovery rather than guessing or abandoning an unfinished milestone."
-  mooncode_runtime_context_message(
-    {
-      "role": "user",
-      "content": "Authoritative immutable checkpoint contract:\n\{checkpoint_contract.stringify(indent=2)}\n" +
-      "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add " +
-      (if mooncode_nochange_enabled(command) { "" } else { "only " }) +
-      "status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
-      (if mooncode_nochange_enabled(command) {
-        "Only the initial completion_policy permits no_change: run every exact required check and preserve every original milestone. Propose completion_outcome=no_change with no_change.reason=already_satisfied, a worker observation, and accepted native event IDs including all required checks. Only named mutation/path_changed milestones may add resolution=already_satisfied. Copy the identical proposal to the final all-done checkpoint and finish. Engineering-only settlement never establishes goal or original-task acceptance.\n" +
-        "Current exact required-check evidence references: " +
-        Json::array(mooncode_nochange_check_evidence(command, results)).stringify() +
-        "\n"
-      } else {
-        ""
-      }) +
-      "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
-      "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
-      horizon +
-      path_guidance +
-      recovery,
-    },
+  let recent = results[results.length().max(4) - 4:]
+    .map(mooncode_runtime_horizon_result_summary)
+    .join("\n")
+  mooncode_runtime_context_text_message(
+    "user",
+    "Current task: " +
+    mooncode_runtime_horizon_contract(command).stringify() +
+    "\nSaved progress (advisory): " +
+    mooncode_runtime_horizon_latest_checkpoint(command, results).stringify() +
+    "\nRecent results:\n" +
+    recent +
+    "\nContinue useful work, repair failures and verify the deliverable. Save a checkpoint when useful; it is not a completion requirement.",
     EnvironmentContext,
     "environment.horizon_progress",
   )
-}
-
-///|
-fn mooncode_runtime_horizon_completion_ready(
-  command : Json,
-  results : Array[Json],
-) -> Bool {
-  let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
-  if !mooncode_runtime_horizon_checkpoint_all_done(checkpoint) {
-    return false
-  }
-  let mut checkpoint_index = -1
-  let mut evidence_index = -1
-  for index, result in results {
-    if mooncode_runtime_turn_result_is_mutation(result) ||
-      mooncode_runtime_turn_result_verification_kind(result) != "" {
-      evidence_index = index
-    }
-    if mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") == "checkpoint" {
-      checkpoint_index = index
-    }
-  }
-  checkpoint_index >= evidence_index && checkpoint_index >= 0
 }

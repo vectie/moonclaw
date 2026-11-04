@@ -184,16 +184,20 @@ fn mooncode_runtime_turn_is_package_path(path : String) -> Bool {
 
 ///|
 fn mooncode_runtime_turn_package_verified(execution : Json) -> Bool {
-  for result in mooncode_json_array_items(execution, "tool_results") {
-    if !mooncode_json_bool(result, "accepted", default=false) {
-      continue
+  let results = mooncode_json_array_items(execution, "tool_results")
+  let mut verified = false
+  for result in results {
+    if mooncode_runtime_turn_result_is_mutation(result) &&
+      !mooncode_runtime_turn_result_is_commit_boundary(result) {
+      verified = false
     }
-    let tool = mooncode_json_string(result, "tool", default="")
-    if tool == "shell" || tool == "moon_check" {
-      return true
+    if mooncode_runtime_turn_result_verification_kind(result) != "" {
+      verified = true
+    } else if !mooncode_json_bool(result, "accepted", default=false) {
+      verified = false
     }
   }
-  false
+  verified
 }
 
 ///|

@@ -288,28 +288,6 @@ async fn Daemon::mooncode_task_controls_response(
     let path = mooncode_personal_memory_path(self.home)
     @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
     @fsx.write_to_file(path, mooncode_json_string(body, "memory", default=""))
-  } else if action == "set_goal" {
-    let response = mooncode_goal_runtime_api_put_internal(
-      root,
-      session_id,
-      {
-        "protocol": mooncode_goal_runtime_protocol_v1,
-        "contract": mooncode_goal_runtime_contract_v1,
-        "session_id": session_id,
-        "goal_id": "goal-" + session_id,
-        "objective": mooncode_json_string(body, "objective", default=""),
-        "criteria": Json::array(mooncode_json_array_items(body, "criteria")),
-      },
-      self.clock.now().truncate_to_s(),
-    )
-    if response.status_code >= 400 {
-      raise mooncode_session_management_error(
-        response.status_code,
-        "Goal unavailable",
-        response.body.stringify(),
-        session_id,
-      )
-    }
   } else if action == "edit" ||
     action == "guide_now" ||
     action == "remove" ||
@@ -470,7 +448,6 @@ async fn Daemon::mooncode_task_controls_projection(
   for worker in mooncode_worker_records(root, session_id) {
     workers.push(mooncode_worker_result_projection(worker))
   }
-  let goal = mooncode_goal_runtime_api_get_internal(root, session_id)
   let control = mooncode_runtime_control_state_from_logs(
     session_id,
     root,
@@ -487,11 +464,6 @@ async fn Daemon::mooncode_task_controls_projection(
     "queue": Json::array(pending),
     "plan": plan,
     "recap": recap,
-    "goal": if goal.status_code == 200 {
-      goal.body
-    } else {
-      Json::null()
-    },
     "workers": Json::array(workers),
     "image_jobs": Json::array(mooncode_image_job_projection(events)),
     "personal_memory": mooncode_personal_memory_read(self.home),

@@ -3,10 +3,12 @@
 Read `AGENTS.md` and [documentation guide](docs/README.md) before changing
 runtime behavior.
 
+Work directly on `main`; do not create a branch unless the user requests one.
+
 ## MoonCode Direction
 
 Use [Executable book runtime boundary](docs/executable_book_runtime_boundary.md)
-for current behavior and the approved, pending simplification: one primary
+for the consolidated execution path: one primary
 agent, autonomous completion, reused loop/journal/continuation/`finish`, and
 deletion of duplicate mechanisms. No new runtime framework, permanent
 Router/Worker team, universal human review, or old-protocol compatibility is
@@ -15,6 +17,31 @@ required.
 The complete discussion is retained in the optional sibling MoonDesk checkout
 at `docs/mooncode-discussion-2026-11-04/`. Do not combine superseded proposals
 into additional implementation requirements.
+
+## Single-Agent Consolidation 2026-11-04
+
+- Legacy Goal and Goal Runtime were removed, including API/store/supervisor,
+  public reducers, dual authority and dedicated old tests. Ordinary `finish`
+  is the completion entry; there is no quality-trial or no-change protocol.
+- Milestones are advisory and may reopen. Do not restore discovery counters,
+  mutation quotas, prompt-phrase tests or mandatory all-done checkpoints.
+- All checkpoint reasons share one writer with journal result references.
+  Validate/hydrate durable checkpoints through
+  `mooncode_runtime_continuation_for_command`; raw packets intentionally omit
+  accumulated tool-result bodies.
+- Tool positions checkpoint before effect, journal intent, and attach identity
+  to the normal result event. Reuse committed results after restart; an intent
+  without a result is unknown, not permission to replay an effect. A claim with
+  no execution facts can safely start planning again.
+- Keep live corrections as ordered task updates with a revision. Appending
+  negative instructions to the original text triggered keyword-based coding
+  inference and an endless finish-repair loop in the steering fixture.
+- Check fingerprints cover touched files and declared check inputs only. They
+  are not a dependency-complete snapshot or semantic acceptance proof.
+- Final validation: native suite 1953/1953, including daemon 606/606. Interfaces
+  were regenerated and formatting/diff whitespace checks passed. Removed public
+  interfaces belong to Goal and duplicate review/proof vocabulary. This is
+  fixture-backed validation, not live-model delivery-quality qualification.
 
 ## Documentation Pitfalls
 

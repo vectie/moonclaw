@@ -476,16 +476,8 @@ test "MoonCode planner reserves authored mutations for reviewable tools" {
     "text": "Update the workspace",
   })
   let system = mooncode_json_string(messages[0], "content", default="")
-  assert_true(system.contains("write/edit/apply_patch"))
   assert_true(
-    system.contains(
-      "Never use shell, an interpreter, or an inline script to author workspace files",
-    ),
-  )
-  assert_true(
-    system.contains(
-      "all authored mutations must use edit, write, or apply_patch",
-    ),
+    system.contains("Use edit/write/apply_patch for authored changes"),
   )
 }
 

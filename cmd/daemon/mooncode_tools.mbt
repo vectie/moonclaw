@@ -140,8 +140,7 @@ async fn mooncode_execute_tool_call_in_runtime(
           "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
           "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
           "moon_check" => mooncode_tool_moon_check(book_root, arguments)
-          "finish" =>
-            mooncode_tool_finish_for_session(session_id, book_root, arguments)
+          "finish" => mooncode_tool_finish(arguments)
           "spawn_workers" =>
             match runtime {
               Some((daemon, group)) =>
@@ -1895,95 +1894,15 @@ fn mooncode_json_object_with_field(
 ///|
 fn mooncode_tool_finish(arguments : Json) -> Json {
   let answer = mooncode_json_string(arguments, "answer", default="")
-  mooncode_tool_ok_result(
-    "finish",
-    message="finished",
-    output=answer,
-    metadata=mooncode_nochange_copy_proposal({ "answer": answer }, arguments),
-  )
-}
-
-///|
-async fn mooncode_tool_finish_for_session(
-  session_id : String,
-  book_root : String,
-  arguments : Json,
-) -> Json {
-  let basic = mooncode_tool_finish(arguments)
-  let goal_runtime = match arguments {
-    Object(fields) => fields.get("goal_runtime")
-    _ => None
-  }
-  guard goal_runtime is Some(decision_json) else { return basic }
-  let decision = mooncode_goal_runtime_decode_decision(decision_json) catch {
-    _ =>
-      return mooncode_tool_error_result(
-        "finish",
-        message="goal_runtime must be an exact valid achieved or blocked decision",
-      )
-  }
-  if decision is Continue(_, _, _) {
+  if answer.trim().is_empty() {
     return mooncode_tool_error_result(
       "finish",
-      message="finish goal_runtime decision must be achieved or blocked",
+      message="Provide the completed deliverable or a concise summary with its output references.",
     )
   }
-  let response = mooncode_goal_runtime_api_get_internal(book_root, session_id)
-  if response.status_code != 200 {
-    return mooncode_tool_error_result(
-      "finish",
-      message="goal_runtime settlement requires an active runtime goal",
-    )
-  }
-  guard response.body is Object(body) &&
-    body["status"] is Object(status) &&
-    body["genesis"] is Object(genesis) else {
-    return mooncode_tool_error_result(
-      "finish",
-      message="goal_runtime settlement could not read runtime authority",
-    )
-  }
-  if mooncode_json_bool(Json::object(status), "terminal", default=false) {
-    return mooncode_tool_error_result(
-      "finish",
-      message="goal_runtime is already terminal",
-    )
-  }
-  match decision {
-    Achieved(_, evidence) => {
-      let criteria = mooncode_json_array_items(
-        Json::object(genesis),
-        "criteria",
-      )
-      if evidence.length() != criteria.length() {
-        return mooncode_tool_error_result(
-          "finish",
-          message="achieved evidence must cover every goal criterion exactly once",
-        )
-      }
-      for criterion in criteria {
-        let criterion_id = mooncode_json_string(criterion, "id", default="")
-        if !evidence.any(item => item.criterion == criterion_id) {
-          return mooncode_tool_error_result(
-            "finish",
-            message="achieved evidence must use the exact goal criterion ids",
-          )
-        }
-      }
-    }
-    Blocked(_, _, _) => ()
-    Continue(_, _, _) => abort("continue rejected above")
-  }
-  let answer = mooncode_json_string(arguments, "answer", default="")
-  mooncode_tool_ok_result(
-    "finish",
-    message="finished",
-    output=answer,
-    metadata=mooncode_nochange_copy_proposal(
-      { "answer": answer, "goal_runtime": decision_json },
-      arguments,
-    ),
-  )
+  mooncode_tool_ok_result("finish", message="finished", output=answer, metadata={
+    "answer": answer,
+  })
 }
 
 ///|

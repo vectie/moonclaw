@@ -59,7 +59,7 @@ fn mooncode_runtime_compact_continuation_history(
       }
       tool_result_references.push({
         "event_id": event_id,
-        "event_digest": mooncode_goal_runtime_sha256_hex(event.stringify()),
+        "event_digest": mooncode_sha256_hex(event.stringify()),
         "execution": Json::object(compact_execution),
         "journaled_result": true,
       })
@@ -73,7 +73,7 @@ fn mooncode_runtime_compact_continuation_history(
   {
     "planner_steps": Json::array(compact_planner_steps),
     "tool_result_count": tool_results.length(),
-    "tool_result_digest": mooncode_goal_runtime_sha256_hex(
+    "tool_result_digest": mooncode_sha256_hex(
       Json::array(tool_results).stringify(),
     ),
     "tool_result_references": Json::array(tool_result_references),
@@ -96,56 +96,37 @@ fn mooncode_runtime_continuation_event(
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_json_string(approval, "approval_id", default="")
-  let state = if approval_id == "" { "after-step" } else { "awaiting-approval" }
-  let history = mooncode_runtime_compact_continuation_history(
-    planner_steps, tool_results, step_results,
-  )
-  {
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-continuation-\{state}-\{step_index}-\{tool_index}-\{approval_id}",
-    "protocol": mooncode_protocol_version(),
-    "contract_id": @moonlib_conversation.control_contract_id(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "target_command_id": command_id,
-    "lane": "runtime-control",
-    "kind": mooncode_runtime_continuation_kind(),
-    "event": mooncode_runtime_continuation_kind(),
-    "state": state,
-    "status": if state == "awaiting-approval" {
-      "waiting"
-    } else {
-      "running"
-    },
-    "approval_id": approval_id,
-    "step_index": step_index,
-    "tool_index": tool_index,
-    "planner_turn_end_step": planner_turn_end_step,
-    "plan": plan,
-    "planner_steps": Json::array(
-      mooncode_json_array_items(history, "planner_steps"),
-    ),
-    "tool_result_count": mooncode_json_int(
-      history,
-      "tool_result_count",
-      default=0,
-    ),
-    "tool_result_digest": mooncode_json_string(
-      history,
-      "tool_result_digest",
-      default="",
-    ),
-    "tool_result_references": Json::array(
-      mooncode_json_array_items(history, "tool_result_references"),
-    ),
-    "step_result_suffix_count": mooncode_json_int(
-      history,
-      "step_result_suffix_count",
-      default=0,
-    ),
-    "approval": approval,
-    "created_at": now,
-    "source": "moonclaw-native-runtime-continuation",
+  let state = if approval_id != "" {
+    "awaiting-approval"
+  } else if tool_index < mooncode_json_array_items(plan, "tool_calls").length() {
+    "executing-tool"
+  } else {
+    "after-step"
   }
+  mooncode_runtime_checkpoint_event(
+    session_id,
+    command_id,
+    plan,
+    planner_steps,
+    tool_results,
+    step_results,
+    {
+      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-continuation-\{state}-\{step_index}-\{tool_index}-\{approval_id}",
+      "contract_id": @moonlib_conversation.control_contract_id(),
+      "state": state,
+      "status": if approval_id == "" {
+        "running"
+      } else {
+        "waiting"
+      },
+      "approval_id": approval_id,
+      "approval": approval,
+      "step_index": step_index,
+      "tool_index": tool_index,
+      "planner_turn_end_step": planner_turn_end_step,
+    },
+    now~,
+  )
 }
 
 ///|
@@ -159,26 +140,22 @@ fn mooncode_runtime_planner_continuation_event(
   next_step_index~ : Int32,
   now~ : @clock.Timestamp,
 ) -> Json {
-  {
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-checkpoint-\{next_step_index}",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "target_command_id": command_id,
-    "lane": "runtime-control",
-    "kind": mooncode_runtime_continuation_kind(),
-    "event": mooncode_runtime_continuation_kind(),
-    "state": "planner-quantum-paused",
-    "status": "paused",
-    "reason": "planner-step-quantum",
-    "next_step_index": next_step_index,
-    "plan": plan,
-    "planner_steps": Json::array(planner_steps),
-    "tool_results": Json::array(tool_results),
-    "step_results": Json::array(step_results),
-    "created_at": now,
-    "source": "moonclaw-native-runtime-continuation",
-  }
+  mooncode_runtime_checkpoint_event(
+    session_id,
+    command_id,
+    plan,
+    planner_steps,
+    tool_results,
+    step_results,
+    {
+      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-checkpoint-\{next_step_index}",
+      "state": "planner-quantum-paused",
+      "reason": "planner-step-quantum",
+      "status": "paused",
+      "next_step_index": next_step_index,
+    },
+    now~,
+  )
 }
 
 ///|
@@ -195,29 +172,25 @@ fn mooncode_runtime_planner_transport_continuation_event(
   detail~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
-  {
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-\{now}",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "target_command_id": command_id,
-    "lane": "runtime-control",
-    "kind": mooncode_runtime_continuation_kind(),
-    "event": mooncode_runtime_continuation_kind(),
-    "state": "planner-transport-paused",
-    "status": "paused",
-    "reason": "planner-transport-interrupted",
-    "resume_mode": resume_mode,
-    "next_step_index": next_step_index,
-    "plan": plan,
-    "planner_steps": Json::array(planner_steps),
-    "tool_results": Json::array(tool_results),
-    "step_results": Json::array(step_results),
-    "pending_live_steering": Json::array(pending_live_steering),
-    "detail": detail,
-    "created_at": now,
-    "source": "moonclaw-native-runtime-continuation",
-  }
+  mooncode_runtime_checkpoint_event(
+    session_id,
+    command_id,
+    plan,
+    planner_steps,
+    tool_results,
+    step_results,
+    {
+      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-\{now}",
+      "state": "planner-transport-paused",
+      "reason": "planner-transport-interrupted",
+      "status": "paused",
+      "resume_mode": resume_mode,
+      "next_step_index": next_step_index,
+      "pending_live_steering": Json::array(pending_live_steering),
+      "detail": detail,
+    },
+    now~,
+  )
 }
 
 ///|
@@ -234,50 +207,25 @@ fn mooncode_runtime_planner_replan_continuation_event(
   guidance~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
-  let history = mooncode_runtime_compact_continuation_history(
-    planner_steps, tool_results, step_results,
+  mooncode_runtime_checkpoint_event(
+    session_id,
+    command_id,
+    plan,
+    planner_steps,
+    tool_results,
+    step_results,
+    {
+      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
+      "state": "planner-replan-paused",
+      "reason": "planner-empty-followup",
+      "status": "paused",
+      "next_step_index": next_step_index,
+      "replan_count": replan_count,
+      "patient_replan_guidance": guidance,
+      "finish_rejected": finish_rejected,
+    },
+    now~,
   )
-  {
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "target_command_id": command_id,
-    "lane": "runtime-control",
-    "kind": mooncode_runtime_continuation_kind(),
-    "event": mooncode_runtime_continuation_kind(),
-    "state": "planner-replan-paused",
-    "status": "paused",
-    "reason": "planner-empty-followup",
-    "next_step_index": next_step_index,
-    "replan_count": replan_count,
-    "patient_replan_guidance": guidance,
-    "plan": plan,
-    "finish_rejected": finish_rejected,
-    "planner_steps": Json::array(
-      mooncode_json_array_items(history, "planner_steps"),
-    ),
-    "tool_result_count": mooncode_json_int(
-      history,
-      "tool_result_count",
-      default=0,
-    ),
-    "tool_result_digest": mooncode_json_string(
-      history,
-      "tool_result_digest",
-      default="",
-    ),
-    "tool_result_references": Json::array(
-      mooncode_json_array_items(history, "tool_result_references"),
-    ),
-    "step_result_suffix_count": mooncode_json_int(
-      history,
-      "step_result_suffix_count",
-      default=0,
-    ),
-    "created_at": now,
-    "source": "moonclaw-native-runtime-continuation",
-  }
 }
 
 ///|
@@ -355,8 +303,7 @@ fn mooncode_runtime_continuation_for_command(
         let referenced_event = mooncode_runtime_unproject_journal_event(
           projected_event,
         )
-        if mooncode_goal_runtime_sha256_hex(referenced_event.stringify()) ==
-          expected_digest {
+        if mooncode_sha256_hex(referenced_event.stringify()) == expected_digest {
           let previous = match match_counts.get(event_id) {
             Some(value) => value
             None => 0
@@ -413,17 +360,16 @@ fn mooncode_runtime_continuation_for_command(
   if suffix_count < 0 ||
     suffix_count > result_count ||
     expected_digest == "" ||
-    mooncode_goal_runtime_sha256_hex(Json::array(hydrated_results).stringify()) !=
+    mooncode_sha256_hex(Json::array(hydrated_results).stringify()) !=
     expected_digest {
     return Json::object({})
   }
   let hydrated_steps = mooncode_json_array_items(checkpoint, "planner_steps")
-  if hydrated_steps.is_empty() {
-    return Json::object({})
+  if !hydrated_steps.is_empty() {
+    hydrated_steps[hydrated_steps.length() - 1] = mooncode_json_object_field_or_empty(
+      checkpoint, "plan",
+    )
   }
-  hydrated_steps[hydrated_steps.length() - 1] = mooncode_json_object_field_or_empty(
-    checkpoint, "plan",
-  )
   let mut hydrated = mooncode_json_object_with_field(
     checkpoint,
     "planner_steps",
@@ -468,6 +414,9 @@ fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
   }
   if mooncode_json_string(continuation, "state", default="") == "after-step" {
     return approval_id == "" && tool_index == tool_calls.length()
+  }
+  if mooncode_json_string(continuation, "state", default="") == "executing-tool" {
+    return approval_id == "" && tool_index < tool_calls.length()
   }
   if approval_id == "" ||
     mooncode_json_string(continuation, "state", default="") !=
@@ -677,4 +626,43 @@ fn mooncode_runtime_planner_replan_continuation_is_active(
   mooncode_json_array_items(plan, "model_messages").length() > 0 &&
   mooncode_runtime_json_array_has_suffix(tool_results, step_results) &&
   planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
+}
+
+///|
+fn mooncode_runtime_checkpoint_event(
+  session_id : String,
+  command_id : String,
+  plan : Json,
+  planner_steps : Array[Json],
+  tool_results : Array[Json],
+  step_results : Array[Json],
+  details : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let history = mooncode_runtime_compact_continuation_history(
+    planner_steps, tool_results, step_results,
+  )
+  let fields : Map[String, Json] = {
+    "protocol": Json(mooncode_protocol_version()),
+    "session_id": Json(session_id),
+    "command_id": Json(command_id),
+    "target_command_id": Json(command_id),
+    "lane": Json("runtime-control"),
+    "kind": Json(mooncode_runtime_continuation_kind()),
+    "event": Json(mooncode_runtime_continuation_kind()),
+    "plan": plan,
+    "created_at": now.to_json(),
+    "source": Json("moonclaw-native-runtime-continuation"),
+  }
+  if history is Object(h) {
+    for key, value in h {
+      fields[key] = value
+    }
+  }
+  if details is Object(d) {
+    for key, value in d {
+      fields[key] = value
+    }
+  }
+  Json::object(fields)
 }

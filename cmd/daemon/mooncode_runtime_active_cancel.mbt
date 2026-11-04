@@ -55,18 +55,6 @@ async fn mooncode_runtime_cancel_settle_selection(
       response
     }
   }
-  // The completed control can outlive a crash before goal reconciliation.
-  // Reconcile the durable active-cancel source on both first settlement and
-  // replay; a pending withdrawal must never terminate an unrelated goal.
-  if mooncode_goal_runtime_is_active_cancel_source(
-      mooncode_json_object_field_or_empty(response, "cancelled_event"),
-    ) {
-    mooncode_goal_runtime_reconcile_supervisor_events(
-      book_root,
-      session_id,
-      now().truncate_to_s(),
-    )
-  }
   response
 }
 

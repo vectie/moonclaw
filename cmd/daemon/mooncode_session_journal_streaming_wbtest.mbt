@@ -75,8 +75,8 @@ async fn streaming_test_scan_file(
 fn streaming_test_expect_corrupt(action : () -> Unit raise) -> Unit raise {
   try action() catch {
     InvalidJournal(_) => ()
-    MoonCodeGoalRuntimeStoreError::CorruptStore(_) => ()
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+    MoonCodeJournalDecodeError::CorruptStore(_) => ()
+    MoonCodeJournalDecodeError::IdentityConflict(_, _, _) =>
       fail("unexpected identity conflict")
     _ => fail("unexpected error")
   } noraise {

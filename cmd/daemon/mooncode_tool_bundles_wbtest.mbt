@@ -22,7 +22,7 @@ test "mooncode dynamic tool bundles are disabled by default" {
   )
   assert_true(names.contains("browser"))
   assert_true(names.contains("moon_cmd"))
-  assert_true(names.contains("spawn_workers"))
+  assert_false(names.contains("spawn_workers"))
 }
 
 ///|
@@ -51,7 +51,7 @@ test "mooncode dynamic tool bundles select only task capabilities" {
 }
 
 ///|
-test "mooncode dynamic tool bundles add ui moonbit and worker capabilities" {
+test "mooncode dynamic tool bundles add ui and moonbit without default delegation" {
   let ui : Json = {
     "command": "prompt",
     "text": "Test the web app UI in the browser and inspect screenshots.",
@@ -81,8 +81,8 @@ test "mooncode dynamic tool bundles add ui moonbit and worker capabilities" {
   assert_true(moonbit_names.contains("moon_ide"))
   assert_true(moonbit_names.contains("moon_cmd"))
   assert_true(moonbit_names.contains("moon_check"))
-  assert_true(moonbit_names.contains("spawn_workers"))
-  assert_true(moonbit_names.contains("wait_workers"))
+  assert_false(moonbit_names.contains("spawn_workers"))
+  assert_false(moonbit_names.contains("wait_workers"))
 }
 
 ///|
@@ -101,6 +101,15 @@ test "mooncode explicit planner allow-list takes precedence over bundles" {
       mooncode_runtime_turn_model_tools_for_command(command),
     ),
     ["read", "finish"],
+  )
+  let authorized = mooncode_json_object_with_field(command, "payload", {
+    "planner_allowed_tools": ["spawn_workers", "wait_workers"],
+  })
+  assert_eq(
+    mooncode_test_model_tool_names(
+      mooncode_runtime_turn_model_tools_for_command(authorized),
+    ),
+    ["spawn_workers", "wait_workers"],
   )
 }
 

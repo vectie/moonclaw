@@ -49,6 +49,10 @@ test "planner quantum checkpoint is durable resumable and contract-distinct" {
     next_step_index=1,
     now=@clock.Timestamp::from_ms(42L),
   )
+  let checkpoint = mooncode_runtime_continuation_for_command(
+    [checkpoint],
+    "cmd-quantum",
+  )
   assert_true(mooncode_runtime_planner_continuation_is_active(checkpoint))
   assert_false(mooncode_runtime_continuation_is_active(checkpoint))
   assert_eq(
@@ -84,6 +88,11 @@ test "planner quantum checkpoint validation fails closed" {
     next_step_index=1,
     now=@clock.Timestamp::from_ms(43L),
   )
+  let checkpoint = mooncode_runtime_continuation_for_command(
+    [checkpoint],
+    "cmd-quantum-invalid",
+  )
+  assert_true(mooncode_runtime_planner_continuation_is_active(checkpoint))
   assert_false(
     mooncode_runtime_planner_continuation_is_active(
       mooncode_json_object_with_field(
@@ -370,6 +379,10 @@ test "planner transport checkpoints preserve initial and follow-up resume state"
     next_step_index=1,
     detail="model planner follow-up failed: ConnectionClosed",
     now=@clock.Timestamp::from_ms(45L),
+  )
+  let followup = mooncode_runtime_continuation_for_command(
+    [followup],
+    "cmd-transport",
   )
   assert_true(
     mooncode_runtime_planner_transport_continuation_is_active(followup),
@@ -940,10 +953,8 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           mooncode_json_string(rejected_calls[0], "tool", default=""),
           "finish",
         )
-        assert_false(
-          mooncode_runtime_service_continues_goal_runtime(
-            first_loop, root, session_id,
-          ),
+        assert_true(
+          mooncode_runtime_service_continues_task(first_loop, first_state),
         )
         let first_turns = mooncode_json_array_items(first_loop, "turns")
         let first_execution = mooncode_json_object_field_or_empty(
@@ -966,8 +977,8 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           ]),
         )
         assert_false(
-          mooncode_runtime_service_continues_goal_runtime(
-            approval_shaped_loop, root, session_id,
+          mooncode_runtime_service_continues_task(
+            approval_shaped_loop, first_state,
           ),
         )
         let second_daemon = mooncode_runtime_quantum_test_daemon(root)
@@ -1411,6 +1422,10 @@ async test "transient planner close resumes through runtime service without repl
         next_step_index=1,
         detail=mooncode_json_string(interrupted, "message", default=""),
         now=@clock.Timestamp::from_ms(4L),
+      )
+      let transport = mooncode_runtime_continuation_for_command(
+        events + [transport],
+        command_id,
       )
       assert_true(
         mooncode_runtime_planner_transport_continuation_is_active(transport),

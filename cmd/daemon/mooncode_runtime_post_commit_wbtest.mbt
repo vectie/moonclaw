@@ -281,7 +281,13 @@ async test "post-commit seal survives planner continuation replay" {
     next_step_index=1,
     now=@clock.Timestamp::from_ms(2L),
   )
-  let replayed = @json.parse(continuation.stringify())
+  let replayed = mooncode_runtime_continuation_for_command(
+    [
+      mooncode_json_object_field_or_empty(commit, "event"),
+      @json.parse(continuation.stringify()),
+    ],
+    "command-post-commit",
+  )
   let retained = mooncode_json_array_items(replayed, "tool_results")
   assert_eq(retained.length(), 1)
   let verdict = mooncode_runtime_post_commit_guard(

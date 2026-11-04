@@ -1,7 +1,7 @@
 ///|
 fn mooncode_stream_test_expect_corrupt(action : () -> Unit raise) -> Unit raise {
   try action() catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(_) => ()
+    MoonCodeJournalDecodeError::CorruptStore(_) => ()
     _ => fail("unexpected stream sequence error")
   } noraise {
     _ => fail("expected corrupt stream sequence")

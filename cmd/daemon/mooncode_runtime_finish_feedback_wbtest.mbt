@@ -22,5 +22,5 @@ test "implicit default horizon rejected finish feedback" {
   )
   assert_true(message.contains("Completion was rejected"))
   assert_true(message.contains("Continue the same task"))
-  assert_true(message.contains("final all-done checkpoint"))
+  assert_false(message.contains("final all-done checkpoint"))
 }

@@ -369,12 +369,12 @@ test "mooncode harness regression gates representative production cohorts" {
       1,
     ),
     mooncode_harness_regression_case(
-      "delegated-workers",
+      "delegation-not-enabled-by-default",
       "Delegate independent checks to workers and implement the fix.",
       "workspace_change",
       [
         "read", "write", "edit", "shell", "finish", "apply_patch", "checkpoint",
-        "read_skill", "spawn_workers", "wait_workers",
+        "read_skill",
       ],
       true,
       0,

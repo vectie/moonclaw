@@ -40,16 +40,16 @@ turns -> durable command queue -> runtime service
 - Positive `planner_max_steps` values are resumable scheduling quanta. Exhaustion
   persists the next position and completed results rather than proving failure
   or completion. The default value is zero.
-- An optional criteria-only goal uses `mooncode-goal-runtime.v1`. Its current
-  genesis is immutable and rejects aggregate budget fields. For an active
-  goal, `max_turns` is a local service quantum.
-- Current terminal goal decisions come from validated `finish.goal_runtime`
-  or active-target cancellation. Plain `finish` does not settle an active goal.
-  Criterion-reference coverage is structural validation, not a semantic proof
-  that the deliverable satisfies the user's request.
-- Current implementation tasks use horizon checkpoints and mutation/verification
-  checks, with an explicit `no_change` path. These overlapping completion
-  mechanisms are consolidation targets below.
+- One command carries the task definition: identity/revision, objective,
+  constraints, outputs and required checks. Live user updates revise that task
+  and remain in journal-backed context after restart.
+- `finish` is the completion entry point. Repairable missing checks return to
+  the same agent. An already-satisfied request uses ordinary `finish` with its
+  findings; it does not require an edit or a separate no-change protocol.
+- Checkpoints save advisory progress. Milestones may be changed or reopened;
+  counts, all-done checkpoints and consumed mutations do not prove completion.
+- Automatic service execution continues resumable planner quanta and transient
+  interruptions. Explicit service limits remain caller-controlled bounds.
 - Completed tool results and the actual model transcript survive milestone
   checkpoints. Context projection is handled separately; a checkpoint does not
   itself justify discarding source observations.
@@ -79,10 +79,13 @@ derived empty/read cursors may be zero. File data is synchronized, with
 directory synchronization on supported platforms. These are ordinary
 process/crash guarantees, not strongest sudden-power-loss qualification.
 
-Restore existing results before continuing. A missing result after an external
-side effect does not prove that the operation failed: reconcile the actual
-outcome before retry. Checkpoints alone cannot provide universal exactly-once
-execution.
+Each tool position has a durable checkpoint and execution intent. Its ordinary
+tool-result event carries the operation identity and compact execution metadata;
+the output is stored once. Recovery reuses that committed result. If an effect
+has an intent but no result, the agent receives an unknown-outcome error and
+must inspect the workspace or backend receipt before choosing another action.
+Read-only local observations may be repeated. A claim interrupted before any
+execution can start planning again. This is not universal exactly-once execution.
 
 ## Tools And Human Decisions
 
@@ -101,25 +104,45 @@ intervention is for real authority or decision gaps. Explicit book adoption or
 product acceptance is separate from engineering completion and delivery;
 ordinary tasks do not acquire a mandatory independent reviewer.
 
-## Approved Simplification
+## Completion And Verification
 
-Implement through the current runtime, without a new runtime package,
-checker registry, Operation database, or `submit_candidate` tool:
+The legacy Goal reducer and the separate Goal Runtime API, genesis, projection
+and supervisor were removed. There is no Goal compatibility reader, dual authority,
+quality-trial gate or independent desktop acceptance reducer. Existing loop,
+journal, sandbox and continuation remain the execution path. All continuation
+reasons share one writer and reference completed results instead of copying
+their accumulated output.
 
-1. Remove the legacy Goal implementation and dual-authority branches.
-2. Retain one task definition and one completion decision through `finish`;
-   return repairable gaps to the same agent.
-3. Bind necessary verification to actual results and relevant source/artifact
-   versions. Package labels and caller-supplied success fields are not proofs.
-4. Reuse journal and continuation for execution intent, result persistence,
-   and recovery; consolidate duplicate continuation structures.
-5. Remove forced-mutation/discovery-count rules, permissive tool-call repair,
-   duplicated prompt rules, and desktop-owned acceptance inference.
+An explicit `task_contract.required_checks` entry names `id`, `tool` (`shell`
+or `moon_cmd`), exact `command` and `cwd`. Successful native sandbox receipts
+after the latest mutation/failure must match those entries. Optional
+`input_paths` identify files relevant to those checks. Typed check/test/build
+results also support normal coding verification; arbitrary successful shell
+observations do not make a package verified. Existing task-intent inference is
+still a fallback when callers do not provide a typed task intent.
 
-Default to a single primary agent, proportional checks, and autonomous repair.
-Do not impose universal packaging, isolated snapshots, or human acceptance.
-The new design has no old-protocol compatibility or dual-write requirement.
-These changes are approved work, not implemented by this documentation update.
+Checks capture content fingerprints for files touched by this task and declared
+check inputs. `finish` checks those fingerprints and the task revision again,
+and checks existence for declared `outputs` with a `path`. This is scoped
+provenance, not a complete dependency graph or workspace snapshot. The agent
+still owns semantic quality, adequate check selection, rendered UI validation
+and whether an uncertain external effect has been reconciled.
+
+Serial execution adds a checkpoint and an intent append before a tool effect;
+both use the existing synchronized journal. Fingerprint cost scales with touched
+and declared input files, rather than all workspace files. The regression suite
+covers behavior and schema size; it does not establish live-provider latency or
+delivery-quality improvements.
+
+The default planner exposes no worker tools. Invalid, unknown and truncated
+tool calls return errors for repair; the runtime does not infer another tool
+name or split concatenated arguments. There is no discovery counter that forces
+a file edit. Repeating an immediately failed verification requests diagnosis;
+subsequent observation can justify retry without manufacturing a mutation.
+
+Ordinary completion does not require packaging, an isolated snapshot or human
+acceptance. Native harness evaluation reports its own scope and does not treat
+caller-supplied review or success claims as deliverable acceptance.
 
 The complete discussion and final plan are retained in the optional sibling
 [MoonDesk archive](../../moondesk/docs/mooncode-discussion-2026-11-04/README.md).

@@ -68,9 +68,9 @@ async fn mooncode_runtime_turn_parallel_read_batch_allowed(
     return false
   }
   let seen_identities : Map[String, Unit] = Map([])
-  let mut batch_broad_reads = 0
   for tool_call in tool_calls {
-    if !mooncode_runtime_tool_effect_is_concurrent_read(tool_call) ||
+    if mooncode_json_string(tool_call, "validation_error", default="") != "" ||
+      !mooncode_runtime_tool_effect_is_concurrent_read(tool_call) ||
       !mooncode_tool_supported(
         mooncode_json_string(tool_call, "tool", default=""),
       ) ||
@@ -79,9 +79,6 @@ async fn mooncode_runtime_turn_parallel_read_batch_allowed(
         mooncode_runtime_post_commit_guard(book_root, tool_call, prior_results),
         "allowed",
         default=false,
-      ) ||
-      mooncode_runtime_turn_discovery_saturated(
-        command, tool_call, prior_results,
       ) ||
       mooncode_runtime_turn_repeats_complete_read(
         tool_call,
@@ -95,28 +92,6 @@ async fn mooncode_runtime_turn_parallel_read_batch_allowed(
       return false
     }
     seen_identities[identity] = ()
-    if mooncode_runtime_turn_call_is_broad_discovery(tool_call) {
-      batch_broad_reads += 1
-    }
-  }
-  if mooncode_runtime_turn_requires_verification(command) {
-    let mut successful_broad_discovery = 0
-    let mut successful_discovery = 0
-    for execution in prior_results {
-      if mooncode_runtime_turn_result_is_mutation(execution) {
-        successful_broad_discovery = 0
-        successful_discovery = 0
-      } else if mooncode_runtime_turn_successful_discovery(execution) {
-        successful_discovery += 1
-        if mooncode_runtime_turn_call_is_broad_discovery(execution) {
-          successful_broad_discovery += 1
-        }
-      }
-    }
-    if successful_discovery + tool_calls.length() > 12 ||
-      successful_broad_discovery + batch_broad_reads > 6 {
-      return false
-    }
   }
   true
 }

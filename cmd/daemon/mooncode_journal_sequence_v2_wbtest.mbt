@@ -7,7 +7,7 @@ fn mooncode_sequence_test_parse(text : String) -> MoonCodeJournalSequence raise 
 
 ///|
 fn mooncode_sequence_expect_corrupt(
-  action : () -> Unit raise MoonCodeGoalRuntimeStoreError,
+  action : () -> Unit raise MoonCodeJournalDecodeError,
 ) -> Unit raise {
   try action() catch {
     CorruptStore(_) => ()
@@ -66,7 +66,7 @@ test "journal sequence next is arbitrary precision" {
 
 ///|
 test "journal physical sequence rejects zero while cursor accepts it" {
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(MoonCodeJournalSequence::parse("0"))
   })
   assert_eq(mooncode_journal_cursor_parse("0").text(), "0")
@@ -76,7 +76,7 @@ test "journal physical sequence rejects zero while cursor accepts it" {
 test "journal sequence rejects noncanonical spellings" {
   let invalid = ["", "00", "01", "+1", "-1", " 1", "1 ", "1.0", "1e2", "１"]
   for text in invalid {
-    mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
       ignore(MoonCodeJournalSequence::parse(text))
     })
   }
@@ -157,13 +157,13 @@ test "journal sequence parses v1 number and v2 string far beyond Int64" {
     }
     _ => abort("expected object")
   }
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_sequence_from_record(wrong_v1))
   })
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_sequence_from_record(wrong_v2))
   })
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_sequence_from_record(unknown))
   })
 }
@@ -219,7 +219,7 @@ test "v2 journal record has exact ten-key projection" {
 test "journal cursor accepts exactly canonical zero" {
   assert_eq(mooncode_journal_cursor_parse("0").text(), "0")
   for raw in ["00", "+0", "-0", "0.0"] {
-    mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
       ignore(mooncode_journal_cursor_parse(raw))
     })
   }
@@ -235,13 +235,13 @@ test "journal cursor JSON dual-read is canonical and arbitrary precision" {
     "9999999999999999999999999999999999999999",
   )
   let noncanonical_number = Json::number(1.0, repr="1.0")
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_cursor_from_json(noncanonical_number))
   })
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_cursor_from_json(("01" : Json)))
   })
-  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeJournalDecodeError {
     ignore(mooncode_journal_cursor_from_json(Json(true)))
   })
 }

@@ -60,23 +60,3 @@ async test "mooncode edit preserves the legacy single replacement contract" {
     assert_eq(mooncode_json_int(metadata, "replacement_count", default=0), 2)
   })
 }
-
-///|
-test "mooncode atomic edit keeps comment-only repair enforcement" {
-  assert_true(
-    mooncode_runtime_turn_comment_only_edit({
-      "edits": [
-        { "old_string": "// old", "new_string": "// new" },
-        { "old_string": "/* before */", "new_string": "/* after */" },
-      ],
-    }),
-  )
-  assert_false(
-    mooncode_runtime_turn_comment_only_edit({
-      "edits": [
-        { "old_string": "// old", "new_string": "// new" },
-        { "old_string": "let value = 1", "new_string": "let value = 2" },
-      ],
-    }),
-  )
-}

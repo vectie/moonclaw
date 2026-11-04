@@ -565,10 +565,6 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   payload : Json,
 ) -> Json {
   let loop_payload = mooncode_runtime_service_loop_payload(session_id, payload)
-  let (has_goal_at_entry, goal_was_terminal) = mooncode_runtime_service_goal_scope(
-    book_root, session_id,
-  )
-  let mut owns_goal_runtime = has_goal_at_entry && !goal_was_terminal
   let mut result = self.mooncode_runtime_loop_execute_with_gate_state(
     group?,
     session_id,
@@ -585,28 +581,14 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
     // Clear before the fresh queue read. A /turns submission that finds this
     // service running rearms it if it arrives during final journal I/O.
     binding.runtime_service_wake_pending = false
-    if drains_queue &&
-      !@async.is_being_cancelled() &&
-      mooncode_runtime_service_queue_drain_allowed(result) {
-      owns_goal_runtime = mooncode_runtime_service_refresh_goal_ownership(
-        owns_goal_runtime, goal_was_terminal, book_root, session_id,
-      )
-    }
     let claim_state = if drains_queue &&
-      !owns_goal_runtime &&
       mooncode_runtime_service_queue_drain_allowed(result) {
       self.mooncode_runtime_claim_state_payload(session_id, book_root)
     } else {
       Json::object({})
     }
-    if (
-        drains_queue &&
-        !owns_goal_runtime &&
-        mooncode_runtime_service_continues_queued_work(result, claim_state)
-      ) ||
-      mooncode_runtime_service_continues_goal_runtime(
-        result, book_root, session_id,
-      ) {
+    if drains_queue &&
+      mooncode_runtime_service_continues_task(result, claim_state) {
       if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
         @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
       }
@@ -639,17 +621,6 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
       resume_on_cancel=true,
     )
     if drains_queue &&
-      !@async.is_being_cancelled() &&
-      mooncode_runtime_service_rearm_requested(
-        result,
-        binding.runtime_service_wake_pending,
-      ) {
-      owns_goal_runtime = mooncode_runtime_service_refresh_goal_ownership(
-        owns_goal_runtime, goal_was_terminal, book_root, session_id,
-      )
-    }
-    if drains_queue &&
-      !owns_goal_runtime &&
       !@async.is_being_cancelled() &&
       mooncode_runtime_service_rearm_requested(
         result,
@@ -695,40 +666,6 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
 }
 
 ///|
-async fn mooncode_runtime_service_goal_scope(
-  book_root : String,
-  session_id : String,
-) -> (Bool, Bool) {
-  let session_lock = mooncode_open_session_lock(book_root, session_id)
-  defer session_lock.close()
-  session_lock.lock(Shared)
-  defer session_lock.unlock()
-  let authority = mooncode_goal_authority_project_locked(book_root, session_id)
-  if mooncode_goal_authority_projection_is_dual(authority) {
-    mooncode_goal_runtime_store_corrupt("dual goal authority")
-  }
-  (authority.runtime.genesis is Some(_), authority.runtime.terminal)
-}
-
-///|
-async fn mooncode_runtime_service_refresh_goal_ownership(
-  owns_goal_runtime : Bool,
-  goal_was_terminal : Bool,
-  book_root : String,
-  session_id : String,
-) -> Bool {
-  // A goal belongs to this run even after it settles. A later service may
-  // process ordinary work when the immutable goal was terminal at entry.
-  if owns_goal_runtime || goal_was_terminal {
-    return owns_goal_runtime
-  }
-  // Goal PUT can add genesis during a service. Observe its presence even if
-  // settlement also happened before this check, and retain ownership.
-  let (has_goal, _) = mooncode_runtime_service_goal_scope(book_root, session_id)
-  has_goal
-}
-
-///|
 fn mooncode_runtime_service_auto_drains_queue(payload : Json) -> Bool {
   match payload {
     Object(fields) => !fields.contains("max_turns")
@@ -768,6 +705,38 @@ fn mooncode_runtime_service_continues_queued_work(
 }
 
 ///|
+fn mooncode_runtime_service_continues_task(
+  result : Json,
+  claim_state : Json,
+) -> Bool {
+  if @async.is_being_cancelled() {
+    return false
+  }
+  if mooncode_runtime_service_continues_queued_work(result, claim_state) {
+    return true
+  }
+  let stopped = mooncode_json_string(result, "stopped_by", default="")
+  if stopped != "max_turns" && stopped != "retryable" {
+    return false
+  }
+  let turns = mooncode_json_array_items(result, "turns")
+  if turns.is_empty() {
+    return false
+  }
+  let execution = mooncode_json_object_field_or_empty(
+    turns[turns.length() - 1],
+    "execution",
+  )
+  !mooncode_json_bool(execution, "waiting_approval", default=false) &&
+  mooncode_json_string(execution, "pause_reason", default="") !=
+  "approval-required" &&
+  (
+    mooncode_json_bool(execution, "paused", default=false) ||
+    mooncode_json_bool(execution, "retryable", default=false)
+  )
+}
+
+///|
 fn mooncode_runtime_service_rearm_requested(
   result : Json,
   wake_pending : Bool,
@@ -793,29 +762,6 @@ fn mooncode_runtime_service_rearm_event(
       ),
     )
   }
-}
-
-///|
-async fn mooncode_runtime_service_continues_goal_runtime(
-  result : Json,
-  book_root : String,
-  session_id : String,
-) -> Bool {
-  let stopped_by = mooncode_json_string(result, "stopped_by", default="")
-  if stopped_by != "max_turns" && stopped_by != "retryable" {
-    return false
-  }
-  let turns = mooncode_json_array_items(result, "turns")
-  if turns.length() > 0 {
-    let execution = mooncode_json_object_field_or_empty(
-      turns[turns.length() - 1],
-      "execution",
-    )
-    if mooncode_json_bool(execution, "paused", default=false) {
-      return false
-    }
-  }
-  mooncode_goal_runtime_supervisor_is_active(book_root, session_id)
 }
 
 ///|

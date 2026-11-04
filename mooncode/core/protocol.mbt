@@ -305,7 +305,6 @@ fn native_capability_surface_fingerprint_source() -> String {
   let supported_runtime_events = runtime_event_names().join("\n")
   let supported_command_actions = command_supported_actions().join("\n")
   let native_command_contract = native_command_execution_contract_json().stringify()
-  let runtime_evidence_contract = runtime_evidence_contract_json().stringify()
   let command_body_required_fields = native_command_body_required_fields().join(
     "\n",
   )
@@ -338,12 +337,9 @@ fn native_capability_surface_fingerprint_source() -> String {
     "conversation_ownership_contract_id=\{conversation_ownership_contract_id()}",
     "runtime_control_contract_id=\{runtime_control_contract_id()}",
     "runtime_consumer_contract_id=\{runtime_consumer_contract_id()}",
-    "package_review_flow_contract_id=\{package_review_flow_contract_id()}",
     "command_action_contract_id=\{command_action_contract_id()}",
     "native_command_contract_id=\{native_command_contract_id()}",
     "native_command_contract=\{native_command_contract}",
-    "runtime_evidence_contract_id=\{runtime_evidence_contract_id()}",
-    "runtime_evidence_contract=\{runtime_evidence_contract}",
     "command_actions=\{supported_command_actions}",
     "required_endpoints=\{required_endpoints}",
     "required_tools=\{required_tools}",
@@ -388,10 +384,8 @@ pub fn native_capability_surface_json() -> Json {
     "conversation_ownership_contract": conversation_ownership_contract_json(),
     "runtime_control_contract": runtime_control_contract_json(),
     "runtime_consumer_contract": runtime_consumer_contract_json("<id>"),
-    "package_review_flow_contract": package_review_flow_contract_json(),
     "command_action_contract": command_action_contract_json(),
     "native_command_execution_contract": native_command_execution_contract_json(),
-    "runtime_evidence_contract": runtime_evidence_contract_json(),
     "runtime_tool_contract": runtime_tool_contract_json(),
     "runtime_tool_call_contract": runtime_tool_call_contract_json(),
     "required_endpoints": native_capability_required_endpoints(),

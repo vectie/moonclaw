@@ -177,27 +177,15 @@ MoonClaw is strongest when you want one system to handle:
   `/commands` now defaults to native queue mode, which appends the durable
   command without spawning or messaging the generic MoonClaw task runtime so a
   client can call `runtime-turn` without duplicate execution.
-  A strict additive `GET/PUT
-  /v1/code/sessions/<id>/goal-runtime?book_root=<path>` boundary now persists
-  criteria-only `mooncode-goal-runtime.v1` genesis and projects replayed status.
-  It rejects aggregate token/turn/step/time/operation/LOC fields and treats retry
-  timestamps as non-semantic. Goal authority and supervisor reconciliation now
-  fold canonical JSONL one record at a time, use an ephemeral disk identity ledger
-  for exact far-apart deduplication/conflict detection, and spool source facts on
-  disk instead of retaining aggregate event/ID arrays. The legacy `/goal` HTTP
-  route has been removed and `/goal-runtime` is a required capability. Persisted
-  legacy histories remain strictly detectable and return `legacy_goal_incompatible`;
-  they are never silently converted because their aggregate budget semantics have
-  no lossless representation in the unbounded contract. The common runtime-turn
-  path derives typed running, approval, operation, and planner checkpoint events
-  from already-committed source facts, and restart reconciliation fills a crash gap
-  idempotently from stable source IDs. For an active runtime goal,
-  runtime-service repeats `max_turns` as a local execution quantum instead of
-  treating it as an aggregate stop. The planner receives the active objective and
-  exact criterion IDs; optional typed `finish.goal_runtime` decisions settle
-  Achieved or Blocked, while ordinary finish remains nonterminal goal progress.
-  Exact active-target cancellation settles Cancelled; idle, stale, timeout, failure,
-  and local-quantum events do not. Runtime-turn now also includes a resumable prompt planner: ordinary
+  MoonCode uses one task definition and one completion decision through `finish`.
+  Checkpoints retain advisory progress; the same primary agent repairs missing
+  checks and continues after scheduling or transport interruptions. Separate
+  Goal APIs, supervisor state and quality-trial declarations were removed.
+  Journal-backed execution intents and results prevent silent effect replay;
+  scoped input fingerprints invalidate stale verification. Ordinary completion
+  needs no extra review agent or human acceptance step. See
+  [the runtime boundary](docs/executable_book_runtime_boundary.md).
+  Runtime-turn now also includes a resumable prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
   MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create

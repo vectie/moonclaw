@@ -32,7 +32,7 @@ fn Daemon::task_stream_cursor_secret(self : Daemon) -> String {
     // Directly constructed white-box fixtures do not pass through
     // `Daemon::new`. They never expose an HTTP stream, but a deterministic
     // fallback keeps those fixture records source-compatible.
-    mooncode_goal_runtime_sha256_hex(TASK_STREAM_CONTRACT + "\n" + self.home)
+    mooncode_sha256_hex(TASK_STREAM_CONTRACT + "\n" + self.home)
   })
 }
 

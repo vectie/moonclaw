@@ -15,7 +15,7 @@ fn mooncode_session_suspension_key(
   book_root : String,
   session_id : String,
 ) -> String {
-  mooncode_goal_runtime_sha256_hex(book_root + "\n" + session_id)
+  mooncode_sha256_hex(book_root + "\n" + session_id)
 }
 
 ///|

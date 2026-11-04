@@ -70,7 +70,7 @@ async test "nochange actual required test through existing degraded executor" {
         mooncode_runtime_turn_result_payload(evidence[1]),
         "metadata",
       )
-      assert_eq(mooncode_nochange_field(metadata, "exit_code"), Json(0))
+      assert_eq(mooncode_task_field(metadata, "exit_code"), Json(0))
       assert_true(
         mooncode_json_string(
           mooncode_runtime_turn_result_payload(evidence[1]),
@@ -87,7 +87,7 @@ async test "nochange actual required test through existing degraded executor" {
         "evidence_refs",
         Json::array(
           evidence.map(result => {
-            Json(mooncode_nochange_result_event_id(command, result))
+            Json(mooncode_runtime_result_event_id(command, result))
           }),
         ),
       )
@@ -127,26 +127,15 @@ async test "nochange actual required test through existing degraded executor" {
         now=@clock.Timestamp::from_ms(13L),
       )
       let completed = evidence + [checkpoint, finish]
-      let verdict = mooncode_runtime_turn_completion_verdict(
-        command,
-        completed,
-        require_horizon=true,
-      )
+      let verdict = mooncode_runtime_turn_completion_verdict(command, completed)
       assert_true(verdict.accepted, msg=verdict.reason)
       assert_eq(@fsx.read_file(root + "/already_test.mbt"), source)
       assert_eq(
         @fsx.read_file(root + "/moon.mod"),
         "name = \"fixture/nochange\"\n",
       )
-      let projection = mooncode_nochange_verdict_projection(
-        verdict, command, completed,
-      )
       assert_eq(
-        mooncode_json_string(projection, "original_task_acceptance", default=""),
-        "unevaluated",
-      )
-      assert_eq(
-        mooncode_json_array_items(projection, "required_check_evidence").length(),
+        mooncode_runtime_required_check_evidence(command, completed).length(),
         1,
       )
     })

@@ -321,6 +321,21 @@ fn mooncode_runtime_turn_command_with_deferred_steering(
 }
 
 ///|
+fn mooncode_runtime_task_with_update(command : Json, steering : Json) -> Json {
+  let id = mooncode_json_string(steering, "command_id", default="")
+  let text = mooncode_json_string(steering, "steering_text", default="")
+  let revision = mooncode_json_string(
+    command,
+    "task_revision",
+    default=mooncode_command_id(command),
+  )
+  let updates = mooncode_json_array_items(command, "task_updates")
+  updates.push({ "command_id": id, "text": text })
+  mooncode_json_object_with_field(command, "task_updates", Json::array(updates))
+  |> mooncode_json_object_with_field("task_revision", Json(revision + ":" + id))
+}
+
+///|
 /// Select still-pending steering controls that the authoritative control
 /// projection targets at the active turn. Decisions preserve command-journal
 /// order, so the returned steering messages may be injected in array order.

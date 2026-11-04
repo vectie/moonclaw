@@ -47,7 +47,7 @@ priv struct MoonCodeStreamResumeSpool {
 
 ///|
 fn mooncode_stream_resume_digest(value : String) -> String {
-  mooncode_goal_runtime_sha256_hex(value)[:MOONCODE_STREAM_RESUME_CURSOR_PART_HEX_CHARS].to_owned()
+  mooncode_sha256_hex(value)[:MOONCODE_STREAM_RESUME_CURSOR_PART_HEX_CHARS].to_owned()
 }
 
 ///|
@@ -118,7 +118,7 @@ fn mooncode_stream_resume_cursor_parse(
   value : String,
   session_id : String,
   book_root : String,
-) -> MoonCodeStreamResumeCursor raise MoonCodeGoalRuntimeStoreError {
+) -> MoonCodeStreamResumeCursor raise MoonCodeJournalDecodeError {
   if value == MOONCODE_STREAM_RESUME_START {
     return {
       sequence: MoonCodeJournalSequence::zero(),
@@ -128,15 +128,11 @@ fn mooncode_stream_resume_cursor_parse(
     }
   }
   if value == "" || value.length() > MOONCODE_STREAM_RESUME_CURSOR_MAX_CHARS {
-    return mooncode_goal_runtime_store_corrupt(
-      "resume cursor has invalid length",
-    )
+    return mooncode_journal_corrupt("resume cursor has invalid length")
   }
   let parts = value.split(".").to_array()
   guard parts.length() == 5 && parts[0] == "mcr1" else {
-    return mooncode_goal_runtime_store_corrupt(
-      "resume cursor has invalid shape",
-    )
+    return mooncode_journal_corrupt("resume cursor has invalid shape")
   }
   let binding = parts[1].to_owned()
   let epoch = parts[2].to_owned()
@@ -145,21 +141,15 @@ fn mooncode_stream_resume_cursor_parse(
   guard mooncode_stream_resume_hex_part_valid(binding) &&
     mooncode_stream_resume_hex_part_valid(epoch) &&
     mooncode_stream_resume_hex_part_valid(checksum) else {
-    return mooncode_goal_runtime_store_corrupt(
-      "resume cursor has invalid digest",
-    )
+    return mooncode_journal_corrupt("resume cursor has invalid digest")
   }
   guard binding == mooncode_stream_resume_binding(session_id, book_root) else {
-    return mooncode_goal_runtime_store_corrupt(
-      "resume cursor belongs to another stream",
-    )
+    return mooncode_journal_corrupt("resume cursor belongs to another stream")
   }
   let sequence = mooncode_journal_cursor_parse(sequence_text)
   guard checksum ==
     mooncode_stream_resume_cursor_checksum(binding, epoch, sequence.text()) else {
-    return mooncode_goal_runtime_store_corrupt(
-      "resume cursor checksum mismatch",
-    )
+    return mooncode_journal_corrupt("resume cursor checksum mismatch")
   }
   { sequence, epoch, token: value, initial: false, }
 }

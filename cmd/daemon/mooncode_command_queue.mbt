@@ -295,7 +295,7 @@ fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
     Ok(_) => ""
     Err(error) => error
   }
-  let completion_policy_error = mooncode_nochange_policy_error(body)
+  let completion_policy_error = mooncode_task_contract_error(body)
   {
     "ok": missing.length() == 0 &&
     unsupported.length() == 0 &&

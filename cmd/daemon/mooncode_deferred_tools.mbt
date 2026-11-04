@@ -425,14 +425,7 @@ fn mooncode_runtime_turn_model_tools_for_followup(
     )
     mooncode_json_string(function, "name", default="")
   })
-  let all_tools = mooncode_runtime_turn_model_tools(
-    active_goal_runtime=mooncode_json_string(
-        mooncode_json_object_field_or_empty(command, "goal_runtime"),
-        "goal_id",
-        default="",
-      ) !=
-      "",
-  )
+  let all_tools = mooncode_runtime_turn_model_tools()
   for tool in all_tools {
     let function = mooncode_json_object_field_or_empty(
       tool.to_json(),

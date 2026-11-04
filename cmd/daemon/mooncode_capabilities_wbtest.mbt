@@ -31,7 +31,7 @@ test "mooncode capabilities expose native daemon endpoints" {
       "/v1/code/sessions/<id>/goal?book_root=<path>",
     ),
   )
-  assert_true(
+  assert_false(
     mooncode_native_capability_required_endpoints().contains(
       "/v1/code/sessions/<id>/goal-runtime?book_root=<path>",
     ),

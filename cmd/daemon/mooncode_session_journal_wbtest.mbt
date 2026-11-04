@@ -68,3 +68,43 @@ test "unrelated event retains timestamp fallback identity" {
   })
   inspect(id, content="event::other.event:null")
 }
+
+///|
+fn goal_gate_snapshot(session_id : String, root : String) -> Json {
+  let binding = MoonCodeSessionBinding::{
+    session_id,
+    book_root: root,
+    workspace_id: "book-code-lab",
+    workspace_name: "Code Lab",
+    model: "",
+    model_workspace: "",
+    command_count: 2,
+    first_user_prompt: "Build a durable MoonCode tool",
+    custom_title: "",
+    last_command_id: "cmd-2",
+    last_updated: @clock.Timestamp::from_ms(42L),
+    runtime_service_running: false,
+    runtime_service_wake_pending: false,
+    runtime_service_task: None,
+    active_command_id: "",
+    events: @broadcast.Broadcast::new(),
+  }
+  mooncode_session_snapshot(binding)
+}
+
+///|
+fn goal_gate_dir(root : String, id : String, archived : Bool) -> String {
+  mooncode_session_dir_by_safe_id(root, mooncode_safe_session_id(id), archived~)
+}
+
+///|
+async fn goal_gate_write_snapshot(
+  root : String,
+  id : String,
+  archived : Bool,
+  snapshot : Json,
+) -> Unit {
+  let dir = goal_gate_dir(root, id, archived)
+  @fsx.make_directory(dir, recursive=true, exists_ok=true)
+  @fsx.write_to_file(dir + "/session.json", snapshot.stringify())
+}

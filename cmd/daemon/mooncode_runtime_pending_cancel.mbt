@@ -373,7 +373,7 @@ fn mooncode_runtime_legacy_cancel_matches(
   receipt : Json,
 ) -> Bool {
   let target = mooncode_json_string(event, "target_command_id", default="")
-  mooncode_goal_runtime_is_active_cancel_source(event) &&
+  mooncode_runtime_is_active_cancel_source(event) &&
   mooncode_json_string(event, "contract_id", default="") ==
   @moonlib_conversation.control_contract_id() &&
   mooncode_json_string(event, "session_id", default="") == session_id &&
@@ -386,4 +386,27 @@ fn mooncode_runtime_legacy_cancel_matches(
   mooncode_json_string(receipt, "runtime_mode", default="") ==
   "moonclaw-native-runtime-control" &&
   mooncode_json_string(receipt, "control_command_id", default="") == ""
+}
+
+///|
+fn mooncode_runtime_is_active_cancel_source(source : Json) -> Bool {
+  let command_id = mooncode_json_string(source, "command_id", default="")
+  let target_id = mooncode_json_string(source, "target_command_id", default="")
+  let control_id = mooncode_json_string(source, "control_id", default="")
+  command_id != "" &&
+  command_id.trim() == command_id &&
+  target_id == command_id &&
+  control_id != "" &&
+  control_id.trim() == control_id &&
+  mooncode_json_string(source, "control_command_id", default="") == control_id &&
+  mooncode_json_string(source, "control_kind", default="") ==
+  "turn-cancellation" &&
+  mooncode_json_string(source, "kind", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "event", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "status", default="") == "cancelled" &&
+  mooncode_json_string(source, "state", default="") == "cancelled" &&
+  mooncode_json_string(source, "source", default="") ==
+  "moonclaw-native-runtime-control"
 }

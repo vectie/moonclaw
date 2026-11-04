@@ -22,20 +22,8 @@ test "Desk UI native payloads complete according to task purpose" {
     assert_eq(mooncode_runtime_turn_requires_verification(command), coding)
     let results = readonly_intent_results()
     assert_eq(
-      mooncode_runtime_turn_completion_verdict(
-        command,
-        results,
-        require_horizon=mooncode_runtime_turn_requires_verification(command),
-      ).accepted,
+      mooncode_runtime_turn_completion_verdict(command, results).accepted,
       !coding,
-    )
-    assert_eq(
-      mooncode_runtime_turn_discovery_saturated(
-        command,
-        { "tool": "read", "arguments": { "path": "src/next.mbt" } },
-        results,
-      ),
-      coding,
     )
     assert_eq(
       mooncode_runtime_turn_recoverable_horizon_finish(
