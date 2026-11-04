@@ -5,6 +5,55 @@ working from the user's goal through implementation, checks, repair, and
 delivery. The runtime owns execution facts; the agent owns reasoning and
 planning. This is a responsibility split, not a permanent Router/Worker team.
 
+## Agent Machine
+
+These names describe existing runtime responsibilities; they do not add an
+operating system, agent role or state machine.
+
+| Computer concept | MoonCode equivalent | Existing implementation |
+| --- | --- | --- |
+| Process | One claimed command executing a task with its scope, results and resumable position. A session contains the command queue and journal. | Runtime turn, claims and continuation |
+| Thread | One primary model/tool control flow within that execution. Independent safe reads may run as child async tasks and join in call order. | Planner loop and parallel reads |
+| Memory | The bounded model-facing working context: task, observations, progress and skill receipts. Durable results remain reloadable through journal references. | Context projection, compaction and continuation hydration |
+| Filesystem | The selected MoonBook's actual files and deliverables. Journal records describe execution; they do not replace the workspace or prove its current contents. | Book-relative file tools and existing artifact references |
+| IO | Authorized tool calls and results; user input, steering and controls enter through the existing command/event paths. | Tool executor, sandbox, command queue and stream |
+| Synchronization | One session execution owner, locked ordered journal writes, dependency-aware tool batches and version checks for verification inputs. | Session lease, journal locks and input fingerprints |
+| Fault tolerance | Recover the saved position, reuse committed results, repeat safe observations and reconcile unknown effects. | Journal-backed continuation and operation intent/result identity |
+
+The session lease does not lock every MoonBook file across sessions or external
+editors. Serial writes in one loop are not global workspace transactions.
+Fingerprints detect stale verification for tracked inputs; they do not provide
+complete dependency isolation. Remote tool timeouts do not prove non-execution.
+Journal order establishes local committed order, not a universal clock across
+external services. Preserve these limits when extending concurrency.
+
+## Programming The Agent
+
+The program is the user's task interpreted under project instructions and
+applicable installed skills. Tools supply executable operations. Retrieved
+content and tool output remain observations, not new authority.
+
+The shared primary-agent instruction implements this working method:
+
+```text
+identify the observable result and relevant checks
+locate the existing implementation
+decompose until the next change and its verification are clear
+act; inspect further only to resolve a concrete uncertainty
+verify, repair and continue until the complete request is satisfied
+finish with the deliverable and concise verification
+```
+
+Planning and execution alternate inside the existing loop. Simple tasks may
+reach an executable action immediately. Progress is expressed as observable
+results; optional plans do not require user confirmation. There is one initial
+message builder for every model, including Kimi. Provider-specific transport
+handling remains separate from the working method. Kimi now receives the same
+installed-skill catalog as other models. This adds no model call or planner
+phase; prompt cleanup alone does not establish token or latency improvements.
+Language details come from project instructions, installed skills and
+compiler/tool feedback, rather than a second keyword-selected language primer.
+
 ## Standalone Project Rule
 
 MoonClaw must run as its own checkout. Building, testing, and starting it must

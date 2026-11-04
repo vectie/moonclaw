@@ -1116,25 +1116,7 @@ test "mooncode model planner sends a compact request envelope" {
     skill_catalog="\n<available_skills><skill><name>moonbit-agent-guide</name></skill></available_skills>",
   )
   let system = mooncode_json_string(initial[0], "content", default="")
-  assert_true(system.contains("read_skill"))
   assert_true(system.contains("moonbit-agent-guide"))
-  assert_true(
-    Json(initial)
-    .stringify()
-    .contains(
-      "Dynamic skill gate: the user's wording may omit the implementation language",
-    ),
-  )
-  assert_true(
-    Json(initial).stringify().contains("the gate is already satisfied"),
-  )
-  assert_true(
-    Json(initial)
-    .stringify()
-    .contains("never through read, shell, glob, grep, find, ls, or web tools"),
-  )
-  assert_true(system.contains("primary agent"))
-  assert_true(system.contains("Checkpoints are optional"))
 }
 
 ///|
@@ -1160,37 +1142,6 @@ test "mooncode planner permits parallel tool calls" {
   let tools_json = Json(mooncode_runtime_turn_model_tools()).stringify()
   assert_true(tools_json.contains("start_line"))
   assert_true(tools_json.contains("end_line"))
-  let kimi_system = mooncode_json_string(
-    mooncode_runtime_turn_kimi_messages(
-      { "command": "prompt", "text": "repair the UI" },
-      [],
-    )[0],
-    "content",
-    default="",
-  )
-  assert_true(
-    kimi_system.contains(
-      "when the target and intended change are already clear",
-    ),
-  )
-  assert_true(kimi_system.contains("read with start_line/end_line"))
-  let prompt = mooncode_runtime_turn_model_prompt({
-    "command": "prompt",
-    "text": "repair the UI",
-  })
-  assert_true(prompt.contains("Choose one dependency-aware bounded tool batch"))
-  assert_true(prompt.contains("Batch every independent inspection or mutation"))
-  assert_false(prompt.contains("Choose the smallest useful tool batch"))
-  let planner_system = mooncode_json_string(
-    mooncode_runtime_turn_model_initial_messages({
-      "command": "prompt",
-      "text": "repair the UI",
-    })[0],
-    "content",
-    default="",
-  )
-  assert_true(planner_system.contains("batch independent work"))
-  assert_false(planner_system.contains("at most six broad"))
 }
 
 ///|
@@ -1338,26 +1289,6 @@ test "mooncode line-range reads remain partial observations" {
     },
   })
   assert_eq(mooncode_json_string(observation, "scope", default=""), "partial")
-}
-
-///|
-test "kimi planner uses a concise autonomous execution envelope" {
-  let command : Json = {
-    "command": "prompt",
-    "text": "Redesign the complete interface and verify it visually.",
-  }
-  let messages = mooncode_runtime_turn_kimi_messages(command, [])
-  assert_eq(messages.length(), 3)
-  let system = mooncode_json_string(messages[0], "content", default="")
-  assert_true(system.contains("complete request as the task contract"))
-  assert_true(system.contains("do not ask for micro-instructions"))
-  assert_true(system.contains("no implicit step, turn, time, or effort budget"))
-  assert_false(system.contains("<available_skills>"))
-  assert_true(
-    mooncode_json_string(messages[2], "content", default="").contains(
-      "Redesign the complete interface",
-    ),
-  )
 }
 
 ///|

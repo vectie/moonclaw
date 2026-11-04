@@ -55,13 +55,19 @@ into additional implementation requirements.
 - Empty follow-ups retain the claim and results for autonomous retry regardless
   of progress notes. Milestone predicates, `all_done` receipts and required
   checkpoint contracts were removed; advisory checkpoints inspect no evidence.
+- The agent machine model maps existing execution, context, files, IO,
+  synchronization and recovery; it introduces no new runtime layer. Every model
+  shares one primary instruction: work top down until a change and its check are
+  clear, act, verify and repair. Kimi's duplicate builder, keyword language
+  primer and prompt-phrase tests were removed; provider transport stays separate.
 
 ## Validation 2026-11-04
 
-- After removing milestone-dependent recovery, native check and the full native
-  suite passed 1929/1929 (`--target native --strip -j 2 --warn-list -all`).
-  The existing restart fixture now covers repeated empty follow-ups after a
-  rejected finish without any progress checkpoints, followed by valid delivery.
+- After sharing the primary-agent program, native check and the full native
+  suite passed 1927/1927 (`--target native --strip -j 2 --warn-list -all`).
+  Focused runtime/context/compaction/process tests passed 98/98. The quantum
+  restart fixture now uses a Kimi model identifier through the shared builder;
+  this is a local mock transport, not a live-provider quality measurement.
 - The real MoonDesk producer/consumer probe passed. `moon info`, formatting and
   whitespace checks passed; interfaces are unchanged. Retained tests cover
   completion repair, stale checks, restart, uncertain effects and cancellation.
@@ -75,6 +81,11 @@ into additional implementation requirements.
   they were retired. Confirm current source rather than reusing their test counts.
 - Context provenance writes v2; v1 describes an existing reader path.
 - A milestone checkpoint does not discard the actual planner transcript.
+- New initial contexts use the shared program. Resumed transcripts retain their
+  captured system instructions; do not silently rewrite those during compaction.
+- Session execution ownership is not a MoonBook-wide write lock. Fingerprints
+  detect stale tracked inputs; do not claim transaction isolation across sessions
+  or external editors, or infer remote non-execution from a timeout.
 - Repeated empty follow-ups after rejected `finish` must preserve the retained
   `finish_rejected` flag. Resetting it made the next continuation invalid and
   raised `InvalidJournal`; the restart fixture now covers two empty responses.

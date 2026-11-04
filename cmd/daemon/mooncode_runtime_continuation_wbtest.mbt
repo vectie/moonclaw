@@ -502,7 +502,7 @@ async fn mooncode_runtime_quantum_test_daemon(book_root : String) -> Daemon {
 }
 
 ///|
-async test "planner max steps is a resumable quantum without tool replay" {
+async test "Kimi planner quantum resumes without tool replay" {
   @fsx.with_temporary_directory("mooncode-planner-quantum-XXXXXX", async fn(
     root,
   ) {
@@ -529,7 +529,7 @@ async test "planner max steps is a resumable quantum without tool replay" {
       api_key="test",
       base_url="http://localhost:\{model_server.port()}/v1",
       name="test-planner",
-      model_name="test-planner-model",
+      model_name="kimi-k3",
       safe_zone_tokens=4096,
     )
     let models_path = @moonsuite.product_artifact_for_workspace_root(

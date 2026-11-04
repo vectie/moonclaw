@@ -654,6 +654,12 @@ for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 checkpoints save advisory progress. Native tools come from one catalog, with
 read-only subsets and explicit `planner_allowed_tools` selection. Worker tools
 are absent by default. MCP tools retain their own existing inventory/call path.
+All models share the same working instruction and initial-message builder:
+identify the observable result, locate the implementation, decompose until
+action and verification are clear, then execute and repair. Provider transport
+differences do not create another planner policy. The
+[agent machine model](../../docs/executable_book_runtime_boundary.md#agent-machine)
+maps this path to execution, memory, files, IO, synchronization and recovery.
 The actual planner transcript and tool results remain available after a
 checkpoint; recording a milestone does not itself discard earlier source
 observations. Separate context projection and opt-in pressure-based compaction

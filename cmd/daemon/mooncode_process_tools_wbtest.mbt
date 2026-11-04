@@ -470,18 +470,6 @@ async test "mooncode native shell rejects inline interpreter authoring" (
 }
 
 ///|
-test "MoonCode planner reserves authored mutations for reviewable tools" {
-  let messages = mooncode_runtime_turn_model_initial_messages({
-    "command": "prompt",
-    "text": "Update the workspace",
-  })
-  let system = mooncode_json_string(messages[0], "content", default="")
-  assert_true(
-    system.contains("Use edit/write/apply_patch for authored changes"),
-  )
-}
-
-///|
 async test "mooncode rejects legacy and JSON-shaped MoonBit manifests" (
   t : @test.Test,
 ) {
