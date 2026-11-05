@@ -364,6 +364,13 @@ not event counts. The unused typed-resume projection was removed. Existing work
 steps/evidence supply the minimal work graph of batches, calls, file references
 and check inputs. No graph store, scheduler or model call is introduced.
 
+Raw diagnostic streams also share one journal scanner for wait summaries and
+spool output. Immediate replay skips the otherwise discarded summary pass.
+The old test-only in-memory stream builders and positional cursor fallback are
+removed. Production JSONL/SSE still use physical journal positions and release
+locks before network delivery; canonical watch remains the desktop source.
+See [stream reader](MOONCODE_STREAM_RESUME.md#diagnostic-stream-reader).
+
 Planner observations attach bounded metrics to existing events, including empty
 responses. Conversation usage sums those durable facts rather than rereading
 compacted historical plans or overwriting usage from receipts. The synchronous

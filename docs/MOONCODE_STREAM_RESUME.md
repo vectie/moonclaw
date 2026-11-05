@@ -57,6 +57,34 @@ It is not the desktop conversation source. There is no `resume_cursor` mode.
 The runtime and desktop advertise the canonical watch endpoint together in
 their capability surface; no fallback to an older daemon is provided.
 
+## Diagnostic stream reader
+
+The diagnostic JSONL/SSE stream uses one locked journal scan for both scalar
+wait summaries and spool emission. Sequence values come from physical journal
+envelopes; neither payload fields nor positions in an event-only array can
+choose a cursor. Existing mixed journal reading and exact decimal encoding stay
+in place. The test-only in-memory replay/serialization path has been removed.
+
+Immediate replay (`wait_ms=0`) goes directly to the existing spool scan. It no
+longer performs a discarded summary scan first. Live waits still use scalar
+summaries and file-size signals, followed by a fresh authoritative spool. The
+scanner optionally emits selected records into that local file while holding
+the existing locks; file and session locks are released before HTTP delivery.
+No journal index, new store or client execution state is introduced.
+
+The HTTP regression checks real JSONL/SSE frames, physical sparse positions,
+payload cursor shadowing, tail/beyond-tail reconnect and rejection before 200.
+It uses the existing daemon fixture rather than an alternative serializer as
+its expected-result oracle.
+
+A temporary local fixture compared the former summary+spool composition with
+the current zero-wait+spool composition using the same scanner: 1000 events,
+10 iterations per batch, warmed local filesystem. Three batch timings were
+596/575/574 ms versus 386/386/388 ms. These include scan/projection, spool writes
+and cleanup; they exclude fixture creation, compilation, HTTP transfer, model
+work and cold-disk costs. This isolates the removed scan, not an end-to-end
+agent or production latency qualification. The measurement fixture was removed.
+
 ## Cost and limits
 
 Unchanged waits transmit no transcript, event spool or artifact body. Each

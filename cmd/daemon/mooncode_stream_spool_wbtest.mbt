@@ -53,7 +53,7 @@ async test "stream summary repairs torn mixed-v1/v2 journal and ignores non-even
       legacy.stringify() + "\n" + current.stringify() + "\n{\"kind\":",
     )
     let before_size = @fsx.read_file(path).length()
-    let summary = mooncode_stream_summary(
+    let summary = mooncode_stream_scan(
       root,
       session_id,
       MoonCodeJournalSequence::zero(),
@@ -66,7 +66,7 @@ async test "stream summary repairs torn mixed-v1/v2 journal and ignores non-even
     let huge = MoonCodeJournalSequence::parse(
       "922337203685477580812345678901234567890",
     )
-    let past = mooncode_stream_summary(root, session_id, huge)
+    let past = mooncode_stream_scan(root, session_id, huge)
     assert_eq(past.event_count, 1)
     assert_eq(past.eligible_event_count, 0)
     let size_before_command = past.journal_size
@@ -78,7 +78,7 @@ async test "stream summary repairs torn mixed-v1/v2 journal and ignores non-even
         { "command_id": "command-later", "created_at": "2026-07-26T00:00:01Z" },
       ),
     )
-    let after_command = mooncode_stream_summary(
+    let after_command = mooncode_stream_scan(
       root,
       session_id,
       MoonCodeJournalSequence::parse("2"),
@@ -107,7 +107,7 @@ async test "stream summary rejects a foreign-session committed record" {
     @fsx.write_to_file(path, foreign.stringify() + "\n")
     let rejected = try {
       ignore(
-        mooncode_stream_summary(root, expected, MoonCodeJournalSequence::zero()),
+        mooncode_stream_scan(root, expected, MoonCodeJournalSequence::zero()),
       )
       false
     } catch {
@@ -119,114 +119,86 @@ async test "stream summary rejects a foreign-session committed record" {
 }
 
 ///|
-async test "stream spool JSONL and SSE bytes match compatibility payloads" {
+async test "stream spool projects physical journal positions in JSONL and SSE" {
   @fsx.with_temporary_directory("mooncode-stream-spool-XXXXXX", async fn(root) {
     let session_id = "session-stream-spool"
-    assert_true(
-      mooncode_append_session_journal_once(
+    for index in 0..<5 {
+      let event = index == 1 || index == 4
+      mooncode_append_session_journal(
         root,
         session_id,
-        mooncode_journal_command(),
-        { "command_id": "command-stream", "created_at": "2026-07-26T00:00:00Z" },
-      ),
-    )
-    assert_true(
-      mooncode_append_session_journal_once(
-        root,
-        session_id,
-        mooncode_journal_event(),
-        {
-          "id": "event-stream",
-          "kind": "tool_result",
-          "lane": "tool",
-          "command_id": "command-stream",
-          "created_at": "2026-07-26T00:00:01Z",
+        if event {
+          mooncode_journal_event()
+        } else {
+          mooncode_journal_command()
         },
-      ),
-    )
-    let since = MoonCodeJournalSequence::zero()
-    let events = mooncode_journal_entries(
-      mooncode_read_session_journal(root, session_id),
-      mooncode_journal_event(),
-    )
-    let jsonl = mooncode_stream_create_spool("jsonl", root, session_id, since)
-    let jsonl_meta = mooncode_stream_meta_record(
-      session_id,
-      root,
-      event_count=jsonl.summary.event_count,
-      since~,
-      emitted_count=jsonl.summary.eligible_event_count,
-      latest_sequence=jsonl.summary.latest_event_sequence,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    let jsonl_done = mooncode_stream_done_record(
-      session_id,
-      root,
-      latest_sequence=jsonl.summary.latest_event_sequence,
-      since~,
-      emitted_count=jsonl.summary.eligible_event_count,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    let jsonl_actual = mooncode_stream_record_frame("jsonl", jsonl_meta) +
-      @fsx.read_file(jsonl.path) +
-      mooncode_stream_record_frame("jsonl", jsonl_done)
-    let jsonl_expected = mooncode_stream_jsonl_payload(
-      session_id,
-      root,
-      events,
-      since~,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    assert_eq(jsonl_actual, jsonl_expected)
-    jsonl.cleanup()
-    let sse = mooncode_stream_create_spool("sse", root, session_id, since)
-    let sse_meta = mooncode_stream_meta_record(
-      session_id,
-      root,
-      event_count=sse.summary.event_count,
-      since~,
-      emitted_count=sse.summary.eligible_event_count,
-      latest_sequence=sse.summary.latest_event_sequence,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    let sse_done = mooncode_stream_done_record(
-      session_id,
-      root,
-      latest_sequence=sse.summary.latest_event_sequence,
-      since~,
-      emitted_count=sse.summary.eligible_event_count,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    let sse_actual = mooncode_stream_record_frame("sse", sse_meta) +
-      @fsx.read_file(sse.path) +
-      mooncode_stream_record_frame("sse", sse_done)
-    let sse_expected = mooncode_stream_sse_payload(
-      session_id,
-      root,
-      events,
-      since~,
-      wait_ms=0,
-      poll_ms=100,
-      wait_elapsed_ms=0,
-      wait_attempt_count=0,
-    )
-    assert_eq(sse_actual, sse_expected)
-    sse.cleanup()
+        {
+          "id": "entry-" + index.to_string(),
+          "command_id": "command-" + index.to_string(),
+          "kind": "progress",
+          "lane": "runtime",
+          "created_at": "2026-07-26T00:00:00Z",
+          "journal_sequence": "payload-cannot-set-the-cursor",
+        },
+      )
+    }
+    for
+      (cursor, expected) in (
+        [
+          ("0", ["2", "5"]),
+          ("2", ["5"]),
+          ("999999999999999999999999999999", []),
+        ] : Array[(String, Array[String])]) {
+      for format in ["jsonl", "sse"] {
+        let spool = mooncode_stream_create_spool(
+          format,
+          root,
+          session_id,
+          mooncode_journal_cursor_parse(cursor),
+        )
+        defer spool.cleanup()
+        let body = @fsx.read_file(spool.path)
+        let records = body
+          .split("\n")
+          .filter(line => {
+            line != "" && (format == "jsonl" || line.has_prefix("data: "))
+          })
+          .collect()
+          .map(line => {
+            @json.parse(
+              if format == "sse" {
+                line[6:].to_owned()
+              } else {
+                line.to_owned()
+              },
+            )
+          })
+        assert_eq(
+          records.map(record => {
+            mooncode_json_string(record, "sequence", default="")
+          }),
+          expected,
+        )
+        assert_eq(spool.summary.event_count, 2)
+        assert_eq(spool.summary.eligible_event_count, expected.length())
+        assert_eq(spool.summary.latest_event_sequence.text(), "5")
+        for record in records {
+          assert_eq(
+            mooncode_json_string(record, "contract_id", default=""),
+            "mooncode-stream.v2",
+          )
+          assert_eq(mooncode_json_string(record, "since", default=""), cursor)
+          assert_eq(
+            mooncode_json_string(record, "sequence", default=""),
+            mooncode_json_string(
+              mooncode_json_object_field_or_empty(record, "event"),
+              "journal_sequence",
+              default="",
+            ),
+          )
+        }
+      }
+    }
   })
 }
 
@@ -254,7 +226,7 @@ async test "stream scalar scan handles thousands of records without collection" 
       writer.write(record.stringify() + "\n")
     }
     writer.close()
-    let summary = mooncode_stream_summary(
+    let summary = mooncode_stream_scan(
       root,
       session_id,
       MoonCodeJournalSequence::parse("4999"),
@@ -266,51 +238,21 @@ async test "stream scalar scan handles thousands of records without collection" 
 }
 
 ///|
-async fn mooncode_stream_http_test_daemon(book_root : String) -> Daemon {
-  let httpx = @httpx.Server::new("[::1]", 0, reuse_addr=true)
-  let uuid = @uuid.generator(@rand.chacha8())
-  {
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=book_root, cwd=book_root),
-    uuid,
-    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    httpx,
-    port: httpx.port(),
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(home=book_root, uuid~),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-}
-
-///|
 async test "stream HTTP serves exact chunked JSONL and SSE and validates before 200" {
   @fsx.with_temporary_directory("mooncode-stream-http-XXXXXX", async fn(root) {
     let session_id = "session-stream-http"
-    assert_true(
-      mooncode_append_session_journal_once(
-        root,
-        session_id,
-        mooncode_journal_event(),
-        {
-          "id": "event-http",
-          "kind": "progress",
-          "lane": "runtime",
-          "created_at": "2026-07-26T00:00:00Z",
-        },
-      ),
-    )
-    let events = mooncode_journal_entries(
-      mooncode_read_session_journal(root, session_id),
+    mooncode_append_session_journal(
+      root,
+      session_id,
       mooncode_journal_event(),
+      {
+        "id": "event-http",
+        "kind": "progress",
+        "lane": "runtime",
+        "created_at": "2026-07-26T00:00:00Z",
+      },
     )
-    let since = MoonCodeJournalSequence::zero()
-    let daemon = mooncode_stream_http_test_daemon(root)
+    let daemon = integration_fixture_daemon(root)
     defer daemon.httpx.close()
     @async.with_task_group(group => {
       group.spawn_bg(
@@ -320,47 +262,61 @@ async test "stream HTTP serves exact chunked JSONL and SSE and validates before 
         no_wait=true,
       )
       @async.pause()
-      let base = "http://localhost:\{daemon.httpx.port()}/v1/code/sessions/\{session_id}/stream?book_root=\{root}"
-      let (jsonl_response, jsonl_body) = @http.get_stream(
-        base + "&format=jsonl",
-      )
-      assert_eq(jsonl_response.code, 200)
-      assert_eq(jsonl_response.headers["content-type"], "application/x-ndjson")
-      assert_eq(jsonl_response.headers["transfer-encoding"], "chunked")
-      let jsonl_text = jsonl_body.read_all().text()
-      jsonl_body.close()
+      let base = "http://127.0.0.1:\{daemon.httpx.port()}/v1/code/sessions/\{session_id}/stream?book_root=\{root}"
+      let (response, body) = @http.get_stream(base + "&format=jsonl")
+      assert_eq(response.code, 200)
+      assert_eq(response.headers["content-type"], "application/x-ndjson")
+      assert_eq(response.headers["transfer-encoding"], "chunked")
+      let text = body.read_all().text()
+      body.close()
+      let lines = text.split("\n").filter(line => line != "").collect()
+      let records = lines.map(line => @json.parse(line.to_owned()))
       assert_eq(
-        jsonl_text,
-        mooncode_stream_jsonl_payload(
-          session_id,
-          root,
-          events,
-          since~,
-          wait_ms=0,
-          poll_ms=100,
-          wait_elapsed_ms=0,
-          wait_attempt_count=0,
-        ),
+        records.map(record => mooncode_json_string(record, "type", default="")),
+        ["meta", "event", "done"],
       )
-      let (sse_response, sse_body) = @http.get_stream(base + "&format=sse")
-      assert_eq(sse_response.code, 200)
-      assert_eq(sse_response.headers["content-type"], "text/event-stream")
-      assert_eq(sse_response.headers["transfer-encoding"], "chunked")
-      let sse_text = sse_body.read_all().text()
-      sse_body.close()
+      assert_eq(mooncode_json_int(records[0], "event_count", default=0), 1)
+      assert_eq(mooncode_json_string(records[1], "sequence", default=""), "1")
       assert_eq(
-        sse_text,
-        mooncode_stream_sse_payload(
-          session_id,
-          root,
-          events,
-          since~,
-          wait_ms=0,
-          poll_ms=100,
-          wait_elapsed_ms=0,
-          wait_attempt_count=0,
-        ),
+        mooncode_json_string(records[1], "event_id", default=""),
+        "event-http",
       )
+      assert_eq(mooncode_json_string(records[2], "next_since", default=""), "1")
+      let (response, body) = @http.get_stream(base + "&format=sse")
+      assert_eq(response.code, 200)
+      assert_eq(response.headers["content-type"], "text/event-stream")
+      assert_eq(response.headers["transfer-encoding"], "chunked")
+      let text = body.read_all().text()
+      body.close()
+      assert_eq(
+        text,
+        "event: meta\ndata: " +
+        lines[0].to_owned() +
+        "\n\nevent: event\ndata: " +
+        lines[1].to_owned() +
+        "\n\nevent: done\ndata: " +
+        lines[2].to_owned() +
+        "\n\n",
+      )
+      // Reconnect at/beyond the tail: no duplicate event and no cursor regression.
+      for cursor in ["1", "999999999999999999999999999999999"] {
+        let (response, body) = @http.get_stream(base + "&since=" + cursor)
+        assert_eq(response.code, 200)
+        let records = body
+          .read_all()
+          .text()
+          .split("\n")
+          .filter(line => line != "")
+          .collect()
+          .map(line => @json.parse(line.to_owned()))
+        body.close()
+        assert_eq(records.length(), 2)
+        assert_eq(mooncode_json_int(records[0], "emitted_count", default=-1), 0)
+        assert_eq(
+          mooncode_json_string(records[1], "next_since", default=""),
+          cursor,
+        )
+      }
       let foreign = mooncode_stream_test_v2_record(
         "foreign-session",
         "1",

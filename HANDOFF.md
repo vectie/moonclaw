@@ -5,6 +5,37 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Eight-module re-audit: stream reads and typed readiness 2026-11-05
+
+- Stream wait summaries and spool output now share one locked journal scanner.
+  The selected-event callback writes only the local spool under session/journal
+  locks. Close the spool writer and release those locks before HTTP delivery.
+  Immediate replay skips the discarded summary scan; live waits keep summaries
+  and append signals followed by a fresh authoritative spool.
+- Removed test-only in-memory record builders, positional cursor fallback and
+  duplicate JSONL/SSE encoders. Physical journal positions remain authoritative;
+  real mixed journal reading and the public stream contract are unchanged.
+- Retired six old-path tests. Existing spool/HTTP fixtures now check real sparse
+  positions, payload cursor shadowing, JSONL/SSE frames, tail/beyond-tail resume
+  and failure before 200. Reuse the existing daemon fixture; no second serializer
+  as the expected-result oracle. Canonical watch remains the desktop source.
+- Desk readiness decodes once, reuses the typed capability and computes the
+  same existing decision once. Boolean callers avoid building a status JSON.
+  No new acceptance rule, state machine, runner, index/store or approval.
+- Temporary warmed-local composition comparison: 1000 events, 10 iterations
+  per batch, former summary+spool 596/575/574 ms versus zero-wait+spool
+  386/386/388 ms with the same scanner. Includes spool writes and cleanup,
+  excludes compile/fixture/network/model/cold-disk work. This isolates a removed
+  scan, not end-to-end agent latency. Measurement code removed.
+- Validation: Claw native 1846/1846, Desk native 1726/1726, core JS 64/64,
+  UI 839/839; focused stream 8/8 and capability/routes 32/32, producer/consumer
+  probe passed. Info/fmt and whitespace checked; .mbti unchanged. Production
+  .mbt net -232, tests -293, total -525. No installed-app/live-provider or full
+  task performance qualification. Context/compiler, native file CAS, execution
+  ownership, startup recovery and partial-dependency limits remain as documented.
+- Tooling pitfall: `moon ide --no-check` returned stale/empty references after
+  edits. Refresh with its normal check before treating references as evidence.
+
 ## Eight-module re-audit: catalog and execution ownership 2026-11-05
 
 - Reviewed all eight contracts against current callers. Removed duplicated
