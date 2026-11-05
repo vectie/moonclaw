@@ -295,14 +295,7 @@ fn mooncode_worker_receipt_answer(receipt : Json) -> String {
       !mooncode_json_bool(result, "accepted", default=false) {
       continue
     }
-    // Native receipts retain tool executions with a nested result. Older
-    // compact receipts may retain the direct finish payload instead.
-    let nested = mooncode_json_object_field_or_empty(result, "result")
-    let tool_result = if nested is Object(fields) && fields.length() > 0 {
-      nested
-    } else {
-      result
-    }
+    let tool_result = mooncode_tool_result_value(result)
     if mooncode_json_bool(tool_result, "is_error", default=false) {
       continue
     }

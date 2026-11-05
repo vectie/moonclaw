@@ -484,16 +484,6 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
     }
     return ""
   }
-  if tool == "apply_patch" || tool == "revert_patch" {
-    let tool_result = mooncode_json_object_field_or_empty(result, "result")
-    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
-    let verification = mooncode_json_object_field_or_empty(
-      metadata, "verification",
-    )
-    if mooncode_json_bool(verification, "ok", default=false) {
-      return "patch-verification"
-    }
-  }
   ""
 }
 

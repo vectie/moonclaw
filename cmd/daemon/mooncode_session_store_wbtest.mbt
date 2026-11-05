@@ -482,9 +482,12 @@ async test "mooncode durable session record exposes canonical conversation" (
         "tool_results": [
           {
             "tool": "finish",
-            "ok": true,
-            "output": "hello reply",
-            "metadata": { "answer": "hello reply" },
+            "accepted": true,
+            "result": {
+              "ok": true,
+              "output": "hello reply",
+              "metadata": { "answer": "hello reply" },
+            },
           },
         ],
       },
@@ -836,9 +839,12 @@ async test "mooncode journal rebuilds conversation after snapshot corruption" (
         "tool_results": [
           {
             "tool": "finish",
-            "ok": true,
-            "output": "recovered reply",
-            "metadata": { "answer": "recovered reply" },
+            "accepted": true,
+            "result": {
+              "ok": true,
+              "output": "recovered reply",
+              "metadata": { "answer": "recovered reply" },
+            },
           },
         ],
       },
@@ -947,9 +953,12 @@ async test "mooncode canonical conversation replay is deterministic" (
         "tool_results": [
           {
             "tool": "finish",
-            "ok": true,
-            "output": "deterministic reply",
-            "metadata": { "answer": "deterministic reply" },
+            "accepted": true,
+            "result": {
+              "ok": true,
+              "output": "deterministic reply",
+              "metadata": { "answer": "deterministic reply" },
+            },
           },
         ],
       },

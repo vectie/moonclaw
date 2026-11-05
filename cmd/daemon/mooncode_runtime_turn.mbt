@@ -161,7 +161,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
     existing_events, command_id,
   )
   let resume_point = mooncode_runtime_resume_point(continuation)
-  let continuation_active = resume_point is Some(_)
+  let resuming_continuation = resume_point is Some(_)
   let execution_started = existing_events.any(event => {
     mooncode_json_string(event, "command_id", default="") == command_id &&
     (
@@ -177,16 +177,12 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       )
     )
   })
-  if claim_receipts.is_empty() && !continuation_active && execution_started {
+  if claim_receipts.is_empty() && !resuming_continuation && execution_started {
     raise InvalidJournal(
       "MoonCode runtime-claimed command \{command_id} has no valid active continuation",
     )
   }
-  let resuming_approval = resume_point is Some(ResumeTools(_, _))
-  let resuming_planner = resume_point is Some(ResumePlanner(_))
-  let resuming_planner_transport = resume_point is Some(ResumeTransport(_, _))
-  let resuming_planner_replan = resume_point is Some(ResumeReplan(_))
-  let resuming_continuation = continuation_active
+  let resuming_tools = resume_point is Some(ResumeTools(_, _))
   if mooncode_json_string(continuation, "command_id", default="") != "" &&
     !resuming_continuation {
     raise InvalidJournal(
@@ -315,49 +311,40 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
       let applied_live_steering : Array[Json] = []
       let initial_live_steering : Array[Json] = []
-      let retained_transport_steering = if resuming_planner_transport {
-        mooncode_json_array_items(continuation, "pending_live_steering")
-      } else {
-        []
+      let (
+        retained_transport_steering,
+        retained_replan_guidance,
+        retained_replan_count,
+      ) = match resume_point {
+        Some(ResumeTransport(_, _)) =>
+          (
+            mooncode_json_array_items(continuation, "pending_live_steering"),
+            "",
+            0,
+          )
+        Some(ResumeReplan(_)) =>
+          (
+            [],
+            mooncode_json_string(
+              continuation,
+              "patient_replan_guidance",
+              default="",
+            ),
+            mooncode_json_int(continuation, "replan_count", default=0),
+          )
+        _ => ([], "", 0)
       }
-      let retained_replan_guidance = if resuming_planner_replan {
-        mooncode_json_string(
-          continuation,
-          "patient_replan_guidance",
-          default="",
-        )
-      } else {
-        ""
-      }
-      let retained_replan_count = if resuming_planner_replan {
-        mooncode_json_int(continuation, "replan_count", default=0)
-      } else {
-        0
-      }
-      let mut plan = if resuming_approval {
-        mooncode_json_object_field_or_empty(continuation, "plan")
-      } else if resuming_planner {
-        let previous_plan = mooncode_json_object_field_or_empty(
-          continuation, "plan",
-        )
-        self.mooncode_runtime_turn_model_followup_plan(
-          command,
-          previous_plan,
-          mooncode_json_array_items(previous_plan, "tool_calls"),
-          mooncode_json_array_items(continuation, "step_results"),
-          mooncode_json_array_items(continuation, "tool_results"),
-          remaining_steps=max_model_steps,
-          now=plan_now,
-        )
-      } else if resuming_planner_transport {
-        if resume_point is Some(ResumeTransport(true, _)) {
+      let mut plan = match resume_point {
+        Some(ResumeTools(_, _)) =>
+          mooncode_json_object_field_or_empty(continuation, "plan")
+        None | Some(ResumeTransport(true, _)) =>
           self.mooncode_runtime_turn_plan_tool_calls(
             command,
             live_steering=retained_transport_steering,
             remaining_steps=max_model_steps,
             now=plan_now,
           )
-        } else {
+        Some(_) => {
           let previous_plan = mooncode_json_object_field_or_empty(
             continuation, "plan",
           )
@@ -368,30 +355,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             mooncode_json_array_items(continuation, "step_results"),
             mooncode_json_array_items(continuation, "tool_results"),
             live_steering=retained_transport_steering,
+            patient_replan_guidance=retained_replan_guidance,
             remaining_steps=max_model_steps,
             now=plan_now,
           )
         }
-      } else if resuming_planner_replan {
-        let previous_plan = mooncode_json_object_field_or_empty(
-          continuation, "plan",
-        )
-        self.mooncode_runtime_turn_model_followup_plan(
-          command,
-          previous_plan,
-          mooncode_json_array_items(previous_plan, "tool_calls"),
-          mooncode_json_array_items(continuation, "step_results"),
-          mooncode_json_array_items(continuation, "tool_results"),
-          remaining_steps=max_model_steps,
-          patient_replan_guidance=retained_replan_guidance,
-          now=plan_now,
-        )
-      } else {
-        self.mooncode_runtime_turn_plan_tool_calls(
-          command,
-          remaining_steps=max_model_steps,
-          now=plan_now,
-        )
       }
       if !resuming_continuation &&
         mooncode_runtime_turn_requires_model_planning(command) {
@@ -467,7 +435,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
         "planner_turn_end_step",
         default=0,
       )
-      let planner_turn_end_step = if resuming_approval &&
+      let planner_turn_end_step = if resuming_tools &&
         stored_planner_turn_end > resume_step_index {
         stored_planner_turn_end
       } else if max_model_steps > 0 {
@@ -481,7 +449,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       for step_index = resume_step_index
           planner_turn_end_step == 0 || step_index < planner_turn_end_step
           step_index = step_index + 1 {
-        let resuming_step = resuming_approval && step_index == resume_step_index
+        let resuming_step = resuming_tools && step_index == resume_step_index
         if mooncode_json_bool(plan, "transient_transport_close", default=false) {
           for event in mooncode_json_array_items(plan, "events") {
             self.mooncode_runtime_turn_record_event(

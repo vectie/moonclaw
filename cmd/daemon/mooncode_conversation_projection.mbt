@@ -1288,6 +1288,7 @@ fn mooncode_conversation_receipt_answer(receipt : Json) -> String {
   let execution = mooncode_json_object_field_or_empty(receipt, "execution")
   for result in mooncode_json_array_items(execution, "tool_results") {
     if mooncode_json_string(result, "tool", default="") == "finish" {
+      let result = mooncode_tool_result_value(result)
       let metadata = mooncode_json_object_field_or_empty(result, "metadata")
       for
         text in [

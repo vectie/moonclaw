@@ -5,6 +5,36 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Data Model / Compute Engine convergence 2026-11-05
+
+- Completed operation events own their execution header and tool_result.
+  Checkpoints use event_id/event_digest or inline_execution for synthetic
+  results, with no copied header or journaled_result flag. Event display
+  names must not decide storage shape; patch/finish results can be refs.
+  Operation recovery and hydration share mooncode_tool_execution_from_event.
+- Initial/current/follow-up selection matches the existing ResumePoint.
+  Quantum, transport and replan follow-ups share one assembly; retain
+  steering, guidance and finish_rejected semantics. No new state machine.
+- Receipt consumers use canonical nested result. Old flat worker fallback
+  and flat-only conversation assumption are removed; fixtures now match
+  the real producer. No legacy reader or output approval stage was added.
+- Removed dead patch-verification metadata classification and its empty
+  test. Ordinary patch completion has no new mandatory check or action.
+- Temporary measurement: 100 write results with 33020-char source arguments,
+  history serialization 3561392 -> 12692 ASCII chars. Original result events
+  and current transcript are excluded; no model tokens/latency claim.
+  Digest calculation and reference traversal still have their existing cost.
+
+- Validation: Claw native 1852/1852; data/receipt/worker 75/75; model resume
+  and steering 50/50 before retiring the old test; reference roundtrips 4/4;
+  Desk core JS 65/65, UI 839/839; real producer/consumer probe passed.
+  Info/fmt and whitespace checked; .mbti unchanged. Production net -68 lines,
+  tests net +21, total -47. One obsolete test removed; existing tests extended.
+  63 local links and 11 unchanged archive hashes checked. No app install,
+  live-provider or end-to-end performance qualification.
+
+
+
 ## Eight primitive contracts audit 2026-11-05
 
 - Current responsibilities are process/thread, memory, filesystem, I/O,

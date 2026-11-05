@@ -1600,21 +1600,6 @@ test "mooncode completion accepts an inspected baseline after fresh verification
 }
 
 ///|
-test "mooncode verified patch can prove its own mutation" {
-  let command : Json = { "command": "prompt", "text": "Fix validator.mbt." }
-  let patch : Json = {
-    "tool": "apply_patch",
-    "accepted": true,
-    "result": { "metadata": { "verification": { "ok": true, "status": 0 } } },
-  }
-  let finish : Json = { "tool": "finish", "accepted": true }
-  let verdict = mooncode_runtime_turn_completion_verdict(command, [
-    patch, finish,
-  ])
-  assert_true(verdict.accepted)
-}
-
-///|
 test "mooncode completion reason survives terminal and compact projection" {
   let reason = "coding completion has no successful typed test"
   let event = mooncode_runtime_turn_finished_event(
@@ -1673,7 +1658,10 @@ test "mooncode runtime receipt keeps completion without replaying tool payloads"
         {
           "tool": "finish",
           "accepted": true,
-          "metadata": { "answer": "Completed with proof." },
+          "result": {
+            "ok": true,
+            "metadata": { "answer": "Completed with proof." },
+          },
         },
       ],
       "events": [{ "kind": "tool_result", "detail": large_output }],

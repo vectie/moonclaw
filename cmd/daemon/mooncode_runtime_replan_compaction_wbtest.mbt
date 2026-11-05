@@ -32,39 +32,40 @@ fn replan_compaction_test_execution(
   event_id : String,
   command_id : String,
   body : String,
+  tool~ : String = "read",
+  arguments~ : Json = { "path": "README.md", "max_output_chars": 1024 },
 ) -> Json {
   let result : Json = {
-    "tool": "read",
+    "tool": tool,
     "ok": true,
     "is_error": false,
     "message": "read complete",
     "output": body,
   }
-  let event = mooncode_json_object_with_field(
-    mooncode_tool_result_event(
+  let execution = mooncode_runtime_operation_finished(
+    mooncode_runtime_operation_id(command_id, 0, 0),
+    { "tool": tool, "arguments": arguments },
+    mooncode_tool_execution(
       "replan-compaction-session",
       "/tmp/replan-compaction-book",
       command_id,
-      "read",
+      tool,
+      arguments,
       result,
       now=@clock.Timestamp::from_ms(1000L),
     ),
-    "id",
-    Json(event_id),
+    step=0,
+    index=0,
   )
-  {
-    "kind": "mooncode-tool-execution",
-    "accepted": true,
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "session_id": "replan-compaction-session",
-    "book_root": "/tmp/replan-compaction-book",
-    "command_id": command_id,
-    "tool": "read",
-    "arguments": { "path": "README.md", "max_output_chars": 1024 },
-    "result": result,
-    "event": event,
-  }
+  mooncode_json_object_with_field(
+    execution,
+    "event",
+    mooncode_json_object_with_field(
+      mooncode_json_object_field_or_empty(execution, "event"),
+      "id",
+      Json(event_id),
+    ),
+  )
 }
 
 ///|
@@ -94,14 +95,7 @@ test "compact continuation hydrates inline result events" {
   let execution = replan_compaction_test_execution(
     "replan-inline-result", "replan-compaction-command", "inline execution result",
   )
-  let event = mooncode_json_object_with_field(
-    mooncode_json_object_field_or_empty(execution, "event"),
-    "event",
-    "inline_result",
-  )
-  let inline_execution = mooncode_json_object_with_field(
-    execution, "event", event,
-  )
+  let inline_execution = mooncode_json_object_with_field(execution, "event", {})
   let plan = replan_compaction_test_plan([{ "role": "user", "content": "read" }])
   let checkpoint = replan_compaction_test_checkpoint(
     plan,
@@ -128,7 +122,11 @@ test "compact continuation hydrates inline result events" {
 test "replan checkpoints compact history and journaled result bodies" {
   let large_body = "large-result-body:" + "x".repeat(32768)
   let execution = replan_compaction_test_execution(
-    "replan-result-1", "replan-compaction-command", large_body,
+    "replan-result-1",
+    "replan-compaction-command",
+    large_body,
+    tool="shell",
+    arguments={ "cmd": "printf '%s' '" + large_body + "'" },
   )
   let messages1 : Array[Json] = [{ "role": "user", "content": "first" }]
   let plan1 = replan_compaction_test_plan(messages1)
@@ -196,6 +194,23 @@ test "replan checkpoints compact history and journaled result bodies" {
     checkpoint3.stringify().length() - checkpoint2.stringify().length() <
     body_size,
   )
+  let patch = replan_compaction_test_execution(
+    "patch-result",
+    "replan-compaction-command",
+    large_body,
+    tool="apply_patch",
+    arguments={
+      "path": ".",
+      "diff": "--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n",
+    },
+  )
+  let checkpoint = replan_compaction_test_checkpoint(plan1, [plan1], patch, 1)
+  assert_false(checkpoint.stringify().contains(large_body))
+  let hydrated = mooncode_runtime_continuation_for_command(
+    [mooncode_json_object_field_or_empty(patch, "event"), checkpoint],
+    "replan-compaction-command",
+  )
+  assert_eq(mooncode_json_array_items(hydrated, "tool_results")[0], patch)
 }
 
 ///|

@@ -45,6 +45,15 @@ semantic dependencies. Journal order is local commit order; remote timeouts
 do not prove non-execution. Snapshot rebuilds/read_result still scan history.
 
 
+The result representation has one owner: completed events retain the
+execution header and canonical result. Checkpoints store event ID/digest
+references, or an inline synthetic execution when no such event exists.
+Both restart paths reconstruct through `mooncode_tool_execution_from_event`.
+The existing ResumePoint drives initial/current/follow-up selection; it
+does not create another state machine. Receipt consumers read the same
+nested canonical result the producer writes. The obsolete patch-verification
+metadata branch is removed; explicit task checks and ordinary finish remain.
+
 ## Programming The Agent
 
 The program is the user's task interpreted under project instructions and

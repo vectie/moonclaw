@@ -376,8 +376,11 @@ async test "ordered claim and terminal receipts retain terminal answers usage an
         "tool_results": [
           {
             "tool": "finish",
-            "ok": true,
-            "metadata": { "answer": "Durable final answer" },
+            "accepted": true,
+            "result": {
+              "ok": true,
+              "metadata": { "answer": "Durable final answer" },
+            },
           },
         ],
       },
@@ -452,8 +455,11 @@ test "nonterminal receipt statuses cannot synthesize completion or clear work" {
         "tool_results": [
           {
             "tool": "finish",
-            "ok": true,
-            "metadata": { "answer": "Not a terminal answer" },
+            "accepted": true,
+            "result": {
+              "ok": true,
+              "metadata": { "answer": "Not a terminal answer" },
+            },
           },
         ],
       },
@@ -555,8 +561,11 @@ test "claims preserve streaming assistant and terminal receipt keeps existing fi
       "tool_results": [
         {
           "tool": "finish",
-          "ok": true,
-          "metadata": { "answer": "Conflicting receipt answer" },
+          "accepted": true,
+          "result": {
+            "ok": true,
+            "metadata": { "answer": "Conflicting receipt answer" },
+          },
         },
       ],
     },

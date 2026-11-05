@@ -199,31 +199,14 @@ fn mooncode_runtime_compact_continuation_history(
   for execution in tool_results {
     let event = mooncode_json_object_field_or_empty(execution, "event")
     let event_id = mooncode_json_string(event, "id", default="")
-    let journaled_result = mooncode_json_string(event, "event", default="") ==
-      "tool_result" &&
-      event_id != ""
-    if journaled_result {
-      let compact_execution : Map[String, Json] = Map([])
-      match execution {
-        Object(fields) =>
-          for key, value in fields.iter2() {
-            if key != "result" && key != "event" {
-              compact_execution[key] = value
-            }
-          }
-        _ => ()
-      }
+    if event_id != "" &&
+      event is { "execution": Object(_), "tool_result": Object(_), .. } {
       tool_result_references.push({
         "event_id": event_id,
         "event_digest": mooncode_sha256_hex(event.stringify()),
-        "execution": Json::object(compact_execution),
-        "journaled_result": true,
       })
     } else {
-      tool_result_references.push({
-        "inline_execution": execution,
-        "journaled_result": false,
-      })
+      tool_result_references.push({ "inline_execution": execution })
     }
   }
   {
@@ -435,7 +418,7 @@ fn mooncode_runtime_continuation_for_command(
   }
   let expected_digests : Map[String, String] = Map([])
   for reference in references {
-    if mooncode_json_bool(reference, "journaled_result", default=false) {
+    if reference is { "event_id": String(_), .. } {
       let event_id = mooncode_json_string(reference, "event_id", default="")
       let event_digest = mooncode_json_string(
         reference,
@@ -481,7 +464,7 @@ fn mooncode_runtime_continuation_for_command(
   let hydrated_results : Array[Json] = []
   let mut previous_position = -1
   for reference in references {
-    if mooncode_json_bool(reference, "journaled_result", default=false) {
+    if reference is { "event_id": String(_), .. } {
       let event_id = mooncode_json_string(reference, "event_id", default="")
       let position = event_positions.get_or_default(event_id, -1)
       if position <= previous_position {
@@ -489,27 +472,19 @@ fn mooncode_runtime_continuation_for_command(
       }
       previous_position = position
       match (match_counts.get(event_id), matched_events.get(event_id)) {
-        (Some(1), Some(matched_event)) => {
-          let with_result = mooncode_json_object_with_field(
-            mooncode_json_object_field_or_empty(reference, "execution"),
-            "result",
-            mooncode_json_object_field_or_empty(matched_event, "tool_result"),
-          )
+        (Some(1), Some(matched_event)) =>
           hydrated_results.push(
-            mooncode_json_object_with_field(with_result, "event", matched_event),
+            mooncode_tool_execution_from_event(matched_event),
           )
-        }
         _ =>
           raise InvalidJournal("checkpoint result references are inconsistent")
       }
     } else {
       match reference {
-        Object(fields) =>
-          if fields.contains("inline_execution") {
-            hydrated_results.push(
-              mooncode_json_object_field_or_empty(reference, "inline_execution"),
-            )
-          }
+        { "inline_execution": _, .. } =>
+          hydrated_results.push(
+            mooncode_json_object_field_or_empty(reference, "inline_execution"),
+          )
         _ => ()
       }
     }

@@ -64,6 +64,21 @@ the exact command and tool occurrence. Rejected finish recovery retains its
 specific execution fact; guidance wording and generated ID formatting are not
 authorization requirements.
 
+A completed operation event owns its execution header and canonical
+`tool_result` once. Checkpoint references carry only `event_id` and
+`event_digest`; synthetic results without that committed representation
+carry `inline_execution`. There is no duplicate header or `journaled_result`
+Boolean in a reference. Storage shape, not display event name, selects the
+representation, so patch/finish events can be referenced too. Operation
+recovery and checkpoint hydration use the same
+`mooncode_tool_execution_from_event` projection. No legacy-format adapter
+or new validation stage is introduced.
+
+The existing ResumePoint also chooses model continuation directly: tools
+reuse the saved plan, initial transport retry uses initial planning, and
+quantum/transport/replan follow-ups share one request assembly with their
+retained steering/guidance. The enum and execution loop states are unchanged.
+
 Only the latest checkpoint is hydrated. Referenced result IDs must be unique,
 in order and present before that checkpoint, with matching event digests.
 Malformed references raise `InvalidJournal`, rather than looking like an empty

@@ -52,15 +52,8 @@ fn mooncode_runtime_operation_recovery(
 ) -> Json? raise {
   match mooncode_runtime_operation_record(events, operation_id, "completed") {
     Some(record) if mooncode_json_string(record, "call_digest", default="") ==
-      mooncode_sha256_hex(call.stringify()) => {
-      let compact = mooncode_json_object_field_or_empty(record, "execution")
-      let execution = mooncode_json_object_with_field(
-        compact,
-        "result",
-        mooncode_json_object_field_or_empty(record, "tool_result"),
-      )
-      return Some(mooncode_json_object_with_field(execution, "event", record))
-    }
+      mooncode_sha256_hex(call.stringify()) =>
+      return Some(mooncode_tool_execution_from_event(record))
     Some(_) =>
       raise InvalidJournal(
         "operation identity was reused with a different tool call",
