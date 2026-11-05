@@ -60,7 +60,7 @@ and MoonLib defines shared paths.
    authorization, receipts, and uncertain outcomes.
 7. [Context provenance](MOONCODE_CONTEXT_PROVENANCE.md),
    [compaction](LONG_CONTEXT_COMPACTION.md), and
-   [stream resume](MOONCODE_STREAM_RESUME.md): current context/transport contracts.
+   [canonical watch](MOONCODE_STREAM_RESUME.md): current context/transport contracts.
 8. [Harness regression](HARNESS_REGRESSION_GATES.md) and
    [paired replay](HARNESS_REPLAY.md): fixtures, qualification, and measured comparison.
 9. [Capability invocation](CAPABILITY_INVOCATION.md): pack resolution, health,
@@ -96,6 +96,12 @@ Transport retries preserve that projection. Recovery decodes the existing loop
 position once and reuses committed results; ordinary cached appends synchronize
 file bytes without reopening every ancestor directory. Arbitrary historical
 evidence lookup by the model remains unfinished.
+
+The [canonical watch](MOONCODE_STREAM_RESUME.md) now lives in MoonClaw. MoonDesk
+adapts session metadata without replaying raw events; the unused typed-resume
+experiment and synchronous planner-metrics exporter are removed. Local planner
+observations reuse existing events and conversation usage. Dynamic graph UI
+and production outcome/cost baselines remain unfinished.
 
 ## Validation And Evidence
 

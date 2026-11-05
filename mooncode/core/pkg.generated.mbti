@@ -745,6 +745,7 @@ pub(all) struct NativeCapabilityEndpoints {
   runtime_control : String
   runtime_claim : String
   stream : String
+  watch : String
   runtime_turn : String
   runtime_loop : String
   runtime_service : String

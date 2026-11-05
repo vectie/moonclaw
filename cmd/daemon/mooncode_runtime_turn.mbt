@@ -425,13 +425,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           )
         }
       }
-      ignore(
-        mooncode_export_planner_metrics_for_plan(
-          book_root,
-          plan,
-          self.clock.now().ms_since(plan_now).to_int().max(0),
-        ),
-      )
       if mooncode_runtime_turn_model_planning_allowed(command) &&
         mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
         mooncode_json_string(plan, "planner_mode", default="") !=
@@ -1080,13 +1073,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             now=followup_now,
           )
         }
-        ignore(
-          mooncode_export_planner_metrics_for_plan(
-            book_root,
-            next_plan,
-            self.clock.now().ms_since(followup_now).to_int().max(0),
-          ),
-        )
         if mooncode_json_bool(
             next_plan,
             "transient_transport_close",

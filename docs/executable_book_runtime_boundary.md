@@ -278,6 +278,18 @@ were removed. Tool execution owns output limits; Context owns model projection.
 Canonical task revisions and the newest exchange survive projection. Omitted
 history is lossy, and there is no general model-facing journal lookup yet.
 
+Canonical watch now belongs to MoonClaw. The desktop reuses the existing codec
+and metadata adapter; it does not download raw event bodies to advance a cursor
+or construct another watch projection. Exact cursors use journal positions,
+not event counts. The unused typed-resume projection was removed. Existing work
+steps/evidence remain the history view; dedicated dynamic graphs are unfinished.
+
+Planner observations attach bounded metrics to existing events, including empty
+responses. Conversation usage sums those durable facts rather than rereading
+compacted historical plans or overwriting usage from receipts. The synchronous
+exporter and duplicate compression-policy counters were removed. Collection
+adds no network wait, journal round, model role or task acceptance decision.
+
 Continuation validation is one typed position decoder at the recovery boundary,
 not another state machine. Broken result references raise an explicit journal
 error. Existing append-cache entries retain successful directory sync so cached

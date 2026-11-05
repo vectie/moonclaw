@@ -80,12 +80,6 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
     assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(suffix)), suffix)
   }
 
-  let resumed = mooncode_stream_resume_safe_text(
-    "a".repeat(11999) + unicode.repeat(100),
-  )
-  assert_true(resumed.contains("stream output truncated"))
-  assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(resumed)), resumed)
-
   let excerpt = mooncode_runtime_turn_inspection_excerpt(
     "a".repeat(1199) + unicode.repeat(100),
   )

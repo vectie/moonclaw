@@ -356,7 +356,16 @@ async test "ordered claim and terminal receipts retain terminal answers usage an
       root,
       session,
       mooncode_journal_event(),
-      mooncode_claim_projection_event("runtime.planner_started", "running"),
+      mooncode_json_object_with_field(
+        mooncode_claim_projection_event("runtime.planner_started", "running"),
+        "planner_metrics",
+        {
+          "usage_observed": true,
+          "prompt_tokens": 12,
+          "completion_tokens": 4,
+          "cache_read_tokens": 3,
+        },
+      ),
     )
     let receipt : Json = {
       "kind": mooncode_kind_runtime_receipt(),

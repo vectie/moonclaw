@@ -10,6 +10,7 @@ pub(all) struct NativeCapabilityEndpoints {
   runtime_control : String
   runtime_claim : String
   stream : String
+  watch : String
   runtime_turn : String
   runtime_loop : String
   runtime_service : String
@@ -32,6 +33,7 @@ pub fn native_capability_endpoints() -> NativeCapabilityEndpoints {
     runtime_control: "/v1/code/sessions/<id>/runtime-control?book_root=<path>",
     runtime_claim: "/v1/code/sessions/<id>/runtime-claim?book_root=<path>",
     stream: "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<canonical-decimal>&wait_ms=<ms>&poll_ms=<ms>",
+    watch: "/v1/code/sessions/<id>/watch?book_root=<path>&since_revision=<canonical-decimal>&wait_ms=<ms>&poll_ms=<ms>",
     runtime_turn: "/v1/code/sessions/<id>/runtime-turn?book_root=<path>",
     runtime_loop: "/v1/code/sessions/<id>/runtime-loop?book_root=<path>",
     runtime_service: "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
@@ -57,6 +59,7 @@ pub fn NativeCapabilityEndpoints::required_endpoints(
     self.runtime_control,
     self.runtime_claim,
     self.stream,
+    self.watch,
     self.runtime_turn,
     self.runtime_loop,
     self.runtime_service,

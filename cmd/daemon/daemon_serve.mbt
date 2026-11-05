@@ -206,6 +206,8 @@ async fn Daemon::handle_http_request(
         self.mooncode_tool_execute(session_id~, r, w)
       (Get, ["", "v1", "code", "sessions", session_id, "stream"]) =>
         self.mooncode_stream(session_id~, r, w)
+      (Get, ["", "v1", "code", "sessions", session_id, "watch"]) =>
+        self.mooncode_watch(session_id~, r, w)
       (Get, ["", "v1", "code", "sessions", session_id, "eval-report"]) =>
         self.mooncode_eval_report(session_id~, r, w)
       (Post, ["", "v1", "code", "sessions", session_id, "package-result"]) =>

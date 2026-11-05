@@ -235,17 +235,6 @@ pub async fn Client::usage_trends(self : Client) -> Result[Json, String] {
 }
 
 ///|
-/// Submit one privacy-bounded MoonClaw planner observation. Callers remain
-/// responsible for feature gating and for omitting prompt, path, session, and
-/// tool-argument data from `metrics`.
-pub async fn Client::record_planner_metrics(
-  self : Client,
-  metrics : Json,
-) -> Result[Json, String] {
-  self.post("/usage/planner-metrics", metrics)
-}
-
-///|
 pub async fn Client::provider_presets(self : Client) -> Result[Json, String] {
   self.get("/providers/presets")
 }

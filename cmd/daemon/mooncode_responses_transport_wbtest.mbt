@@ -65,7 +65,6 @@ test "Responses metrics retain transport and cache write tokens" {
         },
       },
     },
-    [{ "role": "user", "content": "inspect" }],
     [],
     model_transport="responses",
   )

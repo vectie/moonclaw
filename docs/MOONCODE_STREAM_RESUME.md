@@ -1,97 +1,68 @@
-# MoonCode typed resume stream
+# Canonical MoonCode watch
 
-`mooncode-stream-resume.v1` is an opt-in, bounded replay contract for MoonDesk
-and other user-facing clients. It projects the durable MoonCode journal into
-planner, assistant, and tool-output events without exposing the raw journal.
-Availability does not mean the desktop currently uses a sustained SSE stream;
-clients may consume canonical snapshots and watch polling.
-
-## Current Transport
-
-The existing endpoint remains the integration point:
+MoonClaw owns the conversation projection. MoonDesk adapts session metadata and
+renders that projection; it does not replay raw events to reconstruct chat.
 
 ```text
-GET /v1/code/sessions/<id>/stream
+GET /v1/code/sessions/<id>/watch?book_root=<path>&since_revision=<decimal>&wait_ms=<ms>&poll_ms=<ms>
+MoonClaw journal -> canonical watch -> MoonDesk metadata adapter -> existing UI
 ```
 
-- Requests without `resume_cursor` use the existing `mooncode-stream.v2`
-  `since` behavior unchanged.
-- `resume_cursor=start` explicitly starts the typed contract.
-- A cursor returned on a typed event or `done` record resumes that same
-  session and book stream. Cursors are opaque to clients.
-- `format=jsonl|sse`, `wait_ms`, and `poll_ms` keep their existing meanings.
-- `replay_limit` defaults to 128 visible events, is clamped to 512, and values
-  at or below zero select the default.
+The endpoint uses the existing `moonsuite-conversation-watch.v2` contract.
+Revision and `next_sequence` are canonical nonnegative decimal strings carrying
+the committed journal position. Neither an event count nor a bounded integer
+is a resume cursor. Existing authentication and session/Book binding apply.
 
-Do not combine `since` with the typed mode. Presence of `resume_cursor` selects
-the typed contract; the legacy path does not parse or reinterpret it.
+When the journal revision differs, watch returns one snapshot with the native
+session record and canonical conversation. Otherwise it waits up to 15 seconds
+by default (maximum 30 seconds, or zero for an immediate response). Poll interval
+defaults to 100 ms and uses the existing 25–2000 ms bounds.
 
-## Cursor and replay rules
+Waiting checks filesystem modification metadata rather than decoding the journal
+on each poll. Only a heartbeat is retained while waiting. A final locked read of
+the committed journal supplies the authoritative snapshot even if the filesystem
+signal did not change. A changed response carries a snapshot; an unchanged
+response carries `snapshot=null`. Cancellation uses the existing async request
+scope. There is no per-client execution state or durable watch store.
 
-The cursor carries an arbitrary-precision decimal journal sequence, a stream
-binding, an epoch, and an integrity checksum. It is bound to the session and
-book root, so a cursor from another stream is rejected with HTTP 400. Invalid,
-oversized, non-canonical, or modified cursors are also rejected.
+MoonDesk resolves the selected session's Book, forwards its accepted revision,
+and adapts the snapshot with the existing session/conversation helpers. It
+preserves the runtime's cursor and terminal hint. Browser generation checks,
+abort-on-navigation and the existing typed watch decoder continue to reject
+cross-session, stale and malformed replies. Disconnects retain the last accepted
+conversation and retry with its cursor. A revision rollback is surfaced through
+the existing rollback result, not silently accepted.
 
-Replay is monotonic and idempotent:
+## Removed paths
 
-- each visible event carries the cursor after that durable event;
-- the initial `meta` cursor remains at the requested boundary, so disconnecting
-  before receiving an event cannot skip it;
-- `done` carries the latest fully scanned durable boundary;
-- reconnecting from the same event cursor returns the same remaining bytes for
-  a stable journal;
-- reasoning-only records may advance the `done` cursor but are never emitted.
+The unused opt-in `mooncode-stream-resume.v1` projection, opaque cursor codec,
+replay spooling, per-response resume metrics and dedicated trial tests were
+removed. The desktop no longer fetches a snapshot, downloads raw JSONL only to
+advance a cursor, then fetches another snapshot. It no longer constructs watch
+responses from event counts or converts canonical revisions to `Int32`.
 
-MoonClaw scans the canonical committed journal while holding its journal lock
-and spools no more than the allowed number of projected events. It does not
-materialize an unbounded event array. A second validation after spooling makes
-journal replacement or replay growth fail before a 200 response is sent.
+`/stream?format=jsonl|sse&since=<decimal>` remains the diagnostic event stream.
+It is not the desktop conversation source. There is no `resume_cursor` mode.
+The runtime and desktop advertise the canonical watch endpoint together in
+their capability surface; no fallback to an older daemon is provided.
 
-## Gap and expiry recovery
+## Cost and limits
 
-MoonClaw returns HTTP 409 without a partial replay when:
+Unchanged waits transmit no transcript, event spool or artifact body. Each
+canonical rebuild indexes command identities once, preserving turn order while
+avoiding a full turn-array search for every event and receipt. Watch still reads
+the full committed journal to build snapshots, and changed responses contain
+the full canonical conversation. This is not an incremental projection cache or
+a guarantee of constant rebuild cost. Each long poll performs an initial and,
+when waiting, final snapshot read; metadata polling itself is constant size.
 
-- `gap`: visible events after the cursor exceed `replay_limit`;
-- `expired`: the journal epoch no longer matches the cursor;
-- `future`: the cursor is ahead of the durable journal.
+Existing work steps and evidence links remain the execution history view.
+A dedicated dynamic graph and complete dependency edges remain unfinished.
+No graph database, UI wiring workflow, extra model call or completion gate was
+introduced.
 
-The JSON error metadata contains `resume_status`, `recovery=reload_snapshot`,
-and an opaque `latest_cursor`. Clients must reload the bounded conversation
-snapshot, render it, and then reconnect from the snapshot's corresponding
-cursor. They must not silently jump to `latest_cursor` without reloading,
-because doing so would hide the detected gap.
-
-## User-facing projection and privacy
-
-Only these `content_kind` values are serialized:
-
-- `planner`: phase and status only;
-- `assistant`: answer delta or final answer text;
-- `tool_output`: tool name, status, bounded output, and truncation state.
-
-Reasoning messages and reasoning deltas are counted as filtered but never
-serialized. Planner details, raw tool arguments, raw events, book roots,
-journal paths, spool paths, working directories, and sandbox artifact paths are
-not copied. Path-looking output is replaced by a generic notice that directs
-the client to the validated workspace artifact contract. Text uses the named
-MoonCode output policy and a UTF-8-safe boundary.
-
-MoonDesk should consume planner events only for a quiet working indicator. It
-should render assistant content normally and interrupt the user only for an
-actionable warning surfaced through the separate warning contract.
-
-## Metrics
-
-Every `meta`, `done`, and 409 recovery record embeds
-`mooncode-stream-resume-metrics.v1` with bounded, low-cardinality values:
-
-- requested replay limit and resume status;
-- scanned, durable, visible, filtered, eligible, and replayed event counts;
-- filtered reasoning count and resume lag in visible events;
-- gap, expiry, and future booleans;
-- wait duration and poll-attempt count.
-
-These response-local metrics contain no prompts, model reasoning, tool
-arguments, paths, event IDs, session IDs, or arbitrary labels. They can be
-aggregated by status and contract without exporting stream content.
+Native tests cover HTTP admission, append wake-up and cursor reconnect. The
+desktop regression passes a large exact cursor through metadata adaptation and
+the actual UI codec. Existing UI tests cover stale generations, rollback,
+disconnects and canonical usage. These are local fixtures, not installed-app or
+live-provider qualification.

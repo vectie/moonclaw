@@ -59,20 +59,58 @@ fn mooncode_session_conversation(
 }
 
 ///|
+/// Usage is projected from once-journaled response observations. Receipts and
+/// compacted historical plans cannot overwrite or duplicate those measurements.
+fn mooncode_conversation_observed_usage(current : Json, metrics : Json) -> Json {
+  if !mooncode_json_bool(metrics, "usage_observed", default=false) {
+    return current
+  }
+  let input = mooncode_json_int(metrics, "prompt_tokens", default=-1)
+  let output = mooncode_json_int(metrics, "completion_tokens", default=-1)
+  let cached = mooncode_json_int(metrics, "cache_read_tokens", default=-1)
+  let prior_input = mooncode_json_int(current, "input_tokens", default=0)
+  let prior_output = mooncode_json_int(current, "output_tokens", default=0)
+  let prior_cached = mooncode_json_int(
+    current,
+    "cached_input_tokens",
+    default=0,
+  )
+  if input < 0 ||
+    output < 0 ||
+    cached < 0 ||
+    cached > input ||
+    input > 1_000_000_000 - prior_input ||
+    output > 1_000_000_000 - prior_output ||
+    cached > 1_000_000_000 - prior_cached {
+    return current
+  }
+  {
+    "contract": "mooncode.turn_usage.v1",
+    "measured": true,
+    "response_count": mooncode_json_int(current, "response_count", default=0) +
+    1,
+    "input_tokens": prior_input + input,
+    "output_tokens": prior_output + output,
+    "cached_input_tokens": prior_cached + cached,
+  }
+}
+
+///|
 fn mooncode_conversation_turns(
   commands : Array[Json],
   runtime_receipts : Array[Json],
   events : Array[Json],
 ) -> Array[MoonCodeConversationTurnDraft] {
   let turns : Array[MoonCodeConversationTurnDraft] = []
+  let indices : Map[String, Int32] = Map([])
   for command_entry in commands {
-    mooncode_conversation_apply_command(turns, command_entry)
+    mooncode_conversation_apply_command(turns, indices, command_entry)
   }
   for event in events {
-    mooncode_conversation_apply_event(turns, event)
+    mooncode_conversation_apply_event(turns, indices, event)
   }
   for receipt in runtime_receipts {
-    mooncode_conversation_apply_receipt(turns, receipt)
+    mooncode_conversation_apply_receipt(turns, indices, receipt)
   }
   turns
 }
@@ -80,6 +118,7 @@ fn mooncode_conversation_turns(
 ///|
 fn mooncode_conversation_apply_command(
   turns : Array[MoonCodeConversationTurnDraft],
+  indices : Map[String, Int32],
   command_entry : Json,
 ) -> Unit {
   let command = mooncode_conversation_command_body(command_entry)
@@ -96,7 +135,7 @@ fn mooncode_conversation_apply_command(
   if command_id == "" {
     return
   }
-  let index = mooncode_conversation_turn_index(turns, command_id)
+  let index = indices.get_or_default(command_id, -1)
   let created_at = mooncode_conversation_command_created_at(
     command_entry, command,
   )
@@ -115,6 +154,7 @@ fn mooncode_conversation_apply_command(
     )
     turns.length() - 1
   }
+  indices[command_id] = target
   let turn = turns[target]
   turn.user = mooncode_conversation_user_message(command_entry, command)
   turn.status = "queued"
@@ -133,6 +173,7 @@ fn mooncode_conversation_apply_command(
 ///|
 fn mooncode_conversation_apply_event(
   turns : Array[MoonCodeConversationTurnDraft],
+  indices : Map[String, Int32],
   event : Json,
 ) -> Unit {
   if mooncode_conversation_event_is_service_lifecycle(event) {
@@ -142,11 +183,15 @@ fn mooncode_conversation_apply_event(
   if command_id == "" {
     return
   }
-  let index = mooncode_conversation_turn_index(turns, command_id)
+  let index = indices.get_or_default(command_id, -1)
   if index < 0 {
     return
   }
   let turn = turns[index]
+  turn.usage = mooncode_conversation_observed_usage(
+    turn.usage,
+    mooncode_json_object_field_or_empty(event, "planner_metrics"),
+  )
   let created_at = mooncode_json_string(event, "created_at", default="")
   if mooncode_json_string(event, "kind", default="") ==
     mooncode_runtime_continuation_kind() &&
@@ -238,10 +283,11 @@ fn mooncode_conversation_settle_work_steps(
 ///|
 fn mooncode_conversation_apply_receipt(
   turns : Array[MoonCodeConversationTurnDraft],
+  indices : Map[String, Int32],
   receipt : Json,
 ) -> Unit {
   let command_id = mooncode_json_string(receipt, "command_id", default="")
-  let index = mooncode_conversation_turn_index(turns, command_id)
+  let index = indices.get_or_default(command_id, -1)
   if index < 0 {
     return
   }
@@ -254,10 +300,6 @@ fn mooncode_conversation_apply_receipt(
     return
   }
   let turn = turns[index]
-  let usage = mooncode_conversation_receipt_usage(receipt)
-  if usage.stringify() != "{}" {
-    turn.usage = usage
-  }
   if mooncode_conversation_message_content(turn.assistant) == "" {
     let answer = mooncode_conversation_receipt_answer(receipt)
     if answer != "" {
@@ -364,50 +406,6 @@ fn mooncode_conversation_turn_json(
     "work": mooncode_conversation_work_json(turn, assistant),
     "assistant": assistant,
     "usage": turn.usage,
-  }
-}
-
-///|
-fn mooncode_conversation_receipt_usage(receipt : Json) -> Json {
-  let mut responses = 0
-  let mut input = 0
-  let mut output = 0
-  let mut cached = 0
-  for step in mooncode_json_array_items(receipt, "planner_steps") {
-    let metrics = mooncode_json_object_field_or_empty(step, "planner_metrics")
-    if !mooncode_json_bool(metrics, "usage_observed", default=false) {
-      continue
-    }
-    let prompt = mooncode_json_int(metrics, "prompt_tokens", default=-1)
-    let completion = mooncode_json_int(metrics, "completion_tokens", default=-1)
-    let cache = mooncode_json_int(metrics, "cache_read_tokens", default=-1)
-    if prompt < 0 ||
-      completion < 0 ||
-      cache < 0 ||
-      cache > prompt ||
-      prompt > 100_000_000 ||
-      completion > 100_000_000 ||
-      input > 1_000_000_000 - prompt ||
-      output > 1_000_000_000 - completion ||
-      cached > 1_000_000_000 - cache {
-      return Json::object({})
-    }
-    responses += 1
-    input += prompt
-    output += completion
-    cached += cache
-  }
-  if responses == 0 {
-    Json::object({})
-  } else {
-    {
-      "contract": "mooncode.turn_usage.v1",
-      "measured": true,
-      "response_count": responses,
-      "input_tokens": input,
-      "output_tokens": output,
-      "cached_input_tokens": cached,
-    }
   }
 }
 
@@ -1505,22 +1503,6 @@ fn mooncode_conversation_tool_detail(
   } else {
     "Finished a work step."
   }
-}
-
-///|
-fn mooncode_conversation_turn_index(
-  turns : Array[MoonCodeConversationTurnDraft],
-  command_id : String,
-) -> Int32 {
-  if command_id == "" {
-    return -1
-  }
-  for index, turn in turns {
-    if turn.command_id == command_id {
-      return index
-    }
-  }
-  -1
 }
 
 ///|

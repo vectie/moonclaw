@@ -687,6 +687,12 @@ async test "empty follow-up recovers after restart without milestones or claim l
           )
         _ => mooncode_runtime_quantum_test_empty_completion()
       }
+      let response = mooncode_json_object_with_field(response, "usage", {
+        "prompt_tokens": 100,
+        "completion_tokens": 10,
+        "total_tokens": 110,
+        "prompt_tokens_details": { "cached_tokens": 25 },
+      })
       calls.val += 1
       w.header().set("Content-Type", "text/event-stream")
       w.write_header(200)
@@ -938,6 +944,24 @@ async test "empty follow-up recovers after restart without milestones or claim l
         let final_events = mooncode_journal_entries(
           final_journal,
           mooncode_journal_event(),
+        )
+        let projected = mooncode_conversation_turns(
+          mooncode_journal_entries(final_journal, mooncode_journal_command()),
+          runtime_receipts,
+          final_events,
+        )
+        assert_eq(projected.length(), 1)
+        assert_eq(
+          mooncode_json_int(projected[0].usage, "response_count", default=0),
+          6,
+        )
+        assert_eq(
+          mooncode_json_int(projected[0].usage, "input_tokens", default=0),
+          600,
+        )
+        assert_eq(
+          mooncode_json_int(projected[0].usage, "output_tokens", default=0),
+          60,
         )
         assert_eq(
           final_events

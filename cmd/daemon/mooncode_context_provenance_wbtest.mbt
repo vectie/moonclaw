@@ -55,13 +55,11 @@ test "mooncode context provenance does not inflate provider metrics" {
   let metrics = mooncode_runtime_turn_planner_metrics(
     request,
     { "usage": {} },
-    messages,
     [],
   )
-  assert_false(mooncode_json_bool(metrics, "request_compacted", default=true))
   assert_eq(
-    mooncode_json_int(metrics, "configured_request_chars", default=-1),
-    mooncode_json_int(metrics, "effective_request_chars", default=-2),
+    mooncode_json_int(metrics, "request_chars", default=-1),
+    request.stringify().length(),
   )
 }
 

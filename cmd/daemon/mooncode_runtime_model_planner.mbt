@@ -94,7 +94,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         tools~,
         reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
       )
-      let (completion, model_transport) = mooncode_runtime_turn_model_chat(
+      let (completion, model_transport, model_retry_count, planner_latency_ms) = mooncode_runtime_turn_model_chat(
         model, request, command,
       ) catch {
         error =>
@@ -110,13 +110,25 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       let tool_calls = mooncode_runtime_turn_tool_calls_from_model_response(
         completion.to_json(),
       )
+      let metrics = mooncode_runtime_turn_planner_metrics(
+        request.to_json(),
+        completion.to_json(),
+        tool_calls,
+        model_transport~,
+        model_retry_count~,
+        planner_latency_ms~,
+      )
       if tool_calls.length() == 0 {
-        return mooncode_runtime_turn_failed_planner_result(
-          command,
-          model_name,
-          "model planner returned no usable MoonCode tool calls",
-          started,
-          now~,
+        return mooncode_planner_observed(
+          mooncode_runtime_turn_failed_planner_result(
+            command,
+            model_name,
+            "model planner returned no usable MoonCode tool calls",
+            started,
+            now~,
+          ),
+          metrics,
+          "\{self.uuid.v4()}",
         )
       }
       let selected = mooncode_event(
@@ -129,36 +141,33 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         detail="Model `\{model_name}` selected \{tool_calls.length()} MoonCode tool call(s).",
         now~,
       )
-      {
-        "kind": mooncode_kind_runtime_turn_planner(),
-        "protocol": mooncode_protocol_version(),
-        "planner_mode": mooncode_planner_mode_model_tool_calls(),
-        "context_projection": context.metrics,
-        "model": model_name,
-        "model_transport": model_transport,
-        "model_response_id": mooncode_json_string(
-          completion.to_json(),
-          "id",
-          default="",
-        ),
-        "tool_call_count": tool_calls.length(),
-        "tool_calls": Json::array(tool_calls),
-        "events": Json::array([started, selected]),
-        "planner_metrics": mooncode_runtime_turn_planner_metrics(
-          request.to_json(),
-          completion.to_json(),
-          messages,
-          tool_calls,
-          model_transport~,
-        ),
-        "model_messages": Json::array(
-          mooncode_runtime_turn_durable_model_messages(messages),
-        ),
-        "model_response_message": mooncode_runtime_turn_model_response_message(
-          completion.to_json(),
-          normalized_tool_calls=tool_calls,
-        ),
-      }
+      mooncode_planner_observed(
+        {
+          "kind": mooncode_kind_runtime_turn_planner(),
+          "protocol": mooncode_protocol_version(),
+          "planner_mode": mooncode_planner_mode_model_tool_calls(),
+          "context_projection": context.metrics,
+          "model": model_name,
+          "model_transport": model_transport,
+          "model_response_id": mooncode_json_string(
+            completion.to_json(),
+            "id",
+            default="",
+          ),
+          "tool_call_count": tool_calls.length(),
+          "tool_calls": Json::array(tool_calls),
+          "events": Json::array([started, selected]),
+          "model_messages": Json::array(
+            mooncode_runtime_turn_durable_model_messages(messages),
+          ),
+          "model_response_message": mooncode_runtime_turn_model_response_message(
+            completion.to_json(),
+            normalized_tool_calls=tool_calls,
+          ),
+        },
+        metrics,
+        "\{self.uuid.v4()}",
+      )
     }
     None =>
       mooncode_runtime_turn_failed_planner_result(
@@ -324,7 +333,8 @@ async fn mooncode_runtime_turn_model_chat(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
-) -> (@openai.ChatCompletion, String) {
+) -> (@openai.ChatCompletion, String, Int32, Int32) {
+  let started = @async.now()
   let mut retry_count = 0
   while true {
     let completion = Some(
@@ -380,7 +390,12 @@ async fn mooncode_runtime_turn_model_chat(
             retry_count,
           )
         }
-        return (value, transport)
+        return (
+          value,
+          transport,
+          retry_count,
+          (@async.now() - started).max(0L).min(2147483647L).to_int(),
+        )
       }
       None => continue
     }
@@ -1215,7 +1230,7 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         request_messages,
         tools=followup_tools,
       )
-      let (completion, model_transport) = mooncode_runtime_turn_model_chat(
+      let (completion, model_transport, model_retry_count, planner_latency_ms) = mooncode_runtime_turn_model_chat(
         model, request, command,
       ) catch {
         error => {
@@ -1238,6 +1253,14 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       let next_tool_calls = mooncode_runtime_turn_tool_calls_from_model_response(
         response_json,
       )
+      let metrics = mooncode_runtime_turn_planner_metrics(
+        request.to_json(),
+        response_json,
+        next_tool_calls,
+        model_transport~,
+        model_retry_count~,
+        planner_latency_ms~,
+      )
       if next_tool_calls.length() == 0 {
         let guidance = "The previous follow-up produced no usable MoonCode tool call. Continue the current task from retained results without replaying completed effects. Choose the next relevant supported tool, or call finish when the deliverable and required checks are ready."
         let replanning = mooncode_event(
@@ -1250,18 +1273,22 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
           detail="MoonClaw retained the claimed command and completed results for another planner request.",
           now~,
         )
-        return {
-          "kind": mooncode_kind_runtime_turn_planner(),
-          "protocol": mooncode_protocol_version(),
-          "planner_mode": mooncode_planner_mode_model_tool_calls(),
-          "patient_replan": true,
-          "model": model_name,
-          "tool_calls": Json::array([]),
-          "events": Json::array([started, replanning]),
-          "message": "model planner follow-up returned no usable MoonCode tool calls",
-          "patient_replan_guidance": guidance,
-          "context_projection": context.metrics,
-        }
+        return mooncode_planner_observed(
+          {
+            "kind": mooncode_kind_runtime_turn_planner(),
+            "protocol": mooncode_protocol_version(),
+            "planner_mode": mooncode_planner_mode_model_tool_calls(),
+            "patient_replan": true,
+            "model": model_name,
+            "tool_calls": Json::array([]),
+            "events": Json::array([started, replanning]),
+            "message": "model planner follow-up returned no usable MoonCode tool calls",
+            "patient_replan_guidance": guidance,
+            "context_projection": context.metrics,
+          },
+          metrics,
+          "\{self.uuid.v4()}",
+        )
       }
       let selected = mooncode_event(
         session_id~,
@@ -1273,36 +1300,33 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         detail="Model `\{model_name}` selected \{next_tool_calls.length()} follow-up MoonCode tool call(s).",
         now~,
       )
-      {
-        "kind": mooncode_kind_runtime_turn_planner(),
-        "protocol": mooncode_protocol_version(),
-        "planner_mode": mooncode_planner_mode_model_tool_calls(),
-        "model": model_name,
-        "model_transport": model_transport,
-        "model_response_id": mooncode_json_string(
-          response_json,
-          "id",
-          default="",
-        ),
-        "tool_call_count": next_tool_calls.length(),
-        "tool_calls": Json::array(next_tool_calls),
-        "events": Json::array([started, selected]),
-        "planner_metrics": mooncode_runtime_turn_planner_metrics(
-          request.to_json(),
-          response_json,
-          request_messages,
-          next_tool_calls,
-          model_transport~,
-        ),
-        "context_projection": context.metrics,
-        "model_messages": Json::array(
-          mooncode_runtime_turn_durable_model_messages(request_messages),
-        ),
-        "model_response_message": mooncode_runtime_turn_model_response_message(
-          response_json,
-          normalized_tool_calls=next_tool_calls,
-        ),
-      }
+      mooncode_planner_observed(
+        {
+          "kind": mooncode_kind_runtime_turn_planner(),
+          "protocol": mooncode_protocol_version(),
+          "planner_mode": mooncode_planner_mode_model_tool_calls(),
+          "model": model_name,
+          "model_transport": model_transport,
+          "model_response_id": mooncode_json_string(
+            response_json,
+            "id",
+            default="",
+          ),
+          "tool_call_count": next_tool_calls.length(),
+          "tool_calls": Json::array(next_tool_calls),
+          "events": Json::array([started, selected]),
+          "context_projection": context.metrics,
+          "model_messages": Json::array(
+            mooncode_runtime_turn_durable_model_messages(request_messages),
+          ),
+          "model_response_message": mooncode_runtime_turn_model_response_message(
+            response_json,
+            normalized_tool_calls=next_tool_calls,
+          ),
+        },
+        metrics,
+        "\{self.uuid.v4()}",
+      )
     }
     None =>
       mooncode_runtime_turn_failed_planner_result(

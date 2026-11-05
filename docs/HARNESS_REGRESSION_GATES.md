@@ -16,6 +16,8 @@ acceptance engine or model role. See the [runtime boundary](executable_book_runt
 | Repair | The model's next batch is preserved after edit failure. Safe observations and transient-check retries are not converted into synthetic errors. |
 | Context | Task instructions, tool-call pairing and recent verification survive compaction. |
 | Recovery | Checkpoints retain position, intent and completed-result references. Reuse results and reconcile uncertain effects. |
+| Projection | Canonical watch owns exact journal cursors, append wake-up and empty heartbeats. The desktop adapts metadata and rejects stale/cross-session responses without replaying raw events. |
+| Telemetry | Empty responses and successful selections attach observed usage to existing events. Restart and repeated receipts preserve counts; missing usage stays unmeasured, with no exporter dependency or acceptance decision. |
 | Empty model follow-up | Preserve the claim and resume from existing results without requiring milestones; cancellation remains effective. |
 | Authority | Configured grants authorize calls; explicit approval is honored even with a model planner label. Command words do not create extra review. Denied/mismatched grants, rejection and cancellation remain enforced. |
 | ABI | One schema catalog validates model and runtime arguments before effects, including nested edits. Invalid calls do not trigger approval. Hidden post-patch calls and shadow native command policies were removed. |

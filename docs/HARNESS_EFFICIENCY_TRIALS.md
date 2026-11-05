@@ -24,7 +24,6 @@ The existing MCP inventory/call path remains for external tools.
 | Safe model-planned read batches | enabled | Execute independent observations concurrently and commit results in model order. Mixed effects, approval boundaries and resumed batches remain sequential. |
 | `edit.arguments.edits` | optional | Validate ordered replacements in memory before one file write. |
 | Context projection | enabled | Use the configured model window and reserve output space; preserve durable results. `planner_context_window_tokens` may narrow the window. |
-| `MOONCLAW_PLANNER_METRICS_EXPORT` | unset | Export bounded aggregate observations to MoonGate without changing execution. |
 
 Output truncation respects UTF-8 boundaries. Large complete outputs use
 validated MoonFort artifact references; IDs are not interpreted as host paths.
@@ -32,10 +31,22 @@ The precise limits and result retrieval behavior remain in the tool contracts.
 
 ## Measurements and checks
 
-`planner_metrics` records request/schema characters, tool counts, provider
-tokens and cache reads, planner latency, retry count and outcome. Export
-contains aggregate fields rather than prompts, paths, sessions or arguments.
-The observer remains optional and cannot determine task acceptance.
+`planner_metrics` records compiled request/schema size, tool counts, reported
+provider tokens/cache reads, model-call wall elapsed time and outer transport
+retry count. It is attached to the existing final planner event, including an
+empty response. Conversation usage sums these durable observations once;
+compacted historical plans and repeated receipts cannot overwrite the total.
+The existing daemon UUID source distinguishes responses sharing a timestamp.
+
+The synchronous MoonGate exporter, environment switch, export-only SDK wrapper,
+duplicate configured/effective size calculations, selected-tool-name list and
+derived cache-ratio counters were removed. Collection performs no external IO,
+adds no journal round, and does not decide task acceptance. Missing/invalid
+provider usage remains unmeasured. The compiled request size is not the final
+provider HTTP body, and the outer retry count excludes internal transport
+fallbacks. There is no price estimate or claim that all billed attempts were
+observed. Existing error/tool/result records and offline replay remain the
+source for failure analysis; no always-on evaluator was added.
 
 The native catalog regression checks required capabilities across task
 languages, stable ordering, explicit tool selection and read-only behavior.

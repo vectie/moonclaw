@@ -26,6 +26,31 @@ existing execution facts rather than introduce another execution authority.
 
 ## Current MoonCode Implementation
 
+- Projection/Telemetry cleanup (2026-11-05): canonical `/watch` now lives in
+  MoonClaw, using the existing exact watch contract. MoonDesk adapts metadata
+  and keeps its typed decoder/navigation cancellation. Removed the unused typed
+  resume projection and the desktop snapshot/raw-stream/snapshot relay.
+- Watches wait on filesystem metadata and rebuild from the committed journal;
+  turn projection uses a temporary command index. Rebuilds still read full
+  history. Do not claim an incremental projection cache or shipped graph UI.
+- Planner usage/latency/retries attach to existing final planner events,
+  including empty responses. Removed the synchronous exporter and old
+  configured/effective compression counters. Usage projects from durable events,
+  not compacted plans or repeated receipts. Reuse the daemon UUID for response
+  observations: time alone is not a unique event identity. No extra append,
+  model request, observer store, evaluation phase or confirmation was added.
+- Preserve missing usage as unmeasured and missing prices as unpriced. Outer
+  retries/request size do not measure every billable attempt or final provider
+  HTTP body. Runtime errors/results and offline harness/replay remain facts,
+  not another acceptance authority. Live outcome/cost baselines remain pending.
+- Validation: Claw native 1862/1862; Desk native 1729/1729; core JS 65/65;
+  UI watch/usage 108/108; producer/consumer probe passed. Info/fmt, whitespace
+  and expected interface changes reviewed. Combined code/tests net -2046.
+  The real restart fixture retains all six responses through two empty
+  follow-ups and service restart, with one actual file write. 42 local links
+  and 11 archive hashes checked. Existing warnings and installed-app/live
+  qualification limits remain; runtime and desktop need the same watch contract.
+
 - Legacy Goal and Goal Runtime were removed, including API/store/supervisor,
   public reducers, dual authority and dedicated old tests. Ordinary `finish`
   is the completion entry; there is no quality-trial or no-change protocol.
