@@ -659,7 +659,6 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
   )
   {
     "item_id": step_id,
-    "step_id": step_id,
     "event_id": mooncode_json_string(event, "id", default=""),
     "lane": mooncode_json_string(event, "lane", default="runtime"),
     "kind": mooncode_conversation_work_step_kind(event),
@@ -676,7 +675,6 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
     "planner_step": mooncode_json_int(event, "planner_step", default=0),
     "path": mooncode_json_string(event, "path", default=""),
     "changed_paths": mooncode_json_array_string_items(event, "changed_paths"),
-    "evidence_ref": mooncode_json_string(event, "id", default=""),
     "recalls": if mooncode_json_string(event, "tool", default="") ==
       "read_result" {
       mooncode_json_string(metadata, "evidence_ref", default="")
@@ -692,7 +690,6 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
     }),
     "evidence": mooncode_conversation_work_evidence(event),
     "created_at": mooncode_json_string(event, "created_at", default=""),
-    "turn_id": command_id,
     "command_id": command_id,
   }
 }
@@ -1034,7 +1031,6 @@ fn mooncode_conversation_apply_work_event(
     )
     turn.work_steps[index] = step
       |> mooncode_json_object_with_field("item_id", Json(stable_id))
-      |> mooncode_json_object_with_field("step_id", Json(stable_id))
   } else {
     turn.work_steps.push(step)
   }
@@ -1080,6 +1076,10 @@ fn mooncode_conversation_work_step_id(event : Json) -> String {
   }
   if kind == "runtime.planner_selected" || kind == "runtime.planner_failed" {
     return "turn:\{command_id}:work:planner"
+  }
+  let operation_id = mooncode_json_string(event, "operation_id", default="")
+  if operation_id != "" {
+    return "turn:\{command_id}:work:\{operation_id}"
   }
   let tool_call_id = mooncode_json_string(event, "tool_call_id", default="")
   if tool_call_id != "" {

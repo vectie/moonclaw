@@ -34,10 +34,7 @@ async fn mooncode_runtime_parallel_read_identity(
       ":cmd:" +
       mooncode_json_string(arguments, "cmd", default="")
   }
-  if tool == "browser" ||
-    tool == "moon_ide" ||
-    tool == "moon_cmd" ||
-    tool == "moon_check" {
+  if mooncode_runtime_tool_policy(tool_call).parallel_read {
     return tool + ":arguments:" + arguments.stringify()
   }
   ""

@@ -21,7 +21,7 @@ fn mooncode_conversation_work_graph(
       nodes.push({ "id": batch_id, "kind": "batch", "step": round })
     }
     let id = mooncode_json_string(step, "item_id", default="")
-    let reference = mooncode_json_string(step, "evidence_ref", default="")
+    let reference = mooncode_json_string(step, "event_id", default="")
     nodes.push({
       "id": id,
       "kind": "operation",

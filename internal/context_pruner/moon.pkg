@@ -3,16 +3,12 @@ import {
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/token_counter",
-  "vectie/moonclaw/internal/conversation",
-  "vectie/moonlib/uuid",
-  "vectie/moonclaw/ai",
 }
 
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
   "moonbitlang/core/test",
-  "vectie/moonclaw/event",
 } for "test"
 
 supported_targets = "native"

@@ -10,22 +10,40 @@ planning. This is a responsibility split, not a permanent Router/Worker team.
 These names describe existing runtime responsibilities; they do not add an
 operating system, agent role or state machine.
 
-| Computer concept | MoonCode equivalent | Existing implementation |
+| Responsibility | Interface and logic | Owned guarantee and limit |
 | --- | --- | --- |
-| Process | One claimed command executing a task with its scope, results and resumable position. A session contains the command queue and journal. | Runtime turn, claims and continuation |
-| Thread | One primary model/tool control flow within that execution. Independent safe reads may run as child async tasks and join in call order. | Planner loop and parallel reads |
-| Memory | The bounded model-facing working context: task, observations, progress and skill receipts. Durable results remain reloadable through journal references. | Context projection, compaction and continuation hydration |
-| Filesystem | The selected MoonBook's actual files and deliverables. Journal records describe execution; they do not replace the workspace or prove its current contents. | Book-relative file tools and existing artifact references |
-| IO | Authorized tool calls and results; user input, steering and controls enter through the existing command/event paths. | Tool executor, sandbox, command queue and stream |
-| Synchronization | One session execution owner, locked ordered journal writes, dependency-aware tool batches and version checks for verification inputs. | Session lease, journal locks and input fingerprints |
-| Fault tolerance | Recover the saved position, reuse committed results, repeat safe observations and reconcile unknown effects. | Journal-backed continuation and operation intent/result identity |
+| Process / Thread | A claimed prompt/package command is the logical task. `mooncode_start_runtime_service` owns the main coroutine; `mooncode_runtime_loop_execute` acquires session ownership; `mooncode_runtime_turn_execute_under_runtime_gates` runs one execution quantum. Safe tool children belong to its TaskGroup and join in source order. | Session is a Book-bound queue/journal container, not an OS process. A model round is not a thread. Cancellation follows owned tasks; there is no independent address space or persistent program stack. |
+| Memory | `mooncode_runtime_turn_compile_context(command,messages,tools,window,output_tokens)` returns messages/metrics. `Pruner::compile_messages` is the sole projection algorithm. `read_result` reads retained session output by reference or first/last range. | Budgeted working set, durable facts and source files have distinct owners. Projection is lossy; original truncated stdout and old file versions are not recreated. No extra model round or mandatory retrieval stage. |
+| Filesystem | `mooncode_workspace_path(book_root,path)` resolves identity. `mooncode_workspace_replace(root,absolute,expected,content)` compares the observed contents under a stable file lock and stages a sibling rename. | Native file tools share per-resource conditional writes. This is not MVCC, a multi-file transaction or a lock observed by arbitrary shell/external writers. |
+| I/O | Catalog schema → `mooncode_execute_tool_call_in_runtime` → bound grant/executor where required → canonical result → `mooncode_tool_execution` envelope/event → journal and model/UI adapters. Provider transport owns model protocol. | Arguments, authorization, execution outcome and loop control are separate contracts. A successful function/MCP call does not prove permissions, idempotency or task completion. Repairable errors go to the same agent. |
+| Synchronization | Lifecycle shared/exclusive gate protects session lifecycle; execution lease owns session execution; journal/session lock orders claims/appends; file lock protects one canonical path; TaskGroup joins children. | External execution entry points acquire gates; internal `*_under_runtime_gates` calls borrow them. No runtime boolean chooses whether to reacquire ownership. Different resource locks are not a universal Book mutex or cross-service clock. |
+| Fault tolerance | Checkpoint/intent → `MoonCodeResumePoint` → `mooncode_runtime_operation_recovery` → retained result, safe read or unknown-outcome error. Results use the same execution constructor. | Committed results are reused; uncommitted effects are reconciled. Current restart entry is service start/task control/turn retry, not a daemon-wide boot scan of every Book. No arbitrary script stack recovery or universal exactly-once. |
+| Data model | session_id scopes queue/log/lease; command_id + task_revision identify task; operation_id identifies `(command,step,index)`; tool_call_id pairs protocol calls/results while operation_id joins runtime start/result across rounds; event_id identifies retained evidence; journal sequence is an exact decimal cursor. | Identities, content versions and ordered commit positions are different. Work steps retain item_id/command_id/event_id without duplicate step_id/turn_id/evidence_ref aliases. Most command/result structures are still Json, not a fully typed IR or complete dependency graph. |
+| Compute engine | Context → model round → tool batch → observations → next round/finish. Policy declares parallel-read/replay/skill barriers; resource reads use canonical identity and other declared read-only calls use exact arguments. Known local programs run through existing shell/project tooling. | Whole tasks are interpreted incrementally. Ordinary mixed/mutating batches retain source order. Work graph is a materialized view; it neither schedules nor accepts work. No universal computation cache, static task DAG, or new language runtime. |
 
-The session lease does not lock every MoonBook file across sessions or external
-editors. Serial writes in one loop are not global workspace transactions.
-Fingerprints detect stale verification for tracked inputs; they do not provide
-complete dependency isolation. Remote tool timeouts do not prove non-execution.
-Journal order establishes local committed order, not a universal clock across
-external services. Preserve these limits when extending concurrency.
+Source owners: [service](../cmd/daemon/mooncode_runtime_service.mbt),
+[loop](../cmd/daemon/mooncode_runtime_loop.mbt),
+[context](../cmd/daemon/mooncode_context.mbt),
+[compiler](../internal/context_pruner/pruner.mbt),
+[workspace](../cmd/daemon/mooncode_workspace.mbt),
+[catalog](../cmd/daemon/mooncode_tool_catalog.mbt),
+[executor](../cmd/daemon/mooncode_tools.mbt),
+[result](../cmd/daemon/mooncode_tool_execution.mbt),
+[journal](../cmd/daemon/mooncode_session_journal.mbt),
+[continuation](../cmd/daemon/mooncode_runtime_continuation.mbt),
+[operation recovery](../cmd/daemon/mooncode_runtime_operations.mbt),
+[batch](../cmd/daemon/mooncode_parallel_reads.mbt),
+[effects](../internal/mooncode_tools/policy.mbt),
+[graph](../cmd/daemon/mooncode_conversation_graph.mbt).
+
+These are responsibility contracts within existing packages, not eight new
+layers. File names are organizational: MoonBit files in one package share
+definitions. The daemon still contains substantial orchestration and Json
+records; it is not a fully typed compiler kernel. Native file synchronization
+is cooperative. Fingerprints cover touched/declared check inputs, not all
+semantic dependencies. Journal order is local commit order; remote timeouts
+do not prove non-execution. Snapshot rebuilds/read_result still scan history.
+
 
 ## Programming The Agent
 

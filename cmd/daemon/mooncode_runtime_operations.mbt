@@ -90,20 +90,17 @@ fn mooncode_runtime_operation_recovery(
       "tool_call": call,
     },
   )
-  Some({
-    "accepted": false,
-    "tool": tool,
-    "arguments": mooncode_json_object_field_or_empty(call, "arguments"),
-    "result": result,
-    "event": mooncode_tool_result_event(
+  Some(
+    mooncode_tool_execution(
       session_id,
       book_root,
       command_id,
       tool,
+      mooncode_json_object_field_or_empty(call, "arguments"),
       result,
       now~,
     ),
-  })
+  )
 }
 
 ///|

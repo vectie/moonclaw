@@ -54,11 +54,10 @@ async fn Daemon::mooncode_runtime_loop_execute(
 ) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
   if !binding.bind_book_root(requested_book_root) {
-    return self.mooncode_runtime_loop_execute_with_gate_state(
+    return mooncode_runtime_loop_root_mismatch(
       session_id,
+      binding.book_root,
       requested_book_root,
-      payload,
-      runtime_gates_held=false,
     )
   }
   let book_root = binding.book_root
@@ -105,41 +104,28 @@ async fn Daemon::mooncode_runtime_loop_execute(
     }
   }
   defer execution_lease.unlock()
-  self.mooncode_runtime_loop_execute_with_gate_state(
-    session_id,
-    book_root,
-    payload,
-    runtime_gates_held=true,
+  self.mooncode_runtime_loop_execute_under_runtime_gates(
+    session_id, book_root, payload,
   )
 }
 
 ///|
-async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
+/// Caller holds the lifecycle gate and execution lease for this invocation;
+/// nested turns reuse that ownership instead of acquiring it again.
+async fn Daemon::mooncode_runtime_loop_execute_under_runtime_gates(
   self : Daemon,
   group? : @async.TaskGroup[Unit],
   session_id : String,
   requested_book_root : String,
   payload : Json,
-  runtime_gates_held~ : Bool,
 ) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
   if !binding.bind_book_root(requested_book_root) {
-    return {
-      "kind": "mooncode-runtime-loop",
-      "protocol": mooncode_protocol_version(),
-      "owner": "moonclaw",
-      "accepted": false,
-      "session_id": session_id,
-      "book_root": binding.book_root,
-      "requested_book_root": requested_book_root,
-      "ran_turn_count": 0,
-      "failed_turn_count": 1,
-      "turn_count": 0,
-      "stopped_by": "root-mismatch",
-      "message": "MoonCode session is bound to a different MoonBook root",
-      "turns": Json::array([]),
-      "waits": Json::array([]),
-    }
+    return mooncode_runtime_loop_root_mismatch(
+      session_id,
+      binding.book_root,
+      requested_book_root,
+    )
   }
   let book_root = binding.book_root
   let max_turns = mooncode_runtime_loop_max_turns(payload)
@@ -188,16 +174,12 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
       "live_wait_ms": live_wait_ms,
       "poll_ms": poll_ms,
     }
-    let turn = if runtime_gates_held {
-      self.mooncode_runtime_turn_execute_under_runtime_gates(
-        group?,
-        session_id,
-        book_root,
-        turn_payload,
-      )
-    } else {
-      self.mooncode_runtime_turn_execute(session_id, book_root, turn_payload)
-    }
+    let turn = self.mooncode_runtime_turn_execute_under_runtime_gates(
+      group?,
+      session_id,
+      book_root,
+      turn_payload,
+    )
     turns.push(turn)
     if !mooncode_json_bool(turn, "ran", default=false) {
       stopped_by = "idle"
@@ -620,4 +602,28 @@ test "mooncode native runtime loop clamps live wait options" {
   )
   assert_eq(mooncode_runtime_loop_poll_ms({ "poll_ms": 1 }), 25)
   assert_eq(mooncode_runtime_loop_poll_ms({ "poll_ms": 5000 }), 2000)
+}
+
+///|
+fn mooncode_runtime_loop_root_mismatch(
+  session_id : String,
+  book_root : String,
+  requested_book_root : String,
+) -> Json {
+  {
+    "kind": "mooncode-runtime-loop",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "accepted": false,
+    "session_id": session_id,
+    "book_root": book_root,
+    "requested_book_root": requested_book_root,
+    "ran_turn_count": 0,
+    "failed_turn_count": 1,
+    "turn_count": 0,
+    "stopped_by": "root-mismatch",
+    "message": "MoonCode session is bound to a different MoonBook root",
+    "turns": Json::array([]),
+    "waits": Json::array([]),
+  }
 }

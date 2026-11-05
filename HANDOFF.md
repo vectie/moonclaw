@@ -5,6 +5,42 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Eight primitive contracts audit 2026-11-05
+
+- Current responsibilities are process/thread, memory, filesystem, I/O,
+  synchronization, fault tolerance, data model and compute engine. See
+  the runtime boundary and MoonDesk design synthesis for per-interface
+  inputs/outputs, logic, actual guarantees and sibling comparisons.
+- Retired unused `PruneResult`, `calculate_pruning` and `prune_messages`,
+  four direct package dependencies and eleven legacy-only tests. Context
+  has one real compiler; don't restore a second in-place pruning API.
+- External execution entry points acquire session gates; internal
+  `*_under_runtime_gates` borrow them. The loop no longer accepts a Boolean
+  deciding whether to reacquire ownership. Lifecycle, execution, journal
+  and native file locks protect different resources and remain distinct.
+- Parallel scheduling reads the existing policy, not a second tool-name
+  allowlist. Resource reads retain canonical identity. Declared read-only
+  result recall and MCP listing now qualify for ordinary batches.
+- Work-step identity follows operation_id on the runtime path. Provider
+  call IDs can repeat upstream; they are not cross-round execution keys.
+  Existing tests cover reuse, ordered parallel recall and no effect replay.
+  Work steps use item_id/command_id/event_id; removed duplicate aliases
+  step_id/turn_id/evidence_ref. Top-level turn/message IDs remain.
+- Uncertain-operation recovery uses the common execution constructor.
+  No extra state machine, agent, store, model call or human step was added.
+- Remaining limits: cooperative native file locks; process tools/external
+  writers do not participate. Resume uses existing service start/turn retry
+  or task controls, not a daemon-wide boot scanner. Internal Json and
+  partial dependency provenance do not constitute a typed IR or full DAG.
+
+- Validation: Claw native 1853/1853; identity/session 21/21; initial focused
+  checks 43/43; Desk core JS 65/65 and UI 839/839; real producer/consumer
+  probe passed. Info/fmt and interface diff reviewed. Production .mbt net
+  -157, tests net -282. No UI layout/build or installed-app change; no live
+  provider/performance qualification. Archive hashes remain unchanged.
+
+
+
 ## MoonCode Direction
 
 Use [Executable book runtime boundary](docs/executable_book_runtime_boundary.md)

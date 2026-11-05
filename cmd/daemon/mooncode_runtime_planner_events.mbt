@@ -157,6 +157,7 @@ fn mooncode_runtime_turn_tool_call_event(
     "tool": tool,
     "tool_name": tool,
     "tool_call_id": tool_call_id,
+    "operation_id": mooncode_runtime_operation_id(command_id, step - 1, index),
     "arguments": arguments.stringify(indent=2),
     "tool_call": {
       "id": tool_call_id,

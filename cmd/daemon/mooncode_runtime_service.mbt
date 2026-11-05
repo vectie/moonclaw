@@ -567,12 +567,11 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   payload : Json,
 ) -> Json {
   let loop_payload = mooncode_runtime_service_loop_payload(session_id, payload)
-  let mut result = self.mooncode_runtime_loop_execute_with_gate_state(
+  let mut result = self.mooncode_runtime_loop_execute_under_runtime_gates(
     group?,
     session_id,
     book_root,
     loop_payload,
-    runtime_gates_held=true,
   )
   let binding = self.mooncode_binding_for_session(session_id)
   // Explicit manual service limits retain their existing total-turn bound.
@@ -594,12 +593,11 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
       if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
         @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
       }
-      result = self.mooncode_runtime_loop_execute_with_gate_state(
+      result = self.mooncode_runtime_loop_execute_under_runtime_gates(
         group?,
         session_id,
         book_root,
         loop_payload,
-        runtime_gates_held=true,
       )
       continue
     }
@@ -642,12 +640,11 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
           rearm_count,
         ),
       )
-      result = self.mooncode_runtime_loop_execute_with_gate_state(
+      result = self.mooncode_runtime_loop_execute_under_runtime_gates(
         group?,
         session_id,
         book_root,
         loop_payload,
-        runtime_gates_held=true,
       )
       continue
     }

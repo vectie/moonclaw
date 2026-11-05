@@ -51,7 +51,8 @@ and MoonLib defines shared paths.
    agent machine model, shared working method, completion and recovery.
    The optional sibling MoonDesk [design synthesis](../../moondesk/docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md)
    covers later data-model and dynamic-graph decisions; it is not a runtime
-   dependency or a claim that graph presentation has shipped.
+   dependency. The runtime boundary defines the eight implemented primitive
+   responsibilities and their limits; the synthesis compares the sibling frameworks.
 4. [Daemon reference](../cmd/daemon/README.md) and
    [daemon/gateway selection](daemon_vs_gateway.md): service entry points.
 5. [System architecture](system_architecture.md) and
