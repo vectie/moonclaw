@@ -78,8 +78,6 @@ fn mooncode_journal_stream_record(
   }
   let envelope = mooncode_journal_validate_envelope(parsed) catch {
     CorruptStore(message) => raise InvalidJournal(message)
-    IdentityConflict(_, _, _) =>
-      raise InvalidJournal("unexpected journal identity conflict")
   }
   let next = cursor.next()
   if envelope.sequence.compare(next) != 0 {
@@ -114,6 +112,7 @@ priv struct MoonCodeJournalAppendScan {
 
 ///|
 priv struct MoonCodeJournalAppendState {
+  mut directories_committed : Bool
   mut committed_size : Int64
   mut boundary_fingerprint : Bytes
   mut cursor : MoonCodeJournalSequence
@@ -216,6 +215,7 @@ async fn mooncode_journal_append_state_from_records(
   }
   let committed_size = file.size()
   {
+    directories_committed: false,
     committed_size,
     boundary_fingerprint: mooncode_journal_boundary_fingerprint(
       file, committed_size,
@@ -293,6 +293,7 @@ async fn mooncode_journal_scan_append_state(
   })
   let committed_size = file.size()
   {
+    directories_committed: false,
     committed_size,
     boundary_fingerprint: mooncode_journal_boundary_fingerprint(
       file, committed_size,

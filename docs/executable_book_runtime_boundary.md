@@ -271,6 +271,20 @@ continuation remain the execution path. All continuation
 reasons share one writer and reference completed results instead of copying
 their accumulated output.
 
+The [Context/Journal contract](LONG_CONTEXT_COMPACTION.md) uses one default
+window-budgeted compiler for initial and follow-up requests. Fixed message
+suffixes, active/shadow experiments and overload-driven transcript rewriting
+were removed. Tool execution owns output limits; Context owns model projection.
+Canonical task revisions and the newest exchange survive projection. Omitted
+history is lossy, and there is no general model-facing journal lookup yet.
+
+Continuation validation is one typed position decoder at the recovery boundary,
+not another state machine. Broken result references raise an explicit journal
+error. Existing append-cache entries retain successful directory sync so cached
+appends sync file bytes only; cache rebuild and real directory mutations retain
+conservative directory synchronization. The whole-result aggregate digest and
+obsolete Goal journal special cases were removed.
+
 Completion rules and result-evidence helpers live together in
 `mooncode_runtime_completion.mbt`, separate from model transport and schema
 construction. The turn reuses one terminal verdict rather than independently

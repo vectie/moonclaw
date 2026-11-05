@@ -23,8 +23,7 @@ The existing MCP inventory/call path remains for external tools.
 | `payload.planner_tool_output_chars` | absent | Inline tool output defaults to 12,000 encoded bytes; explicit tool arguments win. |
 | Safe model-planned read batches | enabled | Execute independent observations concurrently and commit results in model order. Mixed effects, approval boundaries and resumed batches remain sequential. |
 | `edit.arguments.edits` | optional | Validate ordered replacements in memory before one file write. |
-| `payload.planner_hybrid_semantic_compaction_trial` | `false` | Observe context pressure and projection invariants without replacing the transcript. |
-| `payload.planner_hybrid_semantic_compaction_active` | `false` | Project long contexts under the existing measured-pressure gates; preserve journal history. |
+| Context projection | enabled | Use the configured model window and reserve output space; preserve durable results. `planner_context_window_tokens` may narrow the window. |
 | `MOONCLAW_PLANNER_METRICS_EXPORT` | unset | Export bounded aggregate observations to MoonGate without changing execution. |
 
 Output truncation respects UTF-8 boundaries. Large complete outputs use

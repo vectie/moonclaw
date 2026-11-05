@@ -76,8 +76,6 @@ fn streaming_test_expect_corrupt(action : () -> Unit raise) -> Unit raise {
   try action() catch {
     InvalidJournal(_) => ()
     MoonCodeJournalDecodeError::CorruptStore(_) => ()
-    MoonCodeJournalDecodeError::IdentityConflict(_, _, _) =>
-      fail("unexpected identity conflict")
     _ => fail("unexpected error")
   } noraise {
     _ => fail("expected corrupt journal data")
@@ -402,6 +400,52 @@ test "journal durability chain reaches the filesystem anchor" {
   )
   assert_true(directories.contains("/book"))
   assert_eq(directories[directories.length() - 1], "/")
+}
+
+///|
+#cfg(not(target_os="windows"))
+async test "cached append avoids directory reopen and failed first sync retries durably" {
+  @fsx.with_temporary_directory("moonclaw-journal-directory-sync-XXXXXX", async fn(
+    directory,
+  ) {
+    let root = @pathx.join(directory, "book")
+    let session = "directory-sync"
+    let path = mooncode_session_journal_path(root, session)
+    let first : Json = {
+      "id": "first",
+      "kind": "sync-test",
+      "created_at": "now",
+    }
+    let second : Json = {
+      "id": "second",
+      "kind": "sync-test",
+      "created_at": "now",
+    }
+    assert_true(
+      mooncode_append_session_journal_once(root, session, "event", first),
+    )
+    let canonical = @fs.realpath(path)
+    let parent = @pathx.dirname(path)
+    defer @fs.chmod(parent, 0o700)
+    @fs.chmod(parent, 0o300)
+    assert_true(
+      mooncode_append_session_journal_once(root, session, "event", second),
+    )
+    mooncode_journal_append_states.remove(canonical)
+    try
+      mooncode_append_session_journal_once(root, session, "event", second)
+    catch {
+      _ => ()
+    } noraise {
+      _ => fail("uncached commit must establish directory durability")
+    }
+    @fs.chmod(parent, 0o700)
+    assert_false(
+      mooncode_append_session_journal_once(root, session, "event", second),
+    )
+    assert_eq(mooncode_read_session_journal(root, session).length(), 2)
+    mooncode_journal_append_states.remove(canonical)
+  })
 }
 
 ///|

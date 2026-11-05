@@ -120,15 +120,6 @@ test "planner quantum checkpoint validation fails closed" {
       ),
     ),
   )
-  assert_false(
-    mooncode_runtime_planner_continuation_is_active(
-      mooncode_json_object_with_field(
-        checkpoint,
-        "id",
-        Json("forged-checkpoint"),
-      ),
-    ),
-  )
   let finish_plan = mooncode_json_object_with_field(
     plan,
     "tool_calls",
@@ -250,7 +241,7 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
       ),
     ),
   )
-  assert_false(
+  assert_true(
     mooncode_runtime_planner_replan_continuation_is_active(
       mooncode_json_object_with_field(
         hydrated_checkpoint,
@@ -370,10 +361,6 @@ test "latest planner or approval checkpoint wins by journal order" {
     now=@clock.Timestamp::from_ms(3L),
   )
   assert_true(mooncode_runtime_continuation_is_active(waiting))
-  let legacy : Json = @json.parse(waiting.stringify())
-  guard legacy is Object(object) else { abort("approval checkpoint object") }
-  object.remove("planner_turn_end_step")
-  assert_true(mooncode_runtime_continuation_is_active(legacy))
   assert_true(
     mooncode_runtime_continuation_is_active(
       mooncode_runtime_continuation_for_command([planner, waiting], "cmd-order"),

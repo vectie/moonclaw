@@ -1,5 +1,11 @@
 ///|
+let cl100k_base_cached : Ref[Encoding?] = Ref(None)
+
+///|
 pub fn cl100k_base() -> Encoding raise {
+  if cl100k_base_cached.val is Some(encoding) {
+    return encoding
+  }
   let mergeable_ranks : Map[Bytes, Int32] = Map([])
   for line in cl100k_base_mergeable_ranks.split("\n") {
     if line is "" {
@@ -17,5 +23,7 @@ pub fn cl100k_base() -> Encoding raise {
     "<|endofprompt|>": 100276,
   }
   let pattern : Pattern = Pattern::cl100k_base()
-  Encoding::new(mergeable_ranks~, special_tokens~, pattern~)
+  let encoding = Encoding::new(mergeable_ranks~, special_tokens~, pattern~)
+  cl100k_base_cached.val = Some(encoding)
+  encoding
 }

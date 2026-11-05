@@ -11,7 +11,6 @@ fn mooncode_sequence_expect_corrupt(
 ) -> Unit raise {
   try action() catch {
     CorruptStore(_) => ()
-    IdentityConflict(_, _, _) => fail("unexpected identity conflict")
   } noraise {
     _ => fail("expected corrupt journal data")
   }

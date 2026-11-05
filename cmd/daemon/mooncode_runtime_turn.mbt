@@ -160,12 +160,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let continuation = mooncode_runtime_continuation_for_command(
     existing_events, command_id,
   )
-  let continuation_active = mooncode_runtime_continuation_is_active(
-      continuation,
-    ) ||
-    mooncode_runtime_planner_continuation_is_active(continuation) ||
-    mooncode_runtime_planner_transport_continuation_is_active(continuation) ||
-    mooncode_runtime_planner_replan_continuation_is_active(continuation)
+  let resume_point = mooncode_runtime_resume_point(continuation)
+  let continuation_active = resume_point is Some(_)
   let execution_started = existing_events.any(event => {
     mooncode_json_string(event, "command_id", default="") == command_id &&
     (
@@ -186,20 +182,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       "MoonCode runtime-claimed command \{command_id} has no valid active continuation",
     )
   }
-  let resuming_approval = mooncode_runtime_continuation_is_active(continuation)
-  let resuming_planner = mooncode_runtime_planner_continuation_is_active(
-    continuation,
-  )
-  let resuming_planner_transport = mooncode_runtime_planner_transport_continuation_is_active(
-    continuation,
-  )
-  let resuming_planner_replan = mooncode_runtime_planner_replan_continuation_is_active(
-    continuation,
-  )
-  let resuming_continuation = resuming_approval ||
-    resuming_planner ||
-    resuming_planner_transport ||
-    resuming_planner_replan
+  let resuming_approval = resume_point is Some(ResumeTools(_, _))
+  let resuming_planner = resume_point is Some(ResumePlanner(_))
+  let resuming_planner_transport = resume_point is Some(ResumeTransport(_, _))
+  let resuming_planner_replan = resume_point is Some(ResumeReplan(_))
+  let resuming_continuation = continuation_active
   if mooncode_json_string(continuation, "command_id", default="") != "" &&
     !resuming_continuation {
     raise InvalidJournal(
@@ -363,12 +350,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           now=plan_now,
         )
       } else if resuming_planner_transport {
-        let resume_mode = mooncode_json_string(
-          continuation,
-          "resume_mode",
-          default="",
-        )
-        if resume_mode == "initial" {
+        if resume_point is Some(ResumeTransport(true, _)) {
           self.mooncode_runtime_turn_plan_tool_calls(
             command,
             live_steering=retained_transport_steering,
@@ -476,19 +458,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       } else {
         []
       }
-      let resume_step_index = if resuming_approval {
-        mooncode_json_int(continuation, "step_index", default=0)
-      } else if resuming_planner ||
-        resuming_planner_transport ||
-        resuming_planner_replan {
-        mooncode_json_int(continuation, "next_step_index", default=0)
-      } else {
-        0
+      let resume_step_index = match resume_point {
+        Some(ResumeTools(step, _))
+        | Some(ResumePlanner(step))
+        | Some(ResumeTransport(_, step))
+        | Some(ResumeReplan(step)) => step
+        None => 0
       }
-      let resume_tool_index = if resuming_approval {
-        mooncode_json_int(continuation, "tool_index", default=0)
-      } else {
-        0
+      let resume_tool_index = match resume_point {
+        Some(ResumeTools(_, tool)) => tool
+        _ => 0
       }
       let stored_planner_turn_end = mooncode_json_int(
         continuation,

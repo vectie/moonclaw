@@ -348,9 +348,14 @@ async test "mooncode lifecycle retries recover interrupted transition markers" {
       let session_id = "session-transition-recovery"
       let daemon = mooncode_control_test_daemon(book_root)
       mooncode_management_test_create_session(daemon, book_root, session_id)
+      let journal_path = @fs.realpath(
+        mooncode_session_journal_path(book_root, session_id),
+      )
+      assert_true(mooncode_journal_append_states.contains(journal_path))
       let session_lock = mooncode_open_session_lock(book_root, session_id)
       session_lock.lock(Exclusive)
       mooncode_write_session_state_locked(book_root, session_id, "archiving")
+      assert_false(mooncode_journal_append_states.contains(journal_path))
       session_lock.unlock()
       session_lock.close()
       assert_true(

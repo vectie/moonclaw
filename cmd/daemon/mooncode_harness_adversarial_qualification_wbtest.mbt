@@ -1,85 +1,4 @@
 ///|
-fn mooncode_qualification_compaction_messages(
-  pairs : Int32,
-  seed : Int32,
-) -> Array[Json] {
-  let messages : Array[Json] = [
-    mooncode_runtime_context_text_message(
-      "system",
-      "qualification system contract",
-      SystemContext,
-      "system.qualification",
-    ),
-    mooncode_runtime_context_text_message(
-      "user",
-      "qualification task",
-      UserContext,
-      "user.qualification",
-    ),
-  ]
-  for index in 0..<pairs {
-    let id = "qualification-\{seed}-\{index}"
-    messages.push(
-      mooncode_runtime_context_message(
-        {
-          "role": "assistant",
-          "content": "anchor \{seed}:\{index}",
-          "tool_calls": [
-            {
-              "id": id,
-              "type": "function",
-              "function": { "name": "read", "arguments": "{}" },
-            },
-          ],
-        },
-        AssistantContext,
-        "assistant.qualification",
-      ),
-    )
-    messages.push(
-      mooncode_runtime_context_message(
-        {
-          "role": "tool",
-          "tool_call_id": id,
-          "content": "evidence-\{index}:" +
-          "x".repeat(180 + (index + seed) % 31),
-        },
-        ToolResultContext,
-        "tool_result.qualification",
-      ),
-    )
-  }
-  messages
-}
-
-///|
-fn mooncode_qualification_compaction_command() -> Json {
-  {
-    "payload": {
-      "planner_hybrid_semantic_compaction_active": true,
-      "planner_context_window_tokens": 1000,
-      "planner_semantic_compaction_message_threshold": 64,
-      "planner_semantic_compaction_pressure_threshold_ppm": 750000,
-      "planner_semantic_compaction_target_pressure_ppm": 500000,
-    },
-  }
-}
-
-///|
-async fn mooncode_qualification_compaction_run(
-  messages : Array[Json],
-) -> MoonCodeSemanticCompactionLifecycle {
-  let tools : Array[@openai.ChatCompletionToolParam] = []
-  mooncode_runtime_turn_active_semantic_compaction(
-    mooncode_qualification_compaction_command(),
-    { "planner_metrics": { "prompt_tokens": 900 } },
-    messages,
-    tools,
-    1000,
-  )
-}
-
-///|
 test "context provenance token boundaries and normalization are fail-soft" {
   let valid_64 = "a".repeat(64)
   let valid_160 = "s".repeat(160)
@@ -110,78 +29,6 @@ test "context provenance token boundaries and normalization are fail-soft" {
     assert_true(
       mooncode_runtime_context_provenance_valid(
         mooncode_runtime_context_provenance(normalized),
-      ),
-    )
-  }
-}
-
-///|
-async test "active compaction property corpus is deterministic and reduces pressure" {
-  for seed in 0..<3 {
-    let messages = mooncode_qualification_compaction_messages(36 + seed, seed)
-    let first = mooncode_qualification_compaction_run(messages)
-    let second = mooncode_qualification_compaction_run(messages)
-    assert_eq(first.messages, second.messages)
-    assert_eq(first.metrics, second.metrics)
-    assert_true(mooncode_json_bool(first.metrics, "applied", default=false))
-    assert_true(
-      mooncode_json_int(first.metrics, "after_message_chars", default=0) <
-      mooncode_json_int(first.metrics, "before_message_chars", default=0),
-    )
-    assert_true(
-      mooncode_runtime_turn_semantic_compaction_provenance_valid(first.messages),
-    )
-    assert_true(
-      mooncode_runtime_turn_semantic_compaction_tool_protocol_valid(
-        first.messages,
-      ),
-    )
-  }
-}
-
-///|
-async test "active compaction mutation corpus fails closed byte-identically" {
-  let base = mooncode_qualification_compaction_messages(36, 7)
-  let orphan = base.copy()
-  orphan.push(
-    mooncode_runtime_context_message(
-      { "role": "tool", "tool_call_id": "orphan", "content": "forged" },
-      ToolResultContext,
-      "tool_result.qualification",
-    ),
-  )
-  let late_system = base.copy()
-  late_system.push(
-    mooncode_runtime_context_text_message(
-      "system",
-      "late mutation",
-      SystemContext,
-      "system.qualification_late",
-    ),
-  )
-  let bad_provenance = base.copy()
-  bad_provenance[10] = mooncode_json_object_with_field(
-    bad_provenance[10],
-    MOONCODE_CONTEXT_PROVENANCE_FIELD,
-    { "contract": "forged", "kind": "tool_result", "source": "forged" },
-  )
-  let developer = base.copy()
-  developer.insert(
-    1,
-    mooncode_runtime_context_text_message(
-      "developer",
-      "unsupported immutable mutation",
-      SystemContext,
-      "system.qualification_developer",
-    ),
-  )
-  for mutation in [orphan, late_system, bad_provenance, developer] {
-    let result = mooncode_qualification_compaction_run(mutation)
-    assert_eq(result.messages, mutation)
-    assert_false(mooncode_json_bool(result.metrics, "applied", default=true))
-    assert_true(
-      ["source-invariant-invalid", "unsupported-message-shape"].contains(
-        mooncode_json_string(result.metrics, "reason", default=""),
       ),
     )
   }
@@ -239,31 +86,6 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
   assert_true(resumed.contains("stream output truncated"))
   assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(resumed)), resumed)
 
-  let call_id = "qualification-unicode-read"
-  let compacted = mooncode_runtime_turn_compact_provider_tool_evidence([
-    {
-      "role": "assistant",
-      "tool_calls": [
-        { "id": call_id, "function": { "name": "read", "arguments": "{}" } },
-      ],
-    },
-    {
-      "role": "tool",
-      "tool_call_id": call_id,
-      "content": "a".repeat(9999) + unicode.repeat(100),
-    },
-  ])
-  let compacted_content = mooncode_json_string(
-    compacted[1],
-    "content",
-    default="",
-  )
-  assert_true(compacted_content.contains("MoonCode compacted"))
-  assert_eq(
-    @encoding/utf8.decode(@encoding/utf8.encode(compacted_content)),
-    compacted_content,
-  )
-
   let excerpt = mooncode_runtime_turn_inspection_excerpt(
     "a".repeat(1199) + unicode.repeat(100),
   )
@@ -274,7 +96,8 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
     "tool": "shell",
     "result": { "ok": true, "output": "a".repeat(3999) + unicode.repeat(500) },
   })
-  assert_true(planner_content.contains("truncated for planner context"))
+  assert_true(planner_content.contains(unicode.repeat(500)))
+  ignore(@json.parse(planner_content))
   assert_eq(
     @encoding/utf8.decode(@encoding/utf8.encode(planner_content)),
     planner_content,

@@ -46,7 +46,7 @@ pub fn Pruner::new(
 }
 
 ///|
-const ClearedToolOutputPlaceholder : String = "[Cleared: tool output. If you want to see the output, you can use the tool again.]"
+const ClearedToolOutputPlaceholder : String = "[Cleared: tool output. Recover exact evidence from retained sources or repeat a safe observation; never replay an effect just to recover output.]"
 
 ///|
 const ContextCheckpoint : String = "[Context checkpoint: MoonClaw compacted older model-facing messages to control prompt cost. The original task contract and complete durable journal are unchanged. Continue from the retained recent exchange; re-read exact evidence only when needed.]"
@@ -384,8 +384,8 @@ pub async fn Pruner::compile_messages(
     }
   }
 
-  // Preserve the newest tool batch as the active working set. Older results
-  // are reproducible and usually dominate the prompt.
+  // Preserve the newest tool batch as the active working set. Older outputs
+  // usually dominate prompt cost; their omission never authorizes replay.
   let protected_tool_ids = latest_tool_batch_ids(projected)
   let mut current_tokens = origin_token_count
   let mut redacted_tool_results = 0

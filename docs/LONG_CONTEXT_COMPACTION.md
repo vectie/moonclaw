@@ -1,106 +1,106 @@
-# Long-context compaction lifecycle
+# Context projection and journal recovery
 
-MoonClaw has an opt-in active compaction lifecycle for very long MoonCode
-planner runs. It changes only the provider-facing projection. The durable
-command, execution journal, tool results, checkpoints, and user-visible
-artifacts are not rewritten.
+MoonCode uses one deterministic context compiler for initial planning and every
+follow-up. It projects the next provider request; it does not rewrite commands,
+tool results, the execution journal or artifacts. No additional model request,
+summary service, feature flag or human confirmation is required.
 
-Active compaction is disabled by default:
+## Model window
 
-```json
-{
-  "payload": {
-    "planner_hybrid_semantic_compaction_active": true,
-    "planner_context_window_tokens": 128000
-  }
-}
-```
+The configured model's `safe_zone_tokens` supplies the window. Optional
+`payload.planner_context_window_tokens` can narrow a known window, or supply an
+otherwise unknown one. Input budget is the smaller of 75% of that window and
+the window minus the request's output-token allowance. Tool schemas count
+toward the input budget. Counts use the existing cl100k tokenizer, so they are
+estimates for other providers. Its immutable vocabulary is initialized lazily
+once per process rather than rebuilt for every planner request.
 
-Both fields are required for activation. An unknown context window fails
-closed. The separate `planner_hybrid_semantic_compaction_trial` flag remains a
-shadow-only observation and never changes provider messages.
+In-budget messages remain unchanged. On overflow, the existing compiler first
+omits older tool output, then replaces a coherent history span with a bounded,
+deterministic checkpoint. The complete instruction/task prefix and latest
+complete exchange remain. Follow-ups refresh the canonical task, including its
+ordered revisions, before projection. Tool calls and results stay paired.
 
-## Lifecycle
+Unknown windows, unsupported provider message shapes and compiler errors leave
+the original messages intact with a reason. Malformed overflowing tool batches
+are not transformed. An immutable prefix or newest exchange that cannot fit
+remains a minimum safe projection with `within_budget=false`; this is not a
+promise that every possible input fits. There is no secondary suffix fallback.
 
-For flag-off requests, MoonClaw retains the existing compatibility behavior:
-after 32 follow-up messages it uses the legacy bounded suffix projection. This
-path is byte-for-byte unchanged.
+The 32-message suffix, active/shadow experiments, threshold knobs, provenance-v1
+reader and repeated per-follow-up output clipping were removed. Tool execution
+still owns its explicit output limits and artifact references. Tool results
+enter Context as complete JSON with their evidence reference; they are no
+longer cut mid-JSON at a separate 4k/40k planner limit. Transport retries the
+same compiled request and never changes the task to handle provider overload.
 
-For active requests, MoonClaw retains the current provider projection until
-both conditions hold:
+## Evidence and recall
 
-- the very-long-task threshold is reached (96 messages by default, bounded to
-  64–512 with `planner_semantic_compaction_message_threshold`);
-- measured context pressure reaches 75% by default (bounded to 60–90% with
-  `planner_semantic_compaction_pressure_threshold_ppm`).
+Projection is lossy. A checkpoint contains working observations, not exact
+source evidence or a proof of completion. Retained messages preserve provenance;
+omitted history may lose individual source references. Existing file reads,
+installed-skill reads and available artifact/backend retrieval remain the
+recall paths. Do not replay a mutation to recover its old output.
 
-Provider-reported prompt tokens from the preceding round are preferred.
-Serialized visible-message characters divided by four are the deterministic
-fallback. Internal provenance metadata is excluded from both calculations.
+The journal retains original execution facts and supplies exact referenced
+results for restart. There is currently no general model-facing journal lookup
+by evidence ID; automatic recall of arbitrary omitted historical outputs remains
+unfinished. Do not claim that all historical evidence is always retrievable by
+the model, or add mandatory RAG/query rewriting to compensate.
 
-Once eligible, the existing context compiler targets 50% pressure by default.
-The target is explicit and configurable with
-`planner_semantic_compaction_target_pressure_ppm`, bounded to 30–70% and kept
-at least ten percentage points below the trigger. Old tool outputs are reduced
-first; if needed, an old coherent history span is replaced by a deterministic
-checkpoint while retaining the protected instruction/task prefix and newest
-complete exchange.
+## Journal
 
-## Safety invariants
+One checkpoint writer stores the current plan, compact historical step metadata,
+completed-result references and the position in the existing loop. A single
+`MoonCodeResumePoint` decoder covers tool positions, explicit approval, planner
+quantum pauses, transport interruption and empty-response replanning. It is a
+decoded value, not another scheduler or state machine. Approval IDs still bind
+the exact command and tool occurrence. Rejected finish recovery retains its
+specific execution fact; guidance wording and generated ID formatting are not
+authorization requirements.
 
-The active projection is accepted only when all of these remain true:
+Only the latest checkpoint is hydrated. Referenced result IDs must be unique,
+in order and present before that checkpoint, with matching event digests.
+Malformed references raise `InvalidJournal`, rather than looking like an empty
+session. The redundant digest over the whole accumulated result body and old
+inline-checkpoint fallback are removed. Synthetic nonjournaled results can still
+be represented inline by the current reference format. Existing operation
+identity prevents replay of completed effects; an intent without a committed
+result remains unknown and requires reconciliation.
 
-- system and developer instructions are byte-identical and in the same order;
-- no system/developer instruction appears after conversation turns begin;
-- every retained tool result answers one unique immediately preceding
-  assistant tool call, with no orphan, duplicate, or incomplete batch;
-- every projected message carries valid `_moonclaw_context` provenance;
-- the projection produces a deterministic character reduction.
+Every append synchronizes file bytes. The existing size/boundary-validated
+append cache also remembers successful directory synchronization. A cache hit
+avoids reopening every ancestor. First observation, restart or cache invalidation
+conservatively syncs the directory chain; a failed sync is retried even when the
+record's identity already exists. Archive/restore and other directory mutations
+invalidate cached durability before transition intent and retain their own
+synchronization. Supported-platform filesystem semantics still
+apply; the Windows directory-sync helper remains a no-op. This is not a new
+index or a universal external-writer durability guarantee.
 
-Unsupported message roles, invalid provenance, malformed tool transcripts,
-late instructions, compiler errors, or invariant mismatches return the exact
-uncompacted input with a closed refusal reason. Developer-role messages are
-therefore preserved even though the current Chat Completions parameter type
-does not compile that role. Newly generated context checkpoints are tagged as
-environment context; retained and redacted tool results keep their originating
-tool-result provenance through call-ID alignment.
+Checkpoint construction still traverses accumulated references and retains the
+current model transcript once. Removing duplicate body hashing does not make
+arbitrary checkpoint size constant. Normal journal append reuses the existing
+incremental scan cache instead of scanning all prior records.
 
-## Metrics
+Normal context counting still costs time proportional to input and schema size;
+the cached tokenizer avoids repeated vocabulary construction, not tokenization.
 
-Each follow-up plan records `moonclaw.semantic-compaction-lifecycle.v1` with:
+## Observability and checks
 
-- `enabled`, `eligible`, `applied`, `reason`, and `invariants_preserved`;
-- pressure source, context window, estimated/observed tokens, trigger, target,
-  and target token budget;
-- before/after message counts, visible serialized characters, and token counts;
-- deterministic character reduction, redacted tool-result count, compacted
-  message count, and whether the target budget was reached.
-
-The metrics contain no prompt content, paths, session identifiers, tool
-arguments, or outputs. An applied minimum safe projection may still report
-`within_budget=false` when the immutable prefix plus newest complete exchange
-cannot fit the requested target; the provider retains the safest deterministic
-projection and normal provider error/retry handling remains authoritative.
-
-## Why the active path bypasses the legacy 32-message projection
-
-The original shadow trial required at least 96 messages, while the compatibility
-follow-up builder compacted at 32. In normal runs the shadow threshold was
-therefore unreachable after the first legacy projection. Active mode bypasses
-that early projection only while its explicit flag is enabled, allowing actual
-pressure to drive the lifecycle. The default compatibility path is unchanged,
-and tests lock both behaviors.
-
-## Focused validation
+Planner results expose `context_projection`: `applied`, `input_budget_tokens`,
+before/after token estimates, redacted-result and compacted-message counts, and
+`within_budget`; unprojectable input reports a reason. These metrics carry no
+prompt text or tool output. They do not decide task acceptance.
 
 ```sh
-moon test --target native \
-  --target-dir /tmp/moonclaw-semantic-lifecycle \
-  cmd/daemon/mooncode_semantic_compaction_lifecycle_wbtest.mbt \
-  cmd/daemon/mooncode_semantic_compaction_trial_wbtest.mbt \
-  cmd/daemon/mooncode_context_provenance_wbtest.mbt
-
-moon check --target native --warn-list +73 \
-  --target-dir /tmp/moonclaw-semantic-lifecycle-check \
-  cmd/daemon
+moon test --target native cmd/daemon/mooncode_context_wbtest.mbt
+moon test --target native internal/context_pruner
+moon test --target native cmd/daemon/mooncode_runtime_continuation_wbtest.mbt
+moon test --target native cmd/daemon/mooncode_session_journal_streaming_wbtest.mbt
 ```
+
+Tests cover default compaction, current-task preservation after hydration, recent
+verification, source provenance, unknown effects, cancellation, torn-tail
+repair, append-cache invalidation and directory-sync failure/retry. Local
+fixtures do not establish live-provider deliverable quality or power-cut behavior.

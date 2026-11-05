@@ -1,66 +1,4 @@
 ///|
-test "goal journal record identity uses canonical event_id" {
-  let a = mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": "a",
-    "timestamp": 1,
-  })
-  let b = mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": "b",
-    "timestamp": 1,
-  })
-  inspect(a, content="event:a")
-  inspect(b, content="event:b")
-}
-
-///|
-test "goal journal record identity is timestamp independent" {
-  let first = mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": "same",
-    "timestamp": 1,
-  })
-  let second = mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": "same",
-    "timestamp": 2,
-  })
-  inspect(first == second, content="true")
-  inspect(first, content="event:same")
-}
-
-///|
-test "goal journal record identity rejects blank event_id" {
-  try
-    mooncode_journal_record_id(mooncode_journal_goal_event(), {
-      "kind": "mooncode.goal.changed",
-      "event_id": "",
-      "timestamp": 1,
-    })
-  catch {
-    InvalidJournal(_) => ()
-  } noraise {
-    _ => fail("expected InvalidJournal")
-  }
-}
-
-///|
-test "goal journal record identity rejects padded event_id" {
-  try
-    mooncode_journal_record_id(mooncode_journal_goal_event(), {
-      "kind": "mooncode.goal.changed",
-      "event_id": " padded ",
-      "timestamp": 1,
-    })
-  catch {
-    InvalidJournal(_) => ()
-  } noraise {
-    _ => fail("expected InvalidJournal")
-  }
-}
-
-///|
 test "unrelated event retains timestamp fallback identity" {
   let id = mooncode_journal_record_id(mooncode_journal_event(), {
     "kind": "other.event",
@@ -107,4 +45,99 @@ async fn goal_gate_write_snapshot(
   let dir = goal_gate_dir(root, id, archived)
   @fsx.make_directory(dir, recursive=true, exists_ok=true)
   @fsx.write_to_file(dir + "/session.json", snapshot.stringify())
+}
+
+///|
+fn mooncode_parse_journal_text(
+  text : String,
+  path : String,
+) -> Array[Json] raise MoonCodeJournalError {
+  let records : Array[Json] = []
+  // An empty committed prefix contains no records. This must be handled before
+  // splitting because split produces one empty line, while blank lines in any
+  // nonempty journal remain corruption.
+  if text.is_empty() {
+    return records
+  }
+  let lines = text.split("\n").collect()
+  let line_count = if text.has_suffix("\n") {
+    lines.length() - 1
+  } else {
+    lines.length()
+  }
+  let mut cursor = MoonCodeJournalSequence::zero()
+  for index = 0; index < line_count; index = index + 1 {
+    let line = lines[index]
+    if line.is_empty() {
+      raise InvalidJournal(
+        "Invalid journal `\{path}` line \{index + 1}: blank line",
+      )
+    }
+    try {
+      let (record, next) = mooncode_journal_stream_record(
+        line.to_owned(),
+        cursor,
+      )
+      records.push(record)
+      cursor = next
+    } catch {
+      error =>
+        raise InvalidJournal(
+          "Invalid journal `\{path}` line \{index + 1}: \{error}",
+        )
+    }
+  }
+  records
+}
+
+///|
+/// Compatibility projection for the legacy goal-supervisor contract, whose
+/// basis sequence remains an Int.
+fn mooncode_journal_last_sequence(
+  records : Array[Json],
+) -> Int32 raise MoonCodeJournalError {
+  let text = mooncode_journal_last_sequence_exact(records).text()
+  @string.parse_int(text) catch {
+    _ =>
+      raise InvalidJournal(
+        "MoonCode goal supervisor sequence exceeds its legacy Int contract",
+      )
+  }
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_journal_checked_next_sequence(
+  last_sequence : Int32,
+) -> Int32 raise MoonCodeJournalError {
+  if last_sequence == 2147483647 {
+    raise InvalidJournal("MoonCode journal sequence is exhausted")
+  }
+  last_sequence + 1
+}
+
+///|
+fn mooncode_journal_sequence(record : Json) -> Int32 raise MoonCodeJournalError {
+  match mooncode_journal_json_field(record, "sequence") {
+    Some(Number(value, ..)) => {
+      if value != value || value < 1.0 || value > 2147483647.0 {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      let sequence = value.to_int()
+      if sequence.to_double() != value {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      sequence
+    }
+    Some(String(text)) => {
+      let sequence = @string.parse_int(text) catch {
+        _ => raise InvalidJournal("test sequence exceeds Int range")
+      }
+      if sequence < 1 || sequence.to_string() != text {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      sequence
+    }
+    _ => raise InvalidJournal("MoonCode journal record has invalid sequence")
+  }
 }

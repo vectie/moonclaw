@@ -29,30 +29,6 @@ fn mooncode_journal_book_result() -> String {
 }
 
 ///|
-fn mooncode_journal_goal_event() -> String {
-  mooncode_journal_event()
-}
-
-///|
-fn mooncode_validate_generic_journal_append(
-  record_kind : String,
-  payload : Json,
-) -> Unit raise MoonCodeJournalError {
-  if record_kind == mooncode_journal_event() {
-    let kind = mooncode_json_string(payload, "kind", default="")
-    let id = mooncode_json_string(payload, "id", default="")
-    if kind.has_prefix("mooncode.goal.") ||
-      kind.has_prefix("mooncode.goal.supervisor.") ||
-      id.has_prefix("mooncode.goal.supervisor.") ||
-      id == "goal-genesis-v1" {
-      raise InvalidJournal(
-        "Goal journal events must use the goal-specific atomic API",
-      )
-    }
-  }
-}
-
-///|
 async fn mooncode_append_session_journal(
   book_root : String,
   session_id : String,
@@ -104,10 +80,6 @@ fn mooncode_journal_record_for_append(
       raise InvalidJournal(
         "MoonCode journal record `\{record_id}` is invalid: \{message}",
       )
-    IdentityConflict(_, _, _) =>
-      raise InvalidJournal(
-        "MoonCode journal record `\{record_id}` has an unexpected identity conflict",
-      )
   }
 }
 
@@ -153,14 +125,18 @@ async fn mooncode_sync_journal_directories(directories : Array[String]) -> Unit 
 }
 
 ///|
-/// Commit file bytes first, then every supported affected directory entry from
-/// the leaf through the filesystem anchor.
+/// Sync bytes on every commit. Establish directory durability once per observed
+/// file version using the existing append cache; failed syncs remain retryable.
 async fn mooncode_sync_journal_commit(
   file : @fs.File,
-  directories : Array[String],
+  path : String,
+  state : MoonCodeJournalAppendState,
 ) -> Unit {
   file.sync(only_data=true)
-  mooncode_sync_journal_directories(directories)
+  if !state.directories_committed {
+    mooncode_sync_journal_directories(mooncode_journal_commit_directories(path))
+    state.directories_committed = true
+  }
 }
 
 ///|
@@ -194,7 +170,6 @@ async fn[T] mooncode_session_journal_transaction(
     allow_create=true,
   )
   let path = mooncode_session_journal_path(book_root, session_id)
-  let commit_directories = mooncode_journal_commit_directories(path)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
   let file = @fs.open(
     path,
@@ -213,6 +188,11 @@ async fn[T] mooncode_session_journal_transaction(
   let state = mooncode_journal_append_state_from_records(
     file, records, last_sequence,
   )
+  if mooncode_journal_append_states.get(canonical_path) is Some(previous) &&
+    previous.committed_size == state.committed_size &&
+    previous.boundary_fingerprint == state.boundary_fingerprint {
+    state.directories_committed = previous.directories_committed
+  }
   mooncode_journal_append_states[canonical_path] = state
   let identities : Array[(String, String)] = records.map(record => {
     (
@@ -262,7 +242,7 @@ async fn[T] mooncode_session_journal_transaction(
         },
       )
       file.write(mooncode_journal_canonical_line(record) + "\n")
-      mooncode_sync_journal_commit(file, commit_directories)
+      mooncode_sync_journal_commit(file, path, state)
       state.cursor = last_sequence.next()
       state.committed_size = file.size()
       state.boundary_fingerprint = mooncode_journal_boundary_fingerprint(
@@ -284,7 +264,6 @@ async fn mooncode_append_session_journal_once(
   record_kind : String,
   payload : Json,
 ) -> Bool {
-  mooncode_validate_generic_journal_append(record_kind, payload)
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
   session_lock.lock(Exclusive)
@@ -324,7 +303,6 @@ async fn mooncode_append_session_journal_once_locked(
   // Existing records must remain retryable even when later validation rules tighten.
   let record_id = mooncode_journal_record_id(record_kind, payload)
   let path = mooncode_session_journal_path(book_root, session_id)
-  let commit_directories = mooncode_journal_commit_directories(path)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
   let file = @fs.open(
     path,
@@ -361,7 +339,7 @@ async fn mooncode_append_session_journal_once_locked(
   if scan.duplicate_found {
     // A retry may be observing bytes written before an earlier sync failed.
     // Re-establish durability before reporting the validated record as a duplicate.
-    mooncode_sync_journal_commit(file, commit_directories)
+    mooncode_sync_journal_commit(file, path, state)
     return false
   }
   let record = mooncode_journal_record_for_append(
@@ -371,7 +349,7 @@ async fn mooncode_append_session_journal_once_locked(
     @encoding/utf8.encode(mooncode_journal_canonical_line(record) + "\n"),
     position=committed_size,
   )
-  mooncode_sync_journal_commit(file, commit_directories)
+  mooncode_sync_journal_commit(file, path, state)
   state.cursor = scan.cursor.next()
   state.committed_size = file.size()
   state.boundary_fingerprint = mooncode_journal_boundary_fingerprint(
@@ -442,57 +420,12 @@ async fn mooncode_parse_journal_file(
 }
 
 ///|
-fn mooncode_parse_journal_text(
-  text : String,
-  path : String,
-) -> Array[Json] raise MoonCodeJournalError {
-  let records : Array[Json] = []
-  // An empty committed prefix contains no records. This must be handled before
-  // splitting because split produces one empty line, while blank lines in any
-  // nonempty journal remain corruption.
-  if text.is_empty() {
-    return records
-  }
-  let lines = text.split("\n").collect()
-  let line_count = if text.has_suffix("\n") {
-    lines.length() - 1
-  } else {
-    lines.length()
-  }
-  let mut cursor = MoonCodeJournalSequence::zero()
-  for index = 0; index < line_count; index = index + 1 {
-    let line = lines[index]
-    if line.is_empty() {
-      raise InvalidJournal(
-        "Invalid journal `\{path}` line \{index + 1}: blank line",
-      )
-    }
-    try {
-      let (record, next) = mooncode_journal_stream_record(
-        line.to_owned(),
-        cursor,
-      )
-      records.push(record)
-      cursor = next
-    } catch {
-      error =>
-        raise InvalidJournal(
-          "Invalid journal `\{path}` line \{index + 1}: \{error}",
-        )
-    }
-  }
-  records
-}
-
-///|
 fn mooncode_journal_sequence_checked(
   record : Json,
   context : String,
 ) -> MoonCodeJournalSequence raise MoonCodeJournalError {
   mooncode_journal_sequence_from_record(record) catch {
     CorruptStore(message) => raise InvalidJournal("\{context}: \{message}")
-    IdentityConflict(_, _, _) =>
-      raise InvalidJournal("\{context}: unexpected journal identity conflict")
   }
 }
 
@@ -555,50 +488,6 @@ fn mooncode_journal_last_sequence_exact(
 }
 
 ///|
-/// Compatibility projection for the legacy goal-supervisor contract, whose
-/// basis sequence remains an Int.
-fn mooncode_journal_last_sequence(
-  records : Array[Json],
-) -> Int32 raise MoonCodeJournalError {
-  let text = mooncode_journal_last_sequence_exact(records).text()
-  @string.parse_int(text) catch {
-    _ =>
-      raise InvalidJournal(
-        "MoonCode goal supervisor sequence exceeds its legacy Int contract",
-      )
-  }
-}
-
-///|
-fn mooncode_journal_sequence(record : Json) -> Int32 raise MoonCodeJournalError {
-  match mooncode_journal_json_field(record, "sequence") {
-    Some(Number(value, ..)) => {
-      if value != value || value < 1.0 || value > 2147483647.0 {
-        raise InvalidJournal("MoonCode journal record has invalid sequence")
-      }
-      let sequence = value.to_int()
-      if sequence.to_double() != value {
-        raise InvalidJournal("MoonCode journal record has invalid sequence")
-      }
-      sequence
-    }
-    Some(String(text)) => {
-      let sequence = @string.parse_int(text) catch {
-        _ =>
-          raise InvalidJournal(
-            "MoonCode goal supervisor sequence exceeds its legacy Int contract",
-          )
-      }
-      if sequence < 1 || sequence.to_string() != text {
-        raise InvalidJournal("MoonCode journal record has invalid sequence")
-      }
-      sequence
-    }
-    _ => raise InvalidJournal("MoonCode journal record has invalid sequence")
-  }
-}
-
-///|
 /// Return the byte boundary after the last newline-committed record without
 /// materializing the aggregate file. A suffix after this boundary is torn.
 async fn mooncode_newline_committed_size(file : @fs.File) -> Int64 {
@@ -638,27 +527,8 @@ async fn mooncode_repair_journal_tail(file : @fs.File) -> Unit {
 }
 
 ///|
-fn mooncode_journal_record_id(
-  record_kind : String,
-  payload : Json,
-) -> String raise MoonCodeJournalError {
+fn mooncode_journal_record_id(record_kind : String, payload : Json) -> String {
   let direct_id = mooncode_json_string(payload, "id", default="")
-  let payload_kind = mooncode_json_string(payload, "kind", default="")
-  if record_kind == mooncode_journal_goal_event() &&
-    payload_kind.has_prefix("mooncode.goal.") {
-    let event_id = mooncode_json_string(payload, "event_id", default="")
-    if event_id != "" {
-      if event_id.trim() != event_id {
-        raise InvalidJournal(
-          "MoonCode logical goal event has invalid `event_id`",
-        )
-      }
-      return "event:\{event_id}"
-    }
-    if direct_id == "" {
-      raise InvalidJournal("MoonCode logical goal event has invalid `event_id`")
-    }
-  }
   if direct_id != "" {
     return "\{record_kind}:\{direct_id}"
   }
@@ -810,15 +680,4 @@ fn mooncode_session_journal_path_by_safe_id(
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("journal.jsonl")
-}
-
-///|
-#warnings("-unused_value")
-fn mooncode_journal_checked_next_sequence(
-  last_sequence : Int32,
-) -> Int32 raise MoonCodeJournalError {
-  if last_sequence == 2147483647 {
-    raise InvalidJournal("MoonCode journal sequence is exhausted")
-  }
-  last_sequence + 1
 }

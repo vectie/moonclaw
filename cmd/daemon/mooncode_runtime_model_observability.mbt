@@ -7,7 +7,6 @@ fn mooncode_runtime_turn_model_retry_event(
   delay_ms : Int32,
   provider_error_class~ : String = "transient",
   retry_after_ms~ : Int32? = None,
-  overload_compaction_tier~ : Int32 = 0,
   retry_request_chars~ : Int32 = 0,
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -18,7 +17,7 @@ fn mooncode_runtime_turn_model_retry_event(
     kind="runtime.planner_retrying",
     title="MoonCode model planner waiting to retry",
     status="waiting",
-    detail="Model `\{model_name}` attempt \{attempt} failed with a transient provider error: \{summary}. MoonClaw preserved the checkpoint and will retry in \{delay_ms}ms with overload compaction tier \{overload_compaction_tier} (\{retry_request_chars} request chars).",
+    detail="Model `\{model_name}` attempt \{attempt} failed with a transient provider error: \{summary}. MoonClaw preserved the checkpoint and will retry in \{delay_ms}ms (\{retry_request_chars} request chars).",
     now~,
   )
   let event = mooncode_json_object_with_field(
@@ -33,11 +32,6 @@ fn mooncode_runtime_turn_model_retry_event(
       Some(value) => Json::number(value.to_double())
       None => Json::null()
     },
-  )
-  let event = mooncode_json_object_with_field(
-    event,
-    "overload_compaction_tier",
-    Json::number(overload_compaction_tier.to_double()),
   )
   mooncode_json_object_with_field(
     event,
@@ -55,7 +49,6 @@ async fn mooncode_runtime_turn_record_model_retry(
   delay_ms : Int32,
   provider_error_class~ : String = "transient",
   retry_after_ms~ : Int32? = None,
-  overload_compaction_tier~ : Int32 = 0,
   retry_request_chars~ : Int32 = 0,
 ) -> Unit {
   let book_root = mooncode_book_root(command)
@@ -75,7 +68,6 @@ async fn mooncode_runtime_turn_record_model_retry(
       delay_ms,
       provider_error_class~,
       retry_after_ms~,
-      overload_compaction_tier~,
       retry_request_chars~,
       now=@clock.epoch.now(),
     ),

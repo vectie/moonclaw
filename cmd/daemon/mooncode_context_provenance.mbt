@@ -2,9 +2,6 @@
 const MOONCODE_CONTEXT_PROVENANCE_FIELD : String = "_moonclaw_context"
 
 ///|
-const MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 : String = "moonclaw.context-fragment.v1"
-
-///|
 const MOONCODE_CONTEXT_PROVENANCE_CONTRACT : String = "moonclaw.context-fragment.v2"
 
 ///|
@@ -129,16 +126,10 @@ fn mooncode_runtime_context_provenance_valid(metadata : Json) -> Bool {
   let contract = mooncode_json_string(metadata, "contract", default="")
   let kind_key = mooncode_json_string(metadata, "kind", default="")
   let source = mooncode_json_string(metadata, "source", default="")
-  guard (
-      contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT ||
-      contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1
-    ) &&
+  guard contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT &&
     mooncode_runtime_context_token_valid(kind_key, 64) &&
     mooncode_runtime_context_token_valid(source, 160) else {
     return false
-  }
-  if contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 {
-    return true
   }
   let kind = mooncode_runtime_context_kind_from_key(kind_key)
   guard mooncode_runtime_context_kind_is_closed(kind) else { return false }
@@ -164,10 +155,6 @@ fn mooncode_runtime_context_message_provenance_valid(message : Json) -> Bool {
   let metadata = mooncode_runtime_context_provenance(message)
   guard mooncode_runtime_context_provenance_valid(metadata) else {
     return false
-  }
-  if mooncode_json_string(metadata, "contract", default="") ==
-    MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 {
-    return true
   }
   mooncode_json_array_items(metadata, "content_items").length() ==
   mooncode_runtime_context_content_item_count(message)
@@ -287,7 +274,7 @@ fn mooncode_runtime_context_inferred_kind(
 fn mooncode_runtime_context_normalize_message(
   message : Json,
   fallback_kind? : MoonCodeContextKind,
-  fallback_source~ : String = "legacy.inferred",
+  fallback_source~ : String = "context.inferred",
 ) -> Json {
   if mooncode_runtime_context_message_provenance_valid(message) {
     return message
@@ -299,7 +286,7 @@ fn mooncode_runtime_context_normalize_message(
   let source = if mooncode_runtime_context_token_valid(fallback_source, 160) {
     fallback_source
   } else {
-    "legacy.inferred"
+    "context.inferred"
   }
   mooncode_runtime_context_message(message, kind, source)
 }

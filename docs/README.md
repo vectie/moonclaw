@@ -90,6 +90,13 @@ Pure MoonCode tool properties and shell analysis belong to
 does not end the authorized repair cycle. The duplicate Guardian shadow trial
 and post-commit command seal were removed.
 
+Initial and follow-up planning now share the default
+[Context projection and Journal recovery](LONG_CONTEXT_COMPACTION.md).
+Transport retries preserve that projection. Recovery decodes the existing loop
+position once and reuses committed results; ordinary cached appends synchronize
+file bytes without reopening every ancestor directory. Arbitrary historical
+evidence lookup by the model remains unfinished.
+
 ## Validation And Evidence
 
 Use focused checks for changed packages and the release gate in

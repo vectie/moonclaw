@@ -102,7 +102,7 @@ test "mooncode injected context identifies environment warning tool and user con
 }
 
 ///|
-test "mooncode v2 context provenance closes unknown kinds but keeps v1 readable" {
+test "mooncode v2 context provenance closes unknown kinds" {
   let message : Json = {
     "role": "user",
     "content": "future retrieval context",
@@ -116,27 +116,6 @@ test "mooncode v2 context provenance closes unknown kinds but keeps v1 readable"
   let normalized = mooncode_runtime_context_normalize_message(message)
   assert_eq(mooncode_context_test_kind(normalized), "user")
   assert_false(normalized == message)
-  let legacy : Json = {
-    "role": "user",
-    "content": "future retrieval context",
-    "_moonclaw_context": {
-      "contract": MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1,
-      "kind": "retrieval_v2",
-      "source": "extension.search",
-    },
-  }
-  let normalized_legacy = mooncode_runtime_context_normalize_message(legacy)
-  assert_eq(normalized_legacy, legacy)
-  assert_true(
-    mooncode_runtime_context_kind(normalized_legacy)
-    is UnknownContext("retrieval_v2"),
-  )
-  let durable = mooncode_runtime_turn_durable_model_message(normalized_legacy)
-  assert_eq(durable, legacy)
-  assert_eq(
-    mooncode_json_string(durable, "content", default=""),
-    "future retrieval context",
-  )
 }
 
 ///|

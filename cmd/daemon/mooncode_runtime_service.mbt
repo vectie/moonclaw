@@ -404,7 +404,9 @@ async fn Daemon::mooncode_runtime_service_recover_waiting_approval(
 }
 
 ///|
-fn mooncode_runtime_service_pending_approval(events : Array[Json]) -> Json? {
+fn mooncode_runtime_service_pending_approval(
+  events : Array[Json],
+) -> Json? raise {
   let mut latest = Json::object({})
   for event in events {
     if mooncode_json_string(event, "kind", default="") ==
@@ -420,7 +422,7 @@ fn mooncode_runtime_service_pending_approval(events : Array[Json]) -> Json? {
   let continuation = mooncode_runtime_continuation_for_command(
     events, command_id,
   )
-  if !mooncode_runtime_continuation_is_active(continuation) {
+  if !(mooncode_runtime_resume_point(continuation) is Some(ResumeTools(_, _))) {
     return None
   }
   let approval_id = mooncode_json_string(

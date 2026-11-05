@@ -906,7 +906,6 @@ test "mooncode MoonGate planner survives transient overload until cancellation" 
     120000,
     provider_error_class="server_overloaded",
     retry_after_ms=Some(90000),
-    overload_compaction_tier=2,
     retry_request_chars=32000,
     now=@clock.Timestamp::from_ms(42L),
   )
@@ -923,10 +922,6 @@ test "mooncode MoonGate planner survives transient overload until cancellation" 
     "server_overloaded",
   )
   assert_eq(mooncode_json_int(retry_event, "retry_after_ms", default=0), 90000)
-  assert_eq(
-    mooncode_json_int(retry_event, "overload_compaction_tier", default=0),
-    2,
-  )
   assert_eq(
     mooncode_json_int(retry_event, "retry_request_chars", default=0),
     32000,
@@ -1167,7 +1162,8 @@ test "mooncode retains planner memory across accepted checkpoints" {
         "role": "system",
         "content": "Dynamic skill gate: legacy checkpoint wording",
       },
-      { "role": "user", "content": "remembered plan inventory" },
+      { "role": "user", "content": "original task" },
+      { "role": "assistant", "content": "remembered plan inventory" },
     ],
   }
   let retained = mooncode_runtime_turn_model_followup_base_messages(
@@ -1181,9 +1177,14 @@ test "mooncode retains planner memory across accepted checkpoints" {
       },
     ],
   )
-  assert_eq(retained.length(), 3)
+  assert_eq(retained.length(), 4)
+  assert_true(
+    mooncode_json_string(retained[2], "content", default="").contains(
+      "Implement the multi-phase repair.",
+    ),
+  )
   assert_eq(
-    mooncode_json_string(retained[2], "content", default=""),
+    mooncode_json_string(retained[3], "content", default=""),
     "remembered plan inventory",
   )
   let checkpointed = mooncode_runtime_turn_model_followup_base_messages(
@@ -1214,12 +1215,12 @@ test "mooncode retains planner memory across accepted checkpoints" {
     ],
     skill_catalog="<available_skills />",
   )
-  assert_eq(checkpointed.length(), 4)
+  assert_eq(checkpointed.length(), 5)
   assert_eq(
-    mooncode_json_string(checkpointed[2], "content", default=""),
+    mooncode_json_string(checkpointed[3], "content", default=""),
     "remembered plan inventory",
   )
-  let receipt = mooncode_json_string(checkpointed[3], "content", default="")
+  let receipt = mooncode_json_string(checkpointed[4], "content", default="")
   assert_true(receipt.contains("Loaded-skill receipt"))
   assert_true(receipt.contains("fixture-review/SKILL.md"))
   assert_true(receipt.contains("fixture-digest"))
@@ -1798,28 +1799,28 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       "earlier call ended the batch",
     ),
   )
-  assert_true(
-    mooncode_json_string(settled[2], "content", default="").contains(
-      "\"skipped\": true",
-    ),
+  let skipped = @json.parse(
+    mooncode_json_string(settled[2], "content", default=""),
   )
+  let skipped_metadata = mooncode_json_object_field_or_empty(skipped, "result")
+    |> mooncode_json_object_field_or_empty("metadata")
+  assert_true(mooncode_json_bool(skipped_metadata, "skipped", default=false))
   let oversized = mooncode_runtime_turn_model_tool_result_content({
     "result": { "output": "x".repeat(9000) },
   })
-  assert_true(oversized.length() < 4100)
-  assert_true(oversized.contains("truncated for planner context"))
+  assert_true(oversized.contains("x".repeat(9000)))
+  ignore(@json.parse(oversized))
   let retained_source = mooncode_runtime_turn_model_tool_result_content({
     "tool": "read",
     "result": { "output": "x".repeat(9000) },
   })
   assert_true(retained_source.length() > 9000)
-  assert_false(retained_source.contains("truncated for planner context"))
   let oversized_source = mooncode_runtime_turn_model_tool_result_content({
     "tool": "read",
     "result": { "output": "x".repeat(50000) },
   })
-  assert_true(oversized_source.length() < 40100)
-  assert_true(oversized_source.contains("truncated for planner context"))
+  assert_true(oversized_source.contains("x".repeat(50000)))
+  ignore(@json.parse(oversized_source))
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
   assert_eq(
     mooncode_runtime_turn_pipeline_evidence_warning([

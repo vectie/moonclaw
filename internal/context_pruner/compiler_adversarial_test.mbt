@@ -340,7 +340,7 @@ async test "compile_messages/already_cleared_outputs_are_idempotent" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
-    let cleared = "[Cleared: tool output. If you want to see the output, you can use the tool again.]"
+    let cleared = "[Cleared: tool output. Recover exact evidence from retained sources or repeat a safe observation; never replay an effect just to recover output.]"
     let messages = [
       @openai.system_message(content="system"),
       @openai.user_message(content="IDEMPOTENT-TASK"),

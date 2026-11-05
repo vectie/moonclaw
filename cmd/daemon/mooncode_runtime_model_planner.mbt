@@ -79,17 +79,23 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         remaining_steps,
         skill_catalog~,
       )
+      let tools = mooncode_runtime_turn_model_tools_for_command(command)
+      let context = mooncode_runtime_turn_compile_context(
+        command,
+        messages,
+        tools,
+        model.safe_zone_tokens,
+        mooncode_runtime_turn_model_max_tokens(model.model_name),
+      )
+      let messages = context.messages
       let request = mooncode_runtime_turn_model_plan_request_from_messages(
         model.model_name,
         messages,
-        tools=mooncode_runtime_turn_model_tools_for_command(command),
+        tools~,
         reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
       )
-      let (completion, effective_messages, model_transport) = mooncode_runtime_turn_model_chat(
-        model,
-        request,
-        command,
-        source_messages=messages,
+      let (completion, model_transport) = mooncode_runtime_turn_model_chat(
+        model, request, command,
       ) catch {
         error =>
           return mooncode_runtime_turn_planner_error_result(
@@ -127,6 +133,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         "kind": mooncode_kind_runtime_turn_planner(),
         "protocol": mooncode_protocol_version(),
         "planner_mode": mooncode_planner_mode_model_tool_calls(),
+        "context_projection": context.metrics,
         "model": model_name,
         "model_transport": model_transport,
         "model_response_id": mooncode_json_string(
@@ -140,12 +147,12 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         "planner_metrics": mooncode_runtime_turn_planner_metrics(
           request.to_json(),
           completion.to_json(),
-          effective_messages,
+          messages,
           tool_calls,
           model_transport~,
         ),
         "model_messages": Json::array(
-          mooncode_runtime_turn_durable_model_messages(effective_messages),
+          mooncode_runtime_turn_durable_model_messages(messages),
         ),
         "model_response_message": mooncode_runtime_turn_model_response_message(
           completion.to_json(),
@@ -317,15 +324,13 @@ async fn mooncode_runtime_turn_model_chat(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
-  source_messages~ : Array[Json] = [],
-) -> (@openai.ChatCompletion, Array[Json], String) {
+) -> (@openai.ChatCompletion, String) {
   let mut retry_count = 0
-  let mut active_request = request
   while true {
     let completion = Some(
       mooncode_runtime_send_model_request(
         model,
-        active_request,
+        request,
         command,
         timeout_ms=mooncode_runtime_turn_model_timeout_for_provider(
           model, command,
@@ -350,16 +355,7 @@ async fn mooncode_runtime_turn_model_chat(
             ":" +
             model.model_name,
         )
-        let overload_compaction_tier = if provider_error_class ==
-          "server_overloaded" {
-          // Begin at tier 2 because the unshaped request has already failed,
-          // then reach the emergency tier within one monitoring interval.
-          (retry_count + 2).min(7)
-        } else {
-          0
-        }
-        active_request = request.compact_for_overload(overload_compaction_tier)
-        let retry_request_chars = active_request.to_json().stringify().length()
+        let retry_request_chars = request.to_json().stringify().length()
         mooncode_runtime_turn_record_model_retry(
           command,
           model.model_name,
@@ -368,7 +364,6 @@ async fn mooncode_runtime_turn_model_chat(
           delay_ms,
           provider_error_class~,
           retry_after_ms~,
-          overload_compaction_tier~,
           retry_request_chars~,
         )
         @async.sleep(delay_ms)
@@ -385,17 +380,7 @@ async fn mooncode_runtime_turn_model_chat(
             retry_count,
           )
         }
-        let provider_messages = mooncode_json_array_items(
-          active_request.to_json(),
-          "messages",
-        )
-        return (
-          value,
-          mooncode_runtime_context_merge_messages(
-            provider_messages, source_messages,
-          ),
-          transport,
-        )
+        return (value, transport)
       }
       None => continue
     }
@@ -667,18 +652,9 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     // separately after journal decoding; mutating only `plan.model_messages`
     // would make the next continuation fail its integrity check.
     let task_contract = mooncode_runtime_turn_model_prompt(command)
-    let compacted = if mooncode_runtime_turn_active_semantic_compaction_enabled(
-        command,
-      ) {
-      mooncode_runtime_turn_active_semantic_compaction_previous_messages(
-        previous, task_contract,
-      )
-    } else {
-      mooncode_runtime_turn_compact_followup_transcript(
-        previous,
-        task_contract~,
-      )
-    }
+    let compacted = mooncode_runtime_turn_context_previous_messages(
+      previous, task_contract,
+    )
     let messages : Array[Json] = []
     // Replace any prior receipt with the current durable receipts so they do
     // not accumulate across long runs and survive transcript compaction.
@@ -726,204 +702,6 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     }
     messages
   }
-}
-
-///|
-/// Keep the task contract plus a valid recent assistant/tool suffix. Durable
-/// evidence remains in the journal, while the provider request and the next
-/// restart checkpoint stay bounded during long autonomous runs.
-fn mooncode_runtime_turn_compact_followup_transcript(
-  previous : Array[Json],
-  task_contract~ : String = "",
-) -> Array[Json] {
-  let previous = mooncode_runtime_turn_compact_provider_tool_evidence(previous)
-  // Keep enough raw evidence for roughly eight recent tool quanta. Older raw
-  // source and DOM payloads make capable providers time out long before they
-  // can act, so retain a small set of the model's own reasoning anchors from
-  // the preceding window instead of retaining every byte of those tool calls.
-  let compact_after = 32
-  let retained_suffix_count = 24
-  if previous.length() <= compact_after {
-    let retained : Array[Json] = []
-    for message in previous {
-      retained.push(message)
-    }
-    return retained
-  }
-  // Retain every leading system contract plus the first user message. Kimi
-  // sessions deliberately start with two system messages (planner contract
-  // and dynamic skill gate), so assuming `previous[1]` is the user task drops
-  // the actual mission after the first long-run compaction.
-  let messages : Array[Json] = []
-  let mut task_end = 0
-  let mut leading_end = 0
-  for index in 0..<previous.length() {
-    let role = mooncode_json_string(previous[index], "role", default="")
-    if role == "system" {
-      messages.push(previous[index])
-      leading_end = index + 1
-    } else if role == "user" {
-      messages.push(
-        if task_contract != "" {
-          mooncode_runtime_context_text_message(
-            "user",
-            task_contract,
-            UserContext,
-            "user.task_contract",
-          )
-        } else {
-          previous[index]
-        },
-      )
-      task_end = index + 1
-      break
-    } else {
-      break
-    }
-  }
-  if task_end == 0 {
-    if task_contract != "" {
-      messages.push(
-        mooncode_runtime_context_text_message(
-          "user",
-          task_contract,
-          UserContext,
-          "user.task_contract",
-        ),
-      )
-      task_end = leading_end
-    }
-  }
-  if task_end == 0 {
-    // Defensive fallback for malformed legacy transcripts: retain the first
-    // two messages rather than compacting away their only available context.
-    let prefix_count = previous.length().min(2)
-    for index in 0..<prefix_count {
-      messages.push(previous[index])
-    }
-    task_end = prefix_count
-  }
-  let mut suffix_start = previous.length() - retained_suffix_count
-  suffix_start = suffix_start.max(task_end)
-  while suffix_start < previous.length() {
-    let candidate = previous[suffix_start]
-    if mooncode_json_string(candidate, "role", default="") == "assistant" &&
-      mooncode_json_array_items(candidate, "tool_calls").length() > 0 {
-      break
-    }
-    suffix_start += 1
-  }
-  let compacted_count = suffix_start - task_end
-  messages.push(
-    mooncode_runtime_context_text_message(
-      "user",
-      "MoonCode compacted \{compacted_count} older provider messages from this request. The complete task contract is retained above and all tool evidence remains durable in the session journal. Continue from the recent valid suffix; do not repeat discovery solely because older transport messages were compacted.",
-      EnvironmentContext,
-      "environment.transcript_compaction",
-    ),
-  )
-  let older_reasoning : Array[String] = []
-  for index in task_end..<suffix_start {
-    let candidate = previous[index]
-    if mooncode_json_string(candidate, "role", default="") == "assistant" {
-      let content = mooncode_json_string(candidate, "content", default="")
-      if content != "" {
-        older_reasoning.push(
-          if content.length() > 1200 {
-            content[:1200].to_owned() + "…"
-          } else {
-            content
-          },
-        )
-      }
-    }
-  }
-  if older_reasoning.length() > 0 {
-    let anchor_start = if older_reasoning.length() > 6 {
-      older_reasoning.length() - 6
-    } else {
-      0
-    }
-    let anchors : Array[String] = []
-    for index in anchor_start..<older_reasoning.length() {
-      anchors.push(older_reasoning[index])
-    }
-    messages.push(
-      mooncode_runtime_context_text_message(
-        "user",
-        "Earlier model-authored reasoning anchors retained across transport compaction:\n- " +
-        anchors.join("\n- "),
-        EnvironmentContext,
-        "environment.reasoning_anchors",
-      ),
-    )
-  }
-  for index in suffix_start..<previous.length() {
-    messages.push(previous[index])
-  }
-  messages
-}
-
-///|
-/// A skill or source is delivered in full on the turn that reads it. Later
-/// provider calls retain a bounded head/tail receipt while the complete bytes
-/// remain in the journal. This prevents one 40–70KB read from dominating every
-/// subsequent Ark request after the model has already consumed it.
-fn mooncode_runtime_turn_compact_provider_tool_evidence(
-  previous : Array[Json],
-) -> Array[Json] {
-  let tool_names : Map[String, String] = Map([])
-  for message in previous {
-    if mooncode_json_string(message, "role", default="") != "assistant" {
-      continue
-    }
-    for tool_call in mooncode_json_array_items(message, "tool_calls") {
-      let tool_call_id = mooncode_json_string(tool_call, "id", default="")
-      let function = mooncode_json_object_field_or_empty(tool_call, "function")
-      let tool_name = mooncode_json_string(function, "name", default="")
-      if tool_call_id != "" && tool_name != "" {
-        tool_names[tool_call_id] = tool_name
-      }
-    }
-  }
-  let compacted : Array[Json] = []
-  for message in previous {
-    let durable = mooncode_runtime_turn_durable_model_message(message)
-    if mooncode_json_string(durable, "role", default="") != "tool" {
-      compacted.push(durable)
-      continue
-    }
-    let tool_call_id = mooncode_json_string(durable, "tool_call_id", default="")
-    let tool_name = tool_names.get(tool_call_id).unwrap_or("tool")
-    let content = mooncode_json_string(durable, "content", default="")
-    let limit = if tool_name == "read_skill" {
-      MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS
-    } else if tool_name == "read" {
-      10000
-    } else {
-      6000
-    }
-    if content.length() <= limit {
-      compacted.push(durable)
-      continue
-    }
-    let head_size = limit * 2 / 3
-    let tail_size = limit - head_size
-    let head = mooncode_utf8_prefix_within(content, head_size)
-    let tail = mooncode_utf8_suffix_within(content, tail_size)
-    let omitted = content.length() - head.length() - tail.length()
-    let compact_content = head +
-      "\n...[MoonCode compacted \{omitted} chars of previously consumed `\{tool_name}` evidence; complete bytes remain in the durable journal]...\n" +
-      tail
-    compacted.push(
-      mooncode_json_object_with_field(
-        durable,
-        "content",
-        Json::string(compact_content),
-      ),
-    )
-  }
-  compacted
 }
 
 ///|
@@ -1152,11 +930,7 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
         if !read_paths.contains(observed_path) {
           read_paths.push(observed_path)
         }
-        if scope == "complete" &&
-          !mooncode_runtime_turn_model_tool_result_content(execution).contains(
-            "...[truncated for planner context]",
-          ) &&
-          !complete_read_paths.contains(observed_path) {
+        if scope == "complete" && !complete_read_paths.contains(observed_path) {
           complete_read_paths.push(observed_path)
         }
       }
@@ -1428,24 +1202,21 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       let followup_tools = mooncode_runtime_turn_model_tools_for_command(
         command,
       )
-      let semantic_compaction = mooncode_runtime_turn_active_semantic_compaction(
+      let context = mooncode_runtime_turn_compile_context(
         command,
-        previous_plan,
         messages,
         followup_tools,
         model.safe_zone_tokens,
+        mooncode_runtime_turn_model_max_tokens(model.model_name),
       )
-      let request_messages = semantic_compaction.messages
+      let request_messages = context.messages
       let request = mooncode_runtime_turn_model_plan_request_from_messages(
         model.model_name,
         request_messages,
         tools=followup_tools,
       )
-      let (completion, effective_messages, model_transport) = mooncode_runtime_turn_model_chat(
-        model,
-        request,
-        command,
-        source_messages=request_messages,
+      let (completion, model_transport) = mooncode_runtime_turn_model_chat(
+        model, request, command,
       ) catch {
         error => {
           let failed = mooncode_runtime_turn_planner_error_result(
@@ -1458,8 +1229,8 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
           )
           return mooncode_json_object_with_field(
             failed,
-            "semantic_compaction_lifecycle",
-            semantic_compaction.metrics,
+            "context_projection",
+            context.metrics,
           )
         }
       }
@@ -1489,7 +1260,7 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
           "events": Json::array([started, replanning]),
           "message": "model planner follow-up returned no usable MoonCode tool calls",
           "patient_replan_guidance": guidance,
-          "semantic_compaction_lifecycle": semantic_compaction.metrics,
+          "context_projection": context.metrics,
         }
       }
       let selected = mooncode_event(
@@ -1519,16 +1290,13 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         "planner_metrics": mooncode_runtime_turn_planner_metrics(
           request.to_json(),
           response_json,
-          effective_messages,
+          request_messages,
           next_tool_calls,
           model_transport~,
         ),
-        "semantic_compaction_trial": mooncode_runtime_turn_semantic_compaction_trial(
-          command, previous_plan, effective_messages,
-        ),
-        "semantic_compaction_lifecycle": semantic_compaction.metrics,
+        "context_projection": context.metrics,
         "model_messages": Json::array(
-          mooncode_runtime_turn_durable_model_messages(effective_messages),
+          mooncode_runtime_turn_durable_model_messages(request_messages),
         ),
         "model_response_message": mooncode_runtime_turn_model_response_message(
           response_json,
@@ -1692,17 +1460,7 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
       event_id
     },
   }
-  let text = payload.stringify(indent=2)
-  let tool = mooncode_json_string(execution, "tool", default="")
-  let context_limit = if tool == "read" { 40000 } else { 4000 }
-  if tool == "read_skill" {
-    text
-  } else if text.length() > context_limit {
-    mooncode_utf8_prefix_within(text, context_limit) +
-    "\n...[truncated for planner context]"
-  } else {
-    text
-  }
+  payload.stringify()
 }
 
 ///|

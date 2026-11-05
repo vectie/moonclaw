@@ -4,6 +4,162 @@ fn mooncode_runtime_continuation_kind() -> String {
 }
 
 ///|
+/// Decoded positions in the existing loop, not an additional execution machine.
+priv enum MoonCodeResumePoint {
+  ResumeTools(Int32, Int32)
+  ResumePlanner(Int32)
+  ResumeTransport(Bool, Int32)
+  ResumeReplan(Int32)
+}
+
+///|
+fn mooncode_runtime_resume_point(checkpoint : Json) -> MoonCodeResumePoint? {
+  let command_id = mooncode_json_string(checkpoint, "command_id", default="")
+  if command_id == "" ||
+    mooncode_json_string(checkpoint, "session_id", default="") == "" ||
+    mooncode_json_string(checkpoint, "target_command_id", default="") !=
+    command_id ||
+    mooncode_json_string(checkpoint, "protocol", default="") !=
+    mooncode_protocol_version() ||
+    mooncode_json_string(checkpoint, "kind", default="") !=
+    mooncode_runtime_continuation_kind() ||
+    mooncode_json_string(checkpoint, "lane", default="") != "runtime-control" {
+    return None
+  }
+  let state = mooncode_json_string(checkpoint, "state", default="")
+  let plan = mooncode_json_object_field_or_empty(checkpoint, "plan")
+  let calls = mooncode_json_array_items(plan, "tool_calls")
+  match state {
+    "executing-tool" | "after-step" | "awaiting-approval" => {
+      let step = mooncode_json_int(checkpoint, "step_index", default=-1)
+      let tool = mooncode_json_int(checkpoint, "tool_index", default=-1)
+      let end = mooncode_json_int(
+        checkpoint,
+        "planner_turn_end_step",
+        default=-1,
+      )
+      if step < 0 ||
+        tool < 0 ||
+        tool > calls.length() ||
+        end < 0 ||
+        (end > 0 && end <= step) {
+        return None
+      }
+      let approval_id = mooncode_json_string(
+        checkpoint,
+        "approval_id",
+        default="",
+      )
+      match state {
+        "after-step" =>
+          if approval_id != "" || tool != calls.length() {
+            return None
+          }
+        "executing-tool" =>
+          if approval_id != "" || tool >= calls.length() {
+            return None
+          }
+        _ => {
+          if approval_id == "" || tool >= calls.length() {
+            return None
+          }
+          let approval = mooncode_json_object_field_or_empty(
+            checkpoint, "approval",
+          )
+          if mooncode_json_string(approval, "approval_id", default="") !=
+            approval_id ||
+            mooncode_json_string(approval, "target_command_id", default="") !=
+            command_id ||
+            mooncode_runtime_tool_approval_id(
+              command_id,
+              calls[tool],
+              occurrence=step * 1000 + tool,
+            ) !=
+            approval_id {
+            return None
+          }
+        }
+      }
+      return Some(ResumeTools(step, tool))
+    }
+    "planner-quantum-paused"
+    | "planner-transport-paused"
+    | "planner-replan-paused" => ()
+    _ => return None
+  }
+  let next = mooncode_json_int(checkpoint, "next_step_index", default=-1)
+  let steps = mooncode_json_array_items(checkpoint, "planner_steps")
+  let results = mooncode_json_array_items(checkpoint, "tool_results")
+  let suffix = mooncode_json_array_items(checkpoint, "step_results")
+  if next < 0 ||
+    mooncode_json_string(checkpoint, "status", default="") != "paused" {
+    return None
+  }
+  if state == "planner-transport-paused" &&
+    mooncode_json_string(checkpoint, "resume_mode", default="") == "initial" {
+    return if next == 0 &&
+      steps.is_empty() &&
+      results.is_empty() &&
+      suffix.is_empty() {
+      Some(ResumeTransport(true, 0))
+    } else {
+      None
+    }
+  }
+  if next == 0 ||
+    steps.length() != next ||
+    calls.is_empty() ||
+    suffix.length() != calls.length() ||
+    mooncode_json_string(plan, "planner_mode", default="") !=
+    mooncode_planner_mode_model_tool_calls() ||
+    mooncode_json_bool(plan, "failed", default=false) ||
+    !mooncode_runtime_turn_model_message_present(
+      mooncode_json_object_field_or_empty(plan, "model_response_message"),
+    ) ||
+    mooncode_json_array_items(plan, "model_messages").is_empty() ||
+    !mooncode_runtime_json_array_has_suffix(results, suffix) {
+    return None
+  }
+  let has_finish = mooncode_runtime_turn_tool_calls_include_finish(calls)
+  match state {
+    "planner-quantum-paused" =>
+      if has_finish {
+        None
+      } else {
+        Some(ResumePlanner(next))
+      }
+    "planner-transport-paused" =>
+      if has_finish ||
+        mooncode_json_string(checkpoint, "resume_mode", default="") !=
+        "followup" ||
+        mooncode_json_bool(plan, "transient_transport_close", default=false) {
+        None
+      } else {
+        Some(ResumeTransport(false, next))
+      }
+    _ => {
+      let rejected = mooncode_json_bool(
+        checkpoint,
+        "finish_rejected",
+        default=false,
+      )
+      if mooncode_json_int(checkpoint, "replan_count", default=0) <= 0 ||
+        (if has_finish {
+          !rejected ||
+          calls.length() != 1 ||
+          mooncode_json_string(calls[0], "tool", default="") != "finish"
+        } else {
+          rejected
+        }) {
+        None
+      } else {
+        Some(ResumeReplan(next))
+      }
+    }
+  }
+}
+
+///|
 /// Checkpoints retain the current plan's transcript once so the first
 /// post-restart follow-up preserves model context. Historical planner steps
 /// need only their selected calls and response metadata; duplicating the same
@@ -73,9 +229,6 @@ fn mooncode_runtime_compact_continuation_history(
   {
     "planner_steps": Json::array(compact_planner_steps),
     "tool_result_count": tool_results.length(),
-    "tool_result_digest": mooncode_sha256_hex(
-      Json::array(tool_results).stringify(),
-    ),
     "tool_result_references": Json::array(tool_result_references),
     "step_result_suffix_count": step_results.length(),
   }
@@ -248,18 +401,23 @@ fn mooncode_runtime_unproject_journal_event(event : Json) -> Json {
 fn mooncode_runtime_continuation_for_command(
   events : Array[Json],
   command_id : String,
-) -> Json {
+) -> Json raise MoonCodeJournalError {
   // Select the latest checkpoint first. Hydrating every historical checkpoint
   // makes recovery quadratic: each checkpoint used to rescan and stringify all
   // preceding tool-result events. Long visual-agent runs can contain hundreds
   // of checkpoints, so only the authoritative latest one is relevant.
   let mut checkpoint = Json::object({})
-  for event in events {
+  let mut checkpoint_index = -1
+  for index, event in events {
     if mooncode_json_string(event, "kind", default="") ==
       mooncode_runtime_continuation_kind() &&
       mooncode_json_string(event, "command_id", default="") == command_id {
       checkpoint = event
+      checkpoint_index = index
     }
+  }
+  if checkpoint_index < 0 {
+    return checkpoint
   }
   let result_count = mooncode_json_int(
     checkpoint,
@@ -267,13 +425,13 @@ fn mooncode_runtime_continuation_for_command(
     default=-1,
   )
   if result_count < 0 {
-    return checkpoint
+    raise InvalidJournal("checkpoint has no result reference count")
   }
   let references = mooncode_json_array_items(
     checkpoint, "tool_result_references",
   )
   if references.length() != result_count {
-    return Json::object({})
+    raise InvalidJournal("checkpoint result references are inconsistent")
   }
   let expected_digests : Map[String, String] = Map([])
   for reference in references {
@@ -285,14 +443,18 @@ fn mooncode_runtime_continuation_for_command(
         default="",
       )
       if event_id == "" || event_digest == "" {
-        return Json::object({})
+        raise InvalidJournal("checkpoint result references are inconsistent")
+      }
+      if expected_digests.contains(event_id) {
+        raise InvalidJournal("checkpoint repeats a result reference")
       }
       expected_digests[event_id] = event_digest
     }
   }
   let matched_events : Map[String, Json] = Map([])
   let match_counts : Map[String, Int32] = Map([])
-  for projected_event in events {
+  let event_positions : Map[String, Int32] = Map([])
+  for index, projected_event in events[:checkpoint_index] {
     if mooncode_json_string(projected_event, "command_id", default="") !=
       command_id {
       continue
@@ -310,15 +472,22 @@ fn mooncode_runtime_continuation_for_command(
           }
           match_counts[event_id] = previous + 1
           matched_events[event_id] = referenced_event
+          event_positions[event_id] = index
         }
       }
       None => ()
     }
   }
   let hydrated_results : Array[Json] = []
+  let mut previous_position = -1
   for reference in references {
     if mooncode_json_bool(reference, "journaled_result", default=false) {
       let event_id = mooncode_json_string(reference, "event_id", default="")
+      let position = event_positions.get_or_default(event_id, -1)
+      if position <= previous_position {
+        raise InvalidJournal("checkpoint result references are out of order")
+      }
+      previous_position = position
       match (match_counts.get(event_id), matched_events.get(event_id)) {
         (Some(1), Some(matched_event)) => {
           let with_result = mooncode_json_object_with_field(
@@ -330,7 +499,8 @@ fn mooncode_runtime_continuation_for_command(
             mooncode_json_object_with_field(with_result, "event", matched_event),
           )
         }
-        _ => return Json::object({})
+        _ =>
+          raise InvalidJournal("checkpoint result references are inconsistent")
       }
     } else {
       match reference {
@@ -345,24 +515,15 @@ fn mooncode_runtime_continuation_for_command(
     }
   }
   if hydrated_results.length() != result_count {
-    return Json::object({})
+    raise InvalidJournal("checkpoint result references are inconsistent")
   }
   let suffix_count = mooncode_json_int(
     checkpoint,
     "step_result_suffix_count",
     default=-1,
   )
-  let expected_digest = mooncode_json_string(
-    checkpoint,
-    "tool_result_digest",
-    default="",
-  )
-  if suffix_count < 0 ||
-    suffix_count > result_count ||
-    expected_digest == "" ||
-    mooncode_sha256_hex(Json::array(hydrated_results).stringify()) !=
-    expected_digest {
-    return Json::object({})
+  if suffix_count < 0 || suffix_count > result_count {
+    raise InvalidJournal("checkpoint result suffix is inconsistent")
   }
   let hydrated_steps = mooncode_json_array_items(checkpoint, "planner_steps")
   if !hydrated_steps.is_empty() {
@@ -388,54 +549,6 @@ fn mooncode_runtime_continuation_for_command(
 }
 
 ///|
-fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
-  let approval_id = mooncode_json_string(
-    continuation,
-    "approval_id",
-    default="",
-  )
-  let command_id = mooncode_json_string(continuation, "command_id", default="")
-  let step_index = mooncode_json_int(continuation, "step_index", default=-1)
-  let tool_index = mooncode_json_int(continuation, "tool_index", default=-1)
-  let planner_turn_end_step = mooncode_json_int(
-    continuation,
-    "planner_turn_end_step",
-    default=0,
-  )
-  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
-  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
-  if command_id == "" ||
-    step_index < 0 ||
-    planner_turn_end_step < 0 ||
-    (planner_turn_end_step > 0 && planner_turn_end_step <= step_index) ||
-    tool_index < 0 ||
-    tool_index > tool_calls.length() {
-    return false
-  }
-  if mooncode_json_string(continuation, "state", default="") == "after-step" {
-    return approval_id == "" && tool_index == tool_calls.length()
-  }
-  if mooncode_json_string(continuation, "state", default="") == "executing-tool" {
-    return approval_id == "" && tool_index < tool_calls.length()
-  }
-  if approval_id == "" ||
-    mooncode_json_string(continuation, "state", default="") !=
-    "awaiting-approval" ||
-    tool_index >= tool_calls.length() {
-    return false
-  }
-  let approval = mooncode_json_object_field_or_empty(continuation, "approval")
-  mooncode_json_string(approval, "approval_id", default="") == approval_id &&
-  mooncode_json_string(approval, "target_command_id", default="") == command_id &&
-  mooncode_runtime_tool_approval_id(
-    command_id,
-    tool_calls[tool_index],
-    occurrence=step_index * 1000 + tool_index,
-  ) ==
-  approval_id
-}
-
-///|
 fn mooncode_runtime_json_array_has_suffix(
   values : Array[Json],
   suffix : Array[Json],
@@ -445,187 +558,11 @@ fn mooncode_runtime_json_array_has_suffix(
   }
   let offset = values.length() - suffix.length()
   for index, value in suffix {
-    if values[offset + index].stringify() != value.stringify() {
+    if values[offset + index] != value {
       return false
     }
   }
   true
-}
-
-///|
-fn mooncode_runtime_planner_continuation_is_active(continuation : Json) -> Bool {
-  let session_id = mooncode_json_string(continuation, "session_id", default="")
-  let command_id = mooncode_json_string(continuation, "command_id", default="")
-  let next_step_index = mooncode_json_int(
-    continuation,
-    "next_step_index",
-    default=-1,
-  )
-  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
-  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
-  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
-  let tool_results = mooncode_json_array_items(continuation, "tool_results")
-  let step_results = mooncode_json_array_items(continuation, "step_results")
-  let expected_id = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-checkpoint-\{next_step_index}"
-  if session_id == "" ||
-    command_id == "" ||
-    mooncode_json_string(continuation, "id", default="") != expected_id ||
-    mooncode_json_string(continuation, "protocol", default="") !=
-    mooncode_protocol_version() ||
-    mooncode_json_string(continuation, "target_command_id", default="") !=
-    command_id ||
-    mooncode_json_string(continuation, "kind", default="") !=
-    mooncode_runtime_continuation_kind() ||
-    mooncode_json_string(continuation, "lane", default="") != "runtime-control" ||
-    mooncode_json_string(continuation, "status", default="") != "paused" ||
-    mooncode_json_string(continuation, "reason", default="") !=
-    "planner-step-quantum" ||
-    mooncode_json_string(continuation, "state", default="") !=
-    "planner-quantum-paused" ||
-    next_step_index <= 0 ||
-    mooncode_json_string(plan, "planner_mode", default="") !=
-    mooncode_planner_mode_model_tool_calls() ||
-    mooncode_json_bool(plan, "failed", default=false) ||
-    tool_calls.length() == 0 ||
-    mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
-    planner_steps.length() != next_step_index ||
-    step_results.length() != tool_calls.length() ||
-    !mooncode_runtime_turn_model_message_present(
-      mooncode_json_object_field_or_empty(plan, "model_response_message"),
-    ) ||
-    mooncode_json_array_items(plan, "model_messages").length() == 0 ||
-    !mooncode_runtime_json_array_has_suffix(tool_results, step_results) {
-    return false
-  }
-  planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
-}
-
-///|
-fn mooncode_runtime_planner_transport_continuation_is_active(
-  continuation : Json,
-) -> Bool {
-  let session_id = mooncode_json_string(continuation, "session_id", default="")
-  let command_id = mooncode_json_string(continuation, "command_id", default="")
-  let next_step_index = mooncode_json_int(
-    continuation,
-    "next_step_index",
-    default=-1,
-  )
-  let resume_mode = mooncode_json_string(
-    continuation,
-    "resume_mode",
-    default="",
-  )
-  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
-  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
-  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
-  let tool_results = mooncode_json_array_items(continuation, "tool_results")
-  let step_results = mooncode_json_array_items(continuation, "step_results")
-  let event_id = mooncode_json_string(continuation, "id", default="")
-  let expected_id_prefix = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-"
-  if session_id == "" ||
-    command_id == "" ||
-    !event_id.has_prefix(expected_id_prefix) ||
-    mooncode_json_string(continuation, "protocol", default="") !=
-    mooncode_protocol_version() ||
-    mooncode_json_string(continuation, "target_command_id", default="") !=
-    command_id ||
-    mooncode_json_string(continuation, "kind", default="") !=
-    mooncode_runtime_continuation_kind() ||
-    mooncode_json_string(continuation, "lane", default="") != "runtime-control" ||
-    mooncode_json_string(continuation, "status", default="") != "paused" ||
-    mooncode_json_string(continuation, "reason", default="") !=
-    "planner-transport-interrupted" ||
-    mooncode_json_string(continuation, "state", default="") !=
-    "planner-transport-paused" ||
-    next_step_index < 0 {
-    return false
-  }
-  match resume_mode {
-    "initial" =>
-      next_step_index == 0 &&
-      planner_steps.length() == 0 &&
-      step_results.length() == 0
-    "followup" =>
-      next_step_index > 0 &&
-      mooncode_json_string(plan, "planner_mode", default="") ==
-      mooncode_planner_mode_model_tool_calls() &&
-      !mooncode_json_bool(plan, "failed", default=false) &&
-      !mooncode_json_bool(plan, "transient_transport_close", default=false) &&
-      tool_calls.length() > 0 &&
-      !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
-      planner_steps.length() == next_step_index &&
-      step_results.length() == tool_calls.length() &&
-      mooncode_runtime_turn_model_message_present(
-        mooncode_json_object_field_or_empty(plan, "model_response_message"),
-      ) &&
-      mooncode_json_array_items(plan, "model_messages").length() > 0 &&
-      mooncode_runtime_json_array_has_suffix(tool_results, step_results) &&
-      planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
-    _ => false
-  }
-}
-
-///|
-fn mooncode_runtime_planner_replan_continuation_is_active(
-  continuation : Json,
-) -> Bool {
-  let session_id = mooncode_json_string(continuation, "session_id", default="")
-  let command_id = mooncode_json_string(continuation, "command_id", default="")
-  let next_step_index = mooncode_json_int(
-    continuation,
-    "next_step_index",
-    default=-1,
-  )
-  let replan_count = mooncode_json_int(continuation, "replan_count", default=0)
-  let guidance = mooncode_json_string(
-    continuation,
-    "patient_replan_guidance",
-    default="",
-  )
-  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
-  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
-  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
-  let tool_results = mooncode_json_array_items(continuation, "tool_results")
-  let step_results = mooncode_json_array_items(continuation, "step_results")
-  let expected_id = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}"
-  session_id != "" &&
-  command_id != "" &&
-  mooncode_json_string(continuation, "id", default="") == expected_id &&
-  mooncode_json_string(continuation, "protocol", default="") ==
-  mooncode_protocol_version() &&
-  mooncode_json_string(continuation, "target_command_id", default="") ==
-  command_id &&
-  mooncode_json_string(continuation, "kind", default="") ==
-  mooncode_runtime_continuation_kind() &&
-  mooncode_json_string(continuation, "lane", default="") == "runtime-control" &&
-  mooncode_json_string(continuation, "status", default="") == "paused" &&
-  mooncode_json_string(continuation, "reason", default="") ==
-  "planner-empty-followup" &&
-  mooncode_json_string(continuation, "state", default="") ==
-  "planner-replan-paused" &&
-  next_step_index > 0 &&
-  replan_count > 0 &&
-  guidance != "" &&
-  mooncode_json_string(plan, "planner_mode", default="") ==
-  mooncode_planner_mode_model_tool_calls() &&
-  !mooncode_json_bool(plan, "failed", default=false) &&
-  tool_calls.length() > 0 &&
-  (if mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
-    mooncode_json_bool(continuation, "finish_rejected", default=false) &&
-    tool_calls.length() == 1 &&
-    mooncode_json_string(tool_calls[0], "tool", default="") == "finish"
-  } else {
-    !mooncode_json_bool(continuation, "finish_rejected", default=false)
-  }) &&
-  planner_steps.length() == next_step_index &&
-  step_results.length() == tool_calls.length() &&
-  mooncode_runtime_turn_model_message_present(
-    mooncode_json_object_field_or_empty(plan, "model_response_message"),
-  ) &&
-  mooncode_json_array_items(plan, "model_messages").length() > 0 &&
-  mooncode_runtime_json_array_has_suffix(tool_results, step_results) &&
-  planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
 }
 
 ///|

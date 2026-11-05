@@ -332,10 +332,6 @@ fn mooncode_snapshot_journal_sequence(
           raise InvalidJournal(
             "Invalid session snapshot journal_sequence: \{message}",
           )
-        IdentityConflict(_, _, _) =>
-          raise InvalidJournal(
-            "Invalid session snapshot journal_sequence: unexpected identity conflict",
-          )
       }
     }
   }
@@ -943,6 +939,21 @@ async fn mooncode_write_session_state_locked(
   session_id : String,
   state : String,
 ) -> Unit {
+  // A move can fail after rename but before directory sync. Retire the cached
+  // durability fact before recording transition intent, including that failure.
+  if ["archiving", "restoring", "deleting"].contains(state) {
+    for archived in [false, true] {
+      let path = mooncode_session_journal_path_by_safe_id(
+        book_root,
+        mooncode_safe_session_id(session_id),
+        archived~,
+      )
+      let canonical = Some(@fs.realpath(path)) catch { _ => None }
+      if canonical is Some(canonical) {
+        mooncode_journal_append_states.remove(canonical)
+      }
+    }
+  }
   let marker = mooncode_session_state_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(marker), recursive=true, exists_ok=true)
   let file = @fs.open(

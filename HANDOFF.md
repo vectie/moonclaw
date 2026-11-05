@@ -220,9 +220,30 @@ existing execution facts rather than introduce another execution authority.
 
 ## Documentation Pitfalls
 
+- Context/Journal cleanup (2026-11-05): initial and follow-up requests share
+  `mooncode_context.mbt` and the existing compiler by default. Remove fixed
+  suffixes, shadow/active flags and overload-driven rewriting. Execution owns
+  output caps; model results stay complete JSON until Context projects them.
+- Recovery uses one `MoonCodeResumePoint` decoder for existing loop positions.
+  Keep exact approval binding, `finish_rejected`, completed-operation reuse and
+  unknown effects. Generated ID spelling and guidance text are not authority.
+  Invalid checkpoint references must raise, not look like an absent checkpoint.
+- Directory-sync success belongs to the existing append cache. Invalidate it
+  before archive/restore/delete intent: rename can succeed before sync fails,
+  and lifecycle reconciliation can then reopen the active path. File bytes are
+  still synced on every append; first observation/cache rebuild syncs ancestors.
+- Compaction is lossy. General model-facing history lookup by evidence ID is
+  unfinished; omitted outputs cannot be recovered by replaying effects.
+  The current contract is in `docs/LONG_CONTEXT_COMPACTION.md`.
+- Native suite: 1873/1873; real MoonDesk producer/consumer probe passed. Info,
+  fmt and whitespace checks passed; public interfaces unchanged. The full
+  repository still has existing warnings, and no live-provider/app or power-cut
+  qualification was performed. Code and tests together net -1611 lines; 95
+  lines of test-only parser helpers moved out of production, not deleted.
+
 - Old Goal/journal diaries mixed intermediate and completed migration states;
   they were retired. Confirm current source rather than reusing their test counts.
-- Context provenance writes v2; v1 describes an existing reader path.
+- Context provenance is v2 only; the former v1 reader was removed.
 - A milestone checkpoint does not discard the actual planner transcript.
 - New initial contexts use the shared program. Resumed transcripts retain their
   captured system instructions; do not silently rewrite those during compaction.

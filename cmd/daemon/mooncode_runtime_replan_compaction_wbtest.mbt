@@ -90,163 +90,6 @@ fn replan_compaction_test_checkpoint(
 }
 
 ///|
-test "provider compaction retains a useful long-horizon working suffix" {
-  let previous : Array[Json] = [
-    { "role": "system", "content": "planner contract" },
-    { "role": "user", "content": "redesign the complete interface" },
-  ]
-  for index in 0..<20 {
-    let content = if index == 0 {
-      "obsolete discovery"
-    } else if index == 10 {
-      "settled map-hero diagnosis"
-    } else {
-      "planner quantum \{index}"
-    }
-    previous.push({
-      "role": "assistant",
-      "content": content,
-      "tool_calls": [
-        {
-          "id": "call-\{index}",
-          "type": "function",
-          "function": { "name": "read", "arguments": "{}" },
-        },
-      ],
-    })
-    previous.push({
-      "role": "tool",
-      "tool_call_id": "call-\{index}",
-      "content": "result \{index}",
-    })
-    previous.push({ "role": "user", "content": "evidence ledger \{index}" })
-  }
-  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
-  let transcript = Json::array(compacted).stringify()
-  assert_true(transcript.contains("settled map-hero diagnosis"))
-  assert_false(transcript.contains("obsolete discovery"))
-  assert_true(transcript.contains("MoonCode compacted"))
-  assert_true(compacted.length() <= 47)
-}
-
-///|
-test "provider compaction retains Kimi task after two system messages" {
-  let previous : Array[Json] = [
-    { "role": "system", "content": "Kimi autonomy contract" },
-    { "role": "system", "content": "Dynamic skill gate" },
-    {
-      "role": "user",
-      "content": "Transform MoonTown into a coherent living AI-agent town",
-    },
-  ]
-  for index in 0..<20 {
-    previous.push({
-      "role": "assistant",
-      "content": "planner quantum \{index}",
-      "tool_calls": [
-        {
-          "id": "kimi-call-\{index}",
-          "type": "function",
-          "function": { "name": "read", "arguments": "{}" },
-        },
-      ],
-    })
-    previous.push({
-      "role": "tool",
-      "tool_call_id": "kimi-call-\{index}",
-      "content": "result \{index}",
-    })
-  }
-  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
-  let transcript = Json::array(compacted).stringify()
-  assert_true(transcript.contains("Kimi autonomy contract"))
-  assert_true(transcript.contains("Dynamic skill gate"))
-  assert_true(
-    transcript.contains(
-      "Transform MoonTown into a coherent living AI-agent town",
-    ),
-  )
-  assert_true(transcript.contains("MoonCode compacted"))
-}
-
-///|
-test "provider compaction restores canonical task over stale notice" {
-  let previous : Array[Json] = [
-    { "role": "system", "content": "Kimi autonomy contract" },
-    { "role": "system", "content": "Dynamic skill gate" },
-    {
-      "role": "user",
-      "content": "MoonCode compacted older provider messages from this request.",
-    },
-  ]
-  for index in 0..<20 {
-    previous.push({
-      "role": "assistant",
-      "content": "planner quantum \{index}",
-      "tool_calls": [
-        {
-          "id": "recovery-call-\{index}",
-          "type": "function",
-          "function": { "name": "read", "arguments": "{}" },
-        },
-      ],
-    })
-    previous.push({
-      "role": "tool",
-      "tool_call_id": "recovery-call-\{index}",
-      "content": "result \{index}",
-    })
-  }
-  let compacted = mooncode_runtime_turn_compact_followup_transcript(
-    previous,
-    task_contract="Implement the complete living-agent-town mission",
-  )
-  let transcript = Json::array(compacted).stringify()
-  assert_true(
-    transcript.contains("Implement the complete living-agent-town mission"),
-  )
-  assert_false(
-    transcript.contains(
-      "MoonCode compacted older provider messages from this request.",
-    ),
-  )
-}
-
-///|
-test "provider compaction bounds a previously consumed complete skill" {
-  let skill_body = "moonbit-agent-guide-start\n" +
-    "skill-evidence\n".repeat(5000) +
-    "moonbit-agent-guide-end"
-  let previous : Array[Json] = [
-    { "role": "system", "content": "planner contract" },
-    { "role": "user", "content": "complete the MoonBit implementation" },
-    {
-      "role": "assistant",
-      "content": "",
-      "tool_calls": [
-        {
-          "id": "call-skill",
-          "type": "function",
-          "function": {
-            "name": "read_skill",
-            "arguments": "{\"name\":\"moonbit-agent-guide\"}",
-          },
-        },
-      ],
-    },
-    { "role": "tool", "tool_call_id": "call-skill", "content": skill_body },
-  ]
-  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
-  let transcript = Json::array(compacted).stringify()
-  assert_true(transcript.contains("moonbit-agent-guide-start"))
-  assert_true(transcript.contains("moonbit-agent-guide-end"))
-  assert_true(
-    transcript.contains("complete bytes remain in the durable journal"),
-  )
-  assert_true(transcript.length() < skill_body.length() / 2)
-}
-
-///|
 test "compact continuation hydrates inline result events" {
   let execution = replan_compaction_test_execution(
     "replan-inline-result", "replan-compaction-command", "inline execution result",
@@ -449,110 +292,22 @@ test "corrupt compact references fail closed without fallback" {
     Json::array([bad_digest_reference]),
   )
   for malformed in [bad_id, bad_digest] {
-    let hydrated = mooncode_runtime_continuation_for_command(
-      [event, malformed],
+    try
+      mooncode_runtime_continuation_for_command([event, malformed], command_id)
+    catch {
+      InvalidJournal(_) => ()
+    } noraise {
+      _ => fail("corrupt reference must be reported")
+    }
+  }
+  try
+    mooncode_runtime_continuation_for_command(
+      [event, valid, bad_digest],
       command_id,
     )
-    assert_eq(hydrated.stringify(), "{}")
-    assert_false(
-      mooncode_runtime_planner_replan_continuation_is_active(hydrated),
-    )
+  catch {
+    InvalidJournal(_) => ()
+  } noraise {
+    _ => fail("latest corruption must not fall back")
   }
-  let hydrated = mooncode_runtime_continuation_for_command(
-    [event, valid, bad_digest],
-    command_id,
-  )
-  assert_eq(hydrated.stringify(), "{}")
-  assert_false(mooncode_runtime_planner_replan_continuation_is_active(hydrated))
-}
-
-///|
-test "old inline replan continuation remains unchanged and active" {
-  let session_id = "old-inline-session"
-  let command_id = "replan-compaction-command"
-  let execution = replan_compaction_test_execution(
-    "old-inline-result", command_id, "old full result",
-  )
-  let plan = replan_compaction_test_plan([{ "role": "user", "content": "read" }])
-  let inline : Json = {
-    "id": "moonclaw-old-inline-session-replan-compaction-command-planner-replan-checkpoint-1-1",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "target_command_id": command_id,
-    "lane": "runtime-control",
-    "kind": mooncode_runtime_continuation_kind(),
-    "event": mooncode_runtime_continuation_kind(),
-    "state": "planner-replan-paused",
-    "status": "paused",
-    "reason": "planner-empty-followup",
-    "next_step_index": 1,
-    "replan_count": 1,
-    "patient_replan_guidance": "continue",
-    "plan": plan,
-    "finish_rejected": false,
-    "planner_steps": [plan],
-    "tool_results": [execution],
-    "step_results": [execution],
-    "created_at": @clock.Timestamp::from_ms(1001L),
-    "source": "moonclaw-native-runtime-continuation",
-  }
-  let decoded = mooncode_runtime_continuation_for_command([inline], command_id)
-  assert_eq(decoded.stringify(), inline.stringify())
-  assert_true(mooncode_runtime_planner_replan_continuation_is_active(decoded))
-}
-
-///|
-test "follow-up compaction retains task and latest verification evidence" {
-  let original_task = "Implement the complete harness; preserve user work; run the focused verifier."
-  let messages : Array[Json] = [
-    { "role": "system", "content": "planner contract" },
-    { "role": "user", "content": original_task },
-  ]
-  for index in 0..<32 {
-    messages.push({
-      "role": "assistant",
-      "content": if index == 0 {
-        "obsolete discovery"
-      } else {
-        "bounded planner step \{index}"
-      },
-      "tool_calls": [
-        {
-          "id": "harness-call-\{index}",
-          "type": "function",
-          "function": { "name": "read", "arguments": "{}" },
-        },
-      ],
-    })
-    messages.push({
-      "role": "tool",
-      "tool_call_id": "harness-call-\{index}",
-      "content": if index == 31 {
-        "latest focused verifier passed"
-      } else {
-        "inspection \{index}"
-      },
-    })
-  }
-  let compacted = mooncode_runtime_turn_compact_followup_transcript(
-    messages,
-    task_contract=original_task,
-  )
-  let repeated = mooncode_runtime_turn_compact_followup_transcript(
-    messages,
-    task_contract=original_task,
-  )
-  assert_eq(compacted, repeated)
-  let before_chars = Json::array(messages).stringify().length()
-  // Provenance is durable harness evidence but is stripped before provider
-  // transport. Compare the model-facing projection so metadata growth cannot
-  // masquerade as context growth.
-  let after_text = Json::array(
-    mooncode_runtime_context_visible_messages(compacted),
-  ).stringify()
-  assert_true(after_text.length() < before_chars)
-  assert_true(after_text.contains(original_task))
-  assert_true(after_text.contains("latest focused verifier passed"))
-  assert_false(after_text.contains("obsolete discovery"))
 }

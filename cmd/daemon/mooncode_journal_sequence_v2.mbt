@@ -1,7 +1,6 @@
 ///|
 priv suberror MoonCodeJournalDecodeError {
   CorruptStore(String)
-  IdentityConflict(String, String, String)
 }
 
 ///|
@@ -28,8 +27,6 @@ priv struct MoonCodeJournalSequence {
 
 ///|
 priv struct MoonCodeJournalEnvelope {
-  fields : Map[String, Json]
-  contract_id : String
   sequence : MoonCodeJournalSequence
 }
 
@@ -221,7 +218,7 @@ fn mooncode_journal_validate_envelope(
       _ => mooncode_journal_corrupt("v2 journal sequence is not a string")
     }
   }
-  { fields, contract_id, sequence, }
+  { sequence, }
 }
 
 ///|
