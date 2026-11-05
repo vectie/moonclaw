@@ -637,12 +637,9 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           []
         }
         let parallel_read_executions = if mooncode_runtime_turn_parallel_read_batch_allowed(
-            command,
             book_root,
             plan,
             tool_calls,
-            tool_results,
-            mooncode_json_array_items(plan, "model_messages"),
             resuming_step~,
           ) {
           self.mooncode_runtime_turn_execute_parallel_reads(
@@ -881,30 +878,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             mooncode_runtime_rejected_tool_execution(
               session_id, book_root, command_id, tool_call, approval,
             )
-          } else if mooncode_runtime_turn_repeats_failed_verification(
-              tool_call, tool_results,
-            ) {
-            mooncode_runtime_turn_duplicate_failed_verification_execution(
-              session_id,
-              book_root,
-              command_id,
-              tool_call,
-              now=self.clock.now(),
-            )
-          } else if mooncode_runtime_turn_repeats_complete_read(
-              tool_call,
-              tool_results,
-              active_model_messages=mooncode_json_array_items(
-                plan, "model_messages",
-              ),
-            ) {
-            mooncode_runtime_turn_duplicate_read_execution(
-              session_id,
-              book_root,
-              command_id,
-              tool_call,
-              now=self.clock.now(),
-            )
           } else if mooncode_json_string(tool_call, "tool", default="") ==
             "checkpoint" {
             mooncode_runtime_horizon_checkpoint_execution(
@@ -915,38 +888,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               tool_call,
               now=self.clock.now(),
             )
+          } else if parallel_read_executions.length() == tool_calls.length() {
+            parallel_read_executions[tool_index]
           } else {
-            let candidate = if parallel_read_executions.length() ==
-              tool_calls.length() {
-              parallel_read_executions[tool_index]
-            } else {
-              mooncode_execute_tool_call_in_runtime(
-                group.map(group => (self, group)),
-                session_id,
-                book_root,
-                mooncode_runtime_turn_tool_body(command, tool_call),
-                now=self.clock.now(),
-              )
-            }
-            match
-              mooncode_runtime_turn_duplicate_complete_observation_path(
-                candidate,
-                tool_results,
-                active_model_messages=mooncode_json_array_items(
-                  plan, "model_messages",
-                ),
-              ) {
-              Some(path) =>
-                mooncode_runtime_turn_duplicate_read_execution(
-                  session_id,
-                  book_root,
-                  command_id,
-                  tool_call,
-                  path~,
-                  now=self.clock.now(),
-                )
-              None => candidate
-            }
+            mooncode_execute_tool_call_in_runtime(
+              group.map(group => (self, group)),
+              session_id,
+              book_root,
+              mooncode_runtime_turn_tool_body(command, tool_call),
+              now=self.clock.now(),
+            )
           }
           let execution = if recovered is None {
             mooncode_runtime_bind_check_inputs(execution, check_inputs, command)
@@ -1207,7 +1158,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           next_step_index = step_index + 1
           break
         }
-        next_plan = mooncode_runtime_turn_recovery_plan(next_plan, tool_results)
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
           planner_steps.push(next_plan)
@@ -1221,10 +1171,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
         }
         plan = next_plan
       }
-      let used_model_planner = planner_steps.any(step => {
-        mooncode_json_string(step, "planner_mode", default="") ==
-        mooncode_planner_mode_model_tool_calls()
-      })
       let planner_failed = planner_steps.any(step => {
         mooncode_json_bool(step, "failed", default=false)
       })
@@ -1237,20 +1183,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       let completion_verdict = mooncode_runtime_turn_completion_verdict(
         command, tool_results,
       )
-      let completion_gate_applies = mooncode_runtime_turn_completion_gate_applies(
-        command, used_model_planner,
-      )
       let nonterminal = waiting || planner_paused
       let tool_accepted = if nonterminal {
         true
-      } else if planner_failed {
-        false
-      } else if completion_gate_applies {
-        mooncode_runtime_turn_model_execution_accepted(command, tool_results)
       } else {
-        tool_results.all(result => {
-          mooncode_json_bool(result, "accepted", default=false)
-        })
+        !planner_failed && completion_verdict.accepted
       }
       let test_results = if !nonterminal &&
         (action == "run_tests" || action == "run_build") {
@@ -1430,7 +1367,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             }
           } else if accepted {
             "MoonClaw native runtime turn completed `\{mooncode_json_string(command, "command", default="prompt")}`"
-          } else if completion_gate_applies && !completion_verdict.accepted {
+          } else if !completion_verdict.accepted {
             completion_verdict.reason
           } else {
             "MoonClaw native runtime turn failed during tool execution"
@@ -2064,31 +2001,6 @@ fn mooncode_runtime_turn_result_file_observation(execution : Json) -> Json {
 }
 
 ///|
-fn mooncode_runtime_turn_context_mismatch_path(execution : Json) -> String {
-  let tool = mooncode_json_string(execution, "tool", default="")
-  if tool != "apply_patch" && tool != "edit" && tool != "write" {
-    return ""
-  }
-  let result = mooncode_runtime_turn_result_payload(execution)
-  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
-  if mooncode_json_bool(execution, "accepted", default=false) ||
-    mooncode_json_bool(result, "ok", default=false) ||
-    !mooncode_json_bool(metadata, "context_mismatch", default=false) {
-    return ""
-  }
-  let path = mooncode_json_string(
-    metadata,
-    "file_path",
-    default=mooncode_json_string(metadata, "path", default=""),
-  )
-  if path.contains("#hunk-") {
-    mooncode_tool_first_split_piece(path, "#hunk-")
-  } else {
-    path
-  }
-}
-
-///|
 fn mooncode_runtime_turn_call_is_verification(tool_call : Json) -> Bool {
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
@@ -2107,267 +2019,4 @@ fn mooncode_runtime_turn_call_is_verification(tool_call : Json) -> Bool {
     mooncode_json_string(arguments, "cmd", default=""),
     kind,
   )
-}
-
-///|
-fn mooncode_runtime_turn_call_identity(tool_call : Json) -> String {
-  mooncode_json_string(tool_call, "tool", default="") +
-  ":" +
-  mooncode_json_object_field_or_empty(tool_call, "arguments").stringify()
-}
-
-///|
-/// A failed validation remains failed until authored source state changes. The
-/// runtime therefore rejects an identical retry rather than relying on a retry
-/// count. A changed command is new evidence; a real intervening mutation is a
-/// new repository state.
-fn mooncode_runtime_turn_repeats_failed_verification(
-  tool_call : Json,
-  results : Array[Json],
-) -> Bool {
-  if !mooncode_runtime_turn_call_is_verification(tool_call) {
-    return false
-  }
-  guard results.last() is Some(last) else { return false }
-  mooncode_runtime_turn_call_identity(last) ==
-  mooncode_runtime_turn_call_identity(tool_call) &&
-  !mooncode_json_bool(last, "accepted", default=false)
-}
-
-///|
-fn mooncode_runtime_turn_duplicate_failed_verification_execution(
-  session_id : String,
-  book_root : String,
-  command_id : String,
-  tool_call : Json,
-  now~ : @clock.Timestamp,
-) -> Json {
-  let tool = mooncode_json_string(tool_call, "tool", default="")
-  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let result = mooncode_tool_error_result(
-    tool,
-    message="This identical verification just failed. Inspect its diagnostics or reconcile the environment before retrying; a source edit is not required.",
-    metadata={ "duplicate_failed_verification": true },
-  )
-  {
-    "accepted": false,
-    "kind": "mooncode-tool-execution",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": command_id,
-    "tool": tool,
-    "arguments": arguments,
-    "result": result,
-    "event": mooncode_tool_result_event(
-      session_id,
-      book_root,
-      command_id,
-      tool,
-      result,
-      now~,
-    ),
-  }
-}
-
-///|
-fn mooncode_runtime_turn_successful_discovery(execution : Json) -> Bool {
-  if !mooncode_json_bool(execution, "accepted", default=false) {
-    return false
-  }
-  let result = mooncode_runtime_turn_result_payload(execution)
-  mooncode_json_bool(result, "ok", default=true)
-}
-
-///|
-fn mooncode_runtime_turn_path_has_retained_complete_observation(
-  path : String,
-  results : Array[Json],
-) -> Bool {
-  let mut last_complete_observation = -1
-  let mut last_context_mismatch = -1
-  let mut last_mutation = -1
-  for index, result in results {
-    if mooncode_runtime_turn_result_is_mutation(result) {
-      last_mutation = index
-    }
-    if mooncode_runtime_turn_context_mismatch_path(result) == path {
-      last_context_mismatch = index
-    }
-    let observation = mooncode_runtime_turn_result_file_observation(result)
-    if mooncode_json_string(observation, "path", default="") == path &&
-      mooncode_json_string(observation, "scope", default="") == "complete" {
-      last_complete_observation = index
-    }
-  }
-  last_complete_observation >= 0 &&
-  last_mutation < last_complete_observation &&
-  last_context_mismatch < last_complete_observation
-}
-
-///|
-/// A complete local-file observation remains valid until an accepted authored
-/// mutation. A later same-path context mismatch makes exactly one complete
-/// reread causal; that reread becomes the newest observation and consumes the
-/// allowance without any separate counter or ledger.
-fn mooncode_runtime_turn_repeats_complete_read(
-  tool_call : Json,
-  results : Array[Json],
-  active_model_messages~ : Array[Json] = [],
-) -> Bool {
-  if mooncode_json_string(tool_call, "tool", default="") != "read" {
-    return false
-  }
-  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  // A precise line-range read is the recovery path after transcript
-  // compaction or a compiler/patch diagnostic. Only reject another unbounded
-  // complete read of evidence that is already durably retained.
-  if mooncode_json_int(arguments, "start_line", default=0) > 0 ||
-    mooncode_json_int(arguments, "end_line", default=0) > 0 {
-    return false
-  }
-  let path = mooncode_json_string(arguments, "path", default="")
-  if path == "" {
-    return false
-  }
-  mooncode_runtime_turn_path_has_retained_complete_observation(path, results) &&
-  (
-    active_model_messages.length() == 0 ||
-    mooncode_runtime_turn_model_context_retains_complete_observation(
-      path, active_model_messages,
-    )
-  )
-}
-
-///|
-/// A durable result can outlive the provider transcript that exposed its file
-/// bytes. Once long-run compaction removes that assistant/tool exchange, the
-/// model must be allowed to read the file again. A provider-truncated tool
-/// message does not retain the complete bytes even when the durable result did.
-fn mooncode_runtime_turn_model_context_retains_complete_observation(
-  path : String,
-  messages : Array[Json],
-) -> Bool {
-  // Long-run transcript compaction replaces old source bytes with a current
-  // cumulative evidence receipt. That receipt is sufficient to reject another
-  // unbounded read while still allowing a causally targeted line-range read.
-  let quoted_path = "\"" + path + "\""
-  for message in messages {
-    let content = mooncode_json_string(message, "content", default="")
-    if content.contains("\"complete_read_paths\"") &&
-      content.contains(quoted_path) {
-      return true
-    }
-  }
-  for message_index, message in messages {
-    if mooncode_json_string(message, "role", default="") != "assistant" {
-      continue
-    }
-    for call in mooncode_json_array_items(message, "tool_calls") {
-      let function = mooncode_json_object_field_or_empty(call, "function")
-      if mooncode_json_string(function, "name", default="") != "read" {
-        continue
-      }
-      let arguments_text = mooncode_json_string(
-        function,
-        "arguments",
-        default="",
-      )
-      let arguments = @json.parse(arguments_text) catch { _ => Json::null() }
-      let matching_call = mooncode_json_string(arguments, "path", default="") ==
-        path
-      if !matching_call {
-        continue
-      }
-      let call_id = mooncode_json_string(call, "id", default="")
-      if call_id == "" {
-        continue
-      }
-      for later_index in (message_index + 1)..<messages.length() {
-        let later = messages[later_index]
-        if mooncode_json_string(later, "role", default="") == "tool" &&
-          mooncode_json_string(later, "tool_call_id", default="") == call_id {
-          return !mooncode_json_string(later, "content", default="").contains(
-            "...[truncated for planner context]",
-          )
-        }
-      }
-    }
-  }
-  false
-}
-
-///|
-/// Shell completeness is established only after successful output is captured.
-/// A partial observation is never rejected, which leaves causal narrow rereads
-/// available after compiler or patch failures.
-fn mooncode_runtime_turn_duplicate_complete_observation_path(
-  execution : Json,
-  prior_results : Array[Json],
-  active_model_messages~ : Array[Json] = [],
-) -> String? {
-  if mooncode_json_string(execution, "tool", default="") != "shell" {
-    return None
-  }
-  let observation = mooncode_runtime_turn_result_file_observation(execution)
-  if mooncode_json_string(observation, "scope", default="") == "complete" {
-    let path = mooncode_json_string(observation, "path", default="")
-    if path != "" &&
-      mooncode_runtime_turn_path_has_retained_complete_observation(
-        path, prior_results,
-      ) &&
-      (
-        active_model_messages.length() == 0 ||
-        mooncode_runtime_turn_model_context_retains_complete_observation(
-          path, active_model_messages,
-        )
-      ) {
-      return Some(path)
-    }
-  }
-  None
-}
-
-///|
-fn mooncode_runtime_turn_duplicate_read_execution(
-  session_id : String,
-  book_root : String,
-  command_id : String,
-  tool_call : Json,
-  path~ : String = "",
-  now~ : @clock.Timestamp,
-) -> Json {
-  let tool = mooncode_json_string(tool_call, "tool", default="read")
-  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let path = if path == "" {
-    mooncode_json_string(arguments, "path", default="")
-  } else {
-    path
-  }
-  let result = mooncode_tool_error_result(
-    tool,
-    message="duplicate complete read of `\{path}`; use the existing planner context or mutate before reading this path again",
-    metadata={ "path": path, "duplicate_complete_read": true },
-  )
-  {
-    "accepted": false,
-    "kind": "mooncode-tool-execution",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": command_id,
-    "tool": tool,
-    "arguments": arguments,
-    "result": result,
-    "event": mooncode_tool_result_event(
-      session_id,
-      book_root,
-      command_id,
-      tool,
-      result,
-      now~,
-    ),
-  }
 }

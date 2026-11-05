@@ -539,7 +539,6 @@ async test "production append cache preserves append semantics and invalidates s
     let session_id = "session"
     let book_root = @pathx.join(directory, "book")
     let path = mooncode_session_journal_path(book_root, session_id)
-    mooncode_journal_append_cache_clear()
     mooncode_journal_append_scan_count_reset(path)
     let first : Json = {
       "id": "first",
@@ -617,7 +616,7 @@ async test "production append cache preserves append semantics and invalidates s
       "client-first",
     )
 
-    mooncode_journal_append_cache_clear()
+    mooncode_journal_append_states.remove(@fs.realpath(path))
     let fifth : Json = {
       "id": "fifth",
       "kind": "cache-test",
@@ -642,7 +641,7 @@ async test "production append cache preserves append semantics and invalidates s
       mooncode_json_string(after_restart[4], "client_turn_id", default=""),
       "client-first",
     )
-    mooncode_journal_append_cache_clear()
+    mooncode_journal_append_states.remove(@fs.realpath(path))
   })
 }
 

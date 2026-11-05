@@ -309,10 +309,6 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
     results.push(finish)
     let verdict = mooncode_runtime_turn_completion_verdict(command, results)
     assert_true(verdict.accepted)
-    assert_eq(
-      verdict.reason,
-      "coding completion has successful current typed test evidence",
-    )
     let plan : Json = { "planner_mode": "model-tool-calls" }
     let finish_calls : Array[Json] = [
       { "tool": "finish", "arguments": { "answer": "done" } },

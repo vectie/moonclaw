@@ -53,6 +53,18 @@ installed-skill catalog as other models. This adds no model call or planner
 phase; prompt cleanup alone does not establish token or latency improvements.
 Language details come from project instructions, installed skills and
 compiler/tool feedback, rather than a second keyword-selected language primer.
+The native runtime no longer inserts a MoonBit/MoonTown-specific dynamic skill
+gate. Default requests receive the same tool catalog; only explicit read-only
+mode or caller-selected tools narrow it. Prompt vocabulary does not select
+tools or invent mandatory tests.
+
+Task construction retains the complete user request, including long plans and
+trailing constraints. It does not cut input at prose markers or a fixed 12k
+limit. The initial prompt uses one task representation; a separate original
+request is included when an explicitly supplied objective differs. Ordered
+corrections retain the same contract and create a new revision without mutating
+the earlier revision's update array. Context-window projection remains a
+separate responsibility.
 
 ## Standalone Project Rule
 
@@ -185,15 +197,23 @@ continuation remain the execution path. All continuation
 reasons share one writer and reference completed results instead of copying
 their accumulated output.
 
+Completion rules and result-evidence helpers live together in
+`mooncode_runtime_completion.mbt`, separate from model transport and schema
+construction. The turn reuses one terminal verdict rather than independently
+selecting another completion policy from the request text or planner mode.
+
 An explicit `task_contract.required_checks` entry names `id`, `tool` (`shell`
 or `moon_cmd`), exact `command` and `cwd`. Successful native sandbox receipts
 after the latest mutation, failed check or uncertain effect must match those
-entries. A recovered failed observation does not invalidate checks of unchanged
+entries. An optional observation failure does not require an unrelated
+successful tool action before finish and does not invalidate checks of unchanged
 inputs; rejected finish or progress metadata is not an execution failure. Optional
 `input_paths` identify files relevant to those checks. Typed check/test/build
 results also support normal coding verification; arbitrary successful shell
-observations do not make a package verified. Existing task-intent inference is
-still a fallback when callers do not provide a typed task intent.
+observations do not make a package verified. The runtime does not infer extra
+completion requirements from English keywords, coding-tool categories or
+mutation quotas. The primary agent remains responsible for understanding and
+following the user's and project's semantic requirements.
 
 Checks capture content fingerprints for files touched by this task and declared
 check inputs. `finish` checks those fingerprints and the task revision again,
@@ -218,8 +238,17 @@ the existing MCP tool inventory/call path remain. The default planner exposes
 no worker tools. Invalid, unknown and truncated
 tool calls return errors for repair; the runtime does not infer another tool
 name or split concatenated arguments. There is no discovery counter that forces
-a file edit. Repeating an immediately failed verification requests diagnosis;
-subsequent observation can justify retry without manufacturing a mutation.
+a file edit. The agent chooses how to recover from an edit mismatch or failed
+check; the runtime no longer replaces its proposed batch with a forced read.
+Repeated safe reads and transient-check retries execute normally. Existing
+evidence remains available as guidance, not a read/retry prohibition. Journal
+operation identities still prevent replaying an already committed invocation,
+and interrupted effects without results remain unknown.
+
+An explicit batch that ends without an accepted finish retains its real
+artifact/result references but does not establish task completion. Primitive
+commands such as run-tests still report a failed operation as failure; an
+unrelated finish cannot erase that command's failure.
 
 Ordinary completion does not require packaging, an isolated snapshot or human
 acceptance. Native harness evaluation reports its own scope and does not treat

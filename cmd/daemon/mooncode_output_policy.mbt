@@ -8,11 +8,6 @@ const MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS = 50000
 const MOONCODE_OPT_IN_TOOL_OUTPUT_MAX_CHARS = 200000
 
 ///|
-/// A stale mutation needs enough exact source to repair a large file without
-/// guessing. This is intentionally below the operator opt-in ceiling.
-const MOONCODE_MUTATION_RECOVERY_READ_CHARS = 120000
-
-///|
 /// Return the largest valid UTF-8 prefix whose encoded byte length does not
 /// exceed `limit`. MoonBit string offsets are byte offsets, so direct slicing
 /// at an arbitrary output budget can bisect a multibyte scalar and abort.

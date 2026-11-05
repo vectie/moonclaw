@@ -329,3 +329,278 @@ async fn mooncode_runtime_finish_input_error(
   }
   ""
 }
+
+///|
+priv struct MoonCodeCompletionVerdict {
+  accepted : Bool
+  reason : String
+}
+
+///|
+fn mooncode_runtime_turn_result_payload(result : Json) -> Json {
+  let direct = mooncode_json_object_field_or_empty(result, "result")
+  match direct {
+    Object(fields) if !fields.is_empty() => direct
+    _ => mooncode_json_object_field_or_empty(result, "tool_result")
+  }
+}
+
+///|
+fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
+  let payload = mooncode_runtime_turn_result_payload(result)
+  let tool = mooncode_json_string(result, "tool", default="")
+  let accepted = mooncode_json_bool(
+    result,
+    "accepted",
+    default=tool == "shell" &&
+      mooncode_json_string(result, "kind", default="") == "tool_result" &&
+      mooncode_json_string(result, "status", default="") == "done" &&
+      mooncode_json_bool(payload, "ok", default=false),
+  )
+  if !accepted {
+    return false
+  }
+  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
+  tool == "write" ||
+  tool == "edit" ||
+  tool == "apply_patch" ||
+  tool == "revert_patch" ||
+  (
+    tool == "commit" &&
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(
+        mooncode_json_object_field_or_empty(result, "result"),
+        "metadata",
+      ),
+      "evidence_kind",
+      default="",
+    ) ==
+    "runtime.commit_created"
+  ) ||
+  (
+    tool == "shell" &&
+    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
+    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
+    mooncode_json_string(metadata, "commit_sha", default="") != "" &&
+    !mooncode_json_array_string_items(metadata, "changed_paths").is_empty()
+  )
+}
+
+///|
+fn mooncode_runtime_turn_result_is_commit_boundary(result : Json) -> Bool {
+  let payload = mooncode_runtime_turn_result_payload(result)
+  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
+  let tool = mooncode_json_string(result, "tool", default="")
+  (
+    tool == "commit" &&
+    mooncode_json_string(metadata, "evidence_kind", default="") ==
+    "runtime.commit_created"
+  ) ||
+  (
+    tool == "shell" &&
+    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
+    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
+    mooncode_json_string(metadata, "commit_sha", default="") != ""
+  )
+}
+
+///|
+fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
+  if !mooncode_runtime_turn_result_is_mutation(result) {
+    return []
+  }
+  let metadata = mooncode_json_object_field_or_empty(
+    mooncode_runtime_turn_result_payload(result),
+    "metadata",
+  )
+  let tool = mooncode_json_string(result, "tool", default="")
+  if tool == "commit" ||
+    (
+      tool == "shell" &&
+      mooncode_json_bool(metadata, "post_commit_boundary", default=false)
+    ) {
+    let commit_sha = mooncode_json_string(metadata, "commit_sha", default="")
+      .trim()
+      .to_owned()
+    if commit_sha == "" {
+      return []
+    }
+    return mooncode_json_array_string_items(metadata, "changed_paths")
+      .filter(path => path != "")
+      .map(path => {
+        "path": path,
+        "before": "uncommitted",
+        "after": "commit:\{commit_sha}",
+      })
+  }
+  let files = mooncode_json_array_items(metadata, "files")
+  let candidates = if files.is_empty() { [metadata] } else { files }
+  let states : Array[Json] = []
+  for candidate in candidates {
+    if !mooncode_json_bool(candidate, "changed", default=false) {
+      continue
+    }
+    let path = mooncode_json_string(
+      candidate,
+      "file_path",
+      default=mooncode_json_string(candidate, "path", default=""),
+    )
+    let before = mooncode_json_string(
+      candidate,
+      "before_fingerprint",
+      default="",
+    )
+    let after = mooncode_json_string(candidate, "after_fingerprint", default="")
+    if path != "" && before != "" && after != "" {
+      states.push({ "path": path, "before": before, "after": after })
+    }
+  }
+  states
+}
+
+///|
+fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
+  if !mooncode_json_bool(result, "accepted", default=false) {
+    return ""
+  }
+  let tool = mooncode_json_string(result, "tool", default="")
+  let metadata = mooncode_json_object_field_or_empty(
+    mooncode_runtime_turn_result_payload(result),
+    "metadata",
+  )
+  if metadata is Object(fields) &&
+    fields.get("exit_code") is Some(exit_code) &&
+    exit_code != Json(0) {
+    return ""
+  }
+  if tool == "moon_check" {
+    return "check"
+  }
+  if tool == "moon_cmd" {
+    let command = mooncode_json_string(
+      mooncode_json_object_field_or_empty(result, "arguments"),
+      "command",
+      default="",
+    )
+    if command == "check" || command == "test" || command == "build" {
+      return command
+    }
+    return ""
+  }
+  if tool == "shell" {
+    let arguments = mooncode_json_object_field_or_empty(result, "arguments")
+    let claimed = mooncode_json_string(
+      arguments,
+      "verification_kind",
+      default="",
+    )
+    if @mooncode_tools.shell_verifies_kind(
+        mooncode_json_string(arguments, "cmd", default=""),
+        claimed,
+      ) {
+      return claimed
+    }
+    return ""
+  }
+  if tool == "apply_patch" || tool == "revert_patch" {
+    let tool_result = mooncode_json_object_field_or_empty(result, "result")
+    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
+    let verification = mooncode_json_object_field_or_empty(
+      metadata, "verification",
+    )
+    if mooncode_json_bool(verification, "ok", default=false) {
+      return "patch-verification"
+    }
+  }
+  ""
+}
+
+///|
+fn mooncode_runtime_turn_completion_verdict_json(
+  verdict : MoonCodeCompletionVerdict,
+) -> Json {
+  {
+    "kind": "mooncode-coding-completion-verdict",
+    "accepted": verdict.accepted,
+    "reason": verdict.reason,
+  }
+}
+
+///|
+fn mooncode_runtime_turn_recoverable_horizon_finish(
+  command : Json,
+  plan : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> Bool {
+  if mooncode_json_string(plan, "planner_mode", default="") !=
+    mooncode_planner_mode_model_tool_calls() ||
+    !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+    return false
+  }
+  !mooncode_runtime_turn_completion_verdict(command, tool_results).accepted
+}
+
+///|
+fn mooncode_runtime_turn_horizon_finish_rejection_message(
+  command : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> String {
+  if !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+    return ""
+  }
+  let verdict = mooncode_runtime_turn_completion_verdict(command, tool_results)
+  if verdict.accepted {
+    ""
+  } else {
+    "Completion was rejected by the durable task contract: \{verdict.reason}. Continue the same task from the retained evidence. Resolve the gap, then call finish again when the deliverable is ready."
+  }
+}
+
+///|
+/// The agent owns semantic delivery. Runtime completion checks explicit task
+/// requirements, not prompt vocabulary or quotas of successful tool actions.
+fn mooncode_runtime_turn_completion_verdict(
+  command : Json,
+  results : Array[Json],
+) -> MoonCodeCompletionVerdict {
+  guard results.last() is Some(finish) else {
+    return { accepted: false, reason: "no MoonCode tool result was recorded", }
+  }
+  if mooncode_json_string(finish, "tool", default="") != "finish" ||
+    !mooncode_json_bool(finish, "accepted", default=false) {
+    return {
+      accepted: false,
+      reason: mooncode_json_string(
+        mooncode_runtime_turn_result_payload(finish),
+        "message",
+        default="the final MoonCode tool result is not an accepted finish",
+      ),
+    }
+  }
+  let action = mooncode_json_string(command, "command", default="prompt")
+  if action != "prompt" &&
+    action != "steer" &&
+    results.any(result => !mooncode_json_bool(result, "accepted", default=false)) {
+    return {
+      accepted: false,
+      reason: "the requested command did not execute successfully",
+    }
+  }
+  let checks = mooncode_json_array_items(
+    mooncode_runtime_horizon_task_contract(command),
+    "required_checks",
+  )
+  if mooncode_runtime_required_check_evidence(command, results).length() !=
+    checks.length() {
+    return {
+      accepted: false,
+      reason: "required checks need successful current execution receipts",
+    }
+  }
+  {
+    accepted: true,
+    reason: "the final finish satisfies the explicit task contract",
+  }
+}

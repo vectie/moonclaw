@@ -12,20 +12,17 @@ fn mooncode_test_model_tool_names(
 }
 
 ///|
-test "coding tasks share one catalog regardless of task language or planning words" {
+test "default tasks share one catalog regardless of language or inferred purpose" {
   let expected = mooncode_test_model_tool_names(
     mooncode_runtime_turn_model_tools(),
   ).filter(name => name != "spawn_workers" && name != "wait_workers")
   for
     text in [
       "Fix the parser and run tests.", "Refactor the MoonBit package.", "Fix the web UI and inspect screenshots.",
-      "修复解析器并验证结果", "Choose a plan, then implement it.",
+      "修复解析器并验证结果", "Choose a plan, then implement it.", "Explain the word fix",
+      "请解释 fix 的含义", "Review the implementation without editing", "Reply briefly",
     ] {
-    let command : Json = {
-      "command": "prompt",
-      "text": text,
-      "payload": { "task_intent": "workspace_change" },
-    }
+    let command : Json = { "command": "prompt", "text": text }
     let names = mooncode_test_model_tool_names(
       mooncode_runtime_turn_model_tools_for_command(command),
     )

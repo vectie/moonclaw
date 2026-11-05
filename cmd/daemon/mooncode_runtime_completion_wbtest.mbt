@@ -90,7 +90,6 @@ test "negative steering revises context without triggering a mutation heuristic"
     "command_id": "correction",
     "steering_text": "Do not execute the prior mutation.",
   })
-  assert_false(mooncode_runtime_turn_requires_verification(revised))
   assert_eq(
     mooncode_json_array_items(
       mooncode_runtime_horizon_contract(revised),
@@ -427,7 +426,7 @@ async test "restart before planning or after a read intent resumes without anoth
 }
 
 ///|
-test "recovered observation failures do not invalidate successful required checks" {
+test "optional observation failures do not require a manufactured recovery action" {
   let command = completion_test_command()
   let evidence = completion_test_evidence()
   let failed_read : Json = {
@@ -437,7 +436,7 @@ test "recovered observation failures do not invalidate successful required check
     "result": { "ok": false },
   }
   let finish = completion_test_finish()
-  assert_false(
+  assert_true(
     mooncode_runtime_turn_completion_verdict(
       command,
       evidence + [failed_read, finish],

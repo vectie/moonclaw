@@ -233,13 +233,6 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
     assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(suffix)), suffix)
   }
 
-  let horizon = mooncode_runtime_horizon_compact_request({
-    "command": "prompt",
-    "text": "a".repeat(11999) + unicode.repeat(100),
-  })
-  assert_true(horizon.contains("Request truncated"))
-  assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(horizon)), horizon)
-
   let resumed = mooncode_stream_resume_safe_text(
     "a".repeat(11999) + unicode.repeat(100),
   )

@@ -305,12 +305,6 @@ async fn mooncode_journal_scan_append_state(
 
 ///|
 #warnings("-unused_value")
-fn mooncode_journal_append_cache_clear() -> Unit {
-  mooncode_journal_append_states.clear()
-}
-
-///|
-#warnings("-unused_value")
 fn mooncode_journal_append_scan_count_reset(path : String) -> Unit {
   mooncode_journal_append_scan_counts[path] = 0
 }

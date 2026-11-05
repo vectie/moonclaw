@@ -46,13 +46,10 @@ fn mooncode_runtime_parallel_read_identity(
 ///|
 /// A model-authored batch may run concurrently only when every call has one
 /// explicit, executable read effect and all ordinary runtime guards agree.
-async fn mooncode_runtime_turn_parallel_read_batch_allowed(
-  command : Json,
+fn mooncode_runtime_turn_parallel_read_batch_allowed(
   book_root : String,
   plan : Json,
   tool_calls : Array[Json],
-  prior_results : Array[Json],
-  active_model_messages : Array[Json],
   resuming_step~ : Bool,
 ) -> Bool {
   if resuming_step ||
@@ -68,12 +65,7 @@ async fn mooncode_runtime_turn_parallel_read_batch_allowed(
       !mooncode_tool_supported(
         mooncode_json_string(tool_call, "tool", default=""),
       ) ||
-      mooncode_runtime_tool_requires_approval(tool_call) ||
-      mooncode_runtime_turn_repeats_complete_read(
-        tool_call,
-        prior_results,
-        active_model_messages~,
-      ) {
+      mooncode_runtime_tool_requires_approval(tool_call) {
       return false
     }
     let identity = mooncode_runtime_parallel_read_identity(book_root, tool_call)

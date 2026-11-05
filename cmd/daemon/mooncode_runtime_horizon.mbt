@@ -59,40 +59,6 @@ fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
 }
 
 ///|
-const MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS : Int32 = 12000
-
-///|
-fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
-  let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
-  let markers = [
-    "\nFull authoritative plan follows:", "\nAuthoritative plan follows:", "\nComplete authoritative plan follows:",
-    "\nFull execution log follows:",
-  ]
-  let mut end = request.length()
-  for marker in markers {
-    match request.find(marker) {
-      Some(index) => if index < end { end = index }
-      None => ()
-    }
-  }
-  let compact = if end < request.length() {
-    request[:end].to_owned() +
-    "\n[Reference appendix omitted from repeated planner context.]"
-  } else {
-    request
-  }
-  if compact.length() > MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS {
-    mooncode_utf8_prefix_within(
-      compact,
-      MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS,
-    ) +
-    "\n[Request truncated to the executable task contract.]"
-  } else {
-    compact
-  }
-}
-
-///|
 fn mooncode_runtime_horizon_contract(command : Json) -> Json {
   let supplied = mooncode_runtime_horizon_task_contract(command)
   {
@@ -110,7 +76,7 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
     "objective": mooncode_json_string(
       supplied,
       "objective",
-      default=mooncode_runtime_horizon_compact_request(command),
+      default=mooncode_runtime_turn_prompt_text(command),
     ),
     "constraints": Json::array(
       mooncode_json_array_items(supplied, "constraints"),
@@ -124,14 +90,6 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
       mooncode_json_array_items(supplied, "context_paths"),
     ),
   }
-}
-
-///|
-fn mooncode_runtime_horizon_contract_prompt(command : Json) -> String {
-  if !mooncode_runtime_turn_requires_verification(command) {
-    return ""
-  }
-  "Durable task contract: \{mooncode_runtime_horizon_contract(command).stringify()}\n"
 }
 
 ///|
@@ -389,4 +347,14 @@ fn mooncode_runtime_horizon_progress_message(
     EnvironmentContext,
     "environment.horizon_progress",
   )
+}
+
+///|
+fn mooncode_runtime_turn_task_intent(command : Json) -> String? {
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  match mooncode_json_string(payload, "task_intent", default="") {
+    "workspace_change" => Some("workspace_change")
+    "read_only" => Some("read_only")
+    _ => None
+  }
 }

@@ -657,7 +657,7 @@ async test "worker handback bounds answers and canonical references without dere
 }
 
 ///|
-async test "worker successful native artifact without finish keeps empty answer and real references" {
+async test "worker partial artifact without finish remains incomplete with real references" {
   @fsx.with_temporary_directory("worker-results-no-answer-XXXXXX", async fn(
     root,
   ) {
@@ -689,7 +689,7 @@ async test "worker successful native artifact without finish keeps empty answer 
     assert_true(mooncode_json_bool(metadata, "ready", default=false))
     let worker = mooncode_json_array_items(metadata, "workers")[0]
     assert_true(mooncode_json_bool(worker, "terminal", default=false))
-    assert_true(mooncode_json_bool(worker, "successful", default=false))
+    assert_false(mooncode_json_bool(worker, "successful", default=true))
     let result = mooncode_json_object_field_or_empty(worker, "result")
     assert_eq(mooncode_json_string(result, "answer", default="missing"), "")
     assert_true(

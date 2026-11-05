@@ -157,13 +157,6 @@ async test "combined review worker returns useful finish without a mutation" {
       "child-command-review",
     )
     assert_eq(mooncode_runtime_turn_task_intent(command), Some("read_only"))
-    assert_false(
-      mooncode_runtime_turn_model_needs_coding_tools(
-        command,
-        mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
-      ),
-    )
-    assert_false(mooncode_runtime_turn_requires_verification(command))
     @fsx.make_directory(child_root)
     mooncode_worker_test_append(
       parent_root,

@@ -4,16 +4,15 @@ fn mooncode_context_test_kind(message : Json) -> String {
 }
 
 ///|
-test "mooncode context provenance covers initial system skill and user fragments" {
+test "mooncode context provenance covers initial instructions and user task" {
   let command : Json = {
     "command": "prompt",
     "text": "Inspect README.md and explain it.",
   }
   let messages = mooncode_runtime_turn_model_initial_messages(command)
-  assert_eq(messages.length(), 3)
+  assert_eq(messages.length(), 2)
   assert_eq(mooncode_context_test_kind(messages[0]), "system")
-  assert_eq(mooncode_context_test_kind(messages[1]), "skill")
-  assert_eq(mooncode_context_test_kind(messages[2]), "user")
+  assert_eq(mooncode_context_test_kind(messages[1]), "user")
   let request = mooncode_runtime_turn_model_plan_request_from_messages(
     "test-model",
     messages,

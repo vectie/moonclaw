@@ -535,31 +535,12 @@ fn mooncode_runtime_turn_model_tools_for_command(
   if !allowed.is_empty() {
     return tools
   }
-  let request = mooncode_runtime_turn_prompt_text(command)
-    .to_lower()
-    .to_string()
-  let path = mooncode_runtime_turn_prompt_path(
-    mooncode_runtime_turn_prompt_text(command),
-  )
-  // Implementation intent takes precedence over incidental analysis words.
-  // Prompts such as "implement ...; do not merely explain" must retain the
-  // complete coding toolset even when they also name a source path.
-  if mooncode_runtime_turn_model_needs_coding_tools(command, request) {
-    return tools
-  }
   if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
     return mooncode_runtime_turn_select_model_tools(tools, [
       "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
     ])
   }
-  if path != "" && mooncode_runtime_turn_read_needs_model(request) {
-    return mooncode_runtime_turn_select_model_tools(tools, [
-      "read", "finish", "read_skill", "mcp_list_tools", "mcp_call_tool",
-    ])
-  }
-  mooncode_runtime_turn_select_model_tools(tools, [
-    "finish", "read_skill", "mcp_list_tools", "mcp_call_tool",
-  ])
+  tools
 }
 
 ///|
@@ -574,475 +555,6 @@ fn mooncode_runtime_turn_select_model_tools(
     )
     names.contains(mooncode_json_string(function, "name", default=""))
   })
-}
-
-///|
-fn mooncode_runtime_turn_requests_tests(request : String) -> Bool {
-  let mentions_test = mooncode_runtime_turn_request_has_word(request, "test") ||
-    mooncode_runtime_turn_request_has_word(request, "tests") ||
-    mooncode_runtime_turn_request_has_word(request, "testing")
-  request.has_prefix("test ") ||
-  request.has_prefix("please test ") ||
-  request.contains(" run test") ||
-  request.contains(" run the test") ||
-  request.contains(" write test") ||
-  request.contains(" add test") ||
-  request.contains(" update test") ||
-  request.contains(" fix test") ||
-  request.contains(" test the ") ||
-  request.contains(" test this ") ||
-  request.contains("tests pass") ||
-  (
-    mentions_test &&
-    (
-      request.contains("run ") ||
-      request.contains("add ") ||
-      request.contains("write ") ||
-      request.contains("update ") ||
-      request.contains("fix ") ||
-      request.contains("execute ") ||
-      request.contains("verify ")
-    )
-  )
-}
-
-///|
-fn mooncode_runtime_turn_request_has_word(
-  request : String,
-  word : String,
-) -> Bool {
-  for raw in request.split(" ") {
-    let token = raw.trim(chars="`'\".,:;!?()[]{}<>").to_owned()
-    if token == word {
-      return true
-    }
-  }
-  false
-}
-
-///|
-priv struct MoonCodeCompletionVerdict {
-  accepted : Bool
-  reason : String
-}
-
-///|
-fn mooncode_runtime_turn_requires_verification(command : Json) -> Bool {
-  match mooncode_runtime_turn_task_intent(command) {
-    Some("workspace_change") => return true
-    Some("read_only") => return false
-    _ => ()
-  }
-  let action = mooncode_json_string(command, "command", default="prompt")
-  if action == "package" || action == "apply_patch" || action == "revert_patch" {
-    return true
-  }
-  if action != "prompt" && action != "steer" {
-    return false
-  }
-  let source_request = mooncode_runtime_turn_prompt_text(command)
-    .to_lower()
-    .to_string()
-  let request = mooncode_runtime_turn_affirmative_request(source_request)
-  let source_change = source_request.contains(".mbt") ||
-    source_request.contains(".js") ||
-    source_request.contains(".ts") ||
-    source_request.contains(".sh") ||
-    mooncode_runtime_turn_request_has_word(request, "code") ||
-    mooncode_runtime_turn_request_has_word(request, "script") ||
-    mooncode_runtime_turn_request_has_word(request, "app") ||
-    mooncode_runtime_turn_request_has_word(request, "site")
-  mooncode_runtime_turn_request_has_word(request, "implement") ||
-  mooncode_runtime_turn_request_has_word(request, "fix") ||
-  mooncode_runtime_turn_request_has_word(request, "debug") ||
-  mooncode_runtime_turn_request_has_word(request, "refactor") ||
-  mooncode_runtime_turn_request_has_word(request, "build") ||
-  mooncode_runtime_turn_requests_tests(request) ||
-  (
-    source_change &&
-    (
-      mooncode_runtime_turn_request_has_word(request, "edit") ||
-      mooncode_runtime_turn_request_has_word(request, "modify") ||
-      mooncode_runtime_turn_request_has_word(request, "change") ||
-      mooncode_runtime_turn_request_has_word(request, "update") ||
-      mooncode_runtime_turn_request_has_word(request, "write") ||
-      mooncode_runtime_turn_request_has_word(request, "create")
-    )
-  )
-}
-
-///|
-fn mooncode_runtime_turn_completion_gate_applies(
-  command : Json,
-  used_model_planner : Bool,
-) -> Bool {
-  used_model_planner || mooncode_runtime_turn_requires_verification(command)
-}
-
-///|
-fn mooncode_runtime_turn_result_payload(result : Json) -> Json {
-  let direct = mooncode_json_object_field_or_empty(result, "result")
-  match direct {
-    Object(fields) if !fields.is_empty() => direct
-    _ => mooncode_json_object_field_or_empty(result, "tool_result")
-  }
-}
-
-///|
-fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
-  let payload = mooncode_runtime_turn_result_payload(result)
-  let tool = mooncode_json_string(result, "tool", default="")
-  let accepted = mooncode_json_bool(
-    result,
-    "accepted",
-    default=tool == "shell" &&
-      mooncode_json_string(result, "kind", default="") == "tool_result" &&
-      mooncode_json_string(result, "status", default="") == "done" &&
-      mooncode_json_bool(payload, "ok", default=false),
-  )
-  if !accepted {
-    return false
-  }
-  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
-  tool == "write" ||
-  tool == "edit" ||
-  tool == "apply_patch" ||
-  tool == "revert_patch" ||
-  (
-    tool == "commit" &&
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(
-        mooncode_json_object_field_or_empty(result, "result"),
-        "metadata",
-      ),
-      "evidence_kind",
-      default="",
-    ) ==
-    "runtime.commit_created"
-  ) ||
-  (
-    tool == "shell" &&
-    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
-    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
-    mooncode_json_string(metadata, "commit_sha", default="") != "" &&
-    !mooncode_json_array_string_items(metadata, "changed_paths").is_empty()
-  )
-}
-
-///|
-fn mooncode_runtime_turn_result_is_commit_boundary(result : Json) -> Bool {
-  let payload = mooncode_runtime_turn_result_payload(result)
-  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
-  let tool = mooncode_json_string(result, "tool", default="")
-  (
-    tool == "commit" &&
-    mooncode_json_string(metadata, "evidence_kind", default="") ==
-    "runtime.commit_created"
-  ) ||
-  (
-    tool == "shell" &&
-    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
-    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
-    mooncode_json_string(metadata, "commit_sha", default="") != ""
-  )
-}
-
-///|
-fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
-  if !mooncode_runtime_turn_result_is_mutation(result) {
-    return []
-  }
-  let metadata = mooncode_json_object_field_or_empty(
-    mooncode_runtime_turn_result_payload(result),
-    "metadata",
-  )
-  let tool = mooncode_json_string(result, "tool", default="")
-  if tool == "commit" ||
-    (
-      tool == "shell" &&
-      mooncode_json_bool(metadata, "post_commit_boundary", default=false)
-    ) {
-    let commit_sha = mooncode_json_string(metadata, "commit_sha", default="")
-      .trim()
-      .to_owned()
-    if commit_sha == "" {
-      return []
-    }
-    return mooncode_json_array_string_items(metadata, "changed_paths")
-      .filter(path => path != "")
-      .map(path => {
-        "path": path,
-        "before": "uncommitted",
-        "after": "commit:\{commit_sha}",
-      })
-  }
-  let files = mooncode_json_array_items(metadata, "files")
-  let candidates = if files.is_empty() { [metadata] } else { files }
-  let states : Array[Json] = []
-  for candidate in candidates {
-    if !mooncode_json_bool(candidate, "changed", default=false) {
-      continue
-    }
-    let path = mooncode_json_string(
-      candidate,
-      "file_path",
-      default=mooncode_json_string(candidate, "path", default=""),
-    )
-    let before = mooncode_json_string(
-      candidate,
-      "before_fingerprint",
-      default="",
-    )
-    let after = mooncode_json_string(candidate, "after_fingerprint", default="")
-    if path != "" && before != "" && after != "" {
-      states.push({ "path": path, "before": before, "after": after })
-    }
-  }
-  states
-}
-
-///|
-fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
-  if !mooncode_json_bool(result, "accepted", default=false) {
-    return ""
-  }
-  let tool = mooncode_json_string(result, "tool", default="")
-  let metadata = mooncode_json_object_field_or_empty(
-    mooncode_runtime_turn_result_payload(result),
-    "metadata",
-  )
-  if metadata is Object(fields) &&
-    fields.get("exit_code") is Some(exit_code) &&
-    exit_code != Json(0) {
-    return ""
-  }
-  if tool == "moon_check" {
-    return "check"
-  }
-  if tool == "moon_cmd" {
-    let command = mooncode_json_string(
-      mooncode_json_object_field_or_empty(result, "arguments"),
-      "command",
-      default="",
-    )
-    if command == "check" || command == "test" || command == "build" {
-      return command
-    }
-    return ""
-  }
-  if tool == "shell" {
-    let arguments = mooncode_json_object_field_or_empty(result, "arguments")
-    let claimed = mooncode_json_string(
-      arguments,
-      "verification_kind",
-      default="",
-    )
-    if @mooncode_tools.shell_verifies_kind(
-        mooncode_json_string(arguments, "cmd", default=""),
-        claimed,
-      ) {
-      return claimed
-    }
-    return ""
-  }
-  if tool == "apply_patch" || tool == "revert_patch" {
-    let tool_result = mooncode_json_object_field_or_empty(result, "result")
-    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
-    let verification = mooncode_json_object_field_or_empty(
-      metadata, "verification",
-    )
-    if mooncode_json_bool(verification, "ok", default=false) {
-      return "patch-verification"
-    }
-  }
-  ""
-}
-
-///|
-fn mooncode_runtime_turn_completion_verdict_json(
-  verdict : MoonCodeCompletionVerdict,
-) -> Json {
-  {
-    "kind": "mooncode-coding-completion-verdict",
-    "accepted": verdict.accepted,
-    "reason": verdict.reason,
-  }
-}
-
-///|
-/// Coding completion requires an accepted net mutation followed by successful
-/// verification. If tests were requested, a successful typed test command is
-/// required. A verified patch may prove its own mutation at the same index.
-fn mooncode_runtime_turn_completion_verdict(
-  command : Json,
-  results : Array[Json],
-) -> MoonCodeCompletionVerdict {
-  if results.is_empty() {
-    return { accepted: false, reason: "no MoonCode tool result was recorded", }
-  }
-  let final_result = results[results.length() - 1]
-  if mooncode_json_string(final_result, "tool", default="") != "finish" ||
-    !mooncode_json_bool(final_result, "accepted", default=false) {
-    return {
-      accepted: false,
-      reason: "the final MoonCode tool result is not an accepted finish",
-    }
-  }
-  let checks = mooncode_json_array_items(
-    mooncode_runtime_horizon_task_contract(command),
-    "required_checks",
-  )
-  if mooncode_runtime_required_check_evidence(command, results).length() !=
-    checks.length() {
-    return {
-      accepted: false,
-      reason: "required checks need successful current execution receipts",
-    }
-  }
-  let request = mooncode_runtime_turn_prompt_text(command)
-    .to_lower()
-    .to_string()
-  let requires_verification = mooncode_runtime_turn_requires_verification(
-    command,
-  )
-  let requires_tests = mooncode_runtime_turn_requests_tests(request)
-  let mut last_mutation = -1
-  let mut last_verification = -1
-  let mut last_test = -1
-  let mut last_failure = -1
-  let mut coding_evidence = false
-  let mut operator_rejected = false
-  for index, result in results {
-    let tool = mooncode_json_string(result, "tool", default="")
-    let accepted = mooncode_json_bool(result, "accepted", default=false)
-    if mooncode_json_string(result, "approval_state", default="") == "rejected" {
-      operator_rejected = true
-      last_failure = index
-    } else if !accepted && tool != "finish" && tool != "checkpoint" {
-      last_failure = index
-    } else if tool != "finish" {
-      coding_evidence = coding_evidence ||
-        tool == "write" ||
-        tool == "edit" ||
-        tool == "apply_patch" ||
-        tool == "revert_patch" ||
-        tool == "shell" ||
-        tool == "moon_cmd" ||
-        tool == "moon_check"
-    }
-    if mooncode_runtime_turn_result_is_mutation(result) {
-      // Recording a clean commit does not change the source tree that
-      // earlier checks exercised. It remains mutation evidence, but it must
-      // not invalidate successful verification of that same tree.
-      if !mooncode_runtime_turn_result_is_commit_boundary(result) {
-        last_mutation = index
-      }
-    }
-    let verification = mooncode_runtime_turn_result_verification_kind(result)
-    if verification != "" {
-      last_verification = index
-      if verification == "test" {
-        last_test = index
-      }
-    }
-  }
-  if last_failure >= 0 &&
-    !results[last_failure + 1:].any(result => {
-      mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") != "finish"
-    }) {
-    return {
-      accepted: false,
-      reason: "the last failed tool has no successful recovery evidence",
-    }
-  }
-  if requires_verification {
-    let required_verification = if requires_tests {
-      last_test
-    } else {
-      last_verification
-    }
-    if required_verification < 0 || required_verification < last_mutation {
-      return {
-        accepted: false,
-        reason: if requires_tests {
-          "coding completion has no successful typed test after the final mutation"
-        } else {
-          "coding completion has no successful verification after the final mutation"
-        },
-      }
-    }
-    if required_verification < mooncode_runtime_verification_boundary(results) {
-      return {
-        accepted: false,
-        reason: if requires_tests {
-          "coding completion has no successful typed test after the last failed check"
-        } else {
-          "coding completion has no successful verification after the last failed check"
-        },
-      }
-    }
-    return {
-      accepted: true,
-      reason: if requires_tests {
-        "coding completion has successful current typed test evidence"
-      } else {
-        "coding completion has successful current verification"
-      },
-    }
-  }
-  if mooncode_runtime_turn_model_needs_coding_tools(command, request) &&
-    !coding_evidence &&
-    !operator_rejected {
-    return {
-      accepted: false,
-      reason: "the coding request has no accepted coding-tool evidence",
-    }
-  }
-  {
-    accepted: true,
-    reason: "the final finish follows accepted non-verification work",
-  }
-}
-
-///|
-fn mooncode_runtime_turn_model_execution_accepted(
-  command : Json,
-  results : Array[Json],
-) -> Bool {
-  mooncode_runtime_turn_completion_verdict(command, results).accepted
-}
-
-///|
-fn mooncode_runtime_turn_recoverable_horizon_finish(
-  command : Json,
-  plan : Json,
-  tool_calls : Array[Json],
-  tool_results : Array[Json],
-) -> Bool {
-  if mooncode_json_string(plan, "planner_mode", default="") !=
-    mooncode_planner_mode_model_tool_calls() ||
-    !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
-    return false
-  }
-  !mooncode_runtime_turn_completion_verdict(command, tool_results).accepted
-}
-
-///|
-fn mooncode_runtime_turn_horizon_finish_rejection_message(
-  command : Json,
-  tool_calls : Array[Json],
-  tool_results : Array[Json],
-) -> String {
-  if !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
-    return ""
-  }
-  let verdict = mooncode_runtime_turn_completion_verdict(command, tool_results)
-  if verdict.accepted {
-    ""
-  } else {
-    "Completion was rejected by the durable task contract: \{verdict.reason}. Continue the same task from the retained evidence. Resolve the gap, then call finish again when the deliverable is ready."
-  }
 }
 
 ///|
@@ -1068,11 +580,6 @@ fn mooncode_runtime_turn_model_uses_patient_transport(
 }
 
 ///|
-fn mooncode_runtime_turn_dynamic_skill_gate_message() -> String {
-  "Dynamic skill gate: the user's wording may omit the implementation language. As soon as repository evidence shows .mbt files or a MoonBit command is needed, call read_skill for moonbit-agent-guide when available, read it completely, and follow it before the next MoonBit mutation or command. If accepted read_skill evidence or a loaded-skill receipt for that guide already exists in this preserved command, the gate is already satisfied: continue following it and do not reload it or search filesystem paths. A missing or empty filesystem result cannot invalidate the receipt. Installed skill resources are accessible only through read_skill, never through read, shell, glob, grep, find, ls, or web tools. For MoonTown, treat the application as MoonBit plus Rabbita once those artifacts are discovered."
-}
-
-///|
 fn mooncode_runtime_turn_model_initial_messages(
   command : Json,
   skill_catalog~ : String = "",
@@ -1086,14 +593,6 @@ fn mooncode_runtime_turn_model_initial_messages(
       },
       SystemContext,
       "planner.system",
-    ),
-    mooncode_runtime_context_message(
-      {
-        "role": "system",
-        "content": mooncode_runtime_turn_dynamic_skill_gate_message(),
-      },
-      SkillContext,
-      "skill.dynamic_gate",
     ),
     mooncode_runtime_context_text_message(
       "user",
@@ -1190,15 +689,7 @@ fn mooncode_runtime_turn_model_followup_base_messages(
         "user.content_parts" {
         continue
       }
-      if content.has_prefix("Dynamic skill gate:") {
-        messages.push(
-          mooncode_json_object_with_field(
-            message,
-            "content",
-            Json::string(mooncode_runtime_turn_dynamic_skill_gate_message()),
-          ),
-        )
-      } else if !content.has_prefix("Loaded-skill receipt:") {
+      if !content.has_prefix("Loaded-skill receipt:") {
         messages.push(message)
       }
     }
@@ -1517,7 +1008,14 @@ fn mooncode_runtime_turn_model_messages(
 ///|
 fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   let action = mooncode_json_string(command, "command", default="prompt")
-  let request = mooncode_runtime_horizon_compact_request(command)
+  let request = mooncode_runtime_turn_prompt_text(command)
+  let task = mooncode_runtime_horizon_contract(command)
+  let original = if request != "" &&
+    mooncode_json_string(task, "objective", default="") != request {
+    "\nUser request: " + request
+  } else {
+    ""
+  }
   let context_path = mooncode_json_string(command, "context_path", default="")
   let deferred = mooncode_json_array_items(command, "deferred_steering")
   let context = if context_path == "" {
@@ -1544,8 +1042,10 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
     "\nGoverned active capability resolution: " + active_capability.stringify()
   }
   "Action: \{action}\n" +
-  "User request: \{request}\n" +
-  mooncode_runtime_horizon_contract_prompt(command) +
+  "Current task: " +
+  task.stringify() +
+  original +
+  "\n" +
   context +
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
@@ -2062,7 +1562,7 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
         "successful_inspections": Json::array(successful_inspections),
         "failed_tool_calls": Json::array(failed_calls),
       }).stringify(indent=2) +
-      "\n`successful_read_paths` includes complete and partial observations; `complete_read_paths` identifies paths whose full bytes remain in the transcript. `successful_inspections` is a compact durable receipt for successful shell observations whose raw output may be reduced by provider-overload transport shaping. Treat its command, output digest, and excerpt as retained evidence: do not repeat the same or an equivalent directory, status, or inventory inspection merely because older raw output was compacted. Use a causally targeted read of an exact relevant file only when a specific fact is still missing. Do not completely reread a retained complete path merely to recover context. A causally targeted narrow reread remains appropriate after a compiler or patch error, as does a fresh read after mutation or truncation. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
+      "\nThese receipts describe prior observations; they do not guarantee that full bytes remain in current context or that files are unchanged. Reuse applicable evidence and inspect current sources when needed. Read tool errors, diagnose failures and choose the next action. Retry transient failures when appropriate; observations and retries do not require a source edit.",
     },
     EnvironmentContext,
     "environment.evidence_ledger",
@@ -2167,59 +1667,15 @@ async fn mooncode_runtime_turn_model_followup_messages(
       ),
     )
   }
-  let skill_receipts = mooncode_runtime_turn_loaded_skill_receipt_messages(
-    all_tool_results,
-  )
-  if mooncode_runtime_turn_requires_verification(command) {
-    // Keep the immutable contract after the assistant/tool suffix. Long-lived
-    // provider context is weighted toward recent messages; placing recovery
-    // guidance before a stale failed checkpoint allowed the stale explanation
-    // to override the authoritative contract after compaction.
-    let progress = mooncode_runtime_context_normalize_message(
+  messages.push(
+    mooncode_runtime_context_normalize_message(
       mooncode_runtime_horizon_progress_message(
         command, all_tool_results, remaining_steps,
       ),
       fallback_kind=EnvironmentContext,
       fallback_source="environment.horizon_progress",
-    )
-    if skill_receipts.length() == 0 {
-      messages.push(
-        mooncode_runtime_context_normalize_message(
-          progress,
-          fallback_kind=EnvironmentContext,
-          fallback_source="environment.horizon_progress",
-        ),
-      )
-    } else {
-      let content = StringBuilder()
-      content.write_string(
-        mooncode_json_string(progress, "content", default=""),
-      )
-      for receipt in skill_receipts {
-        content.write_string("\n\n")
-        content.write_string(
-          mooncode_json_string(receipt, "content", default=""),
-        )
-      }
-      messages.push(
-        mooncode_json_object_with_field(
-          progress,
-          "content",
-          Json::string(content.to_string()),
-        ),
-      )
-    }
-  } else {
-    for receipt in skill_receipts {
-      messages.push(
-        mooncode_runtime_context_normalize_message(
-          receipt,
-          fallback_kind=SkillContext,
-          fallback_source="skill.loaded_receipt",
-        ),
-      )
-    }
-  }
+    ),
+  )
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
   }
@@ -2494,131 +1950,6 @@ fn mooncode_runtime_turn_model_live_steering_message(steering : Json) -> Json {
     "Live steering for this active turn from command `\{command_id}`:\n\{text}\nApply this instruction before choosing the next MoonCode tool batch. Treat exact file and directory paths in this steering as authoritative; do not substitute guessed paths.",
     UserContext,
     "user.live_steering",
-  )
-}
-
-///|
-fn mooncode_runtime_turn_failed_mutation_path(results : Array[Json]) -> String {
-  if results.length() == 0 {
-    return ""
-  }
-  let result = results[results.length() - 1]
-  if mooncode_json_bool(result, "accepted", default=false) {
-    return ""
-  }
-  let tool = mooncode_json_string(result, "tool", default="")
-  if tool != "edit" &&
-    tool != "apply_patch" &&
-    tool != "write" &&
-    tool != "revert_patch" {
-    return ""
-  }
-  let arguments = mooncode_json_object_field_or_empty(result, "arguments")
-  let direct = mooncode_json_string(arguments, "path", default="")
-  if mooncode_runtime_turn_mutation_file_path(direct) {
-    return direct
-  }
-  if tool == "apply_patch" || tool == "revert_patch" {
-    let diff_path = mooncode_tool_patch_path_from_diff(
-      mooncode_json_string(arguments, "diff", default=""),
-    )
-    if mooncode_runtime_turn_mutation_file_path(diff_path) {
-      return diff_path
-    }
-  }
-  let metadata_path = mooncode_json_string(
-    mooncode_json_object_field_or_empty(
-      mooncode_json_object_field_or_empty(result, "result"),
-      "metadata",
-    ),
-    "path",
-    default="",
-  )
-  if mooncode_runtime_turn_mutation_file_path(metadata_path) {
-    metadata_path
-  } else {
-    ""
-  }
-}
-
-///|
-fn mooncode_runtime_turn_mutation_file_path(path : String) -> Bool {
-  path != "" && path != "." && !path.has_suffix("/")
-}
-
-///|
-fn mooncode_runtime_turn_plan_reads_path(plan : Json, path : String) -> Bool {
-  mooncode_json_array_items(plan, "tool_calls").any(call => {
-    mooncode_json_string(call, "tool", default="") == "read" &&
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(call, "arguments"),
-      "path",
-      default="",
-    ) ==
-    path
-  })
-}
-
-///|
-fn mooncode_runtime_turn_recovery_plan(
-  plan : Json,
-  results : Array[Json],
-) -> Json {
-  let path = mooncode_runtime_turn_failed_mutation_path(results)
-  if path == "" || mooncode_runtime_turn_plan_reads_path(plan, path) {
-    return plan
-  }
-  // Content-based mutation tools fail closed when their assumed source text is
-  // stale. Force one exact read before allowing the model to plan another
-  // mutation so retries can use current source instead of guessed hunks.
-  let original_calls = mooncode_json_array_items(plan, "tool_calls")
-  let original_id = if original_calls.length() == 0 {
-    ""
-  } else {
-    mooncode_json_string(original_calls[0], "tool_call_id", default="")
-  }
-  let tool_call_id = if original_id == "" {
-    "mooncode-recovery-read-\{results.length()}"
-  } else {
-    original_id
-  }
-  let arguments : Json = {
-    "path": path,
-    "max_output_chars": MOONCODE_MUTATION_RECOVERY_READ_CHARS,
-    "mooncode_large_output_enabled": true,
-  }
-  let calls : Array[Json] = [
-    {
-      "tool": "read",
-      "arguments": arguments,
-      "tool_call_id": tool_call_id,
-      "planner": "runtime-mutation-recovery",
-    },
-  ]
-  let response_calls : Array[Json] = [
-    {
-      "id": tool_call_id,
-      "type": "function",
-      "function": { "name": "read", "arguments": arguments.stringify() },
-    },
-  ]
-  let recovered = mooncode_json_object_with_field(
-    plan,
-    "tool_calls",
-    Json::array(calls),
-  )
-  mooncode_json_object_with_field(
-    recovered,
-    "model_response_message",
-    mooncode_runtime_context_message(
-      {
-        "role": "assistant",
-        "content": "",
-        "tool_calls": Json::array(response_calls),
-      },
-      AssistantContext,
-      "assistant.runtime_recovery",
-    ),
   )
 }
 

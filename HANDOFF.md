@@ -72,9 +72,9 @@ existing execution facts rather than introduce another execution authority.
 - The sibling synthesis's current module plan replaces the rejected generic
   phases 0–5. It maps Task/Execution/Context/Workspace/Tools/Journal/Completion/
   Projection/Telemetry to responsibilities, concrete removals and behavioral
-  checks. The plan is unimplemented. Remove policy guesses, forced recovery
-  actions and redundant approval; retain actual authority, isolation and data
-  integrity. The completed checklist describes the earlier cleanup only.
+  checks. Task/Completion/Execution are now implemented; the other modules
+  remain planned. Retain actual authority, isolation and data integrity. The
+  older ten-item checklist describes the previous tool-boundary cleanup.
 - Pure execution properties and shell analysis now belong to
   `internal/mooncode_tools`, with no IO imports. Concurrency, instruction
   consumption, replay and local execution/validation are independent; the
@@ -97,6 +97,41 @@ existing execution facts rather than introduce another execution authority.
 - No new model round, approval phase, database or service was introduced.
   Existing repository warning debt and deployment/live-provider limitations
   remain; fixture results do not establish semantic delivery quality.
+
+## Task Completion Execution cleanup 2026-11-05
+
+- Task intent now reads explicit caller intent only; default requests use the
+  full native catalog. English keyword/negation parsers, deterministic prompt
+  preplanning helpers and the universal MoonBit/MoonTown skill gate were
+  removed. Project instructions and applicable skill loading remain.
+- Task input retains complete long requests and trailing constraints; prose
+  markers and a fixed 12k limit no longer discard task text. Initial prompts
+  avoid copying the same objective/request twice. Task updates copy their array
+  so later corrections cannot rewrite an earlier revision.
+- Completion verdict and evidence helpers moved from planner to the existing
+  completion file. Explicit required checks, output paths and tracked input
+  versions remain enforced. Keyword-derived tests, coding-tool quotas, generic
+  post-error successful-action requirements and duplicate terminal scans were
+  removed. A partial explicit batch without accepted finish retains artifacts
+  but does not establish task completion; failed primitive commands remain failed.
+- The model's batch is no longer replaced by a forced read after edit errors.
+  Safe repeated observations and transient-check retries execute normally.
+  Journal operation identities, completed-result reuse, uncertain-effect
+  feedback, approval, cancellation, leases and resumable quanta remain.
+- Native suite passed 1899/1899, focused recovery/control coverage 118/118,
+  and final task/completion/repair/catalog/parallel-read checks 20/20. The real
+  MoonDesk capability producer/consumer probe passed. Check, info, formatting
+  and whitespace validation passed; existing `.mbti` files are unchanged.
+  Production MoonBit net -1122 lines; tests net -1069. No new package, state
+  machine, runtime service, model round or confirmation step was introduced.
+- Full-suite execution exposed test interference: a test-only global append
+  cache clear invalidated another async test's seeded cache. Tests now evict
+  only their own canonical journal path; the unused global-clear helper was
+  deleted. Keep the scan-count assertions; do not mask this race with retries.
+- Default full schemas may cost more than the old four-tool chat subset; use
+  explicit selection where needed. Long-input working projection remains a
+  Context follow-up. Existing six daemon info warnings, release warning debt,
+  live-provider and installed-app qualification limits remain.
 
 ## Validation 2026-11-04
 

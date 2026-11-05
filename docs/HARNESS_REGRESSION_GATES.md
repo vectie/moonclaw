@@ -8,11 +8,12 @@ acceptance engine or model role. See the [runtime boundary](executable_book_runt
 
 | Area | Contract |
 | --- | --- |
-| Native tools | Coding tasks retain necessary tools regardless of task language or incidental planning words. One catalog supplies initial and follow-up requests. |
+| Native tools | Default tasks retain the same tools regardless of language or inferred purpose. Only explicit selection or read-only mode narrows the catalog. |
 | Shared program | Model selection does not select a different working method. Initial context, skill catalog, steering, tool protocol and recovery use the existing shared path. |
 | Explicit selection | `planner_allowed_tools` selects from the same catalog; workers remain optional and absent by default. |
 | Read-only work | Inspection and findings need no manufactured edit. |
-| Completion | Necessary native checks and current tracked inputs support `finish`; repairable gaps return to the same agent. |
+| Completion | Explicit required checks and current tracked inputs support `finish`; prompt keywords and successful-tool quotas add no requirements. |
+| Repair | The model's next batch is preserved after edit failure. Safe observations and transient-check retries are not converted into synthetic errors. |
 | Context | Task instructions, tool-call pairing and recent verification survive compaction. |
 | Recovery | Checkpoints retain position, intent and completed-result references. Reuse results and reconcile uncertain effects. |
 | Empty model follow-up | Preserve the claim and resume from existing results without requiring milestones; cancellation remains effective. |

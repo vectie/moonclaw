@@ -473,7 +473,19 @@ fn mooncode_runtime_patient_test_command(
     "text": "Implement the code result and verify it.",
     "model": "test-planner",
     "packet": { "command_id": command_id },
-    "payload": { "planner_timeout_ms": 5000 },
+    "payload": {
+      "planner_timeout_ms": 5000,
+      "task_contract": {
+        "required_checks": [
+          {
+            "id": "result-exists",
+            "tool": "shell",
+            "command": "test -f patient-result.txt",
+            "cwd": ".",
+          },
+        ],
+      },
+    },
   }
 }
 

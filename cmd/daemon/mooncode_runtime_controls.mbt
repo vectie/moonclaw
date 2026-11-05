@@ -329,7 +329,7 @@ fn mooncode_runtime_task_with_update(command : Json, steering : Json) -> Json {
     "task_revision",
     default=mooncode_command_id(command),
   )
-  let updates = mooncode_json_array_items(command, "task_updates")
+  let updates = mooncode_json_array_items(command, "task_updates").copy()
   updates.push({ "command_id": id, "text": text })
   mooncode_json_object_with_field(command, "task_updates", Json::array(updates))
   |> mooncode_json_object_with_field("task_revision", Json(revision + ":" + id))

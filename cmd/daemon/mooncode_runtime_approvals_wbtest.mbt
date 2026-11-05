@@ -813,7 +813,7 @@ async test "mooncode rejected approval never executes the tool" (t : @test.Test)
   let completed = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
     "consumer_id": "rejection-test",
   })
-  assert_true(mooncode_json_bool(completed, "accepted", default=false))
+  assert_false(mooncode_json_bool(completed, "accepted", default=true))
   assert_false(@fsx.exists(@pathx.join(book_root, "rejected.txt")))
 }
 
