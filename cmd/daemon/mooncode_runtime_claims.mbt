@@ -105,8 +105,16 @@ async fn Daemon::mooncode_runtime_claim_state_payload(
   book_root : String,
 ) -> Json {
   ignore(self)
-  let journal_path = mooncode_session_journal_path(book_root, session_id)
   let journal = mooncode_read_session_journal(book_root, session_id)
+  mooncode_runtime_claim_state_from_journal(session_id, book_root, journal)
+}
+
+///|
+fn mooncode_runtime_claim_state_from_journal(
+  session_id : String,
+  book_root : String,
+  journal : Array[Json],
+) -> Json raise {
   let commands = mooncode_journal_entries(journal, mooncode_journal_command())
   let receipts = mooncode_journal_entries(
     journal,
@@ -117,7 +125,7 @@ async fn Daemon::mooncode_runtime_claim_state_payload(
     book_root,
     commands,
     receipts,
-    journal_path~,
+    journal_path=mooncode_session_journal_path(book_root, session_id),
   )
 }
 

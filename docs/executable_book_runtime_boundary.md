@@ -17,11 +17,12 @@ operating system, agent role or state machine.
 | Filesystem | `mooncode_workspace_path(book_root,path)` resolves identity. `mooncode_workspace_replace(root,absolute,expected,content)` compares the observed contents under a stable file lock and stages a sibling rename. | Native file tools share per-resource conditional writes. This is not MVCC, a multi-file transaction or a lock observed by arbitrary shell/external writers. |
 | I/O | Catalog schema → `mooncode_execute_tool_call_in_runtime` → bound grant/executor where required → canonical result → `mooncode_tool_execution` envelope/event → journal and model/UI adapters. Provider transport owns model protocol. | Arguments, authorization, execution outcome and loop control are separate contracts. A successful function/MCP call does not prove permissions, idempotency or task completion. Repairable errors go to the same agent. |
 | Synchronization | Lifecycle shared/exclusive gate protects session lifecycle; execution lease owns session execution; journal/session lock orders claims/appends; file lock protects one canonical path; TaskGroup joins children. | External execution entry points acquire gates; internal `*_under_runtime_gates` calls borrow them. No runtime boolean chooses whether to reacquire ownership. Different resource locks are not a universal Book mutex or cross-service clock. |
-| Fault tolerance | Checkpoint/intent → `MoonCodeResumePoint` → `mooncode_runtime_operation_recovery` → retained result, safe read or unknown-outcome error. Results use the same execution constructor. | Committed results are reused; uncommitted effects are reconciled. Current restart entry is service start/task control/turn retry, not a daemon-wide boot scan of every Book. No arbitrary script stack recovery or universal exactly-once. |
+| Fault tolerance | Daemon boot discovers pending work in configured trusted Books and starts the existing service. Checkpoint/intent → `MoonCodeResumePoint` → `mooncode_runtime_operation_recovery` → retained result, safe read or unknown-outcome error. | Committed results are reused; uncommitted effects are reconciled. Active session admission and the existing execution lease still own execution. No arbitrary script stack recovery or universal exactly-once. |
 | Data model | session_id scopes queue/log/lease; command_id + task_revision identify task; operation_id identifies `(command,step,index)`; tool_call_id pairs protocol calls/results while operation_id joins runtime start/result across rounds; event_id identifies retained evidence; journal sequence is an exact decimal cursor. | Identities, content versions and ordered commit positions are different. Work steps retain item_id/command_id/event_id without duplicate step_id/turn_id/evidence_ref aliases. Most command/result structures are still Json, not a fully typed IR or complete dependency graph. |
 | Compute engine | Context → model round → tool batch → observations → next round/finish. Policy declares parallel-read/replay/skill barriers; resource reads use canonical identity and other declared read-only calls use exact arguments. Known local programs run through existing shell/project tooling. | Whole tasks are interpreted incrementally. Ordinary mixed/mutating batches retain source order. Work graph is a materialized view; it neither schedules nor accepts work. No universal computation cache, static task DAG, or new language runtime. |
 
 Source owners: [service](../cmd/daemon/mooncode_runtime_service.mbt),
+[startup discovery](../cmd/daemon/mooncode_runtime_service_restore.mbt),
 [loop](../cmd/daemon/mooncode_runtime_loop.mbt),
 [context](../cmd/daemon/mooncode_context.mbt),
 [compiler](../internal/context_pruner/pruner.mbt),
@@ -43,6 +44,34 @@ records; it is not a fully typed compiler kernel. Native file synchronization
 is cooperative. Fingerprints cover touched/declared check inputs, not all
 semantic dependencies. Journal order is local commit order; remote timeouts
 do not prove non-execution. Snapshot rebuilds/read_result still scan history.
+
+### Restart discovery
+
+`Daemon::serve` runs one background discovery pass after the existing hosted
+model bootstrap. It reads the control configuration's trusted Book roots and
+active session journals; only candidates with unresolved work are admitted
+and bound in memory. It calls the ordinary runtime service, which acquires the
+same lifecycle gate and execution lease and hydrates the existing continuation.
+There is no recovery registry, new scheduler, model call or approval step.
+
+This covers acceptance before service start, interrupted execution, and the
+normal queue's finish/rearm window. An unresolved approval stays waiting; a
+recorded decision can resume. Completed work, user cancellation, inactive
+sessions, failures and finished explicit bounded runs are not restarted just
+because the daemon restarted. A new submission can start the ordinary service.
+Service events retain `auto_drain` to distinguish ordinary queue draining from
+an explicit `max_turns` invocation. Interrupted services keep their service ID,
+consumer and loop options; max_turns bounds each invocation, not a new lifetime
+quota across restarts. Existing operation recovery owns uncertain effects.
+
+Discovery is limited to the current configuration, with per-session diagnostics;
+HTTP listening does not await it. Existing lease owners keep execution authority;
+this is startup recovery, not periodic cross-process failover. Cost is linear in
+the active session journals read, including completed history. A temporary local
+fixture with 100 completed small sessions plus one empty session took 23/25 ms
+for two scans and created no session bindings. This excludes model, compilation,
+fixture generation and cold-disk costs; large-log recovery remains unqualified.
+The measurement fixture was removed.
 
 
 The result representation has one owner: completed events retain the

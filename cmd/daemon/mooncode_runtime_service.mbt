@@ -457,17 +457,17 @@ async fn Daemon::mooncode_runtime_service_events(
 ) -> Array[Json] {
   ignore(self)
   let journal = mooncode_read_session_journal(book_root, session_id)
-  let events = mooncode_journal_entries(journal, mooncode_journal_event())
-  let result : Array[Json] = []
-  for event in events {
-    let kind = mooncode_json_string(event, "kind", default="")
-    if kind == "runtime.service_started" ||
-      kind == "runtime.service_finished" ||
-      kind == "runtime.service_failed" {
-      result.push(event)
-    }
-  }
-  result
+  mooncode_journal_entries(journal, mooncode_journal_event()).filter(
+    mooncode_runtime_service_event,
+  )
+}
+
+///|
+fn mooncode_runtime_service_event(event : Json) -> Bool {
+  let kind = mooncode_json_string(event, "kind", default="")
+  kind == "runtime.service_started" ||
+  kind == "runtime.service_finished" ||
+  kind == "runtime.service_failed"
 }
 
 ///|
@@ -897,6 +897,7 @@ fn mooncode_runtime_service_attach(
     "book_root": book_root,
     "service_id": mooncode_runtime_service_id(session_id, payload),
     "runtime_service": true,
+    "auto_drain": mooncode_runtime_service_auto_drains_queue(payload),
     "consumer_id": mooncode_runtime_service_consumer_id(payload),
     "max_turns": mooncode_runtime_loop_max_turns(loop_payload),
     "live_wait_ms": mooncode_runtime_loop_live_wait_ms(loop_payload),

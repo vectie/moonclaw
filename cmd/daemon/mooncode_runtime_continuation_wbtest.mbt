@@ -501,15 +501,22 @@ async fn mooncode_runtime_quantum_test_daemon(book_root : String) -> Daemon {
 }
 
 ///|
-async test "Kimi planner quantum resumes without tool replay" {
-  @fsx.with_temporary_directory("mooncode-planner-quantum-XXXXXX", async fn(
-    root,
-  ) {
+async test "daemon boot and shutdown resume a planner quantum without client submission or tool replay" {
+  with_integration_http_fixture(async fn(fixture) {
+    let root = fixture.book
     let model_server = @httpx.Server::new("[::1]", 0, reuse_addr=true)
     defer model_server.close()
     let calls = Ref::Ref(0)
+    let release_interrupted_request = Ref(false)
     let router = @httpx.Router::new()
     router.add_handler(Post, "/v1/chat/completions", (_, w) => {
+      if calls.val == 1 {
+        calls.val += 1
+        while !release_interrupted_request.val {
+          @async.sleep(10)
+        }
+        return
+      }
       let response = if calls.val == 0 {
         mooncode_runtime_quantum_test_completion(
           "call-write", "write", "{\"path\":\"quantum-result.txt\",\"content\":\"once\"}",
@@ -545,6 +552,9 @@ async test "Kimi planner quantum resumes without tool replay" {
       @async.pause()
       let session_id = "session-planner-quantum"
       let command_id = "cmd-planner-quantum"
+      let first_daemon = mooncode_runtime_quantum_test_daemon(root)
+      defer first_daemon.httpx.close()
+      first_daemon.mooncode_bind_integration_session(root, session_id)
       ignore(
         mooncode_append_session_journal(
           root,
@@ -569,7 +579,6 @@ async test "Kimi planner quantum resumes without tool replay" {
           },
         ),
       )
-      let first_daemon = mooncode_runtime_quantum_test_daemon(root)
       let first = first_daemon.mooncode_runtime_turn_execute(session_id, root, {
         "consumer_id": "quantum-first",
       })
@@ -601,23 +610,30 @@ async test "Kimi planner quantum resumes without tool replay" {
         mooncode_json_int(paused_state, "delivered_command_count", default=0),
         0,
       )
-      let second_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let second = second_daemon.mooncode_runtime_turn_execute(
-        session_id,
-        root,
-        { "consumer_id": "quantum-second" },
-      )
-      let second_execution = mooncode_json_object_field_or_empty(
-        second, "execution",
-      )
-      assert_true(mooncode_json_bool(second, "accepted", default=false))
-      assert_true(
-        mooncode_json_bool(second_execution, "completed", default=false),
-      )
-      assert_false(
-        mooncode_json_bool(second_execution, "paused", default=false),
-      )
+      let first_service = group.spawn(() => first_daemon.serve())
+      for _ in 0..<500 {
+        if calls.val == 2 {
+          break
+        }
+        @async.sleep(10)
+      }
       assert_eq(calls.val, 2)
+      first_service.cancel()
+      let _ = first_service.wait() catch { _ => () }
+      release_interrupted_request.val = true
+      let second_daemon = mooncode_runtime_quantum_test_daemon(root)
+      defer second_daemon.httpx.close()
+      group.spawn_bg(() => second_daemon.serve(), no_wait=true)
+      for _ in 0..<500 {
+        let state = second_daemon.mooncode_runtime_claim_state_payload(
+          session_id, root,
+        )
+        if mooncode_json_int(state, "delivered_command_count", default=0) == 1 {
+          break
+        }
+        @async.sleep(10)
+      }
+      assert_eq(calls.val, 3)
       assert_eq(@fsx.read_file(@pathx.join(root, "quantum-result.txt")), "once")
       let final_state = second_daemon.mooncode_runtime_claim_state_payload(
         session_id, root,
@@ -651,6 +667,21 @@ async test "Kimi planner quantum resumes without tool replay" {
         })
         .length(),
         0,
+      )
+      let events = mooncode_journal_entries(
+        mooncode_read_session_journal(root, session_id),
+        mooncode_journal_event(),
+      )
+      assert_eq(
+        events
+        .filter(event => {
+          mooncode_json_string(event, "operation_id", default="") ==
+          command_id + ":0:0" &&
+          mooncode_json_string(event, "tool", default="") == "write" &&
+          mooncode_json_string(event, "status", default="") == "done"
+        })
+        .length(),
+        1,
       )
       group.return_immediately(())
     })

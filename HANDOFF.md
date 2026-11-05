@@ -5,6 +5,38 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Process / Thread and restart recovery 2026-11-05
+
+- Daemon serve now discovers unfinished sessions once in the background,
+  after hosted model bootstrap, using existing trusted Book configuration.
+  No config means no discovery; ordinary explicit service entry still works.
+  There is no registry, periodic scheduler, new state machine or approval.
+- Read the journal before admitting a candidate: completed history should
+  not populate the daemon's binding map or replay every snapshot twice.
+  Discovery delegates to the same service, lifecycle gate and execution lease.
+- Reuse claim_state_from_journal, service event selection, queue drain and
+  active-cancel source predicates. A queued command can precede the previous
+  finish event; sequence comparison alone misses that ordinary drain gap.
+- Process shutdown and explicit user cancellation both cancel the coroutine.
+  The durable active-cancel event is the user stop boundary; don't infer user
+  intent from a cancelled task alone. Pending withdrawal is a different event.
+- Preserve unresolved approval waits and recorded decisions, inactive session
+  boundaries and finished manual limits. Service events retain auto_drain;
+  interrupted services preserve ID/consumer/loop options. max_turns is per
+  invocation, not an added cross-restart lifetime quota.
+- Temporary scan measurement: 100 completed small sessions plus one empty
+  fixture, two passes 23/25 ms and zero bindings. No model/compile/cold-disk
+  claim. Measurement code removed; large logs still require a journal scan.
+
+- Validation: Claw native 1854/1854, Desk core JS 65/65 and real producer /
+  consumer probe passed. Info/fmt and whitespace checked; .mbti unchanged.
+  65 local links and 11 unchanged archive hashes checked. Production .mbt
+  net +163 and tests +287: startup discovery is a new missing capability,
+  not a claimed net deletion. Existing manual retry-only quantum test now
+  exercises new Daemon serve instances and cancellation/restart instead.
+  No UI/install change, live-provider, SIGKILL/power-loss or production
+  performance qualification.
+
 ## Data Model / Compute Engine convergence 2026-11-05
 
 - Completed operation events own their execution header and tool_result.
@@ -59,8 +91,8 @@ Work directly on `main`; do not create a branch unless the user requests one.
 - Uncertain-operation recovery uses the common execution constructor.
   No extra state machine, agent, store, model call or human step was added.
 - Remaining limits: cooperative native file locks; process tools/external
-  writers do not participate. Resume uses existing service start/turn retry
-  or task controls, not a daemon-wide boot scanner. Internal Json and
+  writers do not participate. The boot discovery gap recorded at this audit
+  is closed by the Process / Thread update above. Internal Json and
   partial dependency provenance do not constitute a typed IR or full DAG.
 
 - Validation: Claw native 1853/1853; identity/session 21/21; initial focused

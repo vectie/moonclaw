@@ -50,7 +50,13 @@
 pub async fn Daemon::serve(self : Daemon) -> Unit {
   @async.with_task_group(group => {
     group.spawn_bg(() => self.process.start())
-    group.spawn_bg(() => self.bootstrap_hosted_model(), no_wait=true)
+    group.spawn_bg(
+      () => {
+        self.bootstrap_hosted_model()
+        self.mooncode_restore_runtime_services(group~)
+      },
+      no_wait=true,
+    )
     // Recovery can spawn provider processes that register through this daemon's
     // own HTTP endpoint. Run it concurrently with `serve` so startup never
     // waits for a registration request before the listener can accept it.
