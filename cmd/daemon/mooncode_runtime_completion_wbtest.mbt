@@ -204,6 +204,20 @@ async test "verification captures touched inputs and detects external changes be
       },
     }
     let inputs = mooncode_runtime_check_inputs(root, command, [change])
+    let shell_change : Json = {
+      "tool": "shell",
+      "accepted": true,
+      "result": {
+        "metadata": {
+          "cmd": "moon run generate.mbtx",
+          "sandbox_evidence": { "changed_paths": ["source.mbt"] },
+        },
+      },
+    }
+    assert_eq(
+      mooncode_runtime_check_inputs(root, command, [shell_change]),
+      inputs,
+    )
     let checked = mooncode_runtime_bind_check_inputs(
       {
         "tool": "moon_cmd",

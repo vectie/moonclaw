@@ -217,60 +217,6 @@ pub fn shell_has_git_workspace_mutation(command : String) -> Bool {
 }
 
 ///|
-pub fn shell_has_git_worktree_overwrite(command : String) -> Bool {
-  shell_has_git_subcommand(command, ["restore", "checkout"])
-}
-
-///|
-fn shell_segment_has_clean_dependency_install(segment : Array[String]) -> Bool {
-  let index = shell_segment_executable_index(segment)
-  if index < 0 || index + 1 >= segment.length() {
-    return false
-  }
-  let executable = segment[index]
-  let command_index = shell_subcommand_index_after_options(segment, index, [
-    "--cache", "--prefix", "--registry", "--userconfig", "--workspace", "-C", "-w",
-  ])
-  if command_index < 0 || shell_segment_requests_help(segment, command_index) {
-    return false
-  }
-  let command = segment[command_index]
-  if (executable == "npm" || executable.has_suffix("/npm")) && command == "ci" {
-    return true
-  }
-  if command != "install" {
-    return false
-  }
-  let immutable = segment.contains("--immutable") ||
-    segment.contains("--frozen-lockfile")
-  immutable &&
-  (
-    executable == "pnpm" ||
-    executable.has_suffix("/pnpm") ||
-    executable == "yarn" ||
-    executable.has_suffix("/yarn") ||
-    executable == "bun" ||
-    executable.has_suffix("/bun")
-  )
-}
-
-///|
-pub fn shell_has_clean_dependency_install(command : String) -> Bool {
-  let segment : Array[String] = []
-  for word in shell_words(command) {
-    if word == SHELL_BOUNDARY_TOKEN {
-      if shell_segment_has_clean_dependency_install(segment) {
-        return true
-      }
-      segment.clear()
-    } else {
-      segment.push(word)
-    }
-  }
-  shell_segment_has_clean_dependency_install(segment)
-}
-
-///|
 fn shell_executable_is(word : String, name : String) -> Bool {
   word == name || word.has_suffix("/" + name)
 }
@@ -302,23 +248,6 @@ fn shell_subcommand_index_after_options(
   } else {
     -1
   }
-}
-
-///|
-fn shell_segment_requests_help(
-  segment : Array[String],
-  subcommand_index : Int32,
-) -> Bool {
-  for index in (subcommand_index + 1)..<segment.length() {
-    let word = segment[index]
-    if word == "--" {
-      return false
-    }
-    if word == "--help" || word == "-h" {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -446,67 +375,6 @@ pub fn shell_verifies_kind(command : String, expected : String) -> Bool {
 }
 
 ///|
-fn shell_segment_has_sensitive_command(segment : Array[String]) -> Bool {
-  let index = shell_segment_executable_index(segment)
-  if index < 0 {
-    return false
-  }
-  let executable = segment[index]
-  if shell_executable_is(executable, "curl") {
-    return !shell_segment_is_safe_loopback_curl(segment, index)
-  }
-  if shell_executable_is(executable, "sudo") ||
-    shell_executable_is(executable, "rm") ||
-    shell_executable_is(executable, "wget") ||
-    shell_executable_is(executable, "ssh") ||
-    shell_executable_is(executable, "scp") ||
-    shell_executable_is(executable, "brew") {
-    return true
-  }
-  if shell_executable_is(executable, "git") {
-    return shell_segment_has_git_subcommand(segment, ["push", "reset"])
-  }
-  if shell_executable_is(executable, "sh") ||
-    shell_executable_is(executable, "bash") ||
-    shell_executable_is(executable, "zsh") {
-    let nested_index = shell_nested_command_index(segment, index)
-    return nested_index >= 0 &&
-      shell_has_sensitive_command(segment[nested_index])
-  }
-  let subcommand_index = shell_subcommand_index_after_options(segment, index, [
-    "--cache", "--cwd", "--dir", "--prefix", "--registry", "--userconfig", "--workspace",
-    "-C", "-w",
-  ])
-  if subcommand_index < 0 ||
-    shell_segment_requests_help(segment, subcommand_index) {
-    return false
-  }
-  let subcommand = segment[subcommand_index]
-  if shell_executable_is(executable, "gh") {
-    return subcommand == "run" &&
-      subcommand_index + 1 < segment.length() &&
-      segment[subcommand_index + 1] == "rerun"
-  }
-  if shell_executable_is(executable, "moon") {
-    return subcommand == "publish"
-  }
-  if shell_executable_is(executable, "npm") {
-    return subcommand == "publish" || subcommand == "install"
-  }
-  if shell_executable_is(executable, "pnpm") {
-    return subcommand == "publish" || subcommand == "add"
-  }
-  if shell_executable_is(executable, "yarn") {
-    return subcommand == "add"
-  }
-  if shell_executable_is(executable, "pip") ||
-    shell_executable_is(executable, "pip3") {
-    return subcommand == "install"
-  }
-  false
-}
-
-///|
 /// A GET/HEAD-only request to a loopback preview is local observation. Any
 /// upload, body, output-file, custom mutating method, or remote URL remains
 /// sensitive.
@@ -573,33 +441,6 @@ fn shell_segment_is_safe_loopback_curl(
     index += 1
   }
   url_seen
-}
-
-///|
-pub fn shell_has_sensitive_command(command : String) -> Bool {
-  let (substitutions_valid, outer_command, substitutions) = shell_extract_command_substitutions(
-    command,
-  )
-  if !substitutions_valid {
-    return true
-  }
-  for substitution in substitutions {
-    if !shell_is_demonstrably_read_only(substitution) {
-      return true
-    }
-  }
-  let segment : Array[String] = []
-  for word in shell_words(outer_command) {
-    if word == SHELL_BOUNDARY_TOKEN {
-      if shell_segment_has_sensitive_command(segment) {
-        return true
-      }
-      segment.clear()
-    } else {
-      segment.push(word)
-    }
-  }
-  shell_segment_has_sensitive_command(segment)
 }
 
 ///|
@@ -1052,7 +893,7 @@ fn shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
 }
 
 ///|
-pub fn shell_has_in_place_authoring(command : String) -> Bool {
+fn shell_has_in_place_authoring(command : String) -> Bool {
   let segment : Array[String] = []
   for word in shell_words(command) {
     if word == SHELL_BOUNDARY_TOKEN {
@@ -1065,66 +906,6 @@ pub fn shell_has_in_place_authoring(command : String) -> Bool {
     }
   }
   shell_segment_has_in_place_sed(segment)
-}
-
-///|
-fn shell_word_is_interpreter(word : String) -> Bool {
-  shell_executable_is(word, "python") ||
-  shell_executable_is(word, "python3") ||
-  word.contains("/python3.") ||
-  shell_executable_is(word, "pypy") ||
-  shell_executable_is(word, "pypy3") ||
-  shell_executable_is(word, "node") ||
-  shell_executable_is(word, "deno") ||
-  shell_executable_is(word, "bun") ||
-  shell_executable_is(word, "ruby") ||
-  shell_executable_is(word, "perl") ||
-  shell_executable_is(word, "php")
-}
-
-///|
-/// Inline interpreters remain useful for bounded read-only inspection, but
-/// their file-writing APIs must not bypass MoonCode's reviewable mutation
-/// tools. This recognizes the concrete write primitives rather than rejecting
-/// all interpreter use.
-pub fn shell_has_inline_interpreter_authoring(command : String) -> Bool {
-  let mut has_interpreter = false
-  for word in shell_words(command) {
-    if word != SHELL_BOUNDARY_TOKEN && shell_word_is_interpreter(word) {
-      has_interpreter = true
-      break
-    }
-  }
-  if !has_interpreter {
-    return false
-  }
-  let compact = command
-    .to_lower()
-    .to_string()
-    .replace_all(old=" ", new="")
-    .replace_all(old="\t", new="")
-  let writable_open = compact.contains("open(") &&
-    [
-      ",\"w\"", ",\"wb\"", ",\"a\"", ",\"ab\"", ",\"x\"", ",\"xb\"", ",'w'", ",'wb'",
-      ",'a'", ",'ab'", ",'x'", ",'xb'",
-    ].any(mode => compact.contains(mode))
-  writable_open ||
-  compact.contains(".write_text(") ||
-  compact.contains(".write_bytes(") ||
-  compact.contains("file.write(") ||
-  compact.contains("file.open(") ||
-  compact.contains(".writefile(") ||
-  compact.contains(".writefilesync(") ||
-  compact.contains(".appendfile(") ||
-  compact.contains(".appendfilesync(") ||
-  compact.contains("fs.writefile(") ||
-  compact.contains("fs.writefilesync(") ||
-  compact.contains("fs.appendfile(") ||
-  compact.contains("fs.appendfilesync(") ||
-  compact.contains("deno.write") ||
-  compact.contains("os.rename(") ||
-  compact.contains("os.replace(") ||
-  compact.contains("shutil.copy")
 }
 
 ///|
@@ -1146,7 +927,7 @@ fn shell_chars_match(
 }
 
 ///|
-pub fn shell_has_file_output_redirection(command : String) -> Bool {
+fn shell_has_file_output_redirection(command : String) -> Bool {
   let chars = command.to_array()
   let mut single_quoted = false
   let mut double_quoted = false

@@ -189,49 +189,27 @@ fn mooncode_approved_sandbox_plan(
   arguments : Json,
 ) -> @execution_sandbox.SandboxApprovalPlan raise {
   guard arguments is { "_execution_sandbox_plan": plan, .. } else {
-    fail("operator-approved ExecutionSandbox plan is required")
+    fail("runtime-bound ExecutionSandbox plan is required")
   }
   @json.from_json(plan) catch {
-    _ => fail("operator-approved ExecutionSandbox plan is malformed")
+    _ => fail("runtime-bound ExecutionSandbox plan is malformed")
   }
 }
 
 ///|
-/// Freeze the exact shell grant before MoonCode emits its human approval
-/// request. The resulting JSON is journaled with that request and is the only
-/// plan accepted after approval.
+/// Bind the exact call to operator-configured capabilities. Explicit human
+/// approval also persists this plan before waiting; execution consumes it.
 async fn mooncode_prepare_shell_approval_plan(
   book_root : String,
   arguments : Json,
 ) -> Result[@execution_sandbox.SandboxApprovalPlan, Json] {
-  let cmd = mooncode_json_string(arguments, "cmd", default="")
-  if cmd == "" {
-    return Err(
-      mooncode_tool_error_result("shell", message="cmd must be non-empty"),
-    )
-  }
-  if mooncode_json_bool(arguments, "background", default=false) {
-    return Err(
-      mooncode_tool_error_result(
-        "shell",
-        message="background execution is not supported by the one-shot ExecutionSandbox contract",
-      ),
-    )
-  }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
-  if !mooncode_json_bool(cwd, "ok", default=false) {
-    return Err(
-      mooncode_tool_error_result(
-        "shell",
-        message=mooncode_json_string(cwd, "message", default="invalid cwd"),
-      ),
-    )
-  }
-  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
-    Some(message) => return Err(mooncode_tool_error_result("shell", message~))
+  match mooncode_tool_shell_preflight_error(book_root, arguments) {
+    Some(error) => return Err(error)
     None => ()
   }
+  let cmd = mooncode_json_string(arguments, "cmd", default="")
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let config = match mooncode_execution_sandbox_config("shell", book_root~) {
     Err(refusal) => return Err(refusal)
     Ok(config) => config

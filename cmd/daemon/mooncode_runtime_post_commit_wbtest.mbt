@@ -112,9 +112,16 @@ async test "same command repairs and verifies after a commit without another use
       ),
     )
     @fsx.write_to_file(@pathx.join(root, "tracked.txt"), "initial\n")
+    @fsx.write_to_file(
+      root + "/generate.mbtx",
+      (
+        #|import { "moonbitlang/async", "moonbitlang/async/fs", }
+        #|async fn main { @fs.write_file("generated.txt", "generated") }
+      ),
+    )
     let session_id = "commit-repair-session"
     let command_id = "commit-repair-command"
-    let check = "test \"$(cat tracked.txt)\" = repaired"
+    let check = "test -f tracked.txt"
     let command : Json = {
       "protocol": mooncode_protocol_version(),
       "session_id": session_id,
@@ -146,11 +153,13 @@ async test "same command repairs and verifies after a commit without another use
         },
         { "tool": "read", "arguments": { "path": "tracked.txt" } },
         {
-          "tool": "edit",
+          "tool": "shell",
+          "arguments": { "cmd": check, "verification_kind": "check" },
+        },
+        {
+          "tool": "shell",
           "arguments": {
-            "path": "tracked.txt",
-            "old_string": "initial",
-            "new_string": "repaired",
+            "cmd": "printf 'initial\\n' > tracked.txt && sed -i.bak 's/initial/repaired/' tracked.txt && moon run generate.mbtx",
           },
         },
         {
@@ -167,10 +176,7 @@ async test "same command repairs and verifies after a commit without another use
         },
       ],
     }
-    mooncode_with_fixture_moonfort(root, async fn(config) {
-      let command = mooncode_fixture_authorized_runtime_command(
-        config, root, command,
-      )
+    mooncode_with_fixture_moonfort(root, async fn(_config) {
       mooncode_append_session_journal(
         root,
         session_id,
@@ -184,19 +190,38 @@ async test "same command repairs and verifies after a commit without another use
           "command": command,
         },
       )
-      mooncode_fixture_approve_runtime_commands(root, command)
       let daemon = mooncode_control_test_daemon(root)
       let receipt = daemon.mooncode_runtime_turn_execute(session_id, root, {
         "consumer_id": "commit-repair-test",
       })
       let execution = mooncode_json_object_field_or_empty(receipt, "execution")
       let results = mooncode_json_array_items(execution, "tool_results")
-      assert_eq(results.length(), 5)
+      assert_eq(results.length(), 6)
       for result in results {
         assert_true(mooncode_json_bool(result, "accepted", default=false))
       }
+      assert_true(
+        mooncode_runtime_required_check_evidence(
+          command,
+          results[:4].to_owned(),
+        ).is_empty(),
+      )
+      assert_eq(
+        mooncode_runtime_required_check_evidence(command, results).length(),
+        1,
+      )
       assert_true(mooncode_json_bool(execution, "completed", default=false))
       assert_eq(@fsx.read_file(@pathx.join(root, "tracked.txt")), "repaired\n")
+      assert_eq(@fsx.read_file(root + "/generated.txt"), "generated")
+      let records = mooncode_read_session_journal(root, session_id)
+      assert_false(
+        records.any(record => {
+          let event = mooncode_json_object_field_or_empty(record, "payload")
+          mooncode_json_string(event, "kind", default="").has_prefix(
+            "tool.approval_",
+          )
+        }),
+      )
       assert_eq(mooncode_runtime_finish_input_error(root, command, results), "")
       @fsx.write_to_file(
         @pathx.join(root, "tracked.txt"),

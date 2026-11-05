@@ -75,7 +75,7 @@ async test "mooncode shell rejects unmanaged background children without hanging
     assert_true(mooncode_json_bool(result, "is_error", default=false))
     assert_true(
       mooncode_json_string(result, "message", default="").contains(
-        "set background=true",
+        "foreground command",
       ),
     )
   }
@@ -418,91 +418,6 @@ async test "mooncode native shell allows read-only inline interpreter inspection
       "{\"answer\":42}",
     ),
   )
-}
-
-///|
-async test "mooncode native shell rejects inline interpreter authoring" (
-  t : @test.Test,
-) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-authoring-XXXXXX"),
-  )
-  let target = @pathx.join(book_root, "tracked.mbt")
-  @fsx.write_to_file(target, "preserved\n")
-  let execution = mooncode_execute_tool_call(
-    "session-shell-authoring",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-shell-authoring",
-      "book_root": book_root,
-      "tool": "shell",
-      "command_id": "cmd-shell-authoring",
-      "arguments": {
-        "cmd": "python3 - <<'PY'\np='tracked.mbt'\ns=open(p).read()\nopen(p, 'w', encoding='utf-8').write(s + 'changed\\n')\nPY",
-        "timeout_ms": 5000,
-      },
-    },
-    now=@clock.Timestamp::from_ms(45L),
-  )
-  assert_false(mooncode_json_bool(execution, "accepted", default=true))
-  assert_eq(@fsx.read_file(target), "preserved\n")
-  let result = mooncode_json_object_field_or_empty(execution, "result")
-  assert_true(
-    mooncode_json_string(result, "message", default="").contains(
-      "use write, edit, or apply_patch",
-    ),
-  )
-}
-
-///|
-async test "mooncode rejects legacy and JSON-shaped MoonBit manifests" (
-  t : @test.Test,
-) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-manifest-XXXXXX"),
-  )
-  async fn write(path : String, content : String) -> Json {
-    mooncode_execute_tool_call(
-      "session-manifest",
-      book_root,
-      {
-        "protocol": mooncode_protocol_version(),
-        "session_id": "session-manifest",
-        "book_root": book_root,
-        "tool": "write",
-        "command_id": "cmd-manifest",
-        "arguments": { "path": path, "content": content },
-      },
-      now=@clock.Timestamp::from_ms(46L),
-    )
-  }
-  for
-    item in [
-      ("tools/demo/moon.mod.json", "{}"),
-      ("tools/demo/moon.pkg.json", "{}"),
-      ("tools/demo/moon.mod", "{}"),
-      ("tools/demo/moon.pkg", "[]"),
-      ("tools/demo/moon.mod", "deps = { \"moonbitlang/x\": \"*\" }"),
-      ("tools/demo/moon.mod", "import = [\"moonbitlang/x\"]"),
-      ("tools/demo/moon.mod", "moonbitlang/x = \"0.4.46\""),
-      ("tools/demo/moon.mod", "supported_targets = [\"native\"]"),
-    ] {
-    let (path, content) = item
-    let result = mooncode_json_object_field_or_empty(
-      write(path, content),
-      "result",
-    )
-    assert_true(mooncode_json_bool(result, "is_error", default=false))
-    assert_false(@fsx.exists(@pathx.join(book_root, path)))
-  }
-  let accepted = mooncode_json_object_field_or_empty(
-    write("tools/demo/moon.mod", "name = \"example/demo\"\n"),
-    "result",
-  )
-  assert_true(mooncode_json_bool(accepted, "ok", default=false))
 }
 
 ///|

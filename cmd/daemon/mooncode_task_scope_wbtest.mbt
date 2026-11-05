@@ -1,4 +1,63 @@
 ///|
+async test "whole workspace skips Git snapshots and narrow scope fails before effects" {
+  @fsx.with_temporary_directory("mooncode-scope-before-effect-XXXXXX", async fn(
+    root,
+  ) {
+    mooncode_with_fixture_moonfort(root, async fn(_config) {
+      async fn run(scope : String, id : String) -> Json {
+        mooncode_execute_tool_call(
+          "scope-before-effect",
+          root,
+          {
+            "command_id": id,
+            "tool": "shell",
+            "task_contract": { "scope": [scope] },
+            "arguments": { "cmd": "touch marker" },
+          }
+          |> mooncode_runtime_bind_sandbox_approval_plan(root, _),
+          now=@clock.Timestamp::from_ms(1L),
+        )
+      }
+      let narrow = run("allowed", "narrow")
+      assert_false(mooncode_json_bool(narrow, "accepted", default=true))
+      assert_false(@fsx.exists(root + "/marker"))
+      let whole = run(".", "whole")
+      assert_true(
+        mooncode_json_bool(whole, "accepted", default=false),
+        msg=whole.stringify(),
+      )
+      assert_true(@fsx.exists(root + "/marker"))
+    })
+  })
+}
+
+///|
+test "scope compares resolved workspace paths rather than path spelling" {
+  for
+    path in [
+      "allowed/file.txt", "/book/allowed/file.txt", "allowed/sub/../file.txt",
+    ] {
+    assert_eq(
+      mooncode_task_scope_preflight_error("/book", Some(["allowed"]), "write", {
+        "path": path,
+      }),
+      None,
+    )
+  }
+  for
+    path in [
+      "../outside", "allowed/../../outside", "/other/allowed/file.txt", "allowed-other/file.txt",
+    ] {
+    assert_true(
+      mooncode_task_scope_preflight_error("/book", Some(["allowed"]), "write", {
+        "path": path,
+      })
+      is Some(_),
+    )
+  }
+}
+
+///|
 test "mooncode retains a payload contract that declares only task scope" {
   let command : Json = {
     "payload": { "task_contract": { "scope": ["cmd/daemon"] } },
@@ -187,7 +246,8 @@ async test "mooncode restores indirect shell-tool changes outside task scope" (
 ///|
 test "mooncode task scope fails closed for invalid declarations" {
   let error = mooncode_task_scope_preflight_error(
-    { "task_contract": { "scope": ["../outside"] } },
+    "/book",
+    mooncode_task_scope_paths({ "task_contract": { "scope": ["../outside"] } }),
     "write",
     { "path": "cmd/daemon/runtime.mbt" },
   )
@@ -208,14 +268,16 @@ test "mooncode scope uses the explicit patch path when diff parsing has no files
 ///|
 test "mooncode narrowly scoped shell rejects Git workspace mutations" {
   let error = mooncode_task_scope_preflight_error(
-    { "task_contract": { "scope": ["cmd/daemon"] } },
+    "/book",
+    Some(["cmd/daemon"]),
     "shell",
     { "cmd": "git add cmd/daemon && git commit -m scoped" },
   )
   assert_true(error is Some(_))
   assert_eq(
     mooncode_task_scope_preflight_error(
-      { "task_contract": { "scope": ["cmd/daemon"] } },
+      "/book",
+      Some(["cmd/daemon"]),
       "shell",
       { "cmd": "moon test cmd/daemon --target native" },
     ),

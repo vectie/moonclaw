@@ -72,8 +72,9 @@ existing execution facts rather than introduce another execution authority.
 - The sibling synthesis's current module plan replaces the rejected generic
   phases 0–5. It maps Task/Execution/Context/Workspace/Tools/Journal/Completion/
   Projection/Telemetry to responsibilities, concrete removals and behavioral
-  checks. Task/Completion/Execution are now implemented; the other modules
-  remain planned. Retain actual authority, isolation and data integrity. The
+  checks. Task/Completion/Execution are implemented; Tools/Workspace now have a
+  first cleanup pass. Unchecked resource identity, ABI and isolation work remains
+  pending. Retain actual authority, isolation and data integrity. The
   older ten-item checklist describes the previous tool-boundary cleanup.
 - Pure execution properties and shell analysis now belong to
   `internal/mooncode_tools`, with no IO imports. Concurrency, instruction
@@ -132,6 +133,38 @@ existing execution facts rather than introduce another execution authority.
   explicit selection where needed. Long-input working projection remains a
   Context follow-up. Existing six daemon info warnings, release warning debt,
   live-provider and installed-app qualification limits remain.
+
+## Tools Workspace cleanup 2026-11-05
+
+- Removed command-word approval inference and planner-based exemptions.
+  Explicit approval annotations always remain effective; normal execution
+  binds the exact configured MoonFort capability without an extra human step.
+- Removed global shell-authoring prohibitions and file-tool MoonBit manifest
+  grammar checks. Project instructions and real compiler checks remain.
+  Shell now has one execution entry and one shared preflight implementation.
+- The pure policy exposes only parallel-read, after-skill and replay facts.
+  Removed obsolete sensitive/install/overwrite/inline-authoring parsing and
+  associated tests; retained actual read-only scheduling and check semantics.
+- Unified single/multi-file diffs use one executor with file/hunk identity,
+  fingerprints, prevalidation and existing rollback. Scope is parsed once;
+  absolute in-book paths compare like relative paths. Whole-workspace scope
+  skips the Git snapshot; narrow scope snapshot failure precedes execution.
+- Authoring shells invalidate prior checks through the existing boundary.
+  Receipt changed paths join tracked check inputs; the collector returns
+  paths directly instead of constructing artificial before/after states.
+- Do not mark the entire Workspace/Tools plan done. General ABI/schema
+  convergence, canonical symlink identity, narrow/formatter snapshot cost
+  and external/concurrent-write isolation remain unchecked. Current grants
+  have no per-task writable-path field; snapshots are not transactions.
+
+- Validation: final native 1892/1892; final completion/formatter/repair checks
+  17/17; real MoonClaw producer → MoonDesk decoder probe passed. `moon info`
+  and `moon fmt` passed; the only interface diff removes obsolete internal
+  tool properties/functions. Six existing daemon warnings remain. Production
+  `.mbt` net -568 lines; tests net -447. No new package/state machine, human
+  approval step or model request. No desktop runtime/UI change or installed
+  app/live-provider qualification. Full-workspace scope removes entire Git
+  snapshots, but narrow scopes retain their existing O(worktree) cost.
 
 ## Validation 2026-11-04
 

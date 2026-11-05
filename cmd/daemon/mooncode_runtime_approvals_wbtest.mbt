@@ -1,4 +1,39 @@
 ///|
+test "explicit approval is independent of tool words and planner claims" {
+  let calls : Array[Json] = [
+    { "tool": "shell", "arguments": { "cmd": "git commit -m done" } },
+    { "tool": "shell", "arguments": { "cmd": "npm ci" } },
+    { "tool": "shell", "arguments": { "cmd": "printf ready > ready.txt" } },
+    {
+      "tool": "moon_cmd",
+      "arguments": { "command": "test", "args": ["--update"] },
+    },
+    {
+      "tool": "browser",
+      "arguments": { "action": "open", "url": "https://example.com" },
+    },
+  ]
+  for call in calls {
+    assert_false(mooncode_runtime_tool_requires_approval(call))
+    let explicit = mooncode_json_object_with_field(
+      call,
+      "requires_approval",
+      Json(true),
+    )
+    assert_true(mooncode_runtime_tool_requires_approval(explicit))
+    assert_true(
+      mooncode_runtime_tool_requires_approval(
+        mooncode_json_object_with_field(
+          explicit,
+          "planner",
+          Json("model-tool-call"),
+        ),
+      ),
+    )
+  }
+}
+
+///|
 async fn mooncode_control_test_daemon(book_root : String) -> Daemon {
   {
     clock: @clock.epoch,
@@ -66,305 +101,6 @@ async test "invalid approval is rejected before durable queueing" (
   })
   assert_false(
     @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
-  )
-}
-
-///|
-test "mooncode approval classifier gates hosted run reruns" {
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "read",
-      "arguments": { "path": "moon.mod" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_ide",
-      "arguments": { "action": "outline", "path": "cmd/daemon" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_check",
-      "arguments": { "target": "all" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": { "command": "fmt", "target": "native" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "planner": "model-tool-call",
-      "approval": "operator",
-      "arguments": { "command": "test", "target": "native" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "requires_approval": true,
-      "arguments": { "command": "fmt" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": {
-        "command": "test",
-        "args": ["--update"],
-        "test_update_kind": "snapshot",
-        "test_update_reason": "accepted change",
-      },
-    }),
-  )
-  let update_argument_cases : Array[Json] = [
-    {
-      "command": "test",
-      "arg": "-u",
-      "test_update_kind": "snapshot",
-      "test_update_reason": "accepted change",
-    },
-    {
-      "command": "test",
-      "args": ["-u"],
-      "test_update_kind": "snapshot",
-      "test_update_reason": "accepted change",
-    },
-  ]
-  for update_arguments in update_argument_cases {
-    assert_true(
-      mooncode_runtime_tool_requires_approval({
-        "tool": "moon_cmd",
-        "planner": "model-tool-call",
-        "requires_approval": true,
-        "arguments": update_arguments,
-      }),
-    )
-  }
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "requires_approval": true,
-      "arguments": { "cmd": "git status --short" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": { "cmd": "git status --short" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": { "cmd": "sort -o output.txt input.txt" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": { "cmd": "sed -e 'w output.txt' input.txt" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": {
-        "cmd": "set -o pipefail; rg -n 'runtime-turn' cmd/daemon; git diff --check",
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": {
-        "cmd": "set -o pipefail; test \"$(grep -RFl 'workspace preview handles text image virtual and missing entries' internal/moonwiki --include='*_wbtest.mbt' | wc -l | tr -d ' ')\" = 1; test \"$(git diff --numstat -- internal/moonwiki/moonwiki_request_wbtest.mbt | awk '{print $1\":\"$2}')\" = '0:60'; printf 'Preserved totals\\n'",
-      },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": {
-        "cmd": "test \"$(grep value file | unknown-inspector)\" = clean",
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "moon test cmd/daemon --target native" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": {
-        "cmd": "gh run rerun 30277114085 --repo vectie/moondesk --failed",
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": {
-        "cmd": "gh run view 30277114085 --repo vectie/moondesk --log-failed",
-      },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "git commit -m 'validated change'" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "git -C . commit -m 'validated change'" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "git commit-tree HEAD^{tree}" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "echo 'git commit -m only-prose'" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "git status --short" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "npm ci --include=optional --ignore-scripts" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "npm ci --help | sed -n '1,120p'" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "git restore --source=HEAD --worktree -- ui" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": { "cmd": "echo 'npm ci and git restore are risky'" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "arguments": {
-        "cmd": "set -o pipefail; find . -name package.json -print; grep -RInE 'npm ci|npm install|registry|git push' .github package-lock.json | head -n 300",
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "read",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": { "path": "moon.mod" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_ide",
-      "planner": "model-tool-call",
-      "approval": "operator",
-      "arguments": { "action": "outline", "path": "cmd/daemon" },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": {
-        "command": "test",
-        "path": "cmd/daemon",
-        "timeout_ms": 120000,
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "approval": "operator",
-      "arguments": {
-        "cmd": "/usr/bin/time -p moon test cmd/daemon --target native",
-      },
-    }),
-  )
-  assert_false(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "planner": "model-tool-call",
-      "requires_approval": true,
-      "arguments": {
-        "cmd": "set -o pipefail; git status --short; git diff --check",
-      },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "write",
-      "requires_approval": true,
-      "arguments": { "path": "changed.txt", "content": "changed" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "shell",
-      "requires_approval": true,
-      "arguments": { "cmd": "touch changed.txt" },
-    }),
-  )
-  assert_true(
-    mooncode_runtime_tool_requires_approval({
-      "tool": "moon_cmd",
-      "requires_approval": true,
-      "arguments": {
-        "command": "test",
-        "args": ["--update"],
-        "test_update_kind": "snapshots",
-        "test_update_reason": "accepted output update",
-      },
-    }),
   )
 }
 

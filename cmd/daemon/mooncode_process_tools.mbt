@@ -1,104 +1,22 @@
 ///|
-async fn mooncode_tool_shell_in_runtime(
-  runtime : (Daemon, @async.TaskGroup[Unit])?,
+async fn mooncode_tool_shell(
   book_root : String,
   arguments : Json,
-) -> Json {
-  ignore(runtime)
-  if !mooncode_json_bool(arguments, "background", default=false) {
-    return mooncode_tool_shell(book_root, arguments)
-  }
-  mooncode_tool_error_result(
-    "shell",
-    message="background execution is not supported by the one-shot ExecutionSandbox contract",
-    metadata={
-      "execution_sandbox_required": true,
-      "execution_sandbox_policy": "fail-closed",
-    },
-  )
-}
-
-///|
-async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
-  match mooncode_tool_shell_preflight_error(book_root, arguments) {
-    Some(error) => return error
-    None => ()
-  }
-  match mooncode_execution_sandbox_config("shell", book_root~) {
-    Err(refusal) => refusal
-    Ok(config) => mooncode_tool_shell_with_config(book_root, arguments, config)
-  }
-}
-
-///|
-fn mooncode_tool_shell_preflight_error(
-  book_root : String,
-  arguments : Json,
-) -> Json? {
-  let cmd = mooncode_json_string(arguments, "cmd", default="")
-  if cmd == "" {
-    return Some(
-      mooncode_tool_error_result("shell", message="cmd must be non-empty"),
-    )
-  }
-  if mooncode_shell_has_background_operator(cmd) {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message="shell background operators can keep process capture open; set background=true and submit only the long-lived command without `&`",
-      ),
-    )
-  }
-  if @mooncode_tools.shell_has_file_output_redirection(cmd) {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
-      ),
-    )
-  }
-  if @mooncode_tools.shell_has_inline_interpreter_authoring(cmd) {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message="inline interpreters cannot author MoonBook files; use write, edit, or apply_patch",
-      ),
-    )
-  }
-  if @mooncode_tools.shell_has_in_place_authoring(cmd) {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message="shell in-place editing cannot author MoonBook files; use write, edit, or apply_patch",
-      ),
-    )
-  }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
-  if mooncode_json_bool(cwd, "ok", default=false) == false {
-    return Some(
-      mooncode_tool_error_result(
-        "shell",
-        message=mooncode_json_string(cwd, "message", default="invalid cwd"),
-      ),
-    )
-  }
-  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
-    Some(message) => Some(mooncode_tool_error_result("shell", message~))
-    None => None
-  }
-}
-
-///|
-async fn mooncode_tool_shell_with_config(
-  book_root : String,
-  arguments : Json,
-  config : @execution_sandbox.SandboxExecutorConfig,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Json {
   match mooncode_tool_shell_preflight_error(book_root, arguments) {
     Some(error) => return error
     None => ()
   }
+  let config = match sandbox_config {
+    Some(config) => config
+    None =>
+      match mooncode_execution_sandbox_config("shell", book_root~) {
+        Err(refusal) => return refusal
+        Ok(config) => config
+      }
+  }
+
   let cmd = mooncode_json_string(arguments, "cmd", default="")
   let cwd = mooncode_tool_cwd(book_root, arguments)
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
@@ -116,7 +34,7 @@ async fn mooncode_tool_shell_with_config(
         metadata={
           "execution_sandbox_required": true,
           "execution_sandbox_configured": true,
-          "execution_sandbox_policy": "operator-approval-required",
+          "execution_sandbox_policy": "grant-required",
         },
       )
   }
@@ -166,6 +84,42 @@ async fn mooncode_tool_shell_with_config(
     )
   } else {
     result
+  }
+}
+
+///|
+fn mooncode_tool_shell_preflight_error(
+  book_root : String,
+  arguments : Json,
+) -> Json? {
+  let cmd = mooncode_json_string(arguments, "cmd", default="")
+  if cmd == "" {
+    return Some(
+      mooncode_tool_error_result("shell", message="cmd must be non-empty"),
+    )
+  }
+  if mooncode_json_bool(arguments, "background", default=false) ||
+    mooncode_shell_has_background_operator(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="the one-shot ExecutionSandbox contract requires a foreground command without background operators",
+      ),
+    )
+  }
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  if mooncode_json_bool(cwd, "ok", default=false) == false {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message=mooncode_json_string(cwd, "message", default="invalid cwd"),
+      ),
+    )
+  }
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
+    Some(message) => Some(mooncode_tool_error_result("shell", message~))
+    None => None
   }
 }
 

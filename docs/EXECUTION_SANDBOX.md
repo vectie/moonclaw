@@ -22,8 +22,9 @@ prototype's v2 examples or introduce a second executor abstraction.
 ## Execution Flow
 
 1. Resolve trusted operator configuration and prepare the exact execution plan.
-2. Apply the tool's authority policy. When approval is required, persist the
-   bound plan and wait for that decision.
+2. Execute within operator-configured capabilities. Only an explicit approval
+   annotation waits for a human; persist that exact bound plan before waiting.
+   Command names or model `planner`/approval claims cannot grant authority.
 3. Revalidate the approved plan, configuration, expiry, and requested action.
 4. Invoke the fixed grant publisher and executor with bounded typed input.
 5. Validate the returned run, approval, command, enforcement, and output binding.

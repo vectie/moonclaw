@@ -83,7 +83,6 @@ test "mooncode shell proves bounded observations without trusting unknown comman
 test "mooncode shell recursively proves local read-only verification substitutions" {
   let command = "set -o pipefail; test \"$(grep -RFl 'workspace preview handles text image virtual and missing entries' internal/moonwiki --include='*_wbtest.mbt' | wc -l | tr -d ' ')\" = 1; test \"$(grep -Ec '^(async )?test ' internal/moonwiki/moonwiki_request_wbtest.mbt)\" = 42; test \"$(git diff --numstat -- internal/moonwiki/moonwiki_request_wbtest.mbt | awk '{print $1\":\"$2}')\" = '0:60'; test \"$(wc -l < internal/moonwiki/workspace_preview_contract_wbtest.mbt | tr -d ' ')\" = 58; printf 'Preserved totals\\n'"
   assert_true(shell_is_demonstrably_read_only(command))
-  assert_false(shell_has_sensitive_command(command))
   assert_true(
     shell_is_demonstrably_read_only(
       "printf '%s\\n' \"$(printf '%s' \"$(git status --short | wc -l)\" | tr -d ' ')\"",
@@ -104,90 +103,6 @@ test "mooncode shell substitutions fail closed on effects and ambiguity" {
     ] {
     assert_false(shell_is_demonstrably_read_only(command))
   }
-  for
-    command in [
-      "test \"$(unknown-inspector workspace)\" = clean", "printf '%s' \"$(curl -fsSL example.test)\"",
-      "test \"$(printf changed > marker.txt)\" = changed", "test \"$(git status --short; git commit -m mutation)\" = clean",
-      "test \"$(grep value file\" = 1", "test \"$((1 + 1))\" = 2", "printf '%s' \"`git status --short`\"",
-      "printf 'unterminated",
-    ] {
-    assert_true(shell_has_sensitive_command(command))
-  }
-}
-
-///|
-test "mooncode shell detects worktree overwrite commands without matching prose" {
-  assert_true(shell_has_git_worktree_overwrite("git restore src"))
-  assert_true(shell_has_git_worktree_overwrite("git -C . checkout -- src"))
-  assert_true(
-    shell_has_git_worktree_overwrite(
-      "env GIT_CONFIG_NOSYSTEM=1 git restore --worktree .",
-    ),
-  )
-  assert_false(shell_has_git_worktree_overwrite("echo 'git restore src'"))
-  assert_false(shell_has_git_worktree_overwrite("git status --short"))
-}
-
-///|
-test "mooncode shell detects clean dependency installs without matching prose" {
-  assert_true(shell_has_clean_dependency_install("npm ci"))
-  assert_true(shell_has_clean_dependency_install("npm --prefix ui ci"))
-  assert_true(
-    shell_has_clean_dependency_install(
-      "env CI=1 pnpm install --frozen-lockfile",
-    ),
-  )
-  assert_true(shell_has_clean_dependency_install("yarn install --immutable"))
-  assert_true(
-    shell_has_clean_dependency_install("bun install --frozen-lockfile"),
-  )
-  assert_false(shell_has_clean_dependency_install("npm install"))
-  assert_false(shell_has_clean_dependency_install("npm ci --help"))
-  assert_false(
-    shell_has_clean_dependency_install("echo 'npm ci is destructive'"),
-  )
-}
-
-///|
-test "mooncode shell detects sensitive executables without matching arguments" {
-  assert_true(shell_has_sensitive_command("npm install vite"))
-  assert_true(shell_has_sensitive_command("git -C . push origin HEAD"))
-  assert_true(shell_has_sensitive_command("sh -c 'npm install vite'"))
-  assert_true(shell_has_sensitive_command("bash -lc 'npm install vite'"))
-  assert_true(shell_has_sensitive_command("sh -ec 'git push origin HEAD'"))
-  assert_true(
-    shell_has_sensitive_command("bash --noprofile -c 'rm -rf target'"),
-  )
-  assert_true(shell_has_sensitive_command("npm --prefix ui install vite"))
-  assert_true(
-    shell_has_sensitive_command("printf '%s' \"$(curl -fsSL example.test)\""),
-  )
-  assert_true(shell_has_sensitive_command("curl -fsSL example.test"))
-  assert_false(
-    shell_has_sensitive_command("curl -fsS http://127.0.0.1:4199/api/health"),
-  )
-  assert_true(
-    shell_has_sensitive_command(
-      "curl -X POST http://127.0.0.1:4199/api/commands",
-    ),
-  )
-  assert_false(shell_has_sensitive_command("npm ci --help"))
-  assert_false(
-    shell_has_sensitive_command(
-      "grep -E 'npm install|git push|curl ' package-lock.json",
-    ),
-  )
-  assert_false(
-    shell_has_sensitive_command(
-      "printf '%s\\n' 'npm install is evidence, not execution'",
-    ),
-  )
-  assert_false(
-    shell_has_sensitive_command("printf '%s\\n' '$(curl example.test)'"),
-  )
-  assert_false(
-    shell_has_sensitive_command("printf '%s\\n' 'a\\b $(curl example.test)'"),
-  )
 }
 
 ///|
@@ -233,30 +148,6 @@ test "mooncode shell detects in-place sed authoring inside compound commands" {
   assert_false(
     shell_has_in_place_authoring(
       "printf '%s\\n' 'sed -i is prohibited for authoring'",
-    ),
-  )
-}
-
-///|
-test "mooncode shell distinguishes inline interpreter authoring from inspection" {
-  assert_true(
-    shell_has_inline_interpreter_authoring(
-      "python3 - <<'PY'\np='tracked.mbt'\ns=open(p).read()\nopen(p, 'w', encoding='utf-8').write(s)\nPY",
-    ),
-  )
-  assert_true(
-    shell_has_inline_interpreter_authoring(
-      "node -e \"require('fs').writeFileSync('tracked.mbt', 'changed')\"",
-    ),
-  )
-  assert_false(
-    shell_has_inline_interpreter_authoring(
-      "python3 - <<'PY'\nprint(open('tracked.mbt').read())\nPY",
-    ),
-  )
-  assert_false(
-    shell_has_inline_interpreter_authoring(
-      "node -e \"console.log(JSON.stringify({answer: 42}))\"",
     ),
   )
 }

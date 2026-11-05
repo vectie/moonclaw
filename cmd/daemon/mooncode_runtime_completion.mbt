@@ -184,8 +184,7 @@ async fn mooncode_runtime_check_inputs(
 ) -> Array[Json] {
   let paths : Array[String] = []
   for result in results {
-    for state in mooncode_runtime_turn_result_mutation_states(result) {
-      let path = mooncode_json_string(state, "path", default="")
+    for path in mooncode_runtime_turn_result_mutation_paths(result) {
       if path != "" && !paths.contains(path) {
         paths.push(path)
       }
@@ -379,10 +378,10 @@ fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
   ) ||
   (
     tool == "shell" &&
-    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
-    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
-    mooncode_json_string(metadata, "commit_sha", default="") != "" &&
-    !mooncode_json_array_string_items(metadata, "changed_paths").is_empty()
+    mooncode_json_string(metadata, "cmd", default="") != "" &&
+    !@mooncode_tools.classify("shell", {
+      "cmd": mooncode_json_string(metadata, "cmd", default=""),
+    }).parallel_read
   )
 }
 
@@ -405,7 +404,7 @@ fn mooncode_runtime_turn_result_is_commit_boundary(result : Json) -> Bool {
 }
 
 ///|
-fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
+fn mooncode_runtime_turn_result_mutation_paths(result : Json) -> Array[String] {
   if !mooncode_runtime_turn_result_is_mutation(result) {
     return []
   }
@@ -419,23 +418,17 @@ fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
       tool == "shell" &&
       mooncode_json_bool(metadata, "post_commit_boundary", default=false)
     ) {
-    let commit_sha = mooncode_json_string(metadata, "commit_sha", default="")
-      .trim()
-      .to_owned()
-    if commit_sha == "" {
-      return []
-    }
     return mooncode_json_array_string_items(metadata, "changed_paths")
-      .filter(path => path != "")
-      .map(path => {
-        "path": path,
-        "before": "uncommitted",
-        "after": "commit:\{commit_sha}",
-      })
+  }
+  if tool == "shell" {
+    return mooncode_json_array_string_items(
+      mooncode_json_object_field_or_empty(metadata, "sandbox_evidence"),
+      "changed_paths",
+    )
   }
   let files = mooncode_json_array_items(metadata, "files")
   let candidates = if files.is_empty() { [metadata] } else { files }
-  let states : Array[Json] = []
+  let paths : Array[String] = []
   for candidate in candidates {
     if !mooncode_json_bool(candidate, "changed", default=false) {
       continue
@@ -445,17 +438,11 @@ fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
       "file_path",
       default=mooncode_json_string(candidate, "path", default=""),
     )
-    let before = mooncode_json_string(
-      candidate,
-      "before_fingerprint",
-      default="",
-    )
-    let after = mooncode_json_string(candidate, "after_fingerprint", default="")
-    if path != "" && before != "" && after != "" {
-      states.push({ "path": path, "before": before, "after": after })
+    if path != "" {
+      paths.push(path)
     }
   }
-  states
+  paths
 }
 
 ///|

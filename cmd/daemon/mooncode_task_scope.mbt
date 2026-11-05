@@ -1,6 +1,9 @@
 ///|
-fn mooncode_task_scope_paths(body : Json) -> Array[String] {
+fn mooncode_task_scope_paths(body : Json) -> Array[String]? {
   let contract = mooncode_json_object_field_or_empty(body, "task_contract")
+  if mooncode_json_array_items(contract, "scope").is_empty() {
+    return None
+  }
   let paths : Array[String] = []
   for raw in mooncode_json_array_string_items(contract, "scope") {
     let trimmed = raw.trim().to_owned()
@@ -12,13 +15,7 @@ fn mooncode_task_scope_paths(body : Json) -> Array[String] {
       paths.push(normalized)
     }
   }
-  paths
-}
-
-///|
-fn mooncode_task_scope_declared(body : Json) -> Bool {
-  let contract = mooncode_json_object_field_or_empty(body, "task_contract")
-  mooncode_json_array_items(contract, "scope").length() > 0
+  Some(paths)
 }
 
 ///|
@@ -64,14 +61,12 @@ fn mooncode_task_scope_direct_mutation_paths(
 
 ///|
 fn mooncode_task_scope_preflight_error(
-  body : Json,
+  book_root : String,
+  scopes : Array[String]?,
   tool : String,
   arguments : Json,
 ) -> String? {
-  let scopes = mooncode_task_scope_paths(body)
-  if !mooncode_task_scope_declared(body) {
-    return None
-  }
+  guard scopes is Some(scopes) else { return None }
   if scopes.is_empty() {
     return Some(
       "MoonCode task scope is present but contains no valid relative book paths",
@@ -87,7 +82,12 @@ fn mooncode_task_scope_preflight_error(
     )
   }
   for path in mooncode_task_scope_direct_mutation_paths(tool, arguments) {
-    if path == "" || !mooncode_task_scope_contains(scopes, path) {
+    let resolved = mooncode_resolve_book_path(book_root, path)
+    if !mooncode_json_bool(resolved, "ok", default=false) ||
+      !mooncode_task_scope_contains(
+        scopes,
+        mooncode_json_string(resolved, "relative_path", default=""),
+      ) {
       return Some(
         "MoonCode task scope rejects mutation of `\{path}`; allowed roots: \{scopes.join(", ")}",
       )
@@ -97,18 +97,13 @@ fn mooncode_task_scope_preflight_error(
 }
 
 ///|
-fn mooncode_task_scope_needs_snapshot(tool : String) -> Bool {
-  tool == "shell" || tool == "moon_cmd"
-}
-
-///|
 async fn mooncode_task_scope_snapshot(
   book_root : String,
-  body : Json,
+  scopes : Array[String]?,
   tool : String,
 ) -> MoonCodeFmtSnapshot? {
-  if !mooncode_task_scope_declared(body) ||
-    !mooncode_task_scope_needs_snapshot(tool) {
+  guard scopes is Some(scopes) else { return None }
+  if scopes.contains(".") || (tool != "shell" && tool != "moon_cmd") {
     return None
   }
   Some(mooncode_moon_fmt_snapshot(book_root))
@@ -117,20 +112,12 @@ async fn mooncode_task_scope_snapshot(
 ///|
 async fn mooncode_task_scope_finish(
   book_root : String,
-  body : Json,
+  scopes : Array[String],
   tool : String,
   raw_result : Json,
   before : MoonCodeFmtSnapshot?,
 ) -> Json {
   guard before is Some(before) else { return raw_result }
-  let scopes = mooncode_task_scope_paths(body)
-  if before.error != "" {
-    return mooncode_tool_error_result(
-      tool,
-      message="MoonCode could not enforce task scope before executing `\{tool}`: \{before.error}",
-      metadata={ "allowed_scope": Json::array(scopes.map(path => Json(path))) },
-    )
-  }
   let outcome = mooncode_moon_fmt_verify_and_restore(
     book_root, book_root, scopes, before,
   )

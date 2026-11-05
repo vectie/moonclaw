@@ -153,14 +153,45 @@ must inspect the workspace or backend receipt before choosing another action.
 Read-only local observations may be repeated. A claim interrupted before any
 execution can start planning again. This is not universal exactly-once execution.
 
+## Workspace
+
+File tools do not enforce a programming language's manifest grammar; project
+instructions, skills and the actual compiler own those requirements. Shell
+redirection, in-place editing and script generation may execute under the
+configured grant. Shell text path checks and narrow-scope Git restrictions
+remain; removing authoring preferences does not remove those boundaries.
+
+Single-file and multi-file unified diffs use one patchset implementation:
+resolve each file, load its content, validate every selected hunk, then apply.
+Single-file results retain their file/hunk identity and fingerprints while
+also carrying the shared files array. Before/after replacements remain a
+separate edit syntax, not a second unified-diff executor. Shell calls that cannot be classified as
+observations invalidate earlier checks using the existing verification
+boundary; actual receipt `changed_paths` joins subsequent tracked inputs.
+This adds no execution gate or model round. The old path collector no longer
+constructs artificial before/after states just to extract their paths.
+
+Task scope is decoded once per execution. Direct paths are compared after
+book-relative normalization, so an in-book absolute path and its relative
+spelling have the same scope. No scope or `scope=["."]` skips the task-scope
+Git snapshot; an explicit formatter selector retains its own containment.
+A failed narrow-scope snapshot refuses execution before effects occur.
+
+Narrow process scope and selective `moon fmt` still use working-tree
+snapshots and restore checks. The current grant has no per-task writable-path
+field, so these are retained rather than replaced with an unverified claim
+of backend isolation. Lexical normalization is not symlink-race protection;
+snapshots/rollback are not cross-session transactions. Consolidating these
+remaining boundaries and protecting concurrent external edits is unfinished.
+
 ## Tools And Human Decisions
 
 Pure tool-call properties and shell analysis live in `internal/mooncode_tools`.
 The daemon composes them with parameter validation, runtime authorization,
 providers, journal writes and execution. This module performs no IO and does
-not grant permissions. Concurrency, skill-consumption order, interrupted-call
-replay, local execution and local validation are independent properties;
-`read_skill` is not a mutation. Unknown calls remain serial and cannot be
+not grant permissions. It owns concurrency, skill-consumption order and
+interrupted-call replay; the obsolete local-operation/local-validation
+approval properties were deleted. Unknown calls remain serial and cannot be
 replayed merely because their parameters match.
 
 File and process tools stay within their declared scope and authorization.
@@ -168,7 +199,12 @@ Process execution requires the configured MoonFort route; missing configuration
 does not select a host-shell fallback. Direct `/tool-exec` currently returns 503.
 See [Execution sandbox](EXECUTION_SANDBOX.md).
 
-Approval requests bind the exact operation and parameters. Recovery uses the
+Command names, shell mutability, snapshot updates and `planner` labels do not
+create or waive human approval. Only an explicit `requires_approval` or
+`approval=operator` annotation requests it. Otherwise the runtime binds the
+exact call to capabilities from trusted MoonFort configuration; a model's
+approval/safety claim cannot supply a grant. Configuration absence or mismatch
+refuses execution. Explicit approval requests bind the exact operation and parameters. Recovery uses the
 stored approved operation; rejection records non-execution and returns feedback
 to the agent. Timeout remains pending. Cancellation targets the active command
 and must reach its process before a cancellation result is claimed.

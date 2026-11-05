@@ -245,14 +245,14 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
       let plan = @execution_sandbox.make_sandbox_plan(
         config, book_root, book_root, "printf exact", 5_000,
       )
-      let result = mooncode_tool_shell_with_config(
+      let result = mooncode_tool_shell(
         book_root,
         {
           "cmd": "printf exact",
           "timeout_ms": 5_000,
           "_execution_sandbox_plan": plan,
         },
-        config,
+        sandbox_config=config,
       )
       assert_true(mooncode_json_bool(result, "ok", default=false))
       let evidence = mooncode_json_object_field_or_empty(
@@ -276,14 +276,14 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
       let captured = @json.parse(@fsx.read_file(capture_path)).stringify()
       assert_true(captured.contains("Shell"))
       assert_true(captured.contains("printf exact"))
-      let replay = mooncode_tool_shell_with_config(
+      let replay = mooncode_tool_shell(
         book_root,
         {
           "cmd": "printf exact",
           "timeout_ms": 5_000,
           "_execution_sandbox_plan": plan,
         },
-        config,
+        sandbox_config=config,
       )
       assert_false(mooncode_json_bool(replay, "ok", default=true))
       assert_true(
@@ -307,14 +307,14 @@ async test "MoonCode rejects shell command substitution before publication" (
       let plan = @execution_sandbox.make_sandbox_plan(
         config, book_root, book_root, "printf approved", 5_000,
       )
-      let result = mooncode_tool_shell_with_config(
+      let result = mooncode_tool_shell(
         book_root,
         {
           "cmd": "printf substituted",
           "timeout_ms": 5_000,
           "_execution_sandbox_plan": plan,
         },
-        config,
+        sandbox_config=config,
       )
       assert_false(mooncode_json_bool(result, "ok", default=true))
       assert_true(
@@ -411,7 +411,6 @@ async test "MoonCode typed broker bounds argv before grant publication" (
 async test "MoonCode process entry points refuse before host spawn" {
   let results = [
     mooncode_tool_shell("/", { "cmd": "true" }),
-    mooncode_tool_shell_in_runtime(None, "/", { "cmd": "true" }),
     mooncode_tool_moon_ide("/", { "action": "outline", "path": "." }),
     mooncode_tool_moon_cmd("/", { "command": "check" }),
     mooncode_tool_moon_check("/", {}),

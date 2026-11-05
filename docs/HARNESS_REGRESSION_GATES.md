@@ -17,7 +17,9 @@ acceptance engine or model role. See the [runtime boundary](executable_book_runt
 | Context | Task instructions, tool-call pairing and recent verification survive compaction. |
 | Recovery | Checkpoints retain position, intent and completed-result references. Reuse results and reconcile uncertain effects. |
 | Empty model follow-up | Preserve the claim and resume from existing results without requiring milestones; cancellation remains effective. |
-| Authority | Actual sandbox grants, approval bindings and cancellation remain enforced. |
+| Authority | Configured grants authorize calls; explicit approval is honored even with a model planner label. Command words do not create extra review. Denied/mismatched grants, rejection and cancellation remain enforced. |
+| Workspace | One unified-diff executor retains single-file/hunk evidence and validates all patch files before writes. Scope normalizes path spellings; a failed snapshot precedes effects, and whole-workspace scope needs no Git snapshot. |
+| Autonomous authoring | In the same runtime command: commit, redirection, sed editing, `.mbtx` generation, verification and finish, with no pre-seeded human approval or bound plan. Stale inputs still invalidate finish. |
 
 The retired bundle/search experiment and its simulated baseline/variant
 catalog benchmark are removed. Performance observations are not task-success

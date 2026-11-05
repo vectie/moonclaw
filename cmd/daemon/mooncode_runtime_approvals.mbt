@@ -1,81 +1,12 @@
 ///|
 fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let policy = mooncode_runtime_tool_policy(tool_call)
-  let tool = mooncode_json_string(tool_call, "tool", default="")
-  let planner_generated = mooncode_json_string(tool_call, "planner", default="") ==
-    "model-tool-call"
-  let planner_local_validation = planner_generated && policy.local_validation
-  if tool == "shell" {
-    let raw_command = mooncode_json_string(arguments, "cmd", default="")
-    let command = raw_command.to_lower().to_string()
-    if @mooncode_tools.shell_has_git_commit(command) {
-      return "Creating a git commit changes durable repository history and requires operator approval."
-    }
-    if @mooncode_tools.shell_has_git_worktree_overwrite(command) {
-      return "This git command can overwrite tracked worktree content and requires operator approval."
-    }
-    if @mooncode_tools.shell_has_clean_dependency_install(command) {
-      return "A clean dependency install can replace local dependency state and requires operator approval."
-    }
-    if @mooncode_tools.shell_has_sensitive_command(command) {
-      return "This shell command can affect external systems, dependencies, or broad workspace state."
-    }
-    if policy.local_operation {
-      let explicit_operator_boundary = mooncode_json_bool(
-          tool_call,
-          "requires_approval",
-          default=false,
-        ) ||
-        mooncode_json_bool(arguments, "requires_approval", default=false) ||
-        mooncode_json_string(
-          tool_call,
-          "approval",
-          default=mooncode_json_string(arguments, "approval", default=""),
-        ) ==
-        "operator"
-      if planner_generated || !explicit_operator_boundary {
-        return ""
-      }
-    }
-    return "Arbitrary shell text requires a separate operator approval bound to the exact ExecutionSandbox grant."
-  }
-  if tool == "browser" {
-    let action = mooncode_json_string(arguments, "action", default="")
-    let url = mooncode_json_string(arguments, "url", default="")
-    if action == "open" && !@mooncode_tools.browser_loopback_url(url) {
-      return "Navigating the native browser to a non-loopback destination requires operator approval."
-    }
-  }
-  if tool == "moon_cmd" {
-    let serialized = arguments.stringify().to_lower().to_string()
-    if @mooncode_tools.moon_cmd_is_test_update(arguments) ||
-      serialized.contains("publish") {
-      return "This Moon command can update accepted outputs or publish a package."
-    }
-  }
-  // Approval annotations are requests, not authority facts. The runtime keeps
-  // them for unclassified operations. Local execution eligibility is separate
-  // from side effects, concurrency and the actual sandbox grant.
-  if planner_generated && policy.local_operation {
-    return ""
-  }
-  // Preserve caller-controlled authorization for operations whose authority
-  // the runtime cannot prove, while ignoring approval annotations invented by
-  // the model for canonical local validation.
-  if !planner_local_validation &&
-    (
-      mooncode_json_bool(tool_call, "requires_approval", default=false) ||
-      mooncode_json_bool(arguments, "requires_approval", default=false)
-    ) {
+  if mooncode_json_bool(tool_call, "requires_approval", default=false) ||
+    mooncode_json_bool(arguments, "requires_approval", default=false) {
     return "This operation explicitly requires operator approval."
   }
-  let approval = mooncode_json_string(
-    tool_call,
-    "approval",
-    default=mooncode_json_string(arguments, "approval", default=""),
-  )
-  if approval == "operator" && !planner_local_validation {
+  if mooncode_json_string(tool_call, "approval", default="") == "operator" ||
+    mooncode_json_string(arguments, "approval", default="") == "operator" {
     return "This operation crosses an operator-controlled boundary."
   }
   ""

@@ -1085,7 +1085,9 @@ pub async fn run_moon_diagnostics(
 ///|
 /// Execute one typed capability through MoonFort. This is appropriate for
 /// structured tools such as `moon`; arbitrary shell text must use
-/// `run_approved_shell` with a plan persisted before human approval.
+/// `run_approved_shell` with a runtime-bound plan. Explicit human approval
+/// persists that same plan before waiting; configured capabilities may also
+/// authorize autonomous execution.
 pub async fn run_exec(
   config : SandboxExecutorConfig,
   workspace : String,
@@ -1104,7 +1106,7 @@ pub async fn run_exec(
 }
 
 ///|
-/// Consume an exact shell plan that survived the operator approval round-trip.
+/// Consume the exact operator-configured shell plan, including any explicit approval.
 /// Rebuilding a plan here would allow command/profile substitution between
 /// display and execution, so callers pass the persisted plan verbatim.
 pub async fn run_approved_shell(
