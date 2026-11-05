@@ -69,6 +69,10 @@ existing execution facts rather than introduce another execution authority.
 
 ## Tool boundary cleanup 2026-11-05
 
+- The sibling synthesis contains phases 0–5 for remaining work, separately
+  from the completed cleanup checklist. Recovery and compaction already exist;
+  the proposed work consolidates their contracts/default paths. Dynamic graph
+  UI and live-model/installed-app qualification remain outstanding.
 - Pure execution properties and shell analysis now belong to
   `internal/mooncode_tools`, with no IO imports. Concurrency, instruction
   consumption, replay and local execution/validation are independent; the
