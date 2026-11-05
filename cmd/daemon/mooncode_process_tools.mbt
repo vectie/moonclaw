@@ -88,7 +88,7 @@ async fn mooncode_tool_shell(
 }
 
 ///|
-fn mooncode_tool_shell_preflight_error(
+async fn mooncode_tool_shell_preflight_error(
   book_root : String,
   arguments : Json,
 ) -> Json? {
@@ -117,7 +117,12 @@ fn mooncode_tool_shell_preflight_error(
     )
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
+  match
+    mooncode_shell_boundary_error(
+      mooncode_json_string(cwd, "book_root", default=book_root),
+      cwd_path,
+      cmd,
+    ) {
     Some(message) => Some(mooncode_tool_error_result("shell", message~))
     None => None
   }
@@ -356,7 +361,7 @@ async fn mooncode_moon_module_cwd_for_path(
   if path == "" {
     return mooncode_tool_cwd(book_root, {})
   }
-  let resolved = mooncode_resolve_book_path(book_root, path)
+  let resolved = mooncode_workspace_path(book_root, path)
   if !mooncode_json_bool(resolved, "ok", default=false) {
     return resolved
   }
@@ -367,12 +372,12 @@ async fn mooncode_moon_module_cwd_for_path(
   } else {
     absolute
   }
-  let root = @pathx.normalize(book_root)
+  let root = @fsx.resolve(book_root)
   for ;; {
     if @fsx.exists(@pathx.join(candidate, "moon.mod")) ||
       @fsx.exists(@pathx.join(candidate, "moon.mod.json")) ||
       @fsx.exists(@pathx.join(candidate, "moon.work")) {
-      return mooncode_resolve_book_path(book_root, candidate)
+      return mooncode_workspace_path(book_root, candidate)
     }
     if candidate == root {
       break
@@ -423,7 +428,7 @@ async fn mooncode_tool_moon_ide(
   }
   let outline_path = mooncode_json_string(arguments, "path", default="")
   if action == "outline" {
-    let resolved_path = mooncode_resolve_book_path(book_root, outline_path)
+    let resolved_path = mooncode_workspace_path(book_root, outline_path)
     if !mooncode_json_bool(resolved_path, "ok", default=false) {
       return mooncode_tool_error_result(
         "moon_ide",
@@ -671,7 +676,11 @@ async fn mooncode_tool_moon_cmd(
     )
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  let selector_root = if explicit_cwd { cwd_path } else { book_root }
+  let selector_root = if explicit_cwd {
+    cwd_path
+  } else {
+    mooncode_json_string(cwd, "book_root", default=book_root)
+  }
   let module_cwd = mooncode_moon_module_cwd_for_path(book_root, cwd_path)
   let module_root = mooncode_json_string(
     module_cwd,
@@ -679,7 +688,7 @@ async fn mooncode_tool_moon_cmd(
     default=cwd_path,
   )
   for path in mooncode_moon_cmd_paths(arguments) {
-    let resolved = mooncode_resolve_book_path(selector_root, path)
+    let resolved = mooncode_workspace_path(selector_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) {
       return mooncode_tool_error_result(
         "moon_cmd",
@@ -723,12 +732,7 @@ async fn mooncode_tool_moon_cmd(
       },
     )
   }
-  let args = mooncode_moon_cmd_args(
-    arguments,
-    command,
-    selector_root~,
-    cwd_path~,
-  )
+  let args = mooncode_moon_cmd_resolved_args(book_root, arguments, command, cwd)
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
   let config = match sandbox_config {
     Some(config) => config
@@ -885,6 +889,36 @@ fn mooncode_moon_cmd_args(
     }
   }
   args
+}
+
+///|
+/// The approval plan and executor share the same physical selectors and argv.
+async fn mooncode_moon_cmd_resolved_args(
+  book_root : String,
+  arguments : Json,
+  command : String,
+  cwd : Json,
+) -> Array[String] {
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  let selector_root = if mooncode_json_string(arguments, "cwd", default="") !=
+    "" {
+    cwd_path
+  } else {
+    mooncode_json_string(cwd, "book_root", default=book_root)
+  }
+  let paths : Array[Json] = []
+  for path in mooncode_moon_cmd_paths(arguments) {
+    let resolved = mooncode_workspace_path(selector_root, path)
+    guard mooncode_json_bool(resolved, "ok", default=false) else {
+      fail("invalid Moon command resource: \{path}")
+    }
+    paths.push(
+      Json(mooncode_json_string(resolved, "absolute_path", default="")),
+    )
+  }
+  let arguments = mooncode_json_object_with_field(arguments, "path", Json(""))
+    |> mooncode_json_object_with_field("paths", Json::array(paths))
+  mooncode_moon_cmd_args(arguments, command, selector_root~, cwd_path~)
 }
 
 ///|

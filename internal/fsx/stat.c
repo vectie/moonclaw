@@ -2,6 +2,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+MOONBIT_FFI_EXPORT int moonbit_moonclaw_fs_stat_get_mode(moonbit_bytes_t buf) {
+  return ((struct stat *)buf)->st_mode & 0777;
+}
+
 MOONBIT_FFI_EXPORT
 int
 moonbit_moonclaw_fs_stat_sizeof() {

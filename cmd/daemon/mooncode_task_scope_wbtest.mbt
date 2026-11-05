@@ -32,13 +32,18 @@ async test "whole workspace skips Git snapshots and narrow scope fails before ef
 }
 
 ///|
-test "scope compares resolved workspace paths rather than path spelling" {
+async test "scope compares resolved workspace paths rather than path spelling" {
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-resource-identity-XXXXXX"),
+  )
   for
     path in [
-      "allowed/file.txt", "/book/allowed/file.txt", "allowed/sub/../file.txt",
+      "allowed/file.txt",
+      root + "/allowed/file.txt",
+      "allowed/sub/../file.txt",
     ] {
     assert_eq(
-      mooncode_task_scope_preflight_error("/book", Some(["allowed"]), "write", {
+      mooncode_task_scope_preflight_error(root, Some(["allowed"]), "write", {
         "path": path,
       }),
       None,
@@ -49,7 +54,7 @@ test "scope compares resolved workspace paths rather than path spelling" {
       "../outside", "allowed/../../outside", "/other/allowed/file.txt", "allowed-other/file.txt",
     ] {
     assert_true(
-      mooncode_task_scope_preflight_error("/book", Some(["allowed"]), "write", {
+      mooncode_task_scope_preflight_error(root, Some(["allowed"]), "write", {
         "path": path,
       })
       is Some(_),
@@ -244,9 +249,12 @@ async test "mooncode restores indirect shell-tool changes outside task scope" (
 }
 
 ///|
-test "mooncode task scope fails closed for invalid declarations" {
+async test "mooncode task scope fails closed for invalid declarations" {
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-resource-identity-XXXXXX"),
+  )
   let error = mooncode_task_scope_preflight_error(
-    "/book",
+    root,
     mooncode_task_scope_paths({ "task_contract": { "scope": ["../outside"] } }),
     "write",
     { "path": "cmd/daemon/runtime.mbt" },
@@ -266,21 +274,21 @@ test "mooncode scope uses the explicit patch path when diff parsing has no files
 }
 
 ///|
-test "mooncode narrowly scoped shell rejects Git workspace mutations" {
+async test "mooncode narrowly scoped shell rejects Git workspace mutations" {
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-resource-identity-XXXXXX"),
+  )
   let error = mooncode_task_scope_preflight_error(
-    "/book",
+    root,
     Some(["cmd/daemon"]),
     "shell",
     { "cmd": "git add cmd/daemon && git commit -m scoped" },
   )
   assert_true(error is Some(_))
   assert_eq(
-    mooncode_task_scope_preflight_error(
-      "/book",
-      Some(["cmd/daemon"]),
-      "shell",
-      { "cmd": "moon test cmd/daemon --target native" },
-    ),
+    mooncode_task_scope_preflight_error(root, Some(["cmd/daemon"]), "shell", {
+      "cmd": "moon test cmd/daemon --target native",
+    }),
     None,
   )
 }

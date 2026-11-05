@@ -166,6 +166,44 @@ existing execution facts rather than introduce another execution authority.
   app/live-provider qualification. Full-workspace scope removes entire Git
   snapshots, but narrow scopes retain their existing O(worktree) cost.
 
+## Tools ABI and Workspace identity follow-up 2026-11-05
+
+- The cached runtime catalog now owns schemas and supported-name lookup.
+  One validator covers model decoding, pre-approval calls and execution.
+  Removed legacy request aliases and hidden patch verification execution;
+  actual grants and result/event/provider contracts remain distinct.
+- Both repositories removed the unused native command policy tables,
+  tool sequences and result checklists. Capability fingerprints changed
+  together; keep the real producer/consumer probe, not those phrase tests.
+- Physical workspace paths now join scope, aliases, parallel-read identity,
+  verification and command selectors. Check receipts bind actual paths;
+  retargeting an alias to equal bytes still invalidates the earlier check.
+- Native writes reuse OS locks, pinned Book resource comparisons and atomic
+  sibling rename. Stable per-resource lock paths survive inode replacement;
+  other files proceed. Optional expected_fingerprint supports stale writes.
+  Rollback only compares/restores successfully committed patch members.
+- Pitfalls: /var and /private/var aliases must agree in shell boundaries and
+  argv; pre-approval schema checks prevent malformed calls waiting on humans.
+  A scope snapshot lists dirty tracked files, not every tracked file: a clean
+  missing baseline needs read-only HEAD content, not deletion or blind restore.
+  Runtime lock metadata belongs to .moonsuite, excluded like product state.
+- Limits: CAS retains the reused 16 MiB text-reader bound and preserves rwx,
+  not inode/owner/xattrs or cross-file/power-loss transactions. Process tools
+  do not participate in native file locks; non-cooperative writes and hostile
+  parent replacement remain stronger-isolation work. No new package, state
+  machine, model round, global workspace mutex or human confirmation.
+
+- Validation: MoonClaw native 1890/1890; MoonDesk native 1733/1733;
+  protocol-core JS 66/66; focused runtime/core 16/16 and boundaries 23/23;
+  real producer → decoder probe passed. Info/fmt passed, with the existing
+  six daemon warnings. 40 local links and 11 archive hashes checked.
+- Production MoonBit net -1695 across both repos (-901 Claw, -794 Desk).
+  Tests net +66 after replacing retired policy assertions with four actual
+  boundary regressions. Moving the catalog is not counted as deletion.
+  Interfaces remove 25 unused policy APIs, add the shared validator and
+  Stat.mode, and replace unchecked Git restore with read-only HEAD lookup.
+  No installed-app or live-provider qualification was performed.
+
 ## Validation 2026-11-04
 
 - After sharing the primary-agent program, native check and the full native

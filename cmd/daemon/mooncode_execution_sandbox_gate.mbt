@@ -259,13 +259,7 @@ async fn mooncode_prepare_moon_cmd_approval_plan(
     )
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  let selector_root = if explicit_cwd { cwd_path } else { book_root }
-  let args = mooncode_moon_cmd_args(
-    arguments,
-    command,
-    selector_root~,
-    cwd_path~,
-  )
+  let args = mooncode_moon_cmd_resolved_args(book_root, arguments, command, cwd)
   let config = match mooncode_execution_sandbox_config("moon_cmd", book_root~) {
     Err(refusal) => return Err(refusal)
     Ok(config) => config
@@ -300,18 +294,6 @@ fn mooncode_execution_sandbox_refusal(tool : String) -> Json {
       "execution_sandbox_policy": "fail-closed",
     },
   )
-}
-
-///|
-fn mooncode_patch_verification_sandbox_refusal() -> Json {
-  {
-    "ok": false,
-    "tool": "execution_sandbox",
-    "message": "post-change verification refused: no configured ExecutionSandbox route is available",
-    "execution_sandbox_required": true,
-    "execution_sandbox_configured": false,
-    "execution_sandbox_policy": "fail-closed",
-  }
 }
 
 ///|

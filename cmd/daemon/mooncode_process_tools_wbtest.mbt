@@ -6,6 +6,7 @@ fn mooncode_assert_execution_sandbox_refusal(result : Json) -> Unit raise {
     mooncode_json_string(result, "message", default="").contains(
       "ExecutionSandbox",
     ),
+    msg=result.stringify(),
   )
   let metadata = mooncode_json_object_field_or_empty(result, "metadata")
   assert_true(
@@ -118,6 +119,15 @@ async test "mooncode context application failures identify their file" (
   )
   @fsx.write_to_file(@pathx.join(book_root, "target.mbt"), "actual\n")
   for tool in ["edit", "apply_patch"] {
+    let arguments : Json = if tool == "apply_patch" {
+      { "path": "target.mbt", "before": "stale", "after": "replacement" }
+    } else {
+      {
+        "path": "target.mbt",
+        "old_string": "stale",
+        "new_string": "replacement",
+      }
+    }
     let execution = mooncode_execute_tool_call(
       "session-context-failure",
       book_root,
@@ -127,11 +137,7 @@ async test "mooncode context application failures identify their file" (
         "book_root": book_root,
         "tool": tool,
         "command_id": "cmd-context-failure-\{tool}",
-        "arguments": {
-          "path": "target.mbt",
-          "old_string": "stale",
-          "new_string": "replacement",
-        },
+        "arguments": arguments,
       },
       now=@clock.Timestamp::from_ms(45L),
     )
@@ -290,6 +296,7 @@ async test "mooncode native shell rejects explicit paths outside book root" (
       mooncode_json_string(result, "message", default="").contains(
         "outside the selected MoonBook",
       ),
+      msg=result.stringify(),
     )
   }
 }

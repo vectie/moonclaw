@@ -203,13 +203,17 @@ async fn mooncode_runtime_check_inputs(
   }
   let versions : Array[Json] = []
   for path in paths {
-    let resolved = mooncode_resolve_book_path(book_root, path)
+    let resolved = mooncode_workspace_path(book_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) {
       raise InvalidJournal("verification input escapes the selected book")
     }
     let absolute = mooncode_json_string(resolved, "absolute_path", default="")
     let fingerprint = mooncode_runtime_input_fingerprint(absolute)
-    versions.push({ "path": path, "fingerprint": fingerprint })
+    versions.push({
+      "path": path,
+      "absolute_path": absolute,
+      "fingerprint": fingerprint,
+    })
   }
   versions
 }
@@ -295,9 +299,13 @@ async fn mooncode_runtime_finish_input_error(
     }
     for input in mooncode_json_array_items(metadata, "verification_inputs") {
       let path = mooncode_json_string(input, "path", default="")
-      let resolved = mooncode_resolve_book_path(book_root, path)
+      let resolved = mooncode_workspace_path(book_root, path)
       if !mooncode_json_bool(resolved, "ok", default=false) {
         return "Verification input escapes the selected book."
+      }
+      if mooncode_json_string(input, "absolute_path", default="") !=
+        mooncode_json_string(resolved, "absolute_path", default="") {
+        return "Verification resource identity changed for `\{path}`; rerun the necessary check."
       }
       let before = mooncode_json_string(input, "fingerprint", default="")
       if before == "unreadable" ||
@@ -318,7 +326,7 @@ async fn mooncode_runtime_finish_input_error(
     if path == "" {
       continue
     }
-    let resolved = mooncode_resolve_book_path(book_root, path)
+    let resolved = mooncode_workspace_path(book_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) ||
       !(@fsx.exists(mooncode_json_string(resolved, "absolute_path", default="")) catch {
         _ => false

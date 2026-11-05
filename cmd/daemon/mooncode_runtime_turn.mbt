@@ -653,6 +653,25 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           if resuming_step && tool_index < resume_tool_index {
             continue
           }
+          let tool_call = if mooncode_json_string(
+              tool_call,
+              "validation_error",
+              default="",
+            ) ==
+            "" &&
+            mooncode_tool_execution_arguments_error(
+              mooncode_json_string(tool_call, "tool", default=""),
+              mooncode_task_field(tool_call, "arguments"),
+            )
+            is Some(error) {
+            mooncode_json_object_with_field(
+              tool_call,
+              "validation_error",
+              Json(error),
+            )
+          } else {
+            tool_call
+          }
           let occurrence = step_index * 1000 + tool_index
           let approval_id = mooncode_runtime_tool_approval_id(
             command_id,

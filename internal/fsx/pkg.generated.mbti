@@ -92,6 +92,7 @@ pub async fn FileRead::read_text(Self) -> String
 
 type Stat
 pub fn Stat::atime(Self) -> Int64
+pub fn Stat::mode(Self) -> Int
 pub fn Stat::mtime(Self) -> Int64
 
 // Type aliases

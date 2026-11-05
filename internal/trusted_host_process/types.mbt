@@ -36,7 +36,7 @@ pub(all) enum GitOperation {
   FmtTrackedPaths
   FmtUntrackedPaths
   FmtPathDiff(String)
-  FmtRestorePath(String)
+  FmtReadHeadPath(String)
 } derive(Debug)
 
 ///|

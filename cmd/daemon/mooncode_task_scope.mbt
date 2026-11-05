@@ -60,7 +60,7 @@ fn mooncode_task_scope_direct_mutation_paths(
 }
 
 ///|
-fn mooncode_task_scope_preflight_error(
+async fn mooncode_task_scope_preflight_error(
   book_root : String,
   scopes : Array[String]?,
   tool : String,
@@ -81,12 +81,20 @@ fn mooncode_task_scope_preflight_error(
       "MoonCode rejects Git workspace mutations from a narrowly scoped shell call; author files with write, edit, or apply_patch and let the parent session integrate them",
     )
   }
+  let identities : Array[String] = []
+  for scope in scopes {
+    let resolved = mooncode_workspace_path(book_root, scope)
+    if !mooncode_json_bool(resolved, "ok", default=false) {
+      return Some("invalid workspace scope: \{scope}")
+    }
+    identities.push(mooncode_json_string(resolved, "absolute_path", default=""))
+  }
   for path in mooncode_task_scope_direct_mutation_paths(tool, arguments) {
-    let resolved = mooncode_resolve_book_path(book_root, path)
+    let resolved = mooncode_workspace_path(book_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) ||
       !mooncode_task_scope_contains(
-        scopes,
-        mooncode_json_string(resolved, "relative_path", default=""),
+        identities,
+        mooncode_json_string(resolved, "absolute_path", default=""),
       ) {
       return Some(
         "MoonCode task scope rejects mutation of `\{path}`; allowed roots: \{scopes.join(", ")}",

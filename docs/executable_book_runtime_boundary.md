@@ -171,22 +171,60 @@ boundary; actual receipt `changed_paths` joins subsequent tracked inputs.
 This adds no execution gate or model round. The old path collector no longer
 constructs artificial before/after states just to extract their paths.
 
-Task scope is decoded once per execution. Direct paths are compared after
-book-relative normalization, so an in-book absolute path and its relative
-spelling have the same scope. No scope or `scope=["."]` skips the task-scope
+`mooncode_workspace.mbt` owns physical resource resolution and conditional
+writes. Symlink aliases inside the book share a path identity; escaping or
+dangling links are rejected. New files resolve through the nearest existing
+parent. Scope, read-batch identity, verification inputs and process selectors
+reuse this resolver. Verification binds both the actual path and its content.
+Task scope is decoded once per execution. No scope or `scope=["."]` skips the task-scope
 Git snapshot; an explicit formatter selector retains its own containment.
 A failed narrow-scope snapshot refuses execution before effects occur.
 
 Narrow process scope and selective `moon fmt` still use working-tree
 snapshots and restore checks. The current grant has no per-task writable-path
 field, so these are retained rather than replaced with an unverified claim
-of backend isolation. Lexical normalization is not symlink-race protection;
-snapshots/rollback are not cross-session transactions. Consolidating these
-remaining boundaries and protecting concurrent external edits is unfinished.
+of backend isolation. Scope recovery now uses the same conditional writes
+as native tools rather than unchecked Git restore or unconditional overwrite.
+A clean tracked baseline is read from Git, then compared before restoration.
+This protects changes after observation; snapshots cannot attribute every
+change made by an external process while the command itself is running.
+
+Native writes take stable OS locks keyed by canonical book/path, then compare
+the observed content before replacing a staged sibling file. Locks survive
+inode replacement and coordinate sessions without serializing unrelated
+files. Read returns a fingerprint; write accepts it optionally. Edit retains
+old-text matching. Patches validate all members before writing and reject
+duplicate aliases. Rollback touches only committed members and refuses to
+overwrite a subsequent edit; unresolved partial recovery stays explicit.
+
+These are per-file conditional updates, not cross-file transactions or
+universal exactly-once effects. The existing Book resource reader caps CAS
+text comparisons at 16 MiB. Writes preserve observed rwx bits; owner, inode
+and xattrs are not preserved guarantees. Atomic rename is not an fsync or
+power-loss guarantee. A hard crash can leave an orphan staging sibling;
+unknown effects still use existing journal reconciliation, not blind replay. Non-cooperating shell/editor changes can still race the
+final comparison, and hostile parent-directory replacement needs a stronger
+descriptor-relative write boundary. Raw process isolation remains MoonFort's
+configured responsibility; no global workspace mutex was added.
 
 ## Tools And Human Decisions
 
-Pure tool-call properties and shell analysis live in `internal/mooncode_tools`.
+The existing model-facing schemas now live in `mooncode_tool_catalog.mbt`
+and are constructed once. Supported-name lookup, model decoding, pre-approval
+validation and final execution consume that catalog and one pure recursive
+validator. Malformed arguments return errors before scope IO or effects;
+explicit approval cannot turn malformed arguments into executable input.
+Opaque plans/approval annotations remain outside the provider ABI. Exact
+grants are still checked at execution, and provider results use the existing
+result/event envelope. The Moon command plan and executor share physical argv.
+
+Old request-envelope aliases and the hidden patch verification executor were
+removed. Checks use ordinary explicit tool calls and journal receipts. Both
+repositories dropped the unused native command policy/checklist tables from
+their capability contract, keeping actual owner/protocol/endpoint metadata.
+They cannot silently reintroduce review or keyword gates as a second ABI.
+
+Pure tool-call properties, argument validation and shell analysis live in `internal/mooncode_tools`.
 The daemon composes them with parameter validation, runtime authorization,
 providers, journal writes and execution. This module performs no IO and does
 not grant permissions. It owns concurrency, skill-consumption order and

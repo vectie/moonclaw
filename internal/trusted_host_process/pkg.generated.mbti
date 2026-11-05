@@ -77,7 +77,7 @@ pub(all) enum GitOperation {
   FmtTrackedPaths
   FmtUntrackedPaths
   FmtPathDiff(String)
-  FmtRestorePath(String)
+  FmtReadHeadPath(String)
 } derive(@debug.Debug)
 pub fn GitOperation::to_repr(Self) -> @debug.Repr
 

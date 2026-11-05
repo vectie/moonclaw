@@ -5,7 +5,7 @@
 /// `./a.txt` cannot enter one batch as apparently independent reads. Other
 /// read-only tools use their exact normalized call shape; their ExecutionSandbox
 /// runs are isolated and therefore do not share build or process scratch state.
-fn mooncode_runtime_parallel_read_identity(
+async fn mooncode_runtime_parallel_read_identity(
   book_root : String,
   tool_call : Json,
 ) -> String {
@@ -16,7 +16,7 @@ fn mooncode_runtime_parallel_read_identity(
     if path == "" {
       return ""
     }
-    let resolved = mooncode_resolve_book_path(book_root, path)
+    let resolved = mooncode_workspace_path(book_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) {
       return ""
     }
@@ -46,7 +46,7 @@ fn mooncode_runtime_parallel_read_identity(
 ///|
 /// A model-authored batch may run concurrently only when every call has one
 /// explicit, executable read effect and all ordinary runtime guards agree.
-fn mooncode_runtime_turn_parallel_read_batch_allowed(
+async fn mooncode_runtime_turn_parallel_read_batch_allowed(
   book_root : String,
   plan : Json,
   tool_calls : Array[Json],

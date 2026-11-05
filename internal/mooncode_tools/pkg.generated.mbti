@@ -4,6 +4,8 @@ package "vectie/moonclaw/internal/mooncode_tools"
 // Values
 pub const SHELL_BOUNDARY_TOKEN : String = "\x00mooncode-shell-boundary\x00"
 
+pub fn arguments_error(Json, Json, path? : String) -> String?
+
 pub fn classify(String, Json) -> Policy
 
 pub fn moon_cmd_is_test_update(Json) -> Bool

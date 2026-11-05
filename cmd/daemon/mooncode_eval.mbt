@@ -52,15 +52,14 @@ async fn mooncode_native_eval_harness_report(
     "eval-apply-patch",
     {
       "path": "tools/eval.txt",
-      "old_string": "hello MoonCode",
-      "new_string": "hello MoonCode patched",
-      "verification_command": "grep 'hello MoonCode patched' tools/eval.txt",
+      "before": "hello MoonCode",
+      "after": "hello MoonCode patched",
     },
     now~,
     expected_path="tools/eval.txt",
     expected_diff="+hello MoonCode patched",
     expected_kind="runtime.patch_applied",
-    expected_detail="applies a reviewed text patch, verifies it, and emits runtime patch proof",
+    expected_detail="applies a reviewed text patch and emits runtime patch proof",
   )
   let revert_patch_case = mooncode_eval_tool_case(
     session_id,
@@ -69,8 +68,8 @@ async fn mooncode_native_eval_harness_report(
     "eval-revert-patch",
     {
       "path": "tools/eval.txt",
-      "old_string": "hello MoonCode",
-      "new_string": "hello MoonCode patched",
+      "before": "hello MoonCode",
+      "after": "hello MoonCode patched",
     },
     now~,
     expected_path="tools/eval.txt",
@@ -383,7 +382,11 @@ async test "mooncode native eval harness proves tools and file edits" (
       now=@clock.Timestamp::from_ms(99L),
     )
   })
-  assert_eq(mooncode_json_string(report, "status", default=""), "passed")
+  assert_eq(
+    mooncode_json_string(report, "status", default=""),
+    "passed",
+    msg=report.stringify(),
+  )
   let harnesses = mooncode_json_array_items(report, "harnesses")
   assert_eq(harnesses.length(), 2)
   assert_eq(

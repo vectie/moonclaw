@@ -7,14 +7,17 @@ fn parallel_read_test_plan(tool_calls : Array[Json]) -> Json {
 }
 
 ///|
-test "mooncode parallel read batches accept independent read-only tools" {
+async test "mooncode parallel read batches accept independent read-only tools" {
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-resource-identity-XXXXXX"),
+  )
   let calls : Array[Json] = [
     { "tool": "read", "arguments": { "path": "a.txt" } },
     { "tool": "read", "arguments": { "path": "b.txt" } },
   ]
   assert_true(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(calls),
       calls,
       resuming_step=false,
@@ -23,7 +26,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   let duplicate : Array[Json] = [calls[0], calls[0]]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(duplicate),
       duplicate,
       resuming_step=false,
@@ -35,7 +38,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(path_escape),
       path_escape,
       resuming_step=false,
@@ -47,7 +50,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(alias_duplicate),
       alias_duplicate,
       resuming_step=false,
@@ -59,7 +62,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(batch_seal),
       batch_seal,
       resuming_step=false,
@@ -75,7 +78,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(approval_boundary),
       approval_boundary,
       resuming_step=false,
@@ -95,7 +98,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_true(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(heterogeneous),
       heterogeneous,
       resuming_step=false,
@@ -111,7 +114,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(browser_mutation),
       browser_mutation,
       resuming_step=false,
@@ -126,7 +129,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   ]
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(mixed),
       mixed,
       resuming_step=false,
@@ -134,7 +137,7 @@ test "mooncode parallel read batches accept independent read-only tools" {
   )
   assert_false(
     mooncode_runtime_turn_parallel_read_batch_allowed(
-      "/tmp/book",
+      root,
       parallel_read_test_plan(calls),
       calls,
       resuming_step=true,

@@ -20,18 +20,6 @@ test "MoonCode route exists but missing deployment configuration fails closed" {
 }
 
 ///|
-test "MoonCode patch verification fails closed without ExecutionSandbox" {
-  let refusal = mooncode_patch_verification_sandbox_refusal()
-  assert_false(mooncode_json_bool(refusal, "ok", default=true))
-  assert_true(
-    mooncode_json_bool(refusal, "execution_sandbox_required", default=false),
-  )
-  assert_false(
-    mooncode_json_bool(refusal, "execution_sandbox_configured", default=true),
-  )
-}
-
-///|
 async fn[T] mooncode_with_fake_moonfort(
   body : async (@execution_sandbox.SandboxExecutorConfig, String) -> T,
 ) -> T {
@@ -424,55 +412,4 @@ async test "MoonCode process entry points refuse before host spawn" {
       ),
     )
   }
-  let verification = mooncode_tool_run_patch_verification("/", {
-    "verification_command": "true",
-  })
-  assert_false(mooncode_json_bool(verification, "ok", default=true))
-  assert_true(
-    mooncode_json_string(verification, "message", default="").contains(
-      "ExecutionSandbox",
-    ),
-  )
-}
-
-///|
-async test "MoonCode runtime dispatch rejects invalid or unconfigured process tools" (
-  t : @test.Test,
-) {
-  ignore(t)
-  @fsx.with_temporary_directory("mooncode-sandbox-dispatch-XXXXXX", async fn(
-    book_root,
-  ) {
-    for tool in ["shell", "moon_ide", "moon_cmd", "moon_check"] {
-      let execution = mooncode_execute_tool_call_in_runtime(
-        None,
-        "sandbox-dispatch",
-        book_root,
-        {
-          "protocol": mooncode_protocol_version(),
-          "session_id": "sandbox-dispatch",
-          "book_root": book_root,
-          "command_id": "cmd-\{tool}",
-          "tool": tool,
-          "arguments": {},
-        },
-        now=@clock.Timestamp::from_ms(1L),
-      )
-      assert_false(mooncode_json_bool(execution, "accepted", default=true))
-      let result = mooncode_json_object_field_or_empty(execution, "result")
-      assert_true(mooncode_json_bool(result, "is_error", default=false))
-      let metadata = mooncode_json_object_field_or_empty(result, "metadata")
-      if mooncode_json_string(result, "message", default="").contains(
-          "ExecutionSandbox",
-        ) {
-        assert_true(
-          mooncode_json_bool(
-            metadata,
-            "execution_sandbox_required",
-            default=false,
-          ),
-        )
-      }
-    }
-  })
 }

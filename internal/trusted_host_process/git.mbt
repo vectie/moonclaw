@@ -132,14 +132,16 @@ fn GitOperation::arguments(
         ".",
       ]
     FmtUntrackedPaths =>
-      ["ls-files", "--others", "--exclude-standard", "-z", "--", "."]
+      [
+        "ls-files", "--others", "--exclude-standard", "-z", "--", ".", ":(exclude).moonsuite",
+      ]
     FmtPathDiff(path) => {
       validate_relative_path(path)
       ["diff", "--binary", "--no-ext-diff", "HEAD", "--", path]
     }
-    FmtRestorePath(path) => {
+    FmtReadHeadPath(path) => {
       validate_relative_path(path)
-      ["restore", "--worktree", "--", path]
+      ["show", "HEAD:" + path]
     }
   }
 }

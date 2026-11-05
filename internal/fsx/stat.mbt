@@ -6,6 +6,15 @@
 struct Stat(Bytes)
 
 ///|
+#borrow(stat)
+extern "c" fn fs_stat_get_mode(stat : Bytes) -> Int32 = "moonbit_moonclaw_fs_stat_get_mode"
+
+///|
+pub fn Stat::mode(self : Stat) -> Int32 {
+  fs_stat_get_mode(self.0)
+}
+
+///|
 extern "c" fn fs_stat_sizeof() -> Int32 = "moonbit_moonclaw_fs_stat_sizeof"
 
 ///|

@@ -170,15 +170,19 @@ fn mooncode_moon_fmt_changed_paths(
 }
 
 ///|
-fn mooncode_moon_fmt_path_is_requested(
+async fn mooncode_moon_fmt_path_is_requested(
   book_root : String,
   selector_root : String,
   requested_paths : Array[String],
   changed_path : String,
 ) -> Bool {
-  let absolute = @pathx.normalize(@pathx.join(book_root, changed_path))
+  let changed = mooncode_workspace_path(book_root, changed_path)
+  if !mooncode_json_bool(changed, "ok", default=false) {
+    return false
+  }
+  let absolute = mooncode_json_string(changed, "absolute_path", default="")
   for path in requested_paths {
-    let resolved = mooncode_resolve_book_path(selector_root, path)
+    let resolved = mooncode_workspace_path(selector_root, path)
     let requested = mooncode_json_string(resolved, "absolute_path", default="")
     if requested != "" &&
       (absolute == requested || absolute.has_prefix(requested + "/")) {
@@ -195,25 +199,32 @@ async fn mooncode_moon_fmt_restore_path(
   before : MoonCodeFmtPathState?,
   after : MoonCodeFmtPathState?,
 ) -> Unit {
-  match before {
-    Some({ kind: "regular", content: Some(content), .. }) =>
-      @moonclaw_fsx.write_to_file(@pathx.join(book_root, path), content)
-    Some({ kind: "absent", .. }) =>
-      if @moonclaw_fsx.exists(@pathx.join(book_root, path)) {
-        @moonclaw_fsx.remove(@pathx.join(book_root, path))
-      }
-    Some(_) => ()
-    None =>
-      match after {
-        Some({ tracked: true, .. }) =>
-          ignore(mooncode_moon_fmt_git(book_root, FmtRestorePath(path)))
-        Some(_) =>
-          if @moonclaw_fsx.exists(@pathx.join(book_root, path)) {
-            @moonclaw_fsx.remove(@pathx.join(book_root, path))
-          }
-        None => ()
-      }
+  let text = fn(state : MoonCodeFmtPathState?) -> String? raise {
+    match state {
+      None | Some({ kind: "absent", .. }) => None
+      Some({ kind: "regular", content: Some(content), .. }) => Some(content)
+      _ => fail("scope restore requires a regular file: \{path}")
+    }
   }
+  let resolved = mooncode_workspace_path(book_root, path)
+  guard mooncode_json_bool(resolved, "ok", default=false) else {
+    fail("scope resource changed: \{path}")
+  }
+  let original = if before is None && after is Some({ tracked: true, .. }) {
+    let head = mooncode_moon_fmt_git(book_root, FmtReadHeadPath(path))
+    guard mooncode_json_bool(head, "ok", default=false) else {
+      fail("scope base unavailable: \{path}")
+    }
+    Some(mooncode_json_string(head, "output", default=""))
+  } else {
+    text(before)
+  }
+  mooncode_workspace_replace(
+    book_root,
+    mooncode_json_string(resolved, "absolute_path", default=""),
+    text(after),
+    original,
+  )
 }
 
 ///|
@@ -235,11 +246,14 @@ async fn mooncode_moon_fmt_verify_and_restore(
     }
   }
   let changed_paths = mooncode_moon_fmt_changed_paths(before, after)
-  let out_of_scope_paths = changed_paths.filter(fn(path) {
-    !mooncode_moon_fmt_path_is_requested(
-      book_root, selector_root, requested_paths, path,
-    )
-  })
+  let out_of_scope_paths : Array[String] = []
+  for path in changed_paths {
+    if !mooncode_moon_fmt_path_is_requested(
+        book_root, selector_root, requested_paths, path,
+      ) {
+      out_of_scope_paths.push(path)
+    }
+  }
   for path in out_of_scope_paths {
     try
       mooncode_moon_fmt_restore_path(

@@ -224,7 +224,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "tool": "shell",
         "command_id": "cmd-fmt-scope",
         "arguments": {
-          "cmd": "git status --porcelain=v1 && git rev-parse HEAD",
+          "cmd": "git status --porcelain=v1 -- . ':(exclude).moonsuite' && git rev-parse HEAD",
           "timeout_ms": 10000,
         },
       },
