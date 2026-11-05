@@ -284,26 +284,15 @@ fn mooncode_runtime_horizon_checkpoint_execution(
       "checkpoint": checkpoint,
     })
   }
-  {
-    "accepted": error == "",
-    "kind": "mooncode-tool-execution",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": command_id,
-    "tool": "checkpoint",
-    "arguments": arguments,
-    "result": result,
-    "event": mooncode_tool_result_event(
-      session_id,
-      book_root,
-      command_id,
-      "checkpoint",
-      result,
-      now~,
-    ),
-  }
+  mooncode_tool_execution(
+    session_id,
+    book_root,
+    command_id,
+    "checkpoint",
+    arguments,
+    result,
+    now~,
+  )
 }
 
 ///|

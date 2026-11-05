@@ -106,7 +106,7 @@ fn completion_test_finish() -> Json {
 
 ///|
 fn completion_test_metadata(result : Json, key : String, value : Json) -> Json {
-  let payload = mooncode_runtime_turn_result_payload(result)
+  let payload = mooncode_tool_result_value(result)
   let metadata = mooncode_json_object_with_field(
     mooncode_json_object_field_or_empty(payload, "metadata"),
     key,

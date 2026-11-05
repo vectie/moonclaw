@@ -648,6 +648,10 @@ fn mooncode_conversation_assistant_status(event : Json) -> String {
 fn mooncode_conversation_work_step(event : Json) -> Json {
   let command_id = mooncode_json_string(event, "command_id", default="")
   let step_id = mooncode_conversation_work_step_id(event)
+  let metadata = mooncode_json_object_field_or_empty(
+    mooncode_tool_result_value(event),
+    "metadata",
+  )
   let source_kind = mooncode_json_string(
     event,
     "kind",
@@ -669,6 +673,23 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
       mooncode_json_string(event, "status", default="running")
     },
     "tool": mooncode_json_string(event, "tool", default=""),
+    "planner_step": mooncode_json_int(event, "planner_step", default=0),
+    "path": mooncode_json_string(event, "path", default=""),
+    "changed_paths": mooncode_json_array_string_items(event, "changed_paths"),
+    "evidence_ref": mooncode_json_string(event, "id", default=""),
+    "recalls": if mooncode_json_string(event, "tool", default="") ==
+      "read_result" {
+      mooncode_json_string(metadata, "evidence_ref", default="")
+    } else {
+      ""
+    },
+    "inputs": mooncode_json_array_items(metadata, "verification_inputs").map(input => {
+      (
+        {
+          "path": mooncode_json_string(input, "path", default=""),
+          "fingerprint": mooncode_json_string(input, "fingerprint", default=""),
+        } : Json)
+    }),
     "evidence": mooncode_conversation_work_evidence(event),
     "created_at": mooncode_json_string(event, "created_at", default=""),
     "turn_id": command_id,
@@ -1004,11 +1025,7 @@ fn mooncode_conversation_apply_work_event(
     return
   }
   let step = mooncode_conversation_work_step(event)
-  let index = mooncode_conversation_work_step_index(
-    turn.work_steps,
-    step,
-    event,
-  )
+  let index = mooncode_conversation_work_step_index(turn.work_steps, step)
   if index >= 0 {
     let stable_id = mooncode_json_string(
       turn.work_steps[index],
@@ -1042,40 +1059,12 @@ fn mooncode_conversation_apply_work_event(
 fn mooncode_conversation_work_step_index(
   steps : Array[Json],
   step : Json,
-  event : Json,
 ) -> Int32 {
   let item_id = mooncode_json_string(step, "item_id", default="")
   for index, existing in steps {
     if item_id != "" &&
       mooncode_json_string(existing, "item_id", default="") == item_id {
       return index
-    }
-  }
-  let event_name = mooncode_json_string(event, "event", default="")
-  let tool = mooncode_json_string(event, "tool", default="")
-  if event_name == "tool_result" && tool != "" {
-    let path = mooncode_json_string(event, "path", default="")
-    if path != "" {
-      let mut index = steps.length() - 1
-      while index >= 0 {
-        let existing = steps[index]
-        let evidence = mooncode_json_object_field_or_empty(existing, "evidence")
-        if mooncode_json_string(existing, "tool", default="") == tool &&
-          mooncode_json_string(evidence, "path", default="") == path &&
-          mooncode_json_string(existing, "status", default="") == "running" {
-          return index
-        }
-        index = index - 1
-      }
-    }
-    let mut index = steps.length() - 1
-    while index >= 0 {
-      let existing = steps[index]
-      if mooncode_json_string(existing, "tool", default="") == tool &&
-        mooncode_json_string(existing, "status", default="") == "running" {
-        return index
-      }
-      index = index - 1
     }
   }
   -1
@@ -1152,6 +1141,7 @@ fn mooncode_conversation_work_json(
     "status": status,
     "summary": mooncode_conversation_work_summary(turn, status),
     "steps": Json::array(turn.work_steps),
+    "graph": mooncode_conversation_work_graph(turn.command_id, turn.work_steps),
     "live": if status == "done" || status == "failed" || status == "cancelled" {
       Json::object({})
     } else {

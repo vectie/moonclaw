@@ -46,17 +46,13 @@ fn mooncode_runtime_result_event_id(command : Json, result : Json) -> String {
     mooncode_json_string(event, "tool", default="") !=
     mooncode_json_string(result, "tool", default="") ||
     mooncode_task_field(event, "tool_result") !=
-    mooncode_runtime_turn_result_payload(result) ||
+    mooncode_tool_result_value(result) ||
     mooncode_json_bool(
-      mooncode_runtime_turn_result_payload(result),
+      mooncode_tool_result_value(result),
       "is_error",
       default=true,
     ) ||
-    !mooncode_json_bool(
-      mooncode_runtime_turn_result_payload(result),
-      "ok",
-      default=false,
-    ) {
+    !mooncode_json_bool(mooncode_tool_result_value(result), "ok", default=false) {
     return ""
   }
   mooncode_json_string(event, "id", default="")
@@ -79,7 +75,7 @@ fn mooncode_runtime_verification_boundary(results : Array[Json]) -> Int32 {
   let mut boundary = -1
   for index, result in results {
     let metadata = mooncode_json_object_field_or_empty(
-      mooncode_runtime_turn_result_payload(result),
+      mooncode_tool_result_value(result),
       "metadata",
     )
     let tool = mooncode_json_string(result, "tool", default="")
@@ -124,7 +120,7 @@ fn mooncode_runtime_required_check_evidence(
         continue
       }
       let metadata = mooncode_json_object_field_or_empty(
-        mooncode_runtime_turn_result_payload(result),
+        mooncode_tool_result_value(result),
         "metadata",
       )
       let tool = mooncode_json_string(result, "tool", default="")
@@ -237,7 +233,7 @@ fn mooncode_runtime_bind_check_inputs(
   if mooncode_runtime_turn_result_verification_kind(execution) == "" {
     return execution
   }
-  let result = mooncode_runtime_turn_result_payload(execution)
+  let result = mooncode_tool_result_value(execution)
   let metadata = mooncode_json_object_field_or_empty(result, "metadata")
     |> mooncode_json_object_with_field(
       "verification_inputs",
@@ -286,7 +282,7 @@ async fn mooncode_runtime_finish_input_error(
     }
     seen[kind] = true
     let metadata = mooncode_json_object_field_or_empty(
-      mooncode_runtime_turn_result_payload(execution),
+      mooncode_tool_result_value(execution),
       "metadata",
     )
     let revision = mooncode_json_string(metadata, "task_revision", default="")
@@ -344,17 +340,8 @@ priv struct MoonCodeCompletionVerdict {
 }
 
 ///|
-fn mooncode_runtime_turn_result_payload(result : Json) -> Json {
-  let direct = mooncode_json_object_field_or_empty(result, "result")
-  match direct {
-    Object(fields) if !fields.is_empty() => direct
-    _ => mooncode_json_object_field_or_empty(result, "tool_result")
-  }
-}
-
-///|
 fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
-  let payload = mooncode_runtime_turn_result_payload(result)
+  let payload = mooncode_tool_result_value(result)
   let tool = mooncode_json_string(result, "tool", default="")
   let accepted = mooncode_json_bool(
     result,
@@ -395,7 +382,7 @@ fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
 
 ///|
 fn mooncode_runtime_turn_result_is_commit_boundary(result : Json) -> Bool {
-  let payload = mooncode_runtime_turn_result_payload(result)
+  let payload = mooncode_tool_result_value(result)
   let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
   let tool = mooncode_json_string(result, "tool", default="")
   (
@@ -417,7 +404,7 @@ fn mooncode_runtime_turn_result_mutation_paths(result : Json) -> Array[String] {
     return []
   }
   let metadata = mooncode_json_object_field_or_empty(
-    mooncode_runtime_turn_result_payload(result),
+    mooncode_tool_result_value(result),
     "metadata",
   )
   let tool = mooncode_json_string(result, "tool", default="")
@@ -460,7 +447,7 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
   }
   let tool = mooncode_json_string(result, "tool", default="")
   let metadata = mooncode_json_object_field_or_empty(
-    mooncode_runtime_turn_result_payload(result),
+    mooncode_tool_result_value(result),
     "metadata",
   )
   if metadata is Object(fields) &&
@@ -568,7 +555,7 @@ fn mooncode_runtime_turn_completion_verdict(
     return {
       accepted: false,
       reason: mooncode_json_string(
-        mooncode_runtime_turn_result_payload(finish),
+        mooncode_tool_result_value(finish),
         "message",
         default="the final MoonCode tool result is not an accepted finish",
       ),

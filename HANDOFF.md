@@ -21,8 +21,34 @@ into additional implementation requirements.
 The 2026-11-05 synthesis lives in optional sibling MoonDesk at
 `docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md`. It consolidates system
 primitives, data models, framework comparisons and runtime graph construction.
-Graph UI and complete dependency analysis remain planned; graphs should project
-existing execution facts rather than introduce another execution authority.
+The minimal graph UI projects existing execution facts; complete dependency
+analysis remains planned. Graphs never introduce another execution authority.
+
+## Programmable single-agent path 2026-11-05
+
+- Initial/follow-up share one model round. Ordinary tools and checkpoint share
+  result assembly; consumers use the canonical result boundary.
+- Completed operation IDs identify results; tool-call IDs join start/result.
+  Same-millisecond parallel reads must never collapse or match by tool name.
+- `read_result` reads only retained session results, including patch events.
+  Compaction preserves exact or first/last references through repeated passes.
+  It does not rerun effects or reconstruct output already truncated at execution.
+- Work graph is a disposable canonical projection and uses existing UI cards
+  and file navigation. It is not a scheduler, completion rule or new store.
+- Known local chunks use existing shell/project scripts; tiny native edits are
+  faster locally. Measurement: six read/write calls 4 ms; fixture-bridge .mbtx first
+  512 ms / warm 204 ms (script also checked outputs; no model time/tokens; Degraded fixture,
+  not a production MoonFort performance measurement).
+  Do not claim end-to-end speedup or live deliverable-quality improvement.
+- Validation: Claw native 1864/1864 + final projection focus 30/30; Desk
+  native 1729/1729; core JS 65/65 + graph codec 3/3; UI 839/839; Node 24/24.
+  Real producer/consumer probe, info/fmt and production UI build passed.
+  Build 53.57 s; main chunk +4049 bytes vs baseline. Source production net
+  +482/test +341; shared round/result consolidation alone net -61 production.
+  Existing warnings remain; live-provider and installed-app qualification
+  are not included. The historical archive remains unchanged.
+
+
 
 ## Current MoonCode Implementation
 
@@ -32,7 +58,8 @@ existing execution facts rather than introduce another execution authority.
   resume projection and the desktop snapshot/raw-stream/snapshot relay.
 - Watches wait on filesystem metadata and rebuild from the committed journal;
   turn projection uses a temporary command index. Rebuilds still read full
-  history. Do not claim an incremental projection cache or shipped graph UI.
+  history. Minimal graph UI shipped in the later five-step change; there is
+  still no incremental projection cache or complete dependency graph.
 - Planner usage/latency/retries attach to existing final planner events,
   including empty responses. Removed the synchronous exporter and old
   configured/effective compression counters. Usage projects from durable events,
@@ -257,8 +284,8 @@ existing execution facts rather than introduce another execution authority.
   before archive/restore/delete intent: rename can succeed before sync fails,
   and lifecycle reconciliation can then reopen the active path. File bytes are
   still synced on every append; first observation/cache rebuild syncs ancestors.
-- Compaction is lossy. General model-facing history lookup by evidence ID is
-  unfinished; omitted outputs cannot be recovered by replaying effects.
+- Compaction is lossy. `read_result` now recalls retained session results by ID
+  or lists compacted ranges; never recover omitted outputs by replaying effects.
   The current contract is in `docs/LONG_CONTEXT_COMPACTION.md`.
 - Native suite: 1873/1873; real MoonDesk producer/consumer probe passed. Info,
   fmt and whitespace checks passed; public interfaces unchanged. The full

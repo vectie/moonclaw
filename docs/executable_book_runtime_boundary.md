@@ -276,13 +276,15 @@ window-budgeted compiler for initial and follow-up requests. Fixed message
 suffixes, active/shadow experiments and overload-driven transcript rewriting
 were removed. Tool execution owns output limits; Context owns model projection.
 Canonical task revisions and the newest exchange survive projection. Omitted
-history is lossy, and there is no general model-facing journal lookup yet.
+history is lossy; retained result references and compacted first/last ranges
+can be read through the current-session `read_result` tool, without execution.
 
 Canonical watch now belongs to MoonClaw. The desktop reuses the existing codec
 and metadata adapter; it does not download raw event bodies to advance a cursor
 or construct another watch projection. Exact cursors use journal positions,
 not event counts. The unused typed-resume projection was removed. Existing work
-steps/evidence remain the history view; dedicated dynamic graphs are unfinished.
+steps/evidence supply the minimal work graph of batches, calls, file references
+and check inputs. No graph store, scheduler or model call is introduced.
 
 Planner observations attach bounded metrics to existing events, including empty
 responses. Conversation usage sums those durable facts rather than rereading
@@ -358,8 +360,8 @@ The complete discussion and final plan are retained in the optional sibling
 [MoonDesk archive](../../moondesk/docs/mooncode-discussion-2026-11-04/README.md).
 The later [agent machine and dynamic graph synthesis](../../moondesk/docs/MOONCODE_AGENT_MACHINE_AND_DYNAMIC_GRAPH.md)
 records the OS/compiler/database/dataflow analysis and task-driven interpreter
-design. Dynamic graph presentation and complete dependency analysis are not
-implemented runtime guarantees.
+design. Minimal dynamic graph presentation is implemented; complete dependency
+analysis, automatic invalidation and recomputation remain outside its guarantees.
 The runtime and the summary above remain usable without that checkout.
 The synthesis includes the concrete simplification checklist and verification
 evidence for this cleanup; it does not turn runtime checks into new user gates.

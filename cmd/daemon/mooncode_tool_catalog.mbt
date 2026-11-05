@@ -87,6 +87,22 @@ fn mooncode_build_native_tool_catalog() -> Array[
       },
     ),
     mooncode_runtime_turn_model_tool(
+      "read_result",
+      "Read an earlier result from this session without rerunning its tool. Use an evidence_ref from retained context. With end_ref, list result references in that recorded range; then read the needed reference. start_line/end_line select lines of the original result JSON.",
+      {
+        "type": "object",
+        "properties": {
+          "evidence_ref": { "type": "string" },
+          "end_ref": { "type": "string" },
+          "start_line": { "type": "integer", "minimum": 1 },
+          "end_line": { "type": "integer", "minimum": 1 },
+          "max_output_chars": { "type": "integer", "minimum": 1 },
+        },
+        "required": ["evidence_ref"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
       "view_image",
       "Inspect PNG, JPEG, WebP, or GIF pixels from a file inside the selected MoonBook. The image is attached to the next model turn without embedding its bytes in the durable journal.",
       {

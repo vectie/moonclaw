@@ -847,22 +847,15 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
                 finish_error
               },
             )
-            {
-              "accepted": false,
-              "tool": tool,
-              "arguments": mooncode_json_object_field_or_empty(
-                tool_call, "arguments",
-              ),
-              "result": result,
-              "event": mooncode_tool_result_event(
-                session_id,
-                book_root,
-                command_id,
-                tool,
-                result,
-                now=self.clock.now(),
-              ),
-            }
+            mooncode_tool_execution(
+              session_id,
+              book_root,
+              command_id,
+              tool,
+              mooncode_json_object_field_or_empty(tool_call, "arguments"),
+              result,
+              now=self.clock.now(),
+            )
           } else if recovered is Some(execution) {
             execution
           } else if approval_state == "rejected" {
@@ -896,7 +889,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             execution
           }
           let execution = mooncode_runtime_operation_finished(
-            operation_id, tool_call, execution,
+            operation_id,
+            tool_call,
+            execution,
+            step=step_index,
+            index=tool_index,
           )
           step_results.push(execution)
           tool_results.push(execution)
@@ -1942,7 +1939,7 @@ fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
 /// route can provide the evidence used by later planner turns.
 fn mooncode_runtime_turn_result_file_observation(execution : Json) -> Json {
   let accepted = mooncode_json_bool(execution, "accepted", default=false)
-  let result = mooncode_runtime_turn_result_payload(execution)
+  let result = mooncode_tool_result_value(execution)
   if !accepted || !mooncode_json_bool(result, "ok", default=accepted) {
     return {}
   }

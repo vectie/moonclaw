@@ -300,7 +300,13 @@ test "operation recovery reuses committed results and never replays an unknown e
       now~,
     ),
   }
-  let committed = mooncode_runtime_operation_finished("c:0:0", call, execution)
+  let committed = mooncode_runtime_operation_finished(
+    "c:0:0",
+    call,
+    execution,
+    step=0,
+    index=0,
+  )
   let replay = mooncode_runtime_operation_recovery(
     [intent, mooncode_json_object_field_or_empty(committed, "event")],
     "s",

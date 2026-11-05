@@ -115,8 +115,13 @@ async test "same command repairs and verifies after a commit without another use
     @fsx.write_to_file(
       root + "/generate.mbtx",
       (
-        #|import { "moonbitlang/async", "moonbitlang/async/fs", }
-        #|async fn main { @fs.write_file("generated.txt", "generated") }
+        #|import { "moonbitlang/async", "moonbitlang/async/fs", "moonbitlang/core/json" }
+        #|async fn main {
+        #|  let repaired = @fs.read_file("tracked.txt").text().trim().to_owned()
+        #|  guard repaired == "repaired" else { abort("unexpected input") }
+        #|  @fs.write_file("generated.txt", "generated")
+        #|  println(({ "artifact": "generated.txt", "input": repaired } : Json).stringify())
+        #|}
       ),
     )
     let session_id = "commit-repair-session"
@@ -197,6 +202,12 @@ async test "same command repairs and verifies after a commit without another use
       let execution = mooncode_json_object_field_or_empty(receipt, "execution")
       let results = mooncode_json_array_items(execution, "tool_results")
       assert_eq(results.length(), 6)
+      let program_result = mooncode_tool_result_value(results[3])
+      assert_true(
+        mooncode_json_string(program_result, "output", default="").contains(
+          "\"artifact\":\"generated.txt\"",
+        ),
+      )
       for result in results {
         assert_true(mooncode_json_bool(result, "accepted", default=false))
       }

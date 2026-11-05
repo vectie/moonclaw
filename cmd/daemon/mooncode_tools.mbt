@@ -70,6 +70,8 @@ async fn mooncode_execute_tool_call_in_runtime(
       None =>
         match tool {
           "read" => mooncode_tool_read(book_root, arguments)
+          "read_result" =>
+            mooncode_tool_read_result(book_root, session_id, arguments)
           "ask_user" =>
             mooncode_task_ask_user(
               session_id, book_root, command_id, arguments, now,
@@ -141,27 +143,15 @@ async fn mooncode_execute_tool_call_in_runtime(
   let result = mooncode_runtime_post_commit_capture(
     book_root, tool, arguments, raw_result,
   )
-  let event = mooncode_tool_result_event(
+  mooncode_tool_execution(
     session_id,
     book_root,
     command_id,
     tool,
+    arguments,
     result,
     now~,
   )
-  {
-    "accepted": !mooncode_json_bool(result, "is_error", default=false),
-    "kind": "mooncode-tool-execution",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": command_id,
-    "tool": tool,
-    "arguments": arguments,
-    "result": result,
-    "event": event,
-  }
 }
 
 ///|

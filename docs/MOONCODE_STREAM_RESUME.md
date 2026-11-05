@@ -33,6 +33,17 @@ cross-session, stale and malformed replies. Disconnects retain the last accepted
 conversation and retry with its cursor. A revision rollback is surfaced through
 the existing rollback result, not silently accepted.
 
+## Work graph
+
+Each work item projects `graph.nodes` and `graph.edges` from the same work steps.
+Batches select operations; operations reference files and retained results;
+check-input edges carry only recorded paths/versions. Temporal order is not
+inferred data dependency. The graph is rebuilt with the canonical snapshot,
+not persisted or used for scheduling/finish. Construction is linear in the
+steps and explicit references; payload size and DOM cost grow with history.
+The desktop reuses evidence cards and file navigation, with completed work
+folded. Existing raw diagnostic endpoints remain available.
+
 ## Removed paths
 
 The unused opt-in `mooncode-stream-resume.v1` projection, opaque cursor codec,
@@ -56,8 +67,8 @@ the full canonical conversation. This is not an incremental projection cache or
 a guarantee of constant rebuild cost. Each long poll performs an initial and,
 when waiting, final snapshot read; metadata polling itself is constant size.
 
-Existing work steps and evidence links remain the execution history view.
-A dedicated dynamic graph and complete dependency edges remain unfinished.
+Existing work steps and evidence links supply the minimal graph described above.
+Complete data dependencies and automatic invalidation remain unfinished.
 No graph database, UI wiring workflow, extra model call or completion gate was
 introduced.
 

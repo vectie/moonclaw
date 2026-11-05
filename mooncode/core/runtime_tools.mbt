@@ -117,6 +117,7 @@ pub fn runtime_tool_eval_harness() -> String {
 pub fn runtime_tool_names() -> Array[String] {
   [
     runtime_tool_shell(),
+    "read_result",
     runtime_tool_read(),
     runtime_tool_read_skill(),
     "mcp_list_tools",
@@ -403,6 +404,14 @@ pub fn runtime_tool_capability_specs() -> Array[Json] {
       ],
     ),
     runtime_tool_capability_spec(
+      id="read_result",
+      owner="moonclaw",
+      lane=event_lane_tool(),
+      approval="auto",
+      purpose="Recall a retained session result or list a compacted result range without re-execution.",
+      outputs=[runtime_event_tool_result()],
+    ),
+    runtime_tool_capability_spec(
       id=runtime_tool_read(),
       owner="moonclaw",
       lane=event_lane_tool(),
@@ -665,6 +674,47 @@ fn runtime_tool_contract_entries() -> Array[Json] {
         runtime_event_tool_result(),
       ],
       safety_policy="Record the question once in the selected session, wait for its matching answer before dependent work, and honor task cancellation.",
+    ),
+    runtime_tool_contract_entry(
+      id="read_result",
+      lane=event_lane_tool(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "evidence_ref",
+          "string",
+          required=true,
+          "Retained result event ID in this session.",
+        ),
+        runtime_tool_field(
+          "end_ref",
+          "string",
+          required=false,
+          "End event ID for a compacted range listing.",
+        ),
+        runtime_tool_field(
+          "start_line",
+          "integer",
+          required=false,
+          "First line of the retained result JSON, starting at 1.",
+        ),
+        runtime_tool_field(
+          "end_line",
+          "integer",
+          required=false,
+          "Last line of the retained result JSON, inclusive.",
+        ),
+        runtime_tool_field(
+          "max_output_chars",
+          "integer",
+          required=false,
+          "Output character limit, default 12000.",
+        ),
+      ],
+      output_events=[runtime_event_tool_result()],
+      safety_policy="Reads only the current session journal and never repeats the original operation.",
     ),
     runtime_tool_contract_entry(
       id=runtime_tool_read(),

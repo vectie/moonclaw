@@ -111,6 +111,8 @@ fn mooncode_runtime_operation_finished(
   operation_id : String,
   call : Json,
   execution : Json,
+  step~ : Int32,
+  index~ : Int32,
 ) -> Json {
   let compact : Map[String, Json] = Map([])
   if execution is Object(fields) {
@@ -121,7 +123,16 @@ fn mooncode_runtime_operation_finished(
     }
   }
   let event = mooncode_json_object_field_or_empty(execution, "event")
+    |> mooncode_json_object_with_field(
+      "id",
+      Json("moonclaw-operation-" + operation_id),
+    )
     |> mooncode_json_object_with_field("operation_id", Json(operation_id))
+    |> mooncode_json_object_with_field("planner_step", Json(step + 1))
+    |> mooncode_json_object_with_field(
+      "tool_call_id",
+      Json(mooncode_runtime_turn_tool_call_id(call, step=step + 1, index~)),
+    )
     |> mooncode_json_object_with_field("operation_state", "completed")
     |> mooncode_json_object_with_field(
       "call_digest",

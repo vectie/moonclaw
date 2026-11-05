@@ -67,13 +67,13 @@ async test "already-satisfied task uses ordinary finish after an actual required
         evidence.push(execution)
       }
       let metadata = mooncode_json_object_field_or_empty(
-        mooncode_runtime_turn_result_payload(evidence[1]),
+        mooncode_tool_result_value(evidence[1]),
         "metadata",
       )
       assert_eq(mooncode_task_field(metadata, "exit_code"), Json(0))
       assert_true(
         mooncode_json_string(
-          mooncode_runtime_turn_result_payload(evidence[1]),
+          mooncode_tool_result_value(evidence[1]),
           "output",
           default="",
         ).contains("Total tests: 1, passed: 1, failed: 0"),

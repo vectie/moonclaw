@@ -1167,6 +1167,7 @@ test "canonical work keeps review evidence on the matching file step" {
   }
   let result_a : Json = {
     "id": "write-a-result",
+    "tool_call_id": "write-a",
     "command_id": "cmd-evidence",
     "kind": "tool_result",
     "event": "tool_result",

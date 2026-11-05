@@ -37,16 +37,21 @@ same compiled request and never changes the task to handle provider overload.
 ## Evidence and recall
 
 Projection is lossy. A checkpoint contains working observations, not exact
-source evidence or a proof of completion. Retained messages preserve provenance;
-omitted history may lose individual source references. Existing file reads,
+source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result
+ID; a compacted span keeps its first/last result IDs, including across repeated
+compaction. Existing file reads,
 installed-skill reads and available artifact/backend retrieval remain the
 recall paths. Do not replay a mutation to recover its old output.
 
-The journal retains original execution facts and supplies exact referenced
-results for restart. There is currently no general model-facing journal lookup
-by evidence ID; automatic recall of arbitrary omitted historical outputs remains
-unfinished. Do not claim that all historical evidence is always retrievable by
-the model, or add mandatory RAG/query rewriting to compensate.
+The read-only `read_result` tool scans the current session journal by
+`evidence_ref`. With `end_ref`, it lists result references in that inclusive
+range; then an individual reference retrieves the canonical retained result.
+`start_line`/`end_line` select lines of its JSON representation and
+`max_output_chars` defaults to 12000. Metadata reports line count and truncation.
+Missing references return an ordinary tool error. No original operation runs.
+This recovers retained tool output, not stdout already truncated by the tool,
+missing artifacts or overwritten source versions. There is no new index,
+automatic recall model call or mandatory retrieval stage.
 
 ## Journal
 

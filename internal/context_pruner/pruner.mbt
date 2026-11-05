@@ -49,6 +49,75 @@ pub fn Pruner::new(
 const ClearedToolOutputPlaceholder : String = "[Cleared: tool output. Recover exact evidence from retained sources or repeat a safe observation; never replay an effect just to recover output.]"
 
 ///|
+fn context_result_reference(
+  message : @openai.ChatCompletionMessageParam,
+) -> String? {
+  guard message is Tool(tool) else { return None }
+  let value = @json.parse(checkpoint_content_text(tool.content)) catch {
+    _ => return None
+  }
+  match value {
+    { "evidence_ref": String(reference), .. } if reference != "" &&
+      reference.length() <= 1024 => Some(reference)
+    _ => None
+  }
+}
+
+///|
+const ContextResultRangePrefix : String = "Retained result range: "
+
+///|
+fn context_result_span(
+  message : @openai.ChatCompletionMessageParam,
+) -> (String, String)? {
+  if context_result_reference(message) is Some(reference) {
+    return Some((reference, reference))
+  }
+  guard message is User(user) else { return None }
+  for line in checkpoint_content_text(user.content).split("\n") {
+    if line.has_prefix(ContextResultRangePrefix) {
+      let value = @json.parse(line[ContextResultRangePrefix.length():]) catch {
+        _ => return None
+      }
+      match value {
+        { "evidence_ref": String(first), "end_ref": String(last), .. } =>
+          return Some((first, last))
+        _ => return None
+      }
+    }
+  }
+  None
+}
+
+///|
+fn context_tool_is_cleared(
+  message : @openai.ChatCompletionMessageParam,
+) -> Bool {
+  guard message is Tool(tool) else { return false }
+  let text = checkpoint_content_text(tool.content)
+  if text == ClearedToolOutputPlaceholder {
+    return true
+  }
+  let value = @json.parse(text) catch { _ => return false }
+  value is { "context_omitted": true, .. }
+}
+
+///|
+fn context_cleared_tool_content(
+  message : @openai.ChatCompletionMessageParam,
+) -> String {
+  match context_result_reference(message) {
+    None => ClearedToolOutputPlaceholder
+    Some(reference) =>
+      Json::object({
+        "evidence_ref": Json(reference),
+        "context_omitted": Json(true),
+        "output": Json(ClearedToolOutputPlaceholder),
+      }).stringify()
+  }
+}
+
+///|
 const ContextCheckpoint : String = "[Context checkpoint: MoonClaw compacted older model-facing messages to control prompt cost. The original task contract and complete durable journal are unchanged. Continue from the retained recent exchange; re-read exact evidence only when needed.]"
 
 ///|
@@ -259,6 +328,24 @@ fn Pruner::context_checkpoint(
   compacted_start : Int32,
   compacted_end : Int32,
 ) -> String {
+  let mut first_ref = ""
+  let mut last_ref = ""
+  for index in compacted_start..<compacted_end {
+    if context_result_span(messages[index]) is Some((first, last)) {
+      if first_ref == "" {
+        first_ref = first
+      }
+      last_ref = last
+    }
+  }
+  let recall = if first_ref == "" {
+    ""
+  } else {
+    "[Context checkpoint: MoonClaw compacted]\n" +
+    ContextResultRangePrefix +
+    Json::object({ "evidence_ref": Json(first_ref), "end_ref": Json(last_ref) }).stringify() +
+    "\n"
+  }
   let observations : Array[String] = []
   let mut index = compacted_end - 1
   while index >= compacted_start &&
@@ -289,7 +376,12 @@ fn Pruner::context_checkpoint(
   let checkpoint_limit = MaxCheckpointTokens.min(
     (pruner.safe_zone_tokens / 4).max(96),
   )
-  pruner.token_counter.truncate_string(checkpoint.to_string(), checkpoint_limit)
+  // Keep opaque handles intact; only the descriptive checkpoint is lossy.
+  recall +
+  pruner.token_counter.truncate_string(
+    checkpoint.to_string(),
+    (checkpoint_limit - pruner.token_counter.count_string(recall)).max(0),
+  )
 }
 
 ///|
@@ -394,11 +486,11 @@ pub async fn Pruner::compile_messages(
     match message {
       Tool(tool) => {
         if protected_tool_ids.contains(tool.tool_call_id) ||
-          tool.content is [Text({ text: ClearedToolOutputPlaceholder, .. })] {
+          context_tool_is_cleared(message) {
           continue
         }
         let replacement = @openai.tool_message(
-          content=ClearedToolOutputPlaceholder,
+          content=context_cleared_tool_content(message),
           tool_call_id=tool.tool_call_id,
         )
         let savings = pruner.token_counter.count_message(message) -

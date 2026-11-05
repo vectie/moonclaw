@@ -20,9 +20,8 @@ Kind/source tokens use ASCII letters, digits, `_`, `-`, `.`, and `:`;
 kind length is at most 64 characters and source length at most 160. V2 validates
 the content-item count against the message.
 
-The current reader also accepts v1 metadata. Unlike v2, that older contract has
-an open kind namespace and no v2 content-item/boundary requirements. This
-describes the existing reader, not a compatibility requirement for future work.
+The v1 metadata reader was removed; new records use v2. Missing or malformed
+metadata follows conservative inference below.
 
 ## Projection And Recovery
 
