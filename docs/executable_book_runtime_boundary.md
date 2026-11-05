@@ -83,6 +83,28 @@ does not create another state machine. Receipt consumers read the same
 nested canonical result the producer writes. The obsolete patch-verification
 metadata branch is removed; explicit task checks and ordinary finish remain.
 
+### Catalog ownership
+
+Core capability contracts describe names, aliases and protocol ownership.
+Actual argument schemas live in `mooncode_tool_catalog` and argument validation;
+execution properties live in the existing `internal/mooncode_tools` policy.
+The duplicated core input-field catalog, action/tool review labels, command tool
+hints, expected-lane tables and completion-proof flags are removed. Those
+descriptions did not own execution and were inconsistent with the current path.
+Core no longer exports their classification helpers or capability spec wrappers.
+
+The desktop serializes validated submissions and acceptance identities directly;
+it does not build the full capability tree to infer packet control or approval.
+Runtime queue/control projection still derives control from the actual action.
+Explicit approval actions retain their approval/command/tool-call identities;
+real grants, file conditions and current finish evidence remain runtime-owned.
+Capability removal is not a change to those execution guarantees.
+
+Cancellation replay retains current receipt control identities and pinned
+targets. The old untagged-receipt/event matching fallback and its dedicated
+test are removed; startup recovery continues to use the existing active-cancel
+fact predicate next to its producer. No new recovery state or migration is added.
+
 ## Programming The Agent
 
 The program is the user's task interpreted under project instructions and

@@ -9,51 +9,9 @@ import {
 // Values
 pub fn command_accept() -> String
 
-pub fn command_action_approval(String) -> String
-
 pub fn command_action_contract_id() -> String
 
 pub fn command_action_contract_json() -> Json
-
-pub fn command_action_control(String) -> String
-
-pub fn command_action_expected_lanes(String) -> Array[String]
-
-pub fn command_action_is_advertised(String) -> Bool
-
-pub fn command_action_is_cancel(String) -> Bool
-
-pub fn command_action_is_commit(String) -> Bool
-
-pub fn command_action_is_eval(String) -> Bool
-
-pub fn command_action_is_package(String) -> Bool
-
-pub fn command_action_is_patch(String) -> Bool
-
-pub fn command_action_is_prompt_or_steer(String) -> Bool
-
-pub fn command_action_is_review_decision(String) -> Bool
-
-pub fn command_action_is_supported(String) -> Bool
-
-pub fn command_action_is_test(String) -> Bool
-
-pub fn command_action_is_tool_approval(String) -> Bool
-
-pub fn command_action_is_turn(String) -> Bool
-
-pub fn command_action_lane(String) -> String
-
-pub fn command_action_requires_runtime_completion_proof(String) -> Bool
-
-pub fn command_action_requires_tool_harness(String) -> Bool
-
-pub fn command_action_title(String, String) -> String
-
-pub fn command_action_tool_hints(String) -> Array[String]
-
-pub fn command_action_writes_review_receipt(String) -> Bool
 
 pub fn command_advertised_actions() -> Array[String]
 
@@ -657,21 +615,13 @@ pub fn runtime_tool_call_contract_kind() -> String
 
 pub fn runtime_tool_canonical_name(String) -> String
 
-pub fn runtime_tool_capability_names() -> Array[String]
-
-pub fn runtime_tool_capability_specs() -> Array[Json]
-
 pub fn runtime_tool_contract_id() -> String
 
 pub fn runtime_tool_contract_json() -> Json
 
 pub fn runtime_tool_contract_kind() -> String
 
-pub fn runtime_tool_contract_tool_ids(Json) -> Array[String]
-
 pub fn runtime_tool_edit() -> String
-
-pub fn runtime_tool_eval_harness() -> String
 
 pub fn runtime_tool_finish() -> String
 
@@ -691,8 +641,6 @@ pub fn runtime_tool_moon_ide() -> String
 
 pub fn runtime_tool_moonclaw_mapping_rows() -> Array[Json]
 
-pub fn runtime_tool_mutates_files(String) -> Bool
-
 pub fn runtime_tool_names() -> Array[String]
 
 pub fn runtime_tool_native_required_tools() -> Array[String]
@@ -702,10 +650,6 @@ pub fn runtime_tool_package_app_tool() -> String
 pub fn runtime_tool_read() -> String
 
 pub fn runtime_tool_read_skill() -> String
-
-pub fn runtime_tool_requires_authorization_snapshot(String) -> Bool
-
-pub fn runtime_tool_requires_review(String) -> Bool
 
 pub fn runtime_tool_revert_patch() -> String
 

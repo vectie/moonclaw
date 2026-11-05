@@ -492,65 +492,6 @@ test "mooncode core owns runtime consumer contract" {
 }
 
 ///|
-test "mooncode core owns command action contract" {
-  assert_eq(command_prompt(), "prompt")
-  assert_eq(command_steer(), "steer")
-  assert_eq(command_cancel(), "cancel")
-  assert_true(command_action_is_turn("prompt"))
-  assert_false(command_action_is_turn("run_tests"))
-  assert_true(command_action_is_test("run_tests"))
-  assert_true(command_action_is_test("run_build"))
-  assert_true(command_action_is_eval("run_eval"))
-  assert_true(command_action_is_package("package"))
-  assert_true(command_action_is_commit("commit"))
-  assert_true(command_action_is_review_decision("accept"))
-  assert_true(command_action_is_review_decision("reject"))
-  assert_true(command_action_is_tool_approval("approve_tool"))
-  assert_true(command_action_is_tool_approval("reject_tool"))
-  assert_true(command_action_is_patch("apply_patch"))
-  assert_true(command_action_is_patch("revert_patch"))
-  assert_true(command_action_requires_tool_harness("prompt"))
-  assert_true(command_action_requires_tool_harness("apply_patch"))
-  assert_false(command_action_requires_tool_harness("cancel"))
-  assert_true(command_action_requires_runtime_completion_proof("commit"))
-  assert_false(command_action_requires_runtime_completion_proof("prompt"))
-  assert_true(command_action_writes_review_receipt("package"))
-  assert_false(command_action_writes_review_receipt("run_tests"))
-  assert_eq(command_action_control("prompt"), "prompt")
-  assert_eq(command_action_control("package"), "command")
-  assert_eq(command_action_approval("run_eval"), "auto")
-  assert_eq(command_action_approval("commit"), "operator")
-  assert_eq(command_action_approval("steer"), "user")
-  assert_eq(command_action_lane("run_tests"), "test")
-  assert_eq(command_action_lane("package"), "artifact")
-  assert_eq(command_action_lane("commit"), "review")
-  assert_eq(command_action_lane("prompt"), "runtime")
-  assert_true(command_action_expected_lanes("prompt").contains("transcript"))
-  assert_true(command_action_expected_lanes("apply_patch").contains("diff"))
-  assert_true(command_action_tool_hints("prompt").contains("finish"))
-  assert_true(command_action_tool_hints("package").contains("package_app_tool"))
-  assert_eq(command_action_title("run_tests", "queued"), "Run tests: queued")
-  let payload = command_action_contract_json().stringify()
-  assert_true(payload.contains("\"kind\":\"mooncode-command-action-contract\""))
-  assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
-  assert_true(
-    payload.contains("\"contract_id\":\"mooncode-command-actions.v1\""),
-  )
-  assert_true(payload.contains("\"event_lane_contract_id\""))
-  assert_true(payload.contains("\"runtime_event_name_contract_id\""))
-  assert_true(
-    payload.contains("\"turn_actions\":[\"prompt\",\"steer\",\"cancel\"]"),
-  )
-  assert_true(payload.contains("\"advertised_actions\""))
-  assert_true(payload.contains("\"supported_actions\""))
-  assert_true(payload.contains("\"apply_patch\""))
-  assert_true(payload.contains("\"requires_runtime_completion_proof\""))
-  assert_false(payload.contains("internal/mooncode"))
-  assert_false(payload.contains("internal/moonwiki"))
-  assert_false(payload.contains("Rabbita"))
-}
-
-///|
 test "mooncode core owns runtime tool contract" {
   assert_eq(runtime_tool_contract_kind(), "mooncode-tool-contract")
   assert_eq(runtime_tool_call_contract_kind(), "mooncode-tool-call-contract")
@@ -561,15 +502,8 @@ test "mooncode core owns runtime tool contract" {
   let runtime_tools = runtime_tool_names()
   assert_true(runtime_tools.contains("spawn_workers"))
   assert_true(runtime_tools.contains("wait_workers"))
-  assert_eq(
-    runtime_tool_capability_names().length(),
-    runtime_tools.length() + 1,
-  )
   assert_true(runtime_tool_is_supported("moon_cmd"))
   assert_false(runtime_tool_is_supported("delete_world"))
-  assert_true(runtime_tool_requires_authorization_snapshot("moon_check"))
-  assert_true(runtime_tool_requires_authorization_snapshot("moon_cmd"))
-  assert_false(runtime_tool_requires_authorization_snapshot("read"))
   let aliases = runtime_tool_alias_rows().map(row => {
     runtime_tool_test_string(row, "alias") +
     "->" +
@@ -615,18 +549,6 @@ test "mooncode core owns runtime tool contract" {
   assert_true(tool_payload.contains("\"accepted_aliases\""))
   assert_true(tool_payload.contains("\"moonclaw_tool_mappings\""))
   assert_true(tool_payload.contains("\"package_app_tool\""))
-  assert_true(tool_payload.contains("\"path_rule\""))
-  let ids = runtime_tool_contract_tool_ids(tool_contract)
-  assert_eq(ids.length(), runtime_tool_names().length())
-  for tool in runtime_tool_names() {
-    assert_true(ids.contains(tool))
-  }
-  let specs = runtime_tool_capability_specs()
-  assert_eq(specs.length(), runtime_tool_capability_names().length())
-  let spec_ids = specs.map(spec => runtime_tool_test_string(spec, "id"))
-  for tool in runtime_tool_capability_names() {
-    assert_true(spec_ids.contains(tool))
-  }
   assert_false(tool_payload.contains("internal/mooncode"))
   assert_false(tool_payload.contains("internal/moonwiki"))
   assert_false(tool_payload.contains("Rabbita"))

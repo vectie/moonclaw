@@ -258,3 +258,26 @@ async fn mooncode_runtime_cancel_active_atomic(
     Active(_) => fail("cancel settlement unexpectedly selected another target")
   }
 }
+
+///|
+fn mooncode_runtime_is_active_cancel_source(source : Json) -> Bool {
+  let command_id = mooncode_json_string(source, "command_id", default="")
+  let target_id = mooncode_json_string(source, "target_command_id", default="")
+  let control_id = mooncode_json_string(source, "control_id", default="")
+  command_id != "" &&
+  command_id.trim() == command_id &&
+  target_id == command_id &&
+  control_id != "" &&
+  control_id.trim() == control_id &&
+  mooncode_json_string(source, "control_command_id", default="") == control_id &&
+  mooncode_json_string(source, "control_kind", default="") ==
+  "turn-cancellation" &&
+  mooncode_json_string(source, "kind", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "event", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "status", default="") == "cancelled" &&
+  mooncode_json_string(source, "state", default="") == "cancelled" &&
+  mooncode_json_string(source, "source", default="") ==
+  "moonclaw-native-runtime-control"
+}

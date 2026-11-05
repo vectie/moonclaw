@@ -5,6 +5,37 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Eight-module re-audit: catalog and execution ownership 2026-11-05
+
+- Reviewed all eight contracts against current callers. Removed duplicated
+  core command/tool execution descriptions: input fields, review/approval,
+  tool hints, expected lanes, completion flags and their unused classifiers.
+  Actual catalog/schema validation, grants, tool policy and finish still own
+  execution. Core catalogs retain vocabulary, aliases and protocol ownership.
+- Desk packets no longer construct full capabilities to infer control/approval;
+  they serialize the validated submission and acceptance identity directly.
+  Runtime still derives controls from actions. Explicit approval action IDs
+  remain; these catalog labels never conferred execution authorization.
+- Removed legacy untagged cancellation receipt matching. Current control-tagged
+  receipt/pinned-target replay and startup resume remain. The active-cancel
+  fact predicate now sits beside its producer, reused by startup recovery.
+- Retired five obsolete tests across both repos, including the old MoonWiki
+  policy checks and three test-only bridge exports. One old test passed by
+  iterating an empty tools array: that is not execution or permission evidence.
+- Boundary changes are intentional: commands are names, tool_specs and old
+  tool input_fields/constraints are gone. Claw core drops 28 unused exports;
+  Desk internal adapter drops three. No compatibility shim or replacement IR.
+- Distinct runtime/resource lock lifetimes remain distinct; context still uses
+  one pressure compiler. Large journal scans, cooperative native writes and
+  partial dependency provenance retain their documented limits. No new store,
+  runner, state machine, model call, scheduler or confirmation was added.
+- Validation: Claw native 1852/1852, Desk native 1726/1726, core JS 64/64,
+  UI 839/839, final cancel/recovery 14/14 and producer/consumer probe passed.
+  Info/fmt and .mbti removals reviewed. Production .mbt net -2585, tests -379,
+  total -2964 across both repos; relocating the predicate is not a deletion.
+  No claim of live-provider quality, model token savings or measured end-to-end
+  speedup. No UI layout/package install change; historical archive retained.
+
 ## Process / Thread and restart recovery 2026-11-05
 
 - Daemon serve now discovers unfinished sessions once in the background,

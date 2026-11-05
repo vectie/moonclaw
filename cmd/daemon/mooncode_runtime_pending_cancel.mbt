@@ -140,35 +140,6 @@ async fn mooncode_runtime_cancel_pending_atomic(
       )
     }
   }
-  // Older active cancellation receipts did not carry their control identity.
-  // Recover it only from the explicit matching active cancellation event.
-  let events = mooncode_journal_entries(journal, mooncode_journal_event()).filter(event => {
-      mooncode_json_string(event, "control_id", default="") == control_id &&
-      mooncode_json_string(event, "control_command_id", default="") ==
-      control_id
-    },
-  )
-  for event in events {
-    for receipt in receipts {
-      if mooncode_runtime_legacy_cancel_matches(
-          session_id, book_root, control_id, event, receipt,
-        ) {
-        return mooncode_runtime_finish_cancel_locked(
-          session_id,
-          book_root,
-          command,
-          mooncode_json_string(receipt, "command_id", default=""),
-          event,
-          interrupted_runtime=mooncode_json_bool(
-            receipt,
-            "interrupted_runtime",
-            default=false,
-          ),
-          now~,
-        )
-      }
-    }
-  }
   // Pin an active selection before releasing the lock or interrupting a task.
   // Retries must never reinterpret an untargeted control against later work.
   for receipt in receipts {
@@ -362,51 +333,4 @@ async fn mooncode_runtime_finish_cancel_locked(
     ),
   )
   Settled(mooncode_runtime_cancel_response(receipt))
-}
-
-///|
-fn mooncode_runtime_legacy_cancel_matches(
-  session_id : String,
-  book_root : String,
-  control_id : String,
-  event : Json,
-  receipt : Json,
-) -> Bool {
-  let target = mooncode_json_string(event, "target_command_id", default="")
-  mooncode_runtime_is_active_cancel_source(event) &&
-  mooncode_json_string(event, "contract_id", default="") ==
-  @moonlib_conversation.control_contract_id() &&
-  mooncode_json_string(event, "session_id", default="") == session_id &&
-  mooncode_json_string(event, "control_id", default="") == control_id &&
-  mooncode_json_string(receipt, "session_id", default="") == session_id &&
-  mooncode_json_string(receipt, "book_root", default="") == book_root &&
-  mooncode_json_string(receipt, "command_id", default="") == target &&
-  mooncode_json_string(receipt, "status", default="") == "runtime-cancelled" &&
-  mooncode_json_string(receipt, "control", default="") == "cancelled" &&
-  mooncode_json_string(receipt, "runtime_mode", default="") ==
-  "moonclaw-native-runtime-control" &&
-  mooncode_json_string(receipt, "control_command_id", default="") == ""
-}
-
-///|
-fn mooncode_runtime_is_active_cancel_source(source : Json) -> Bool {
-  let command_id = mooncode_json_string(source, "command_id", default="")
-  let target_id = mooncode_json_string(source, "target_command_id", default="")
-  let control_id = mooncode_json_string(source, "control_id", default="")
-  command_id != "" &&
-  command_id.trim() == command_id &&
-  target_id == command_id &&
-  control_id != "" &&
-  control_id.trim() == control_id &&
-  mooncode_json_string(source, "control_command_id", default="") == control_id &&
-  mooncode_json_string(source, "control_kind", default="") ==
-  "turn-cancellation" &&
-  mooncode_json_string(source, "kind", default="") ==
-  @moonlib_conversation.cancellation_event_kind() &&
-  mooncode_json_string(source, "event", default="") ==
-  @moonlib_conversation.cancellation_event_kind() &&
-  mooncode_json_string(source, "status", default="") == "cancelled" &&
-  mooncode_json_string(source, "state", default="") == "cancelled" &&
-  mooncode_json_string(source, "source", default="") ==
-  "moonclaw-native-runtime-control"
 }
