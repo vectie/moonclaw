@@ -149,7 +149,10 @@ test "mooncode continuation stores one current planner transcript" {
   let stored_steps = mooncode_json_array_items(checkpoint, "planner_steps")
   assert_eq(stored_steps.length(), 1)
   assert_false(stored_steps[0].stringify().contains("model_messages"))
-  assert_true(mooncode_runtime_continuation_is_active(checkpoint))
+  assert_true(
+    mooncode_runtime_resume_point(checkpoint)
+    is Some(ResumeTools({ executing: false, approval: Some(_), .. })),
+  )
   let after_step = mooncode_runtime_continuation_event(
     "session-compact",
     "cmd-compact",
@@ -164,7 +167,12 @@ test "mooncode continuation stores one current planner transcript" {
     now=@clock.Timestamp::from_ms(2L),
   )
   assert_eq(mooncode_json_string(after_step, "state", default=""), "after-step")
-  assert_true(mooncode_runtime_continuation_is_active(after_step))
+  assert_true(
+    mooncode_runtime_resume_point(after_step)
+    is Some(
+      ResumeTools({ tool_index: 1, executing: false, approval: None, .. })
+    ),
+  )
 }
 
 ///|

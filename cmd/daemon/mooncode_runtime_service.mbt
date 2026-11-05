@@ -422,14 +422,11 @@ fn mooncode_runtime_service_pending_approval(
   let continuation = mooncode_runtime_continuation_for_command(
     events, command_id,
   )
-  if !(mooncode_runtime_resume_point(continuation) is Some(ResumeTools(_, _))) {
+  guard mooncode_runtime_resume_point(continuation)
+    is Some(ResumeTools({ approval: Some(request), .. })) else {
     return None
   }
-  let approval_id = mooncode_json_string(
-    continuation,
-    "approval_id",
-    default="",
-  )
+  let approval_id = mooncode_json_string(request, "approval_id", default="")
   for event in events {
     if mooncode_json_string(event, "approval_id", default="") == approval_id {
       let state = mooncode_json_string(event, "state", default="")

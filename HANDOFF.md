@@ -5,6 +5,31 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Boundary closure: tool resume and planner pauses 2026-11-06
+
+- Eight responsibilities are analysis views, not eight packages. Ownership is
+  clearer than type/package isolation; command/plan/result Json and broad
+  daemon/session composition remain. Do not expand stable memory, filesystem
+  or lock contracts merely to complete an OS analogy.
+- Continuation decoding now returns tool position, quantum end, in-call
+  distinction and optional validated approval. Turn uses that decoded contract,
+  without reading state/approval/quantum fields from checkpoint JSON again.
+- Recovery pitfall: a newer executing checkpoint can supersede an old approval
+  wait. Matching every ResumeTools position as pending used an empty approval
+  ID and could resurrect the resolved wait. Consume the decoded optional
+  approval instead; the existing service recovery fixture covers this case.
+- Resumed and in-quantum planner pauses share selection/serialization beside
+  continuation. Retain prior plan/results/steering, original pause formats and
+  replay behavior. Removed the separate transport/replan constructors and the
+  mutable duplicate paused flag; tests consume the actual production chooser.
+- No new state, package, permission, model call or journal write. Only the
+  initial iteration checks pre-batch pauses; later rounds use their existing
+  follow-up boundary. No end-to-end latency or live-provider quality claim.
+- Validation: final Claw native 1845/1845, Desk native 1726/1726, focused
+  recovery/approval 28/28 and real producer/consumer probe passed. Check,
+  info/fmt, interfaces and whitespace checked; .mbti unchanged. Production
+  .mbt -85, tests +44, net -41; no new test cases or UI/install change.
+
 ## Eight-module re-audit: session metadata and execution evidence 2026-11-05
 
 - Intake restores metadata once. Admission and disk restoration share the

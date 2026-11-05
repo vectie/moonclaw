@@ -148,19 +148,22 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
     "accepted": true,
     "result": { "ok": true, "output": "# Book" },
   }
-  let checkpoint = mooncode_runtime_planner_replan_continuation_event(
+  let (checkpoint, _) = mooncode_runtime_planner_pause_event(
     "session-replan",
     "cmd-replan",
+    {
+      "patient_replan": true,
+      "patient_replan_guidance": "Continue the same unfinished task.",
+    },
     plan,
-    finish_rejected=false,
     [plan],
     [result],
     [result],
+    [],
     next_step_index=1,
-    replan_count=2,
-    guidance="Continue the same unfinished task.",
+    replan_count=1,
     now=@clock.Timestamp::from_ms(44L),
-  )
+  ).unwrap()
   let hydrated_checkpoint = mooncode_runtime_continuation_for_command(
     [checkpoint],
     "cmd-replan",
@@ -192,19 +195,22 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
       },
     ]),
   )
-  let rejected_finish_checkpoint = mooncode_runtime_planner_replan_continuation_event(
+  let (rejected_finish_checkpoint, _) = mooncode_runtime_planner_pause_event(
     "session-rejected-finish",
     "cmd-rejected-finish",
+    {
+      "patient_replan": true,
+      "patient_replan_guidance": "Continue the unfinished task without replaying completed tools.",
+    },
     rejected_finish_plan,
-    finish_rejected=true,
     [rejected_finish_plan],
     [result],
     [result],
+    [],
     next_step_index=1,
-    replan_count=1,
-    guidance="Continue the unfinished task without replaying completed tools.",
+    replan_count=0,
     now=@clock.Timestamp::from_ms(45L),
-  )
+  ).unwrap()
   let hydrated_rejected_finish_checkpoint = mooncode_runtime_continuation_for_command(
     [rejected_finish_checkpoint],
     "cmd-rejected-finish",
@@ -263,19 +269,24 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
 
 ///|
 test "planner transport checkpoints preserve initial and follow-up resume state" {
-  let initial = mooncode_runtime_planner_transport_continuation_event(
+  let response : Json = {
+    "transient_transport_close": true,
+    "message": "model planner failed: ConnectionClosed",
+  }
+  let (initial, reason) = mooncode_runtime_planner_pause_event(
     "session-transport",
     "cmd-transport",
+    response,
     Json::object({}),
     [],
     [],
     [],
     [{ "command_id": "steer-one", "text": "Keep the scope narrow." }],
-    resume_mode="initial",
     next_step_index=0,
-    detail="model planner failed: ConnectionClosed",
+    replan_count=0,
     now=@clock.Timestamp::from_ms(44L),
-  )
+  ).unwrap()
+  assert_eq(reason, "planner-transport-interrupted")
   assert_true(
     mooncode_runtime_planner_transport_continuation_is_active(initial),
   )
@@ -288,19 +299,19 @@ test "planner transport checkpoints preserve initial and follow-up resume state"
     "accepted": true,
     "result": { "ok": true, "output": "# Book" },
   }
-  let followup = mooncode_runtime_planner_transport_continuation_event(
+  let (followup, _) = mooncode_runtime_planner_pause_event(
     "session-transport",
     "cmd-transport",
+    response,
     plan,
     [plan],
     [result],
     [result],
     [{ "command_id": "steer-two", "text": "Finish the same slice." }],
-    resume_mode="followup",
     next_step_index=1,
-    detail="model planner follow-up failed: ConnectionClosed",
+    replan_count=0,
     now=@clock.Timestamp::from_ms(45L),
-  )
+  ).unwrap()
   let followup = mooncode_runtime_continuation_for_command(
     [followup],
     "cmd-transport",
@@ -1326,9 +1337,10 @@ async test "transient planner close resumes through runtime service without repl
           default=false,
         ),
       )
-      let transport = mooncode_runtime_planner_transport_continuation_event(
+      let (transport, _) = mooncode_runtime_planner_pause_event(
         session_id,
         command_id,
+        interrupted,
         mooncode_json_object_field_or_empty(quantum, "plan"),
         mooncode_json_array_items(quantum, "planner_steps"),
         mooncode_json_array_items(quantum, "tool_results"),
@@ -1339,11 +1351,10 @@ async test "transient planner close resumes through runtime service without repl
             "steering_text": "KEEP_TRANSPORT_SCOPE",
           },
         ],
-        resume_mode="followup",
         next_step_index=1,
-        detail=mooncode_json_string(interrupted, "message", default=""),
+        replan_count=0,
         now=@clock.Timestamp::from_ms(4L),
-      )
+      ).unwrap()
       let transport = mooncode_runtime_continuation_for_command(
         events + [transport],
         command_id,

@@ -4,9 +4,18 @@ fn mooncode_runtime_continuation_kind() -> String {
 }
 
 ///|
+priv struct MoonCodeToolResume {
+  step_index : Int32
+  tool_index : Int32
+  turn_end_step : Int32
+  executing : Bool
+  approval : Json?
+}
+
+///|
 /// Decoded positions in the existing loop, not an additional execution machine.
 priv enum MoonCodeResumePoint {
-  ResumeTools(Int32, Int32)
+  ResumeTools(MoonCodeToolResume)
   ResumePlanner(Int32)
   ResumeTransport(Bool, Int32)
   ResumeReplan(Int32)
@@ -50,15 +59,19 @@ fn mooncode_runtime_resume_point(checkpoint : Json) -> MoonCodeResumePoint? {
         "approval_id",
         default="",
       )
-      match state {
-        "after-step" =>
+      let approval = match state {
+        "after-step" => {
           if approval_id != "" || tool != calls.length() {
             return None
           }
-        "executing-tool" =>
+          None
+        }
+        "executing-tool" => {
           if approval_id != "" || tool >= calls.length() {
             return None
           }
+          None
+        }
         _ => {
           if approval_id == "" || tool >= calls.length() {
             return None
@@ -78,9 +91,18 @@ fn mooncode_runtime_resume_point(checkpoint : Json) -> MoonCodeResumePoint? {
             approval_id {
             return None
           }
+          Some(approval)
         }
       }
-      return Some(ResumeTools(step, tool))
+      return Some(
+        ResumeTools({
+          step_index: step,
+          tool_index: tool,
+          turn_end_step: end,
+          executing: state == "executing-tool",
+          approval,
+        }),
+      )
     }
     "planner-quantum-paused"
     | "planner-transport-paused"
@@ -295,72 +317,82 @@ fn mooncode_runtime_planner_continuation_event(
 }
 
 ///|
-fn mooncode_runtime_planner_transport_continuation_event(
+/// A planner pause retains the last executable plan, never the failed or empty
+/// response. Both resumed and in-quantum rounds use the same checkpoint shape.
+fn mooncode_runtime_planner_pause_event(
   session_id : String,
   command_id : String,
-  plan : Json,
+  response : Json,
+  previous_plan : Json,
   planner_steps : Array[Json],
   tool_results : Array[Json],
   step_results : Array[Json],
-  pending_live_steering : Array[Json],
-  resume_mode~ : String,
-  next_step_index~ : Int32,
-  detail~ : String,
-  now~ : @clock.Timestamp,
-) -> Json {
-  mooncode_runtime_checkpoint_event(
-    session_id,
-    command_id,
-    plan,
-    planner_steps,
-    tool_results,
-    step_results,
-    {
-      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-\{now}",
-      "state": "planner-transport-paused",
-      "reason": "planner-transport-interrupted",
-      "status": "paused",
-      "resume_mode": resume_mode,
-      "next_step_index": next_step_index,
-      "pending_live_steering": Json::array(pending_live_steering),
-      "detail": detail,
-    },
-    now~,
-  )
-}
-
-///|
-fn mooncode_runtime_planner_replan_continuation_event(
-  session_id : String,
-  command_id : String,
-  plan : Json,
-  finish_rejected~ : Bool,
-  planner_steps : Array[Json],
-  tool_results : Array[Json],
-  step_results : Array[Json],
+  live_steering : Array[Json],
   next_step_index~ : Int32,
   replan_count~ : Int32,
-  guidance~ : String,
   now~ : @clock.Timestamp,
-) -> Json {
-  mooncode_runtime_checkpoint_event(
-    session_id,
-    command_id,
-    plan,
-    planner_steps,
-    tool_results,
-    step_results,
-    {
-      "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
-      "state": "planner-replan-paused",
-      "reason": "planner-empty-followup",
-      "status": "paused",
-      "next_step_index": next_step_index,
-      "replan_count": replan_count,
-      "patient_replan_guidance": guidance,
-      "finish_rejected": finish_rejected,
-    },
-    now~,
+) -> (Json, String)? {
+  let (details, reason) : (Json, String) = if mooncode_json_bool(
+      response,
+      "transient_transport_close",
+      default=false,
+    ) {
+    let resume_mode = if planner_steps.is_empty() {
+      "initial"
+    } else {
+      "followup"
+    }
+    (
+      {
+        "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-\{now}",
+        "state": "planner-transport-paused",
+        "reason": "planner-transport-interrupted",
+        "status": "paused",
+        "resume_mode": resume_mode,
+        "next_step_index": next_step_index,
+        "pending_live_steering": Json::array(live_steering),
+        "detail": mooncode_json_string(response, "message", default=""),
+      },
+      "planner-transport-interrupted",
+    )
+  } else if mooncode_json_bool(response, "patient_replan", default=false) {
+    let replan_count = replan_count + 1
+    (
+      {
+        "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
+        "state": "planner-replan-paused",
+        "reason": "planner-empty-followup",
+        "status": "paused",
+        "next_step_index": next_step_index,
+        "replan_count": replan_count,
+        "patient_replan_guidance": mooncode_json_string(
+          response,
+          "patient_replan_guidance",
+          default="",
+        ),
+        "finish_rejected": mooncode_runtime_turn_tool_calls_include_finish(
+          mooncode_json_array_items(previous_plan, "tool_calls"),
+        ),
+      },
+      "planner-empty-followup",
+    )
+  } else {
+    return None
+  }
+  Some(
+    (
+      mooncode_runtime_checkpoint_event(
+        session_id,
+        command_id,
+        previous_plan,
+        planner_steps,
+        tool_results,
+        step_results,
+        details,
+        now~,
+      ),
+      reason,
+    ),
   )
 }
 

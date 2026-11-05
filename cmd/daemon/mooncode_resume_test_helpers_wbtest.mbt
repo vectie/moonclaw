@@ -1,6 +1,6 @@
 ///|
 fn mooncode_runtime_continuation_is_active(checkpoint : Json) -> Bool {
-  mooncode_runtime_resume_point(checkpoint) is Some(ResumeTools(_, _))
+  mooncode_runtime_resume_point(checkpoint) is Some(ResumeTools(_))
 }
 
 ///|

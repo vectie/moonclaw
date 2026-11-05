@@ -182,7 +182,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       "MoonCode runtime-claimed command \{command_id} has no valid active continuation",
     )
   }
-  let resuming_tools = resume_point is Some(ResumeTools(_, _))
+  let resuming_tools = resume_point is Some(ResumeTools(_))
   if mooncode_json_string(continuation, "command_id", default="") != "" &&
     !resuming_continuation {
     raise InvalidJournal(
@@ -335,7 +335,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
         _ => ([], "", 0)
       }
       let mut plan = match resume_point {
-        Some(ResumeTools(_, _)) =>
+        Some(ResumeTools(_)) =>
           mooncode_json_object_field_or_empty(continuation, "plan")
         None | Some(ResumeTransport(true, _)) =>
           self.mooncode_runtime_turn_plan_tool_calls(
@@ -419,22 +419,24 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       } else {
         []
       }
-      let resume_step_index = match resume_point {
-        Some(ResumeTools(step, _))
-        | Some(ResumePlanner(step))
+      let (
+        resume_step_index,
+        resume_tool_index,
+        stored_planner_turn_end,
+        resume_approval,
+      ) = match resume_point {
+        Some(ResumeTools(position)) =>
+          (
+            position.step_index,
+            position.tool_index,
+            position.turn_end_step,
+            position.approval,
+          )
+        Some(ResumePlanner(step))
         | Some(ResumeTransport(_, step))
-        | Some(ResumeReplan(step)) => step
-        None => 0
+        | Some(ResumeReplan(step)) => (step, 0, 0, None)
+        None => (0, 0, 0, None)
       }
-      let resume_tool_index = match resume_point {
-        Some(ResumeTools(_, tool)) => tool
-        _ => 0
-      }
-      let stored_planner_turn_end = mooncode_json_int(
-        continuation,
-        "planner_turn_end_step",
-        default=0,
-      )
       let planner_turn_end_step = if resuming_tools &&
         stored_planner_turn_end > resume_step_index {
         stored_planner_turn_end
@@ -443,100 +445,41 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       } else {
         0
       }
-      let mut planner_paused = false
       let mut planner_pause_reason = ""
       let mut next_step_index = 0
       for step_index = resume_step_index
           planner_turn_end_step == 0 || step_index < planner_turn_end_step
           step_index = step_index + 1 {
         let resuming_step = resuming_tools && step_index == resume_step_index
-        if mooncode_json_bool(plan, "transient_transport_close", default=false) {
-          for event in mooncode_json_array_items(plan, "events") {
-            self.mooncode_runtime_turn_record_event(
-              binding, events, persisted_event_ids, event,
-            )
-          }
-          let resume_mode = if planner_steps.length() == 0 {
-            "initial"
-          } else {
-            "followup"
-          }
-          let checkpoint_plan = if resume_mode == "initial" {
-            Json::object({})
-          } else {
-            planner_steps[planner_steps.length() - 1]
-          }
-          let checkpoint_step_results = if resume_mode == "initial" {
-            []
-          } else {
-            mooncode_json_array_items(continuation, "step_results")
-          }
-          self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_planner_transport_continuation_event(
-              session_id,
-              command_id,
-              checkpoint_plan,
-              planner_steps,
-              tool_results,
-              checkpoint_step_results,
-              if initial_live_steering.length() > 0 {
-                initial_live_steering
-              } else {
-                retained_transport_steering
-              },
-              resume_mode~,
-              next_step_index=step_index,
-              detail=mooncode_json_string(plan, "message", default=""),
-              now=self.clock.now(),
-            ),
-          )
-          planner_paused = true
-          planner_pause_reason = "planner-transport-interrupted"
-          next_step_index = step_index
-          break
-        }
-        if mooncode_json_bool(plan, "patient_replan", default=false) {
-          for event in mooncode_json_array_items(plan, "events") {
-            self.mooncode_runtime_turn_record_event(
-              binding, events, persisted_event_ids, event,
-            )
-          }
-          let guidance = mooncode_json_string(
+        if step_index == resume_step_index &&
+          mooncode_runtime_planner_pause_event(
+            session_id,
+            command_id,
             plan,
-            "patient_replan_guidance",
-            default="",
+            mooncode_json_object_field_or_empty(continuation, "plan"),
+            planner_steps,
+            tool_results,
+            mooncode_json_array_items(continuation, "step_results"),
+            if initial_live_steering.length() > 0 {
+              initial_live_steering
+            } else {
+              retained_transport_steering
+            },
+            next_step_index=step_index,
+            replan_count=retained_replan_count,
+            now=self.clock.now(),
           )
-          let retained_plan = mooncode_json_object_field_or_empty(
-            continuation, "plan",
-          )
+          is Some((checkpoint, reason)) {
+          for event in mooncode_json_array_items(plan, "events") {
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
+          }
           self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_planner_replan_continuation_event(
-              session_id,
-              command_id,
-              retained_plan,
-              finish_rejected=mooncode_json_bool(
-                continuation,
-                "finish_rejected",
-                default=false,
-              ),
-              planner_steps,
-              tool_results,
-              mooncode_json_array_items(continuation, "step_results"),
-              next_step_index=resume_step_index,
-              replan_count=retained_replan_count + 1,
-              guidance~,
-              now=self.clock.now(),
-            ),
+            binding, events, persisted_event_ids, checkpoint,
           )
-          planner_paused = true
-          planner_pause_reason = "planner-empty-followup"
-          next_step_index = resume_step_index
+          planner_pause_reason = reason
+          next_step_index = step_index
           break
         }
         if !resuming_step {
@@ -637,36 +580,31 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             "pending" {
             let resuming_approval = resuming_step &&
               tool_index == resume_tool_index &&
-              mooncode_json_string(continuation, "approval_id", default="") ==
-              approval_id
-            let stored_request = mooncode_json_object_field_or_empty(
-              continuation, "approval",
-            )
-            let request = if resuming_approval &&
-              mooncode_json_string(stored_request, "approval_id", default="") !=
-              "" {
-              stored_request
-            } else {
-              let approval_tool_call = mooncode_runtime_bind_sandbox_approval_plan(
-                  book_root, tool_call,
+              resume_approval is Some(_)
+            let request = match resume_approval {
+              Some(request) if resuming_approval => request
+              _ => {
+                let approval_tool_call = mooncode_runtime_bind_sandbox_approval_plan(
+                    book_root, tool_call,
+                  )
+                  |> mooncode_json_object_with_field(
+                    "approval_id",
+                    Json(approval_id),
+                  )
+                mooncode_runtime_tool_approval_event(
+                  session_id,
+                  command_id,
+                  approval_tool_call,
+                  occurrence~,
+                  state="pending",
+                  tool_call_id=mooncode_runtime_turn_tool_call_id(
+                    tool_call,
+                    step=step_index + 1,
+                    index=tool_index,
+                  ),
+                  now=self.clock.now(),
                 )
-                |> mooncode_json_object_with_field(
-                  "approval_id",
-                  Json(approval_id),
-                )
-              mooncode_runtime_tool_approval_event(
-                session_id,
-                command_id,
-                approval_tool_call,
-                occurrence~,
-                state="pending",
-                tool_call_id=mooncode_runtime_turn_tool_call_id(
-                  tool_call,
-                  step=step_index + 1,
-                  index=tool_index,
-                ),
-                now=self.clock.now(),
-              )
+              }
             }
             if !resuming_approval {
               self.mooncode_runtime_turn_record_event(
@@ -791,8 +729,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           }
           let resuming_execution = resuming_step &&
             tool_index == resume_tool_index &&
-            mooncode_json_string(continuation, "state", default="") ==
-            "executing-tool"
+            resume_point is Some(ResumeTools({ executing: true, .. }))
           if recovered is None && !resuming_execution {
             let checkpoint = if parallel_read_executions.is_empty() {
               mooncode_runtime_checkpoint_with_intent(
@@ -949,7 +886,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               now=self.clock.now(),
             ),
           )
-          planner_paused = true
           planner_pause_reason = "planner-step-quantum"
           break
         }
@@ -1038,72 +974,29 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             now=followup_now,
           )
         }
-        if mooncode_json_bool(
+        if mooncode_runtime_planner_pause_event(
+            session_id,
+            command_id,
             next_plan,
-            "transient_transport_close",
-            default=false,
-          ) {
+            plan,
+            planner_steps,
+            tool_results,
+            step_results,
+            boundary_steering,
+            next_step_index=step_index + 1,
+            replan_count=retained_replan_count,
+            now=self.clock.now(),
+          )
+          is Some((checkpoint, reason)) {
           for event in mooncode_json_array_items(next_plan, "events") {
             self.mooncode_runtime_turn_record_event(
               binding, events, persisted_event_ids, event,
             )
           }
           self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_planner_transport_continuation_event(
-              session_id,
-              command_id,
-              plan,
-              planner_steps,
-              tool_results,
-              step_results,
-              boundary_steering,
-              resume_mode="followup",
-              next_step_index=step_index + 1,
-              detail=mooncode_json_string(next_plan, "message", default=""),
-              now=self.clock.now(),
-            ),
+            binding, events, persisted_event_ids, checkpoint,
           )
-          planner_paused = true
-          planner_pause_reason = "planner-transport-interrupted"
-          next_step_index = step_index + 1
-          break
-        }
-        if mooncode_json_bool(next_plan, "patient_replan", default=false) {
-          for event in mooncode_json_array_items(next_plan, "events") {
-            self.mooncode_runtime_turn_record_event(
-              binding, events, persisted_event_ids, event,
-            )
-          }
-          let guidance = mooncode_json_string(
-            next_plan,
-            "patient_replan_guidance",
-            default="",
-          )
-          self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_planner_replan_continuation_event(
-              session_id,
-              command_id,
-              plan,
-              finish_rejected=mooncode_runtime_turn_tool_calls_include_finish(
-                mooncode_json_array_items(plan, "tool_calls"),
-              ),
-              planner_steps,
-              tool_results,
-              step_results,
-              next_step_index=step_index + 1,
-              replan_count=retained_replan_count + 1,
-              guidance~,
-              now=self.clock.now(),
-            ),
-          )
-          planner_paused = true
-          planner_pause_reason = "planner-empty-followup"
+          planner_pause_reason = reason
           next_step_index = step_index + 1
           break
         }
@@ -1132,6 +1025,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       let completion_verdict = mooncode_runtime_turn_completion_verdict(
         command, tool_results,
       )
+      let planner_paused = planner_pause_reason != ""
       let nonterminal = waiting || planner_paused
       let tool_accepted = if nonterminal {
         true
@@ -1287,16 +1181,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           "web_search": web_search,
           "completed": !nonterminal,
           "paused": planner_paused,
-          "pause_reason": if planner_paused {
-            planner_pause_reason
-          } else {
-            ""
-          },
-          "next_step_index": if planner_paused {
-            next_step_index
-          } else {
-            0
-          },
+          "pause_reason": planner_pause_reason,
+          "next_step_index": next_step_index,
           "control": if waiting {
             "await_approval"
           } else if planner_paused {

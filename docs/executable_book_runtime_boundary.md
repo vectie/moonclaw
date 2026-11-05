@@ -45,6 +45,22 @@ is cooperative. Fingerprints cover touched/declared check inputs, not all
 semantic dependencies. Journal order is local commit order; remote timeouts
 do not prove non-execution. Snapshot rebuilds/read_result still scan history.
 
+The 2026-11-06 boundary cleanup closes two concrete interfaces without
+splitting eight packages. Continuation decoding returns the tool step/index,
+stored quantum end, in-call distinction and optional validated approval in
+`MoonCodeToolResume`. Turn execution consumes these fields instead of reading
+checkpoint state/approval fields again. A later execution checkpoint supersedes
+an earlier approval wait; service recovery must not resurrect that old wait.
+
+`mooncode_runtime_planner_pause_event` owns transport/empty-follow-up checkpoint
+selection and serialization for both resumed and in-quantum model rounds. It
+retains the previous executable plan, results and pending steering; turn owns
+event commit and execution order. The two separate pause constructors and the
+mutable duplicate paused flag are removed. Normal later rounds skip the initial
+resume check. This adds no journal write, model request, scheduler or approval
+condition. Command/plan/result Json and broad daemon/session composition remain;
+this local closure does not establish complete type or package isolation.
+
 ### Restart discovery
 
 `Daemon::serve` runs one background discovery pass after the existing hosted

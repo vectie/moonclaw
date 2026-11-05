@@ -75,19 +75,23 @@ fn replan_compaction_test_checkpoint(
   execution : Json,
   next_step_index : Int32,
 ) -> Json {
-  mooncode_runtime_planner_replan_continuation_event(
+  let (checkpoint, _) = mooncode_runtime_planner_pause_event(
     "replan-compaction-session",
     "replan-compaction-command",
+    {
+      "patient_replan": true,
+      "patient_replan_guidance": "continue after rejected replan",
+    },
     plan,
-    finish_rejected=false,
     planner_steps,
     [execution],
     [execution],
+    [],
     next_step_index~,
-    replan_count=next_step_index,
-    guidance="continue after rejected replan",
+    replan_count=next_step_index - 1,
     now=@clock.Timestamp::from_ms(1000L + next_step_index.to_int64()),
-  )
+  ).unwrap()
+  checkpoint
 }
 
 ///|
@@ -227,19 +231,19 @@ async test "compact continuation hydrates through the real journal" {
     let plan = replan_compaction_test_plan([
       { "role": "user", "content": "read README" },
     ])
-    let checkpoint = mooncode_runtime_planner_replan_continuation_event(
+    let (checkpoint, _) = mooncode_runtime_planner_pause_event(
       session_id,
       command_id,
+      { "patient_replan": true, "patient_replan_guidance": "continue" },
       plan,
-      finish_rejected=false,
       [plan],
       [execution],
       [execution],
+      [],
       next_step_index=1,
-      replan_count=1,
-      guidance="continue",
+      replan_count=0,
       now=@clock.Timestamp::from_ms(1001L),
-    )
+    ).unwrap()
     mooncode_append_session_journal(
       root,
       session_id,

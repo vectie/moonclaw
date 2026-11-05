@@ -47,6 +47,27 @@ test "runtime service recovers only an unresolved valid approval checkpoint" {
     mooncode_runtime_service_pending_approval([request, checkpoint, approved])
     is None,
   )
+  // A later execution position supersedes the old wait. Its empty approval ID
+  // must not turn an already approved command back into a pending request.
+  let executing = mooncode_runtime_continuation_event(
+    session_id,
+    command_id,
+    plan,
+    [plan],
+    [],
+    [],
+    {},
+    step_index=0,
+    tool_index=0,
+    planner_turn_end_step=2,
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  assert_true(
+    mooncode_runtime_service_pending_approval([
+      request, checkpoint, approved, executing,
+    ])
+    is None,
+  )
   let records : Array[(String, Json)] = [
     (
       mooncode_journal_command(),
