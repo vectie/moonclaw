@@ -69,10 +69,12 @@ existing execution facts rather than introduce another execution authority.
 
 ## Tool boundary cleanup 2026-11-05
 
-- The sibling synthesis contains phases 0–5 for remaining work, separately
-  from the completed cleanup checklist. Recovery and compaction already exist;
-  the proposed work consolidates their contracts/default paths. Dynamic graph
-  UI and live-model/installed-app qualification remain outstanding.
+- The sibling synthesis's current module plan replaces the rejected generic
+  phases 0–5. It maps Task/Execution/Context/Workspace/Tools/Journal/Completion/
+  Projection/Telemetry to responsibilities, concrete removals and behavioral
+  checks. The plan is unimplemented. Remove policy guesses, forced recovery
+  actions and redundant approval; retain actual authority, isolation and data
+  integrity. The completed checklist describes the earlier cleanup only.
 - Pure execution properties and shell analysis now belong to
   `internal/mooncode_tools`, with no IO imports. Concurrency, instruction
   consumption, replay and local execution/validation are independent; the
