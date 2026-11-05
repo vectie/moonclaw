@@ -60,15 +60,6 @@ async test "MoonCode uses the provider model selected by the loader" {
       }
       assert_eq(model.selector(), "codex/gpt-5.6-sol")
       assert_eq(model.model_name, "gpt-5.6-sol")
-      let request = mooncode_runtime_turn_model_plan_request(model.model_name, {
-        "command": "prompt",
-        "text": "Inspect one source file",
-      }).to_json()
-      assert_eq(
-        mooncode_json_string(request, "model", default=""),
-        "gpt-5.6-sol",
-      )
-      assert_false(request.stringify().contains("gpt-5.4"))
     }
   })
 }

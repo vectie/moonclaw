@@ -107,13 +107,3 @@ async fn mooncode_runtime_send_model_request(
       )
   }
 }
-
-///|
-#warnings("-unused_value")
-fn mooncode_runtime_responses_transport_name(command : Json) -> String {
-  if mooncode_runtime_responses_transport_enabled(command) {
-    "responses"
-  } else {
-    "chat_completions"
-  }
-}

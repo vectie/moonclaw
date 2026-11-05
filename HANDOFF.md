@@ -5,6 +5,33 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Eight-module re-audit: session metadata and execution evidence 2026-11-05
+
+- Intake restores metadata once. Admission and disk restoration share the
+  existing snapshot/journal-pair restore, including the first eligible user
+  prompt and command count. Removed the separate first-prompt read path.
+  The prompt seeds a session title, not the current task/revision or proof.
+- Preserve snapshot/cache priority and model-workspace ownership validation.
+  A cold binding with a cached sidecar prompt previously reread the snapshot;
+  a missing sidecar prompt also caused another journal read. Warm bindings
+  already skipped that first-prompt path. No blanket per-turn speed claim.
+- Removed five test-only production wrappers for request assembly, retry
+  summary, transport label, route availability and exit comparison. Actual
+  model rounds, typed provider errors, transport routing, deployment config
+  and sandbox receipt exit handling retain their existing owners and behavior.
+- Retired one obsolete predicate test; extended the existing tool fixture
+  with a real failing moon check, observed nonzero receipt and explicit
+  expected-exit success. Do not assume a fixed CLI failure exit code or use a
+  test-only predicate as evidence for execution. Fixture isolation is Degraded,
+  not a production MoonFort enforcement qualification. Retry test names now
+  describe the actual delay/event evidence instead of claiming live liveness.
+- Validation: Claw native 1845/1845, Desk native 1726/1726, core JS 64/64,
+  UI 839/839; metadata/model-workspace 20/20, process/listing 28/28 and
+  producer/consumer probe passed. Info/fmt and whitespace checked; .mbti
+  unchanged. Production .mbt -66, tests +15, net -51. No new API, state machine,
+  store, runner, model request or approval. Existing resource/ownership/recovery
+  limits remain; no installed-app/live-provider or end-to-end performance claim.
+
 ## Eight-module re-audit: stream reads and typed readiness 2026-11-05
 
 - Stream wait summaries and spool output now share one locked journal scanner.

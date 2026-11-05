@@ -215,6 +215,22 @@ The journal is authoritative. The snapshot and in-memory bindings are
 replaceable projections. Continuations retain the plan, resume position,
 approval binding, and completed-result references.
 
+Session metadata has one restore entry. Command intake and admission reuse
+`restore_session_metadata_parts` with the same loaded snapshot/journal pair;
+it restores the first user prompt as well as the existing model/workspace/count
+metadata. The cached first prompt seeds the session title; it does not replace
+the current command, task revision or completion evidence. If the cached prompt
+is absent, recovery uses the first eligible journal command instead of a second
+snapshot/journal read. A warm binding already had the prompt and did not incur
+that second read, so this is not a blanket per-turn performance claim.
+
+Unused test-only request/retry/transport/route/exit-check wrappers were removed.
+Actual provider routing and typed error retrying remain in the model round;
+actual process exit expectations remain in the sandbox receipt result path.
+The negative-exit regression now executes an intentionally failing `moon check`
+through the existing tool fixture, then accepts its observed exit only when
+explicitly requested. This is an execution-path check, not a predicate proxy.
+
 Journal sequences are exact canonical decimal strings. Append checks the
 committed prefix, identity conflicts, and exact successor under stable locks;
 only a torn final suffix is repaired. Physical record sequences are positive;

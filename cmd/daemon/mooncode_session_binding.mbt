@@ -257,34 +257,6 @@ fn MoonCodeSessionBinding::remember_first_user_prompt(
 }
 
 ///|
-async fn MoonCodeSessionBinding::restore_first_user_prompt(
-  self : MoonCodeSessionBinding,
-) -> Unit {
-  if self.first_user_prompt != "" || self.book_root == "" {
-    return
-  }
-  let snapshot = mooncode_load_session_snapshot(self.book_root, self.session_id)
-  let snapshot_prompt = mooncode_json_string(
-    snapshot,
-    "first_user_prompt",
-    default="",
-  )
-  if snapshot_prompt != "" {
-    self.first_user_prompt = snapshot_prompt
-    return
-  }
-  let journal = mooncode_read_session_journal(self.book_root, self.session_id)
-  for entry in mooncode_journal_entries(journal, mooncode_journal_command()) {
-    self.remember_first_user_prompt(
-      mooncode_json_object_field_or_empty(entry, "command"),
-    )
-    if self.first_user_prompt != "" {
-      return
-    }
-  }
-}
-
-///|
 async fn MoonCodeSessionBinding::restore_session_metadata(
   self : MoonCodeSessionBinding,
 ) -> Unit {
@@ -297,6 +269,8 @@ async fn MoonCodeSessionBinding::restore_session_metadata(
 }
 
 ///|
+/// Restore replaceable session metadata from one snapshot/journal pair.
+/// The first prompt seeds the session title, not the current task or its proof.
 fn MoonCodeSessionBinding::restore_session_metadata_parts(
   self : MoonCodeSessionBinding,
   snapshot : Json,
@@ -315,6 +289,13 @@ fn MoonCodeSessionBinding::restore_session_metadata_parts(
     "model_workspace",
     default=self.model_workspace,
   )
+  if self.first_user_prompt == "" {
+    self.first_user_prompt = mooncode_json_string(
+      snapshot,
+      "first_user_prompt",
+      default="",
+    )
+  }
   match mooncode_journal_model_workspace(journal) {
     Some(root) => {
       if self.model_workspace != "" && self.model_workspace != root {
@@ -328,6 +309,16 @@ fn MoonCodeSessionBinding::restore_session_metadata_parts(
         mooncode_journal_command(),
       )
       self.command_count = commands.length()
+      if self.first_user_prompt == "" {
+        for entry in commands {
+          self.remember_first_user_prompt(
+            mooncode_json_object_field_or_empty(entry, "command"),
+          )
+          if self.first_user_prompt != "" {
+            break
+          }
+        }
+      }
       if root != "" {
         for entry in commands {
           let command = mooncode_json_object_field_or_empty(entry, "command")
@@ -351,13 +342,6 @@ fn MoonCodeSessionBinding::restore_session_metadata_parts(
     self.workspace_name = mooncode_json_string(
       snapshot,
       "workspace_name",
-      default="",
-    )
-  }
-  if self.first_user_prompt == "" {
-    self.first_user_prompt = mooncode_json_string(
-      snapshot,
-      "first_user_prompt",
       default="",
     )
   }

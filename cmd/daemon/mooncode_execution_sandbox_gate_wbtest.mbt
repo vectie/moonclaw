@@ -1,6 +1,5 @@
 ///|
-test "MoonCode route exists but missing deployment configuration fails closed" {
-  assert_true(mooncode_execution_sandbox_route_available())
+test "MoonCode missing deployment refusal identifies the execution boundary" {
   for tool in ["shell", "moon_ide", "moon_cmd", "moon_check", "browser"] {
     let refusal = mooncode_execution_sandbox_refusal(tool)
     assert_false(mooncode_json_bool(refusal, "ok", default=true))

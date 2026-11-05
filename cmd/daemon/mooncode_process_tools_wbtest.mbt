@@ -646,14 +646,54 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
     ),
     "moon_cmd.finished",
   )
-}
-
-///|
-test "mooncode moon_cmd supports explicit negative-path exit expectations" {
-  assert_true(mooncode_moon_cmd_exit_expected({}, 0))
-  assert_false(mooncode_moon_cmd_exit_expected({}, 1))
-  assert_true(mooncode_moon_cmd_exit_expected({ "expected_exit_code": 1 }, 1))
-  assert_false(mooncode_moon_cmd_exit_expected({ "expected_exit_code": 1 }, 0))
+  @fsx.write_to_file(
+    @pathx.join(book_root, "eval.mbt"),
+    "///|\npub fn answer() -> Int { \"intentional type error\" }\n",
+  )
+  let failed = mooncode_execute_tool_call(
+    "session-moon-tools",
+    book_root,
+    {
+      "tool": "moon_cmd",
+      "command_id": "cmd-negative-default",
+      "arguments": {
+        "command": "check",
+        "target": "native",
+        "timeout_ms": 30000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(73L),
+  )
+  let result = mooncode_tool_result_value(failed)
+  assert_true(mooncode_json_bool(result, "is_error", default=false))
+  let status = mooncode_json_int(
+    mooncode_json_object_field_or_empty(result, "metadata"),
+    "exit_code",
+    default=0,
+  )
+  assert_true(status > 0 && status <= 255)
+  let expected = mooncode_execute_tool_call(
+    "session-moon-tools",
+    book_root,
+    {
+      "tool": "moon_cmd",
+      "command_id": "cmd-negative-expected",
+      "arguments": {
+        "command": "check",
+        "target": "native",
+        "timeout_ms": 30000,
+        "expected_exit_code": status,
+      },
+    },
+    now=@clock.Timestamp::from_ms(74L),
+  )
+  assert_true(
+    mooncode_json_bool(
+      mooncode_tool_result_value(expected),
+      "ok",
+      default=false,
+    ),
+  )
 }
 
 ///|

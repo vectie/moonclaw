@@ -295,12 +295,3 @@ fn mooncode_execution_sandbox_refusal(tool : String) -> Json {
     },
   )
 }
-
-///|
-/// MoonCode process tools have a MoonFort-only implementation. Availability of
-/// a particular deployment is still checked by the operator-owned config
-/// loader at every call and never implies an unsandboxed fallback.
-#warnings("-unused_value")
-fn mooncode_execution_sandbox_route_available() -> Bool {
-  true
-}

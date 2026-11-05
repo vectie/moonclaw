@@ -1289,9 +1289,3 @@ fn mooncode_moon_check_message(prefix : String, state : Json) -> String {
   let seq = mooncode_json_int(state, "seq", default=0)
   "\{prefix}; watcher=\{watcher}; status=\{status}; seq=\{seq}"
 }
-
-///|
-#warnings("-unused_value")
-fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int32) -> Bool {
-  status == mooncode_json_int(arguments, "expected_exit_code", default=0)
-}

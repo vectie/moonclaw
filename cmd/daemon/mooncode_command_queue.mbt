@@ -99,7 +99,6 @@ async fn Daemon::mooncode_queue_command_response(
       },
     })
   }
-  binding.restore_first_user_prompt()
   binding.restore_session_metadata()
   let body = mooncode_command_with_session_model(body, binding.model)
   let body = match

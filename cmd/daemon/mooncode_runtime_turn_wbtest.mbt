@@ -838,32 +838,7 @@ test "mooncode planner scopes prompt cache identity to MoonGate sessions" {
 }
 
 ///|
-test "mooncode MoonGate planner survives transient overload until cancellation" {
-  assert_true(
-    mooncode_runtime_turn_model_retries_transient_summary(
-      "moongate/kimi-k3", "HTTP 429: provider overloaded",
-    ),
-  )
-  assert_true(
-    mooncode_runtime_turn_model_retries_transient_summary(
-      "kimi-k3", "HTTP 503: service unavailable",
-    ),
-  )
-  assert_true(
-    mooncode_runtime_turn_model_retries_transient_summary(
-      "moongate/deepseek-v4-flash", "HTTP 429: provider overloaded",
-    ),
-  )
-  assert_false(
-    mooncode_runtime_turn_model_retries_transient_summary(
-      "gpt-5.6-sol", "HTTP 429: provider overloaded",
-    ),
-  )
-  assert_false(
-    mooncode_runtime_turn_model_retries_transient_summary(
-      "kimi-k3", "HTTP 400: invalid request",
-    ),
-  )
+test "mooncode planner retry delays and events retain bounded backoff evidence" {
   let transient_delay = mooncode_runtime_turn_model_retry_delay_ms(
     0,
     entropy="session-a",

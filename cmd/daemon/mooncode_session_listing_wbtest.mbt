@@ -260,6 +260,16 @@ async test "mooncode binding restores first prompt from journal after restart" {
       },
     },
   )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "command_id": "command-second",
+      "created_at": "2026-07-15T00:00:01Z",
+      "command": { "command": "prompt", "text": "Second durable request" },
+    },
+  )
   let restarted = MoonCodeSessionBinding::{
     session_id,
     book_root,
@@ -278,7 +288,8 @@ async test "mooncode binding restores first prompt from journal after restart" {
     active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
-  restarted.restore_first_user_prompt()
+  restarted.restore_session_metadata()
+  assert_eq(restarted.command_count, 2)
   restarted.remember_first_user_prompt({
     "command": "prompt",
     "text": "Later request must not rename the session",

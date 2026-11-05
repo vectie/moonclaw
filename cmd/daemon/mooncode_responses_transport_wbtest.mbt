@@ -43,7 +43,6 @@ test "Responses invalid cache values fail closed" {
   }
   assert_true(mooncode_runtime_responses_prompt_cache_mode(command) is None)
   assert_true(mooncode_runtime_responses_prompt_cache_ttl(command) is None)
-  assert_eq(mooncode_runtime_responses_transport_name(command), "responses")
 }
 
 ///|

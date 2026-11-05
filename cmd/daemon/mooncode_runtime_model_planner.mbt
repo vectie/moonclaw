@@ -1276,30 +1276,6 @@ fn mooncode_runtime_turn_tool_calls_include_finish(
 }
 
 ///|
-#warnings("-unused_value")
-fn mooncode_runtime_turn_model_retries_transient_summary(
-  model_name : String,
-  summary : String,
-) -> Bool {
-  mooncode_runtime_turn_model_name_uses_patient_transport(model_name) &&
-  mooncode_runtime_turn_planner_error_summary_is_transient(summary)
-}
-
-///|
-#warnings("-unused_value")
-fn mooncode_runtime_turn_model_plan_request(
-  model_name : String,
-  command : Json,
-) -> @openai.Request raise {
-  mooncode_runtime_turn_model_plan_request_from_messages(
-    model_name,
-    mooncode_runtime_turn_model_initial_messages(command),
-    tools=mooncode_runtime_turn_model_tools_for_command(command),
-    reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
-  )
-}
-
-///|
 fn mooncode_runtime_turn_explicit_allowed_tool_names(
   command : Json,
 ) -> Array[String] {
