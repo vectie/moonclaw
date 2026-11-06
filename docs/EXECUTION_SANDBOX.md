@@ -40,6 +40,12 @@ process-tool path requires a configured sandbox route. Existing safe local
 operations need not ask for human approval merely because they execute a tool;
 the actual authority policy decides.
 
+Absolute SDK/environment paths in a shell command are resolved by that same
+executor profile; MoonCode does not reject them by HOME/Users/temp substring.
+The macOS [Native configuration](../../moonfort/docs/EXECUTOR_CONFIG.md#macos-moonbit-native-commands)
+uses existing Shell assignments, not a new environment API. Those assignments
+do not carry over into a later moon_cmd invocation.
+
 ## Output And Recovery
 
 Small output remains bounded inline. Large output may carry a signed opaque
@@ -54,6 +60,10 @@ A timeout, cancelled wait, or missing terminal receipt does not establish that
 an external effect did not occur. Preserve the operation identity and reconcile
 against existing receipts/state before retry. Do not substitute a host execution
 or report an unknown operation as successfully completed.
+
+Recover the recorded operation before binding a new random execution grant.
+Otherwise a new grant changes the call digest before the old intent/result can
+be matched. Existing outcome-unknown and execution rules remain authoritative.
 
 ## Promotion
 

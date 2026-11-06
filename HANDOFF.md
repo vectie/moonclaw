@@ -5,6 +5,29 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Full real repository Native run 2026-11-06
+
+- Removed absolute HOME/SDK/Users/temp substring rejection after the real
+  model's configured CLT command was refused before reaching MoonFort. Actual
+  grant/profile remains the execution boundary; relative cwd/parent behavior
+  is unchanged. Retired its obsolete dedicated test; extended an existing
+  preflight case with a valid SDK environment invocation (red then green).
+- During the first stopped run, restart regenerated a random grant before
+  comparing the old call digest, making valid intent look inconsistent. Recover
+  first using the persisted call; bind only if an execution is still needed.
+  Real checkpoint 124 retained the expected digest and returned outcome_unknown
+  in a temporary replay. Extended the existing restart regression with a
+  persisted process intent: unknown outcome, no repeated write. No journal
+  migration, new state or replay policy.
+- Full Native 1844/1844; public interfaces unchanged. Actual MoonLib main final
+  model run passed Native pathx 12/12 and full repository 108/108. Two earlier
+  stopped attempts and their costs remain in the report; final run alone is
+  the successful autonomous sample. Details in sibling MoonDesk:
+  docs/MOONCODE_LIVE_NATIVE_REPOSITORY_2026-11-06.md.
+- Native deployment uses existing Shell environment assignments documented in
+  ../moonfort/docs/EXECUTOR_CONFIG.md. They are not an environment configuration
+  API for moon_cmd. No host fallback, new launcher, approval or gate.
+
 ## Real executor: parallel shell binding 2026-11-06
 
 - Second real-model task used the existing MoonFort LocalOs executor, not the

@@ -209,21 +209,8 @@ fn mooncode_shell_boundary_error(
   cwd_path : String,
   cmd : String,
 ) -> String? {
-  // The shell inherits a cwd inside the book, but an absolute path in the
-  // command can otherwise bypass the executable-document boundary. Toolchain
-  // programs may load their own installation implicitly; the planner must not
-  // address SDK, home, temp, or parent paths directly.
-  let normalized_root = @pathx.normalize(book_root)
-  if mooncode_shell_parent_path_escapes(book_root, cwd_path, cmd) ||
-    cmd.contains("$HOME") ||
-    cmd.contains("${HOME}") ||
-    cmd.contains("~/") ||
-    cmd.contains("/.moon/") ||
-    cmd.contains("/etc/") ||
-    cmd.contains("/tmp/") ||
-    cmd.contains("/private/") ||
-    (cmd.contains("/Users/") && !cmd.contains(normalized_root)) ||
-    cmd.contains("/home/") {
+  // Absolute SDK and environment paths are governed by the executor's profile.
+  if mooncode_shell_parent_path_escapes(book_root, cwd_path, cmd) {
     Some(
       "shell command references a path outside the selected MoonBook; use relative book paths or MoonCode's semantic MoonBit tools",
     )

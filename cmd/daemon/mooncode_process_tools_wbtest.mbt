@@ -265,49 +265,18 @@ async test "mooncode shell timeout cancels children and permits cleanup traps" (
 }
 
 ///|
-async test "mooncode native shell rejects explicit paths outside book root" (
-  t : @test.Test,
-) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-boundary-XXXXXX"),
-  )
-  for
-    cmd in [
-      "sed -n '1,20p' /Users/example/.moon/lib/core/json.mbt", "find ../outside -type f",
-      "cat $HOME/.config/example",
-    ] {
-    let execution = mooncode_execute_tool_call(
-      "session-shell-boundary",
-      book_root,
-      {
-        "protocol": mooncode_protocol_version(),
-        "session_id": "session-shell-boundary",
-        "book_root": book_root,
-        "tool": "shell",
-        "command_id": "cmd-shell-boundary",
-        "arguments": { "cmd": cmd, "timeout_ms": 5000 },
-      },
-      now=@clock.Timestamp::from_ms(45L),
-    )
-    let result = mooncode_json_object_field_or_empty(execution, "result")
-    assert_true(mooncode_json_bool(result, "is_error", default=false))
-    assert_true(
-      mooncode_json_string(result, "message", default="").contains(
-        "outside the selected MoonBook",
-      ),
-      msg=result.stringify(),
-    )
-  }
-}
-
-///|
 async test "mooncode shell permits parent paths that remain inside typed cwd" (
   t : @test.Test,
 ) {
   ignore(t)
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-shell-parent-inside-XXXXXX"),
+  )
+  assert_true(
+    mooncode_tool_shell_preflight_error(book_root, {
+      "cmd": "MOON_HOME=/Users/example/.moon /Users/example/.moon/bin/moon test --target native",
+    })
+    is None,
   )
   @fsx.make_directory(
     @pathx.join(book_root, "app/main"),

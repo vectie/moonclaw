@@ -347,12 +347,23 @@ test "operation recovery reuses committed results and never replays an unknown e
 }
 
 ///|
-async test "restart before planning or after a read intent resumes without another user request" {
-  for interrupted_read in [false, true] {
+async test "restart recovers planning read and bound process intents" {
+  for position in ["before-plan", "read-intent", "shell-intent"] {
     @fsx.with_temporary_directory("mooncode-claim-before-plan-XXXXXX", async fn(
       root,
     ) {
       @fsx.write_to_file(root + "/answer.txt", "retained input")
+      let call : Json = if position == "shell-intent" {
+        {
+          "tool": "shell",
+          "arguments": {
+            "cmd": "printf unexpected > replayed.txt",
+            "_execution_sandbox_plan": { "persisted": true },
+          },
+        }
+      } else {
+        { "tool": "read", "arguments": { "path": "answer.txt" } }
+      }
       let command : Json = {
         "protocol": mooncode_protocol_version(),
         "session_id": "claim-restart",
@@ -362,7 +373,7 @@ async test "restart before planning or after a read intent resumes without anoth
         "model": "fixture/mooncode",
         "packet": { "command_id": "before-plan" },
         "runtime_tool_calls": [
-          { "tool": "read", "arguments": { "path": "answer.txt" } },
+          call,
           { "tool": "finish", "arguments": { "answer": "retained input" } },
         ],
       }
@@ -387,7 +398,7 @@ async test "restart before planning or after a read intent resumes without anoth
           @clock.Timestamp::from_ms(2L),
         ),
       )
-      if interrupted_read {
+      if position != "before-plan" {
         let calls = mooncode_json_array_items(command, "runtime_tool_calls")
         let plan : Json = {
           "planner_mode": "explicit-tool-calls",
@@ -419,6 +430,14 @@ async test "restart before planning or after a read intent resumes without anoth
       }
       let daemon = mooncode_control_test_daemon(root)
       let result = daemon.mooncode_runtime_turn_execute("claim-restart", root, {})
+      if position == "shell-intent" {
+        assert_true(
+          result.stringify().contains("outcome_unknown"),
+          msg=result.stringify(),
+        )
+        assert_false(@fsx.exists(root + "/replayed.txt"))
+        return
+      }
       assert_true(
         mooncode_json_bool(result, "accepted", default=false),
         msg=result.stringify(),

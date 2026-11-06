@@ -666,18 +666,32 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           // in-memory call from substituting command text or argv after review.
           let tool_call = if tool_requires_approval {
             mooncode_runtime_authorized_tool_call(tool_call, approval)
-          } else if !parallel_read_executions.is_empty() {
-            tool_call
           } else {
+            tool_call
+          }
+          let operation_id = mooncode_runtime_operation_id(
+            command_id, step_index, tool_index,
+          )
+          let recovered = mooncode_runtime_operation_recovery(
+            existing_events,
+            session_id,
+            book_root,
+            command_id,
+            operation_id,
+            tool_call,
+            now=self.clock.now(),
+          )
+          let tool_call = if !tool_requires_approval &&
+            recovered is None &&
+            parallel_read_executions.is_empty() {
             mooncode_runtime_bind_sandbox_approval_plan(book_root, tool_call)
+          } else {
+            tool_call
           }
           let validation_error = mooncode_json_string(
             tool_call,
             "validation_error",
             default="",
-          )
-          let operation_id = mooncode_runtime_operation_id(
-            command_id, step_index, tool_index,
           )
           let checkpoint = mooncode_runtime_continuation_event(
             session_id,
@@ -690,15 +704,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             step_index~,
             tool_index~,
             planner_turn_end_step~,
-            now=self.clock.now(),
-          )
-          let recovered = mooncode_runtime_operation_recovery(
-            existing_events,
-            session_id,
-            book_root,
-            command_id,
-            operation_id,
-            tool_call,
             now=self.clock.now(),
           )
           let check_inputs = if recovered is None &&
