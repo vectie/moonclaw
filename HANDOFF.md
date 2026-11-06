@@ -5,6 +5,21 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Snapshot scope and round-trip audit 2026-11-06
+
+- One new real historical-bug run: 91539 input/1679 output, ten responses,
+  169.897 sec, +22.5% input vs last run. No scratch cleanup or duplicate source
+  reads; a Shell timeout and one post-edit replace_ext regression remain counted.
+- Terminal messages now identify per-call snapshots and later calls starting
+  from MoonBook. cleanup_verified may include managed retention, not deletion:
+  the trial's "already cleaned" wording was corrected after the run. Final
+  wording has the existing terminal integration check, not a second paid run.
+- Removed 260 chars of repeated repair guidance per evidence index; read/error
+  facts, journal and recall unchanged. No new state, caps, tool bans or gates.
+  Full Native 1844/1844; final terminal check 1/1. Public API unchanged.
+- Full metrics, rework and limits: sibling moondesk/docs/
+  MOONCODE_SNAPSHOT_COST_AUDIT_2026-11-06.md. Do not claim total cost reduction.
+
 ## Built-in skill content audit 2026-11-06
 
 - The remaining 34084-char guide was shipped by internal/skills/system_assets,

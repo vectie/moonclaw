@@ -58,9 +58,9 @@ with a generic grant failure or silently raise/clamp the configured limit.
 
 ## Output And Recovery
 
-Each shell call uses a fresh disposable snapshot of current MoonBook files.
-Files/build outputs created by that process stay in its snapshot and are cleaned
-with the run; another shell call does not continue that scratch directory.
+Each shell call uses a fresh snapshot of current MoonBook files. Another call
+does not continue that snapshot or clean its build outputs. Fort owns scratch
+cleanup and optional retention; terminal results identify the per-call scope.
 Native file editing tools own persistent MoonBook source changes. Seeing `.tmp`
 in a command's own Git output does not mean it was created in the canonical Book.
 
@@ -74,7 +74,8 @@ the change count, output/error, execution status, enforcement,
 cleanup and retained evidence/artifact references. Native file edits also omit
 the redundant whole-file diff from this projection. The original result stays
 in the journal for UI inspection and existing read_result recall. Follow-ups
-keep one compact read/error index; they do not duplicate shell excerpts or
+keep one compact read/error index without repeating general repair guidance;
+they do not duplicate shell excerpts or
 emit another task/recent-results progress message. Saved cross-command notes
 are included in the existing task prompt, with new checkpoints in tool history.
 User/project-required skills and needed workflows load through read_skill;

@@ -170,14 +170,14 @@ fn mooncode_sandbox_terminal_result(
   if exit_code == expected_exit_code {
     mooncode_tool_ok_result(
       tool,
-      message="\{tool} completed inside ExecutionSandbox",
+      message="\{tool} completed in a per-call snapshot; later calls start from MoonBook",
       output~,
       metadata~,
     )
   } else {
     mooncode_tool_error_result(
       tool,
-      message="\{tool} exited with status \{exit_code} inside ExecutionSandbox",
+      message="\{tool} exited with status \{exit_code} in a per-call snapshot; later calls start from MoonBook",
       output~,
       metadata~,
     )

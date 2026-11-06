@@ -883,7 +883,7 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
         "complete_read_paths": Json::array(retained_complete_reads),
         "failed_tool_calls": Json::array(failed_calls),
       }).stringify(indent=2) +
-      "\nThese receipts describe prior observations; they do not guarantee that full bytes remain in current context or that files are unchanged. Reuse applicable evidence and inspect current sources when needed. Read tool errors, diagnose failures and choose the next action. Retry transient failures when appropriate; observations and retries do not require a source edit.",
+      "\nIndex of past observations, not current file contents. Reuse retained results; inspect again when needed.",
     },
     EnvironmentContext,
     "environment.evidence_ledger",
