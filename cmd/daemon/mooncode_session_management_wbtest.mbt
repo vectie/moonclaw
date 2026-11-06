@@ -285,17 +285,17 @@ async test "mooncode suspension cancels an active runtime before sealing" {
         no_wait=true,
         allow_failure=true,
       )
-      binding.runtime_service_running = true
-      binding.runtime_service_task = Some(task)
-      binding.active_command_id = "cmd-running"
+      binding.runtime.service_running = true
+      binding.runtime.service_task = Some(task)
+      binding.runtime.active_command_id = "cmd-running"
       let result = daemon.mooncode_manage_session_response(session_id, {
         "action": "suspend",
         "book_root": book_root,
       })
       assert_true(mooncode_json_bool(result, "suspended", default=false))
-      assert_false(binding.runtime_service_running)
-      assert_true(binding.runtime_service_task is None)
-      assert_eq(binding.active_command_id, "")
+      assert_false(binding.runtime.service_running)
+      assert_true(binding.runtime.service_task is None)
+      assert_eq(binding.runtime.active_command_id, "")
       assert_eq(
         mooncode_session_state_locked(book_root, session_id),
         "suspended",
@@ -635,7 +635,7 @@ async test "mooncode session lifecycle refuses storage changes while running" {
     let daemon = mooncode_control_test_daemon(book_root)
     mooncode_management_test_create_session(daemon, book_root, session_id)
     let binding = daemon.mooncode_binding_for_session(session_id)
-    binding.runtime_service_running = true
+    binding.runtime.service_running = true
     let mut rejected = false
     ignore(
       daemon.mooncode_manage_session_response(session_id, {

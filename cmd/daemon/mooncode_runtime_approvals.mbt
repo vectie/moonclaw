@@ -629,10 +629,10 @@ async fn Daemon::mooncode_submit_cancel_control(
     now=self.clock.now(),
   )
   let task = match selection {
-    Active(item) if binding.runtime_service_running &&
-      binding.active_command_id ==
+    Active(item) if binding.runtime.service_running &&
+      binding.runtime.active_command_id ==
       mooncode_json_string(item, "command_id", default="") =>
-      binding.runtime_service_task
+      binding.runtime.service_task
     _ => None
   }
   let response = mooncode_runtime_cancel_settle_selection(
@@ -655,8 +655,8 @@ async fn Daemon::mooncode_submit_cancel_control(
     default="",
   )
   if mooncode_json_string(response, "status", default="") != "busy" &&
-    binding.active_command_id == target_command_id {
-    binding.active_command_id = ""
+    binding.runtime.active_command_id == target_command_id {
+    binding.runtime.active_command_id = ""
   }
   self.mooncode_persist_session(binding)
   response

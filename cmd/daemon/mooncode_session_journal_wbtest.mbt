@@ -21,10 +21,7 @@ fn goal_gate_snapshot(session_id : String, root : String) -> Json {
     custom_title: "",
     last_command_id: "cmd-2",
     last_updated: @clock.Timestamp::from_ms(42L),
-    runtime_service_running: false,
-    runtime_service_wake_pending: false,
-    runtime_service_task: None,
-    active_command_id: "",
+    runtime: MoonCodeSessionRuntime::new(),
     events: @broadcast.Broadcast::new(),
   }
   mooncode_session_snapshot(binding)

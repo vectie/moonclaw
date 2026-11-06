@@ -142,7 +142,7 @@ async fn Daemon::mooncode_runtime_service_job_history(
   }
   let live_running = match self.mooncode_sessions.get(session_id) {
     Some(binding) if binding.book_root == book_root =>
-      binding.runtime_service_running
+      binding.runtime.service_running
     _ => false
   }
   let history = mooncode_service_job_history_projection(

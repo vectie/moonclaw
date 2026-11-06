@@ -5,6 +5,38 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Runtime ownership and control/projection simplification 2026-11-06
+
+- SessionBinding keeps metadata/event binding and a private SessionRuntime
+  reference. The same four live fields now belong together; no new execution
+  state or persisted store. Keep the startup reservation: journal persistence
+  can suspend before task installation, so task presence is not equivalent.
+- Execution lease owns startup after acquisition. Removed the duplicated
+  post-acquisition running branch; kept the early wake path and actual resource
+  locks. Existing cross-instance ownership/cancel/suspension semantics remain.
+- Claimed steering application has one owner in controls. Turn keeps claim and
+  model-request ordering; its follow-up uses one loop body, not duplicated
+  request builders. No changed model/steering trigger or extra request.
+- Planner ledger consumes canonical result metadata directly; removed the
+  intermediate execution/observation JSON and its sole-use helper. The range
+  read regression now tests the actual model ledger instead of that helper.
+- Eight compact response functions moved unchanged to the existing receipt
+  file; movement is not a deletion benefit. Duplicate synthetic single-flight
+  test merged into the existing wake fixture; real lease tests retained.
+- No new schema, check, approval, retry cap, layer or runtime state. Dynamic
+  tool/provider/journal JSON is an intentional boundary, not itself a defect
+  requiring a new IR. Each session allocates one small live-state record;
+  there is no added IO/model call or measured end-to-end performance claim.
+- Validation: final Claw native 1844/1844, Desk native 1726/1726 and
+  producer/consumer probe passed. Initial service/lease/steering/model focused
+  tests were 53/53 before merging the duplicate case.
+  Info/fmt, interfaces and whitespace checked; .mbti unchanged. Production
+  -61 lines, tests -63, total -124; eight moved projections byte-checked.
+- Counting pitfall: async tests can live in ordinary .mbt files. Filename-only
+  numstat would label this round -109 production/-15 test lines; accounting for
+  embedded test blocks gives the actual -61/-63 split. Do not count moving
+  projections or retiring a test as production implementation deletion.
+
 ## Boundary closure: tool resume and planner pauses 2026-11-06
 
 - Eight responsibilities are analysis views, not eight packages. Ownership is

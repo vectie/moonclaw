@@ -905,20 +905,24 @@ test "mooncode planner retry delays and events retain bounded backoff evidence" 
 
 ///|
 test "mooncode line-range reads remain partial observations" {
-  let observation = mooncode_runtime_turn_result_file_observation({
-    "accepted": true,
-    "tool": "read",
-    "arguments": { "path": "src/main.mbt", "start_line": 20, "end_line": 40 },
-    "result": {
-      "ok": true,
-      "metadata": {
-        "path": "src/main.mbt",
-        "range_requested": true,
-        "truncated": false,
+  let message = mooncode_runtime_turn_model_evidence_ledger_message([
+    {
+      "accepted": true,
+      "tool": "read",
+      "arguments": { "path": "src/main.mbt", "start_line": 20, "end_line": 40 },
+      "result": {
+        "ok": true,
+        "metadata": {
+          "path": "src/main.mbt",
+          "range_requested": true,
+          "truncated": false,
+        },
       },
     },
-  })
-  assert_eq(mooncode_json_string(observation, "scope", default=""), "partial")
+  ])
+  let content = mooncode_json_string(message, "content", default="")
+  assert_true(content.contains("src/main.mbt"))
+  assert_true(content.contains("\"complete_read_paths\": []"))
 }
 
 ///|

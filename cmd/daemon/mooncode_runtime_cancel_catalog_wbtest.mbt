@@ -160,12 +160,12 @@ async test "unavailable cancel model cannot prevent stopping an active native re
       )
       let binding = daemon.mooncode_binding_for_session("pending-cancel")
       let mut attempts = 0
-      while binding.active_command_id == "" && attempts < 200 {
+      while binding.runtime.active_command_id == "" && attempts < 200 {
         @async.sleep(10)
         attempts += 1
       }
-      assert_eq(binding.active_command_id, "running")
-      assert_true(binding.runtime_service_running)
+      assert_eq(binding.runtime.active_command_id, "running")
+      assert_true(binding.runtime.service_running)
       let cancel = mooncode_pending_cancel_test_control(
         root, "stop-unavailable", "running",
       )

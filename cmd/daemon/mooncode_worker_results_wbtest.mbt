@@ -274,11 +274,11 @@ async test "worker approval wait is nonterminal until native approval and resume
       )
       let binding = daemon.mooncode_binding_for_session("child-one")
       let mut attempts = 0
-      while binding.runtime_service_running && attempts < 200 {
+      while binding.runtime.service_running && attempts < 200 {
         @async.sleep(10)
         attempts += 1
       }
-      assert_false(binding.runtime_service_running)
+      assert_false(binding.runtime.service_running)
       group.return_immediately(())
     })
     let completed = mooncode_worker_results_test_wait(parent_root, "all")

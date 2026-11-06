@@ -283,11 +283,11 @@ async test "mooncode runtime keeps an approval-gated command claimed until appro
     assert_true(mooncode_json_bool(approved, "accepted", default=false))
     let binding = daemon.mooncode_binding_for_session(session_id)
     let mut attempts = 0
-    while binding.runtime_service_running && attempts < 200 {
+    while binding.runtime.service_running && attempts < 200 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     group.return_immediately(())
   })
   assert_eq(@fsx.read_file(@pathx.join(book_root, "approved.txt")), "approved")
@@ -409,11 +409,11 @@ async test "runtime service yields pending approval and approval control resumes
     assert_true(mooncode_json_bool(approved, "accepted", default=false))
     let binding = daemon.mooncode_binding_for_session(session_id)
     let mut attempts = 0
-    while binding.runtime_service_running && attempts < 200 {
+    while binding.runtime.service_running && attempts < 200 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     group.return_immediately(())
   })
   assert_eq(
@@ -600,11 +600,11 @@ async test "mooncode cancel control interrupts an active process and stays hidde
     assert_true(mooncode_json_bool(submitted, "accepted", default=false))
     let binding = daemon.mooncode_binding_for_session(session_id)
     let mut attempts = 0
-    while binding.active_command_id == "" && attempts < 100 {
+    while binding.runtime.active_command_id == "" && attempts < 100 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_eq(binding.active_command_id, "cmd-long")
+    assert_eq(binding.runtime.active_command_id, "cmd-long")
     let cancelled = daemon.mooncode_submit_turn_response(group~, session_id, {
       "protocol": mooncode_protocol_version(),
       "session_id": session_id,
@@ -671,11 +671,11 @@ async test "mooncode cancel control rejects a stale turn target" (
     assert_true(mooncode_json_bool(submitted, "accepted", default=false))
     let binding = daemon.mooncode_binding_for_session("session-stale-cancel")
     let mut attempts = 0
-    while binding.active_command_id == "" && attempts < 100 {
+    while binding.runtime.active_command_id == "" && attempts < 100 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_eq(binding.active_command_id, "cmd-active")
+    assert_eq(binding.runtime.active_command_id, "cmd-active")
     let stale_command : Json = {
       "protocol": mooncode_protocol_version(),
       "session_id": "session-stale-cancel",
@@ -712,8 +712,8 @@ async test "mooncode cancel control rejects a stale turn target" (
       _ => true
     }
     assert_true(rejected)
-    assert_true(binding.runtime_service_running)
-    assert_eq(binding.active_command_id, "cmd-active")
+    assert_true(binding.runtime.service_running)
+    assert_eq(binding.runtime.active_command_id, "cmd-active")
     let correct_command : Json = {
       "protocol": mooncode_protocol_version(),
       "session_id": "session-stale-cancel",
@@ -868,11 +868,11 @@ async test "mooncode approval resumes from durable checkpoint after daemon resta
     assert_true(mooncode_json_bool(approved, "accepted", default=false))
     let binding = restarted_daemon.mooncode_binding_for_session(session_id)
     let mut attempts = 0
-    while binding.runtime_service_running && attempts < 200 {
+    while binding.runtime.service_running && attempts < 200 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     group.return_immediately(())
   })
   assert_eq(
@@ -988,11 +988,11 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
     assert_true(mooncode_json_bool(rejected, "accepted", default=false))
     let binding = restarted_daemon.mooncode_binding_for_session(session_id)
     let mut attempts = 0
-    while binding.runtime_service_running && attempts < 200 {
+    while binding.runtime.service_running && attempts < 200 {
       @async.sleep(10)
       attempts += 1
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     group.return_immediately(())
   })
   assert_eq(

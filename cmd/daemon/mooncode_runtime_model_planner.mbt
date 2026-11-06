@@ -830,22 +830,31 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
           "output_excerpt": mooncode_runtime_turn_inspection_excerpt(output),
         })
       }
-      let normalized_execution : Json = {
-        "accepted": accepted,
-        "tool": tool,
-        "arguments": arguments,
-        "result": result,
+      let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+      let (observed_path, complete) = match tool {
+        "read" =>
+          (
+            mooncode_json_string(metadata, "path", default=path),
+            !mooncode_json_bool(metadata, "truncated", default=false) &&
+            !mooncode_json_bool(metadata, "range_requested", default=false),
+          )
+        "shell" => {
+          let observation = mooncode_json_object_field_or_empty(
+            metadata, "file_observation",
+          )
+          (
+            mooncode_json_string(observation, "path", default=""),
+            mooncode_json_string(observation, "scope", default="partial") ==
+            "complete",
+          )
+        }
+        _ => ("", false)
       }
-      let observation = mooncode_runtime_turn_result_file_observation(
-        normalized_execution,
-      )
-      let observed_path = mooncode_json_string(observation, "path", default="")
-      let scope = mooncode_json_string(observation, "scope", default="partial")
       if observed_path != "" {
         if !read_paths.contains(observed_path) {
           read_paths.push(observed_path)
         }
-        if scope == "complete" && !complete_read_paths.contains(observed_path) {
+        if complete && !complete_read_paths.contains(observed_path) {
           complete_read_paths.push(observed_path)
         }
       }

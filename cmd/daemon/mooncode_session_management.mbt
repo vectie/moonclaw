@@ -288,8 +288,8 @@ fn Daemon::mooncode_require_idle_session(
   session_id : String,
 ) -> Unit raise {
   match self.mooncode_sessions.get(session_id) {
-    Some(binding) if binding.runtime_service_running ||
-      binding.active_command_id != "" =>
+    Some(binding) if binding.runtime.service_running ||
+      binding.runtime.active_command_id != "" =>
       raise mooncode_session_management_error(
         409, "Conflict", "This MoonCode session is still running; stop it before changing its storage",
         session_id,

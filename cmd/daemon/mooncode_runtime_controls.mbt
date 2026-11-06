@@ -431,6 +431,36 @@ fn mooncode_runtime_turn_applied_live_steer_event(
 }
 
 ///|
+/// Apply claimed updates in order and commit their existing events. Request
+/// assembly stays with the planner; this function does not claim or schedule.
+async fn Daemon::mooncode_runtime_turn_apply_live_steering(
+  self : Daemon,
+  binding : MoonCodeSessionBinding,
+  command : Json,
+  steering : Array[Json],
+  applied : Array[Json],
+  events : Array[Json],
+  persisted : Map[String, Bool],
+) -> Json {
+  let mut command = command
+  for update in steering {
+    command = mooncode_runtime_task_with_update(command, update)
+    applied.push(update)
+    self.mooncode_runtime_turn_record_event(
+      binding,
+      events,
+      persisted,
+      mooncode_runtime_turn_applied_live_steer_event(
+        binding.session_id,
+        update,
+        now=self.clock.now(),
+      ),
+    )
+  }
+  command
+}
+
+///|
 /// Receipt persistence is the idempotency boundary: after this call the
 /// control projection no longer returns the steering command as pending.
 async fn Daemon::mooncode_runtime_turn_claim_live_steering(

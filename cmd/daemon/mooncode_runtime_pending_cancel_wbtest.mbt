@@ -400,11 +400,11 @@ async test "pending withdrawal preserves an active approval claim and its eventu
       assert_true(mooncode_json_bool(approved, "accepted", default=false))
       let binding = daemon.mooncode_binding_for_session("pending-cancel")
       let mut attempts = 0
-      while binding.runtime_service_running && attempts < 200 {
+      while binding.runtime.service_running && attempts < 200 {
         @async.sleep(10)
         attempts += 1
       }
-      assert_false(binding.runtime_service_running)
+      assert_false(binding.runtime.service_running)
       group.return_immediately(())
     })
     assert_false(@fsx.exists(@pathx.join(root, "withdrawn.txt")))

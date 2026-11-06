@@ -61,6 +61,22 @@ resume check. This adds no journal write, model request, scheduler or approval
 condition. Command/plan/result Json and broad daemon/session composition remain;
 this local closure does not establish complete type or package isolation.
 
+### Live execution and control ownership
+
+Live session execution has a separate private `MoonCodeSessionRuntime` record:
+service startup reservation, wake flag, task handle and active command ID.
+`MoonCodeSessionBinding` keeps metadata and an in-memory reference to it; cached
+metadata never restores a coroutine or running claim. The running reservation
+is necessary before the spawned task handle is installed. After acquiring the
+execution lease, startup has one owner, so the second running branch is removed.
+
+Controls apply claimed steering and commit the existing applied events in one
+place; turn determines when to claim and request another model round. Follow-up
+requests use one loop body. Planner evidence reads canonical result metadata
+directly, without an intermediate execution/observation JSON protocol. Existing
+compact response projections live together in the receipt file. There is no
+new validator, approval, retry rule, state machine or public protocol change.
+
 ### Restart discovery
 
 `Daemon::serve` runs one background discovery pass after the existing hosted

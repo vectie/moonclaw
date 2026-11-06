@@ -120,14 +120,14 @@ async test "runtime service execution lease is single-flight across daemon insta
         "runtime.service_started",
       )
       let first_binding = first_daemon.mooncode_binding_for_session(session_id)
-      match first_binding.runtime_service_task {
+      match first_binding.runtime.service_task {
         Some(task) => {
           task.cancel()
           let _ = task.wait() catch { _ => () }
         }
         None => abort("first runtime service task missing")
       }
-      assert_false(first_binding.runtime_service_running)
+      assert_false(first_binding.runtime.service_running)
       let third = second_daemon.mooncode_start_runtime_service(
         group~,
         session_id,
@@ -143,14 +143,14 @@ async test "runtime service execution lease is single-flight across daemon insta
       let second_binding = second_daemon.mooncode_binding_for_session(
         session_id,
       )
-      match second_binding.runtime_service_task {
+      match second_binding.runtime.service_task {
         Some(task) => {
           task.cancel()
           let _ = task.wait() catch { _ => () }
         }
         None => abort("second runtime service task missing")
       }
-      assert_false(second_binding.runtime_service_running)
+      assert_false(second_binding.runtime.service_running)
       let events = second_daemon.mooncode_runtime_service_events(
         session_id, root,
       )

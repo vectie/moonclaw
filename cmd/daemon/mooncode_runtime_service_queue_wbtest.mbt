@@ -186,8 +186,8 @@ async test "already running native service records a pending wake" {
     let session_id = "service-wake"
     let binding = daemon.mooncode_binding_for_session(session_id)
     assert_true(binding.bind_book_root(root))
-    binding.runtime_service_running = true
-    assert_false(binding.runtime_service_wake_pending)
+    binding.runtime.service_running = true
+    assert_false(binding.runtime.wake_pending)
     @async.with_task_group(group => {
       let response = daemon.mooncode_start_runtime_service(
         group~,
@@ -197,9 +197,11 @@ async test "already running native service records a pending wake" {
       )
       assert_false(mooncode_json_bool(response, "started", default=true))
       assert_eq(mooncode_json_string(response, "status", default=""), "running")
-      assert_true(binding.runtime_service_wake_pending)
+      assert_true(binding.runtime.wake_pending)
+      assert_true(binding.runtime.service_running)
     })
+    assert_false(@fsx.exists(mooncode_session_journal_path(root, session_id)))
     // This fixture does not start a service task or model request.
-    binding.runtime_service_running = false
+    binding.runtime.service_running = false
   })
 }

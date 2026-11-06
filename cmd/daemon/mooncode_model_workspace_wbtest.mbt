@@ -45,10 +45,7 @@ fn model_workspace_fixture_binding(root : String) -> MoonCodeSessionBinding {
     custom_title: "",
     last_command_id: "",
     last_updated: @clock.epoch.now(),
-    runtime_service_running: false,
-    runtime_service_wake_pending: false,
-    runtime_service_task: None,
-    active_command_id: "",
+    runtime: MoonCodeSessionRuntime::new(),
     events: @broadcast.Broadcast::new(),
   }
 }

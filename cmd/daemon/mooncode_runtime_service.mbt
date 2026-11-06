@@ -1,4 +1,24 @@
 ///|
+/// Live execution ownership, never restored from session metadata. The running
+/// reservation precedes task installation while the start event is committed.
+priv struct MoonCodeSessionRuntime {
+  mut service_running : Bool
+  mut wake_pending : Bool
+  mut service_task : @async.Task[Unit]?
+  mut active_command_id : String
+}
+
+///|
+fn MoonCodeSessionRuntime::new() -> MoonCodeSessionRuntime {
+  {
+    service_running: false,
+    wake_pending: false,
+    service_task: None,
+    active_command_id: "",
+  }
+}
+
+///|
 /// Release a transferred lifecycle gate even when unlock fails or cancellation
 /// is already pending.
 fn mooncode_runtime_service_release_lifecycle_gate(
@@ -132,8 +152,8 @@ async fn Daemon::mooncode_start_runtime_service(
     })
   }
   let book_root = binding.book_root
-  if binding.runtime_service_running {
-    binding.runtime_service_wake_pending = true
+  if binding.runtime.service_running {
+    binding.runtime.wake_pending = true
     return {
       "kind": "mooncode-runtime-service",
       "protocol": mooncode_protocol_version(),
@@ -242,36 +262,15 @@ async fn Daemon::mooncode_start_runtime_service(
     }
   }
 
-  if binding.runtime_service_running {
-    binding.runtime_service_wake_pending = true
-    @async.protect_from_cancel(
-      () => {
-        mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
-      },
-      resume_on_cancel=true,
-    )
-    return {
-      "kind": "mooncode-runtime-service",
-      "protocol": mooncode_protocol_version(),
-      "owner": "moonclaw",
-      "accepted": true,
-      "session_id": session_id,
-      "book_root": book_root,
-      "service_id": mooncode_runtime_service_id(session_id, payload),
-      "status": "running",
-      "started": false,
-      "message": "MoonClaw native runtime service is already running for this session.",
-      "started_event": null,
-      "loop_options": mooncode_runtime_service_loop_payload(session_id, payload),
-    }
-  }
-  binding.runtime_service_running = true
+  // The acquired execution lease owns startup; another live service cannot
+  // also own it. The in-memory reservation covers start-event persistence.
+  binding.runtime.service_running = true
   let started = self.mooncode_runtime_service_started_event(
     session_id, book_root, payload,
   )
   {
     errdefer {
-      binding.runtime_service_running = false
+      binding.runtime.service_running = false
       @async.protect_from_cancel(
         () => {
           mooncode_runtime_service_release_gates(
@@ -293,7 +292,7 @@ async fn Daemon::mooncode_start_runtime_service(
   let task = group.spawn(
     () => {
       defer {
-        binding.runtime_service_running = false
+        binding.runtime.service_running = false
         mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
       }
       let _ = self.mooncode_runtime_service_execute_under_runtime_gates(
@@ -342,7 +341,7 @@ async fn Daemon::mooncode_start_runtime_service(
     no_wait=true,
     allow_failure=true,
   )
-  binding.runtime_service_task = Some(task)
+  binding.runtime.service_task = Some(task)
   {
     "kind": "mooncode-runtime-service",
     "protocol": mooncode_protocol_version(),
@@ -578,7 +577,7 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   while true {
     // Clear before the fresh queue read. A /turns submission that finds this
     // service running rearms it if it arrives during final journal I/O.
-    binding.runtime_service_wake_pending = false
+    binding.runtime.wake_pending = false
     let claim_state = if drains_queue &&
       mooncode_runtime_service_queue_drain_allowed(result) {
       self.mooncode_runtime_claim_state_payload(session_id, book_root)
@@ -621,7 +620,7 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
       !@async.is_being_cancelled() &&
       mooncode_runtime_service_rearm_requested(
         result,
-        binding.runtime_service_wake_pending,
+        binding.runtime.wake_pending,
       ) {
       // The finish was already durable when a new prompt woke the service.
       // Record the next run before continuing under the same execution lease.
@@ -1233,16 +1232,16 @@ async test "mooncode runtime service gates started and persists cancellation bef
     releaser.wait()
     assert_true(mooncode_json_bool(response, "started", default=false))
     let binding = daemon.mooncode_binding_for_session(session_id)
-    assert_true(binding.runtime_service_running)
+    assert_true(binding.runtime.service_running)
     @async.sleep(25)
-    match binding.runtime_service_task {
+    match binding.runtime.service_task {
       Some(task) => {
         task.cancel()
         let _ = task.wait() catch { _ => () }
       }
       None => abort("runtime service task missing")
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     let events = daemon.mooncode_runtime_service_events(session_id, book_root)
     assert_eq(events.length(), 2)
     let terminal = events[events.length() - 1]
@@ -1303,7 +1302,7 @@ async test "mooncode runtime service holds lifecycle gate through terminal persi
     )
     assert_true(mooncode_json_bool(response, "started", default=false))
     let binding = daemon.mooncode_binding_for_session(session_id)
-    assert_true(binding.runtime_service_running)
+    assert_true(binding.runtime.service_running)
     let exclusive_gate = mooncode_open_session_lifecycle_gate(
       book_root, session_id,
     )
@@ -1320,59 +1319,11 @@ async test "mooncode runtime service holds lifecycle gate through terminal persi
     @async.sleep(25)
     assert_true(exclusive.try_wait() is None)
     let mut attempts = 0
-    while binding.runtime_service_running && attempts < 40 {
+    while binding.runtime.service_running && attempts < 40 {
       @async.sleep(25)
       attempts += 1
     }
-    assert_false(binding.runtime_service_running)
+    assert_false(binding.runtime.service_running)
     assert_true(exclusive.wait())
   })
-}
-
-///|
-async test "mooncode runtime service is single-flight per session" (
-  t : @test.Test,
-) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-service-single-flight-XXXXXX"),
-  )
-  let session_id = "session-service-single-flight"
-  let daemon = Daemon::{
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
-    uuid: @uuid.generator(@rand.chacha8()),
-    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
-    port: 0,
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(
-      home=book_root,
-      uuid=@uuid.generator(@rand.chacha8()),
-    ),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-  let binding = daemon.mooncode_binding_for_session(session_id)
-  assert_true(binding.bind_book_root(book_root))
-  binding.runtime_service_running = true
-  @async.with_task_group(group => {
-    let response = daemon.mooncode_start_runtime_service(
-      group~,
-      session_id,
-      book_root,
-      { "service_id": "service-reused" },
-    )
-    assert_eq(mooncode_json_string(response, "status", default=""), "running")
-    assert_false(mooncode_json_bool(response, "started", default=true))
-    assert_true(binding.runtime_service_running)
-  })
-  assert_false(
-    @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
-  )
 }

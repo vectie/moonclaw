@@ -101,17 +101,17 @@ async fn Daemon::mooncode_cancel_session_runtime(
   session_id : String,
 ) -> Bool {
   match self.mooncode_sessions.get(session_id) {
-    Some(binding) if binding.runtime_service_running => {
-      match binding.runtime_service_task {
+    Some(binding) if binding.runtime.service_running => {
+      match binding.runtime.service_task {
         Some(task) => {
           task.cancel()
           let _ = task.wait() catch { _ => () }
-          binding.runtime_service_task = None
+          binding.runtime.service_task = None
         }
         None => ()
       }
-      binding.runtime_service_running = false
-      binding.active_command_id = ""
+      binding.runtime.service_running = false
+      binding.runtime.active_command_id = ""
       true
     }
     _ => false
