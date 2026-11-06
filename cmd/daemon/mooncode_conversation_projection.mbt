@@ -1035,19 +1035,10 @@ fn mooncode_conversation_apply_work_event(
     turn.work_steps.push(step)
   }
   turn.work_live = Json::object({})
-  let event_status = if kind == "runtime.planner_failed" {
-    "done"
-  } else {
-    mooncode_json_string(event, "status", default="running")
-  }
-  turn.status = if event_status == "failed" {
-    "failed"
-  } else if event_status == "cancelled" {
-    "cancelled"
-  } else if turn.status == "done" {
-    "done"
-  } else {
-    "running"
+  // A recoverable work-step error is not a terminal outcome of the request.
+  // Only terminal events and settlement receipts own that outcome.
+  if turn.status == "queued" {
+    turn.status = "running"
   }
 }
 
@@ -1396,7 +1387,7 @@ fn mooncode_conversation_tool_title(
   started~ : Bool,
   failed~ : Bool,
 ) -> String {
-  if tool == "read" || tool == "grep" || tool == "glob" {
+  if tool == "read" || tool == "read_skill" || tool == "grep" || tool == "glob" {
     if failed {
       "Could not check context"
     } else if started {
@@ -1445,7 +1436,7 @@ fn mooncode_conversation_tool_detail(
   started~ : Bool,
   failed~ : Bool,
 ) -> String {
-  if tool == "read" || tool == "grep" || tool == "glob" {
+  if tool == "read" || tool == "read_skill" || tool == "grep" || tool == "glob" {
     if failed {
       if path == "" {
         "Could not read project context."

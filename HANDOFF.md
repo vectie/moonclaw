@@ -5,6 +5,32 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Live delivery findings: edit ABI and progress projection 2026-11-06
+
+- Real daemon/model run at 4a431c66 fixed an existing MoonDesk display-name
+  bug. Session mooncode-live-bugfix-20261106-display-name, command
+  live-display-name-bugfix-1. No injected calls/model fixture. Full report
+  lives in sibling moondesk/docs/MOONCODE_LIVE_BUGFIX_2026-11-06.md.
+- Real edit calls included old_string/new_string plus neutral edits: [].
+  Presence-based form selection rejected them twice. Select active forms,
+  ignoring empty/default placeholders; two active forms still reject without
+  mutation. Existing atomic tests cover both forms and conflicting input.
+- A failed tool set the entire canonical turn failed while the same service
+  continued planning. Work progress now only advances queued to running;
+  existing terminal events/receipts still decide failure/cancellation. The
+  failed step remains visible. Added one minimal permanent regression.
+- read_skill was labeled Updated SKILL.md; use the existing read-like title
+  and detail. Skill evidence/source/digest remain unchanged.
+- Before/after replay used the actual failed-tool journal prefix and actual
+  edit arguments via the real execution boundary. The temporary replay test
+  passed and was removed; do not turn the private history into a fixture store.
+- Final native 1845/1845, Desk native 1726/1726, core native/JS 24/24 each,
+  JS workspace 2291/2291 including UI 839. Info/fmt and interfaces/whitespace
+  checked; .mbti unchanged. No new validator, state, approval, gate or feature.
+- Run outcome: artifact independently accepted, autonomous tests blocked by
+  absent MoonFort configuration. Do not bypass it, invent cash cost or mark
+  general live quality/cost evaluation complete from this one case.
+
 ## Runtime ownership and control/projection simplification 2026-11-06
 
 - SessionBinding keeps metadata/event binding and a private SessionRuntime

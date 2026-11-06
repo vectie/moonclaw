@@ -5,6 +5,7 @@ test "canonical skill evidence shows installed source and digest without skill b
     "event": "tool_result",
     "lane": "runtime",
     "tool": "read_skill",
+    "path": "SKILL.md",
     "status": "done",
     "tool_call_id": "skill-call",
     "tool_result": {
@@ -18,6 +19,12 @@ test "canonical skill evidence shows installed source and digest without skill b
     },
   }
   assert_eq(mooncode_conversation_work_step_kind(event), "skill")
+  let step = mooncode_conversation_work_step(event)
+  assert_eq(mooncode_json_string(step, "title", default=""), "Checked context")
+  assert_eq(
+    mooncode_json_string(step, "summary", default=""),
+    "Read `SKILL.md`.",
+  )
   let evidence = mooncode_conversation_work_evidence(event)
   assert_eq(mooncode_json_string(evidence, "kind", default=""), "skill")
   assert_eq(

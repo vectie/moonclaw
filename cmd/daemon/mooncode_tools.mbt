@@ -384,37 +384,27 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
   let relative = mooncode_json_string(path, "relative_path", default="")
-  let has_batch = match arguments {
-    Object(fields) => fields.contains("edits")
-    _ => false
-  }
-  let has_legacy_edit = match arguments {
-    Object(fields) =>
-      fields.contains("old_string") ||
-      fields.contains("new_string") ||
-      fields.contains("replace_all")
-    _ => false
-  }
-  if has_batch && has_legacy_edit {
+  let edits = mooncode_json_array_items(arguments, "edits")
+  let old_string = mooncode_json_string(arguments, "old_string", default="")
+  let new_string = mooncode_json_string(arguments, "new_string", default="")
+  let replace_all = mooncode_json_bool(arguments, "replace_all", default=false)
+  let has_single_edit = old_string != "" || new_string != "" || replace_all
+  if !edits.is_empty() && has_single_edit {
     return mooncode_tool_error_result(
       "edit",
       message="use either edits or old_string/new_string, not both",
     )
   }
-  let edits = if has_batch {
-    mooncode_json_array_items(arguments, "edits")
-  } else {
+  let edits : Array[Json] = if has_single_edit {
     [
       {
-        "old_string": mooncode_json_string(arguments, "old_string", default=""),
-        "new_string": mooncode_json_string(arguments, "new_string", default=""),
-        "replace_all": mooncode_json_bool(
-          arguments,
-          "replace_all",
-          default=false,
-        ),
+        "old_string": old_string,
+        "new_string": new_string,
+        "replace_all": replace_all,
       },
     ]
+  } else {
+    edits
   }
   if edits.length() == 0 {
     return mooncode_tool_error_result(
