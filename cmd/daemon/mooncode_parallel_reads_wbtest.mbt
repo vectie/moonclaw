@@ -178,15 +178,21 @@ async test "mooncode parallel reads retain model call order" {
     let calls : Array[Json] = [
       { "tool": "read", "arguments": { "path": "b.txt" } },
       { "tool": "read", "arguments": { "path": "a.txt" } },
+      { "tool": "shell", "arguments": { "cmd": "cat a.txt" } },
     ]
-    let results = daemon.mooncode_runtime_turn_execute_parallel_reads(
-      command, "parallel-read-session", root, calls,
-    )
-    assert_eq(results.length(), 2)
+    let results = mooncode_with_fixture_moonfort(root, async fn(_) {
+      daemon.mooncode_runtime_turn_execute_parallel_reads(
+        command, "parallel-read-session", root, calls,
+      )
+    })
+    assert_eq(results.length(), 3)
     let first = mooncode_json_object_field_or_empty(results[0], "result")
     let second = mooncode_json_object_field_or_empty(results[1], "result")
     assert_eq(mooncode_json_string(first, "output", default=""), "beta")
     assert_eq(mooncode_json_string(second, "output", default=""), "alpha")
+    let shell = mooncode_json_object_field_or_empty(results[2], "result")
+    assert_true(mooncode_json_bool(shell, "ok", default=false))
+    assert_eq(mooncode_json_string(shell, "output", default=""), "alpha")
   })
 }
 

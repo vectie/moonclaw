@@ -86,9 +86,14 @@ async fn Daemon::mooncode_runtime_turn_execute_parallel_reads(
   book_root : String,
   tool_calls : Array[Json],
 ) -> Array[Json] {
-  let bodies = tool_calls.map(tool_call => {
-    mooncode_runtime_turn_tool_body(command, tool_call)
-  })
+  let bodies : Array[Json] = []
+  for index, tool_call in tool_calls {
+    let bound = mooncode_runtime_bind_sandbox_approval_plan(
+      book_root, tool_call,
+    )
+    tool_calls[index] = bound
+    bodies.push(mooncode_runtime_turn_tool_body(command, bound))
+  }
   let timestamps = tool_calls.map(_ => self.clock.now())
   @async.with_task_group(group => {
     let tasks = Array(capacity=tool_calls.length())

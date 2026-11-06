@@ -666,6 +666,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           // in-memory call from substituting command text or argv after review.
           let tool_call = if tool_requires_approval {
             mooncode_runtime_authorized_tool_call(tool_call, approval)
+          } else if !parallel_read_executions.is_empty() {
+            tool_call
           } else {
             mooncode_runtime_bind_sandbox_approval_plan(book_root, tool_call)
           }

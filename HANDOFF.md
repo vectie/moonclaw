@@ -5,6 +5,22 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Real executor: parallel shell binding 2026-11-06
+
+- Second real-model task used the existing MoonFort LocalOs executor, not the
+  fixture. One edit fixed nested History/Review directories; Wasm GC core
+  24/24 autonomous, exact patch independently accepted in Desk main. Full report
+  lives in ../moondesk/docs/MOONCODE_LIVE_EXECUTOR_BUGFIX_2026-11-06.md.
+- Parallel reads dispatched shell before binding its grant; the loop bound it
+  afterward, leaving misleading post-call arguments in history. Bind through
+  the existing function before parallel dispatch; later recording reuses the
+  same binding. Extended existing ordered-read fixture with a shell call:
+  red before, green after. Actual original shell replay got a real grant-bound
+  receipt; it is not a valid diff check (`|| true`, no Git HEAD).
+- Claw Native 1845/1845; no new state, approval, gate or protocol. Nine actual
+  responses, input 262159/cached 121472/output 1274; finish 57.648 seconds.
+  Do not attribute coordinator runtime fixes or independent checks to the model.
+
 ## Live delivery findings: edit ABI and progress projection 2026-11-06
 
 - Real daemon/model run at 4a431c66 fixed an existing MoonDesk display-name
