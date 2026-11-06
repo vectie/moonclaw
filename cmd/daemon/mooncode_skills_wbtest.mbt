@@ -33,7 +33,6 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
   )
   let catalog = mooncode_runtime_turn_skill_catalog(book_root)
   assert_true(catalog.contains("<name>fixture-review</name>"))
-  assert_true(catalog.contains("must call `read_skill`"))
   let loaded = mooncode_execute_tool_call(
     "session-skills",
     book_root,

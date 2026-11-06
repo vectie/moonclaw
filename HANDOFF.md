@@ -5,6 +5,27 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Follow-up token audit 2026-11-06
+
+- Removed duplicate inspection excerpts/hashes and automatic task/recent-results
+  progress. Saved cross-command checkpoint notes are now in the initial task
+  prefix; current checkpoint results remain in tool history. Keep the compact
+  read/completeness/error index and existing recall after compaction.
+- Model projection additionally omits verification_inputs, duplicate shell cmd
+  and internal grant/run/profile IDs. Canonical results and Completion inputs
+  are unchanged. A full-test inventory alone was 17322 characters.
+- Removed the catalog's description-match mandatory skill loading policy and
+  duplicate system wording. Explicit user/project requirements still apply;
+  selected resources remain complete. The live model still chose the 34084-char
+  guide, so do not claim this change removed skill input or caused the savings.
+- Same historical real bug/prompt: 382588 input/16 responses baseline;
+  first trial 248354/12 with one Git transport timeout; final 213432/11,
+  cached 10752/output 2144, 183.982 sec. Both trial costs retained. No in-run
+  takeover. Model two edits/one post-edit regression, Native 108/108 accepted.
+- Native 1844/1844; interfaces unchanged. Fort fixes SDK registry lookup and
+  executable-bit snapshot noise. Report in sibling MoonDesk:
+  docs/MOONCODE_TOKEN_AUDIT_FOLLOWUP_2026-11-06.md.
+
 ## Token audit and actual peer-task replay 2026-11-06
 
 - Three historical Native runs used 2294816 input / 6350 output tokens. One

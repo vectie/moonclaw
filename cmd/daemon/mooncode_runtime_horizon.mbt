@@ -93,31 +93,6 @@ fn mooncode_runtime_horizon_contract(command : Json) -> Json {
 }
 
 ///|
-fn mooncode_runtime_horizon_latest_checkpoint(
-  command : Json,
-  results : Array[Json],
-) -> Json {
-  let expected = mooncode_runtime_horizon_id(command)
-  let payload = mooncode_json_object_field_or_empty(command, "payload")
-  let mut latest = mooncode_json_object_field_or_empty(
-    payload, "horizon_checkpoint",
-  )
-  for result in results {
-    if mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") == "checkpoint" {
-      let metadata = mooncode_json_object_field_or_empty(
-        mooncode_json_object_field_or_empty(result, "result"),
-        "metadata",
-      )
-      if mooncode_json_string(metadata, "horizon_id", default="") == expected {
-        latest = mooncode_json_object_field_or_empty(metadata, "checkpoint")
-      }
-    }
-  }
-  latest
-}
-
-///|
 fn mooncode_runtime_horizon_attach_checkpoint(
   command : Json,
   events : Array[Json],
@@ -292,49 +267,6 @@ fn mooncode_runtime_horizon_checkpoint_execution(
     arguments,
     result,
     now~,
-  )
-}
-
-///|
-fn mooncode_runtime_horizon_result_summary(result : Json) -> String {
-  let tool = mooncode_json_string(result, "tool", default="unknown")
-  let accepted = mooncode_json_bool(result, "accepted", default=false)
-  let arguments = mooncode_json_object_field_or_empty(result, "arguments")
-  let tool_result = mooncode_json_object_field_or_empty(result, "result")
-  let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
-  let path = mooncode_json_string(
-    metadata,
-    "path",
-    default=mooncode_json_string(arguments, "path", default=""),
-  )
-  let command = mooncode_json_string(arguments, "command", default="")
-  let message = mooncode_json_string(tool_result, "message", default="")
-  "- \{tool}: \{if accepted { "accepted" } else { "failed" }}" +
-  (if path == "" { "" } else { " path=\{path}" }) +
-  (if command == "" { "" } else { " command=\{command}" }) +
-  (if message == "" { "" } else { " — \{message}" })
-}
-
-///|
-fn mooncode_runtime_horizon_progress_message(
-  command : Json,
-  results : Array[Json],
-  _remaining_steps : Int32,
-) -> Json {
-  let recent = results[results.length().max(4) - 4:]
-    .map(mooncode_runtime_horizon_result_summary)
-    .join("\n")
-  mooncode_runtime_context_text_message(
-    "user",
-    "Current task: " +
-    mooncode_runtime_horizon_contract(command).stringify() +
-    "\nSaved progress (advisory): " +
-    mooncode_runtime_horizon_latest_checkpoint(command, results).stringify() +
-    "\nRecent results:\n" +
-    recent +
-    "\nContinue useful work, repair failures and verify the deliverable. Save a checkpoint when useful; it is not a completion requirement.",
-    EnvironmentContext,
-    "environment.horizon_progress",
   )
 }
 

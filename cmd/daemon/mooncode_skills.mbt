@@ -103,13 +103,11 @@ async fn mooncode_runtime_turn_skill_catalog(book_root : String) -> String {
     (
       #|
       #|
-      #|Installed skills are available through progressive disclosure. If the
-      #|user names a skill, or the task clearly matches a skill description, you
-      #|must call `read_skill` for that skill before task work, using its <id>
-      #|as the name argument to distinguish repeated display names. Read the complete
-      #|SKILL.md first. Load referenced files only when the selected instructions
-      #|make them relevant. A `read_skill` call ends the current tool batch so
-      #|the returned instructions can govern the next planner prompt.
+      #|Use `read_skill` when the user or project requests a skill, or when you
+      #|need its workflow or references for the current task. Use its <id> as
+      #|the name argument to distinguish repeated display names. Read the complete
+      #|SKILL.md when selecting a skill, then load references as needed.
+      #|`read_skill` ends the current tool batch so its instructions govern the next step.
       #|
       #|<available_skills>
       #|

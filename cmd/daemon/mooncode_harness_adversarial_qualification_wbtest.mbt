@@ -80,12 +80,6 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
     assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(suffix)), suffix)
   }
 
-  let excerpt = mooncode_runtime_turn_inspection_excerpt(
-    "a".repeat(1199) + unicode.repeat(100),
-  )
-  assert_true(excerpt.contains("retained inspection receipt omits"))
-  assert_eq(@encoding/utf8.decode(@encoding/utf8.encode(excerpt)), excerpt)
-
   let planner_content = mooncode_runtime_turn_model_tool_result_content({
     "tool": "shell",
     "result": { "ok": true, "output": "a".repeat(3999) + unicode.repeat(500) },

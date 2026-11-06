@@ -36,6 +36,13 @@ same compiled request and never changes the task to handle provider overload.
 
 ## Evidence and recall
 
+Task revisions and saved cross-command notes have one owner in the task
+prefix. Current checkpoints remain in tool history. The former automatic
+task/recent-results message is removed. A compact cumulative index retains
+read paths/completeness and errors, without copying shell commands, excerpts
+or output hashes. Model result projection also omits verification-input
+inventories and internal grant digests; canonical journal facts remain intact.
+
 Projection is lossy. A checkpoint contains working observations, not exact
 source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result
 ID; a compacted span keeps its first/last result IDs, including across repeated

@@ -257,6 +257,9 @@ test "mooncode long-horizon resume restores only accepted journal checkpoints" {
     mooncode_json_object_field_or_empty(resumed, "payload"),
     "horizon_checkpoint",
   )
+  let prompt = mooncode_runtime_turn_model_prompt(resumed)
+  assert_true(prompt.contains("Saved progress (advisory):"))
+  assert_true(prompt.contains(checkpoint.stringify()))
   assert_eq(
     mooncode_json_string(
       mooncode_json_array_items(checkpoint, "milestones")[0],

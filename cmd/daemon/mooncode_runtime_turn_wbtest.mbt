@@ -1088,7 +1088,6 @@ async test "mooncode followup makes retained reads errors and path hints actiona
   let transcript = Json::array(messages).stringify()
   assert_true(transcript.contains("successful_read_paths"))
   assert_true(transcript.contains("complete_read_paths"))
-  assert_true(transcript.contains("successful_inspections"))
   assert_true(transcript.contains("sed -n '1,80p' src/adapter.mbt"))
   assert_true(transcript.contains("current adapter source"))
   assert_true(transcript.contains("src/parser.mbt"))
@@ -1099,13 +1098,11 @@ async test "mooncode followup makes retained reads errors and path hints actiona
   assert_true(transcript.contains("path does not exist"))
   assert_true(transcript.contains("internal/parser/parser.mbt"))
   assert_true(transcript.contains("paths in this steering as authoritative"))
-  let recovery = mooncode_json_string(
-    messages[messages.length() - 2],
-    "content",
-    default="",
+  let ledger = mooncode_runtime_turn_model_evidence_ledger_message(
+    all_tool_results,
   )
-  assert_true(recovery.contains("Saved progress (advisory)"))
-  assert_true(recovery.contains("Recent results"))
+  assert_false(ledger.stringify().contains("current adapter source"))
+  assert_false(ledger.stringify().contains("sed -n"))
   let receipts = messages.filter(message => {
     mooncode_json_string(
       mooncode_runtime_context_provenance(message),
@@ -1135,7 +1132,11 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     [],
     -1,
   )
-  for source in ["environment.evidence_ledger", "environment.horizon_progress"] {
+  for
+    (source, count) in [
+      ("environment.evidence_ledger", 1),
+      ("environment.horizon_progress", 0),
+    ] {
     assert_eq(
       next
       .filter(message => {
@@ -1147,7 +1148,7 @@ async test "mooncode followup makes retained reads errors and path hints actiona
         source
       })
       .length(),
-      1,
+      count,
     )
   }
 }
@@ -1808,12 +1809,17 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       "metadata": {
         "exit_code": 0,
         "diff": "entire-file-copy".repeat(1000),
+        "verification_inputs": [
+          { "path": "src/file", "fingerprint": "version".repeat(1000) },
+        ],
+        "approval_id": "internal-approval-id",
         "sandbox_evidence": {
           "enforcement": "Degraded",
           "cleanup_verified": true,
           "changed_paths": ["_build/file"],
           "changes": [{ "fingerprint": "large".repeat(10000) }],
           "requested_policy": { "limits": "internal" },
+          "command_digest": "internal-command-digest",
           "output_artifact": { "artifact_id": "retained-output" },
         },
       },

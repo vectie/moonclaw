@@ -45,6 +45,11 @@ executor profile; MoonCode does not reject them by HOME/Users/temp substring.
 The macOS [Native configuration](../../moonfort/docs/EXECUTOR_CONFIG.md#macos-moonbit-native-commands)
 uses existing Shell assignments, not a new environment API. Those assignments
 do not carry over into a later moon_cmd invocation.
+On macOS, a registered executable resolving to `SDK/bin/moon` supplies its
+companion `MOON_HOME=SDK` while HOME remains private scratch. This fixes the
+IDE registry lookup; Native compiler/SDK selection still uses the explicit
+Shell configuration above. Workspace snapshots preserve source execute bits
+without copying group/other read or write permissions.
 
 Publisher refusal preserves its existing error code/message, including the
 requested timeout and deployment ceiling. A refused plan has not executed;
@@ -58,12 +63,17 @@ Small output remains bounded inline. Large output may carry a signed opaque
 reader's authorization, binding, size, expiry, and digest validation.
 
 MoonCode's model projection omits full sandbox change inventories and requested
-policy, retaining the change count, output/error, execution status, enforcement,
+policy, internal grant digests/IDs and verification-input inventories, retaining
+the change count, output/error, execution status, enforcement,
 cleanup and retained evidence/artifact references. Native file edits also omit
 the redundant whole-file diff from this projection. The original result stays
 in the journal for UI inspection and existing read_result recall. Follow-ups
-replace the cumulative evidence ledger and horizon progress instead of appending
-older copies. Full skill instructions remain intact.
+keep one compact read/error index; they do not duplicate shell excerpts or
+emit another task/recent-results progress message. Saved cross-command notes
+are included in the existing task prompt, with new checkpoints in tool history.
+User/project-required skills and needed workflows load through read_skill;
+matching a catalog description alone does not mandate loading a general guide.
+Selected skill instructions remain complete.
 
 An exit-zero inspection pipeline remains a successful observation. Its existing
 ambiguity marker still prevents it from proving a required check; tool success
