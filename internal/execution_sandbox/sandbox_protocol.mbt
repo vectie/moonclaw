@@ -835,7 +835,11 @@ async fn publish_pending_grant(
     response.error is None &&
     response.approval_id == plan.grant.approval_id &&
     response.approval_digest == plan.expected_approval_digest else {
-    fail("MoonFort grant publisher refused or mismatched the approved grant")
+    let reason = match response.error {
+      Some(error) => error.code + ": " + error.message
+      None => "response does not match the approved grant"
+    }
+    fail("MoonFort grant publisher refused: " + reason)
   }
 }
 

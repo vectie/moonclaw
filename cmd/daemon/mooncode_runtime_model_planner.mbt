@@ -577,7 +577,10 @@ fn mooncode_runtime_turn_model_followup_base_messages(
       let content = mooncode_json_string(message, "content", default="")
       let provenance = mooncode_runtime_context_provenance(message)
       if mooncode_json_string(provenance, "source", default="") ==
-        "user.content_parts" {
+        "user.content_parts" ||
+        ["environment.evidence_ledger", "environment.horizon_progress"].contains(
+          mooncode_json_string(provenance, "source", default=""),
+        ) {
         continue
       }
       if !content.has_prefix("Loaded-skill receipt:") {
@@ -1259,6 +1262,30 @@ fn mooncode_runtime_turn_model_tool_result_messages(
 ///|
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_tool_result_value(execution)
+  let tool = mooncode_json_string(
+    execution,
+    "tool",
+    default=mooncode_json_string(result, "tool", default=""),
+  )
+  let result = match result {
+    { "metadata": Object(metadata), .. } => {
+      let projected = metadata.filter(fn(key, _) {
+        key != "diff" ||
+        !["write", "edit", "apply_patch", "revert_patch"].contains(tool)
+      })
+      if metadata.get("sandbox_evidence") is Some(Object(sandbox)) {
+        let evidence = sandbox.filter(fn(key, _) {
+          !["changed_paths", "changes", "requested_policy"].contains(key)
+        })
+        if sandbox.get("changed_paths") is Some(Array(paths)) {
+          evidence["changed_path_count"] = Json(paths.length())
+        }
+        projected["sandbox_evidence"] = Json(evidence)
+      }
+      mooncode_json_object_with_field(result, "metadata", Json(projected))
+    }
+    _ => result
+  }
   let event = mooncode_json_object_field_or_empty(execution, "event")
   let event_id = mooncode_json_string(event, "id", default="")
   let payload : Json = {

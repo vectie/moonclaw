@@ -52,39 +52,14 @@ async fn mooncode_tool_shell(
         },
       )
   }
-  let result = mooncode_sandbox_terminal_result(
-    "shell",
-    execution,
-    0,
-    max_output_chars,
-    {
-      "cmd": cmd,
-      "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-      "timeout_ms": timeout,
-      "pipeline_exit_ambiguous": @mooncode_tools.shell_pipeline_exit_ambiguous(
-        cmd,
-      ),
-    },
-  )
-  let verification_pipeline = mooncode_json_string(
-      arguments,
-      "verification_kind",
-      default="",
-    ) !=
-    "" ||
-    mooncode_shell_pipeline_looks_like_verification(cmd)
-  if @mooncode_tools.shell_pipeline_exit_ambiguous(cmd) &&
-    verification_pipeline &&
-    mooncode_json_bool(result, "ok", default=false) {
-    mooncode_tool_error_result(
-      "shell",
-      message="verification pipeline exit is ambiguous because pipefail was not enabled",
-      output=mooncode_json_string(result, "output", default=""),
-      metadata=mooncode_json_object_field_or_empty(result, "metadata"),
-    )
-  } else {
-    result
-  }
+  mooncode_sandbox_terminal_result("shell", execution, 0, max_output_chars, {
+    "cmd": cmd,
+    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+    "timeout_ms": timeout,
+    "pipeline_exit_ambiguous": @mooncode_tools.shell_pipeline_exit_ambiguous(
+      cmd,
+    ),
+  })
 }
 
 ///|
@@ -189,18 +164,6 @@ fn mooncode_shell_has_background_operator(cmd : String) -> Bool {
     }
   }
   pending_ampersand
-}
-
-///|
-fn mooncode_shell_pipeline_looks_like_verification(cmd : String) -> Bool {
-  let lower = cmd.to_lower().to_string()
-  lower.contains("moon check") ||
-  lower.contains("moon test") ||
-  lower.contains("moon build") ||
-  lower.contains("npm test") ||
-  lower.contains("npm run test") ||
-  lower.contains("cargo test") ||
-  lower.contains("pytest")
 }
 
 ///|

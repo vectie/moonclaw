@@ -46,11 +46,28 @@ The macOS [Native configuration](../../moonfort/docs/EXECUTOR_CONFIG.md#macos-mo
 uses existing Shell assignments, not a new environment API. Those assignments
 do not carry over into a later moon_cmd invocation.
 
+Publisher refusal preserves its existing error code/message, including the
+requested timeout and deployment ceiling. A refused plan has not executed;
+report the reason so the agent can correct its arguments. Do not replace it
+with a generic grant failure or silently raise/clamp the configured limit.
+
 ## Output And Recovery
 
 Small output remains bounded inline. Large output may carry a signed opaque
 `output_artifact` reference. Retrieval remains subject to the configured Fort
 reader's authorization, binding, size, expiry, and digest validation.
+
+MoonCode's model projection omits full sandbox change inventories and requested
+policy, retaining the change count, output/error, execution status, enforcement,
+cleanup and retained evidence/artifact references. Native file edits also omit
+the redundant whole-file diff from this projection. The original result stays
+in the journal for UI inspection and existing read_result recall. Follow-ups
+replace the cumulative evidence ledger and horizon progress instead of appending
+older copies. Full skill instructions remain intact.
+
+An exit-zero inspection pipeline remains a successful observation. Its existing
+ambiguity marker still prevents it from proving a required check; tool success
+and verification evidence are separate facts.
 
 Live output uses the configured reader. Generic progress exposes bounded
 availability/status information rather than copying raw output, signatures,

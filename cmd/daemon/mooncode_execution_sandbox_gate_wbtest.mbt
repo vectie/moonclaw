@@ -275,6 +275,11 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
       assert_false(mooncode_json_bool(replay, "ok", default=true))
       assert_true(
         mooncode_json_string(replay, "message", default="").contains(
+          "replay: spent grant",
+        ),
+      )
+      assert_true(
+        mooncode_json_string(replay, "message", default="").contains(
           "failed closed",
         ),
       )

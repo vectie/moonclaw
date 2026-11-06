@@ -319,7 +319,9 @@ async test "grant publisher identity mismatch fails closed before executor" (
       )
       let result = tool.call({ "command": "printf hello" })
       assert_true(
-        result.to_string().contains("publisher refused or mismatched"),
+        result
+        .to_string()
+        .contains("response does not match the approved grant"),
       )
       inspect(@fsx.exists(capture), content="false")
     })

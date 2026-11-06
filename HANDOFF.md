@@ -5,6 +5,36 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Token audit and actual peer-task replay 2026-11-06
+
+- Three historical Native runs used 2294816 input / 6350 output tokens. One
+  full-test result carried 327569 characters for 395 characters of stdout,
+  including 748 build-file changes. Follow-ups also accumulated old ledgers
+  and horizon progress (up to 20/21 copies). Replace these derived views;
+  project copied result metadata, preserving the original journal and recall
+  refs. Native edit whole-file diffs need not be resent to the model.
+- Fixed-history 49-request replay: serialized message JSON characters
+  8583847 -> 4027165 (-53.1%). This is not provider tokens or cash savings.
+  Full skill instructions and user requirements remain; no new compaction,
+  budget gate, state, approval or architecture.
+- Removed keyword/verification-based conversion of exit-zero inspection
+  pipelines into tool errors. Keep ambiguity metadata and existing completion
+  evidence exclusion. MoonBit failed tests exit 2; corrected catalog prose.
+- Real basename task exposed 18 opaque grant refusals: requested 1200000ms
+  above existing 600000ms ceiling. Propagate publisher code/message instead
+  of dropping it. Fort supplies the numeric bounds. No limit/retry changes.
+  One runtime restart resumed the same command automatically; business edits
+  remained model-owned. Its complete 918024 input / 5404 output cost is
+  retained, not hidden by the clean rerun. Full report in sibling MoonDesk:
+  docs/MOONCODE_TOKEN_AUDIT_2026-11-06.md.
+- Same-prompt rerun completed without runtime intervention: 16 responses,
+  382588 input / 2620 output, 235.327 sec. Opaque refusals 18 -> 0, one
+  numeric refusal corrected immediately; three model edits/two regressions
+  remain. Native 108/108 independently accepted. Both trials' costs retained.
+- Native regression 1844/1844 after updating the old generic-error assertion;
+  public interfaces unchanged. Remaining default IDE metadata and snapshot
+  executable-mode noise are not fixed by result projection.
+
 ## Full real repository Native run 2026-11-06
 
 - Removed absolute HOME/SDK/Users/temp substring rejection after the real

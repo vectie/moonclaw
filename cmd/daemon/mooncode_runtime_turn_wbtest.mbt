@@ -1126,6 +1126,30 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     ),
     true,
   )
+  let next = mooncode_runtime_turn_model_followup_messages(
+    command,
+    mooncode_json_object_with_field(previous, "model_messages", Json(messages)),
+    [],
+    [],
+    all_tool_results,
+    [],
+    -1,
+  )
+  for source in ["environment.evidence_ledger", "environment.horizon_progress"] {
+    assert_eq(
+      next
+      .filter(message => {
+        mooncode_json_string(
+          mooncode_runtime_context_provenance(message),
+          "source",
+          default="",
+        ) ==
+        source
+      })
+      .length(),
+      1,
+    )
+  }
 }
 
 ///|
@@ -1776,6 +1800,35 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     "result": { "output": "x".repeat(9000) },
   })
   assert_true(oversized.contains("x".repeat(9000)))
+  let raw : Json = {
+    "tool": "edit",
+    "result": {
+      "ok": true,
+      "output": "Total tests: 108, passed: 108, failed: 0.",
+      "metadata": {
+        "exit_code": 0,
+        "diff": "entire-file-copy".repeat(1000),
+        "sandbox_evidence": {
+          "enforcement": "Degraded",
+          "cleanup_verified": true,
+          "changed_paths": ["_build/file"],
+          "changes": [{ "fingerprint": "large".repeat(10000) }],
+          "requested_policy": { "limits": "internal" },
+          "output_artifact": { "artifact_id": "retained-output" },
+        },
+      },
+    },
+    "event": { "id": "retained-reference" },
+  }
+  let before = raw.stringify()
+  let projected = mooncode_runtime_turn_model_tool_result_content(raw)
+  assert_true(projected.length() < 600)
+  assert_true(projected.contains("108, passed: 108"))
+  assert_true(projected.contains("retained-reference"))
+  assert_true(projected.contains("retained-output"))
+  assert_true(projected.contains("Degraded"))
+  assert_true(projected.contains("\"changed_path_count\":1"))
+  assert_eq(raw.stringify(), before)
   ignore(@json.parse(oversized))
   let retained_source = mooncode_runtime_turn_model_tool_result_content({
     "tool": "read",

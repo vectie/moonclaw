@@ -271,7 +271,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
           "program_args": { "type": "array", "items": { "type": "string" } },
           "expected_exit_code": {
             "type": "integer",
-            "description": "Expected process exit code; use 1 for intentional negative-path CLI validation.",
+            "description": "Expected process exit code (default 0). MoonBit test failures return 2; use the actual exit code for intentional negative checks.",
           },
           "test_update_kind": { "type": "string" },
           "test_update_reason": { "type": "string" },
