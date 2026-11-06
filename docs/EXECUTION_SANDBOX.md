@@ -58,6 +58,10 @@ with a generic grant failure or silently raise/clamp the configured limit.
 
 ## Output And Recovery
 
+Use the operator's release-built Fort publisher/executor/readers for live runs.
+Debug snapshot hashing can dominate a short command's transport deadline;
+changing build profile does not change grants, limits or enforcement mode.
+
 Each shell call uses a fresh snapshot of current MoonBook files. Another call
 does not continue that snapshot or clean its build outputs. Fort owns scratch
 cleanup and optional retention; terminal results identify the per-call scope.
@@ -67,6 +71,9 @@ in a command's own Git output does not mean it was created in the canonical Book
 Small output remains bounded inline. Large output may carry a signed opaque
 `output_artifact` reference. Retrieval remains subject to the configured Fort
 reader's authorization, binding, size, expiry, and digest validation.
+The existing `max_output_chars` projection also applies to non-Exited receipts
+before returning their error. Failure excerpts preserve the diagnostic tail;
+the complete artifact and receipt references remain available.
 
 MoonCode's model projection omits full sandbox change inventories and requested
 policy, internal grant digests/IDs and verification-input inventories, retaining

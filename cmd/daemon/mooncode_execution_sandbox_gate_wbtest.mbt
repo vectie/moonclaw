@@ -283,6 +283,40 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
           "failed closed",
         ),
       )
+      let plan = @execution_sandbox.make_sandbox_plan(
+        config, book_root, book_root, "printf bounded", 5_000,
+      )
+      let execution = @execution_sandbox.run_approved_shell(
+        config, book_root, book_root, "printf bounded", plan,
+      )
+      let interrupted = {
+        ..execution,
+        receipt: {
+          ..execution.receipt,
+          status: Killed,
+          exit_code: None,
+          output: "START\n" + "x".repeat(20000) + "\nEND",
+          limit_reason: Some("output-limit"),
+        },
+      }
+      let limited = mooncode_sandbox_terminal_result(
+        "shell",
+        interrupted,
+        0,
+        1024,
+        {},
+      )
+      assert_false(mooncode_json_bool(limited, "ok", default=true))
+      let output = mooncode_json_string(limited, "output", default="")
+      assert_true(output.length() <= 1024)
+      assert_true(output.has_prefix("START\n") && output.has_suffix("\nEND"))
+      assert_true(
+        mooncode_json_bool(
+          mooncode_json_object_field_or_empty(limited, "metadata"),
+          "truncated",
+          default=false,
+        ),
+      )
     })
   })
 }

@@ -5,6 +5,26 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Non-Exited result cap and full cost 2026-11-07
+
+- mooncode_sandbox_terminal_result returned raw receipt.output before capping
+  non-Exited errors. Actual killed grep requested 20000 chars but returned
+  260256, feeding six ~103K-input rounds. Existing cap now runs before dispatch;
+  complete Fort artifact references remain. Existing receipt test red -> green,
+  full Native 1844/1844, public API unchanged. No new tools or context policy.
+- First real run 636327 input/1670 output. Second 158159/2323 blocked on disk
+  after seven snapshot storage-io refusals. Operator cleared owned redundant
+  copies, preserving records/declared files/output artifacts, and followed up
+  normally: 140645/2176, full Native verification then independent acceptance.
+  All 35 responses total 935131/6169; cost goal failed, do not hide first runs.
+- Caller/batching prompt refinement did not prevent rework or duplicate final
+  Git checks and was withdrawn entirely. Only result conversion changed here.
+  Fort separately uses release binaries, removes duplicate retention inventory
+  and preserves StorageIo cause. No new gates, retries or completion policy.
+- Report: ../moondesk/docs/MOONCODE_SHELL_ROOT_CAUSE_AUDIT_2026-11-07.md.
+  Parse metrics JSON structurally; error output may contain escaped journal
+  records and misleading matches for prompt_tokens. Private daemon stopped.
+
 ## Snapshot scope and round-trip audit 2026-11-06
 
 - One new real historical-bug run: 91539 input/1679 output, ten responses,

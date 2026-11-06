@@ -126,12 +126,20 @@ fn mooncode_sandbox_terminal_result(
   metadata : Json,
 ) -> Json {
   let receipt = execution.receipt
+  let capped = if receipt.status is Exited &&
+    receipt.exit_code == Some(expected_exit_code) {
+    mooncode_cap_tool_output(receipt.output, max_output_chars)
+  } else {
+    mooncode_cap_failed_process_output(receipt.output, max_output_chars)
+  }
+  let output = mooncode_json_string(capped, "output", default="")
   guard receipt.status is Exited && receipt.exit_code is Some(exit_code) else {
     return mooncode_tool_error_result(
       tool,
       message="MoonFort did not return a terminal exit receipt",
-      output=receipt.output,
+      output~,
       metadata={
+        "truncated": mooncode_json_bool(capped, "truncated", default=false),
         "execution_sandbox_required": true,
         "execution_sandbox_configured": true,
         "execution_sandbox_policy": "fail-closed",
@@ -141,11 +149,6 @@ fn mooncode_sandbox_terminal_result(
         "sandbox_evidence": mooncode_sandbox_evidence(execution),
       },
     )
-  }
-  let capped = if exit_code == expected_exit_code {
-    mooncode_cap_tool_output(receipt.output, max_output_chars)
-  } else {
-    mooncode_cap_failed_process_output(receipt.output, max_output_chars)
   }
   guard metadata is Object(fields) else {
     return mooncode_tool_error_result(
@@ -166,7 +169,6 @@ fn mooncode_sandbox_terminal_result(
   fields["run_id"] = Json(receipt.run_id)
   fields["profile_digest"] = Json(receipt.profile_digest)
   fields["sandbox_evidence"] = mooncode_sandbox_evidence(execution)
-  let output = mooncode_json_string(capped, "output", default="")
   if exit_code == expected_exit_code {
     mooncode_tool_ok_result(
       tool,
