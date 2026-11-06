@@ -118,8 +118,6 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
   assert_true(receipt.contains("loaded completely earlier"))
   assert_true(receipt.contains("fixture-review/SKILL.md"))
   assert_true(receipt.contains("fixture-digest"))
-  assert_true(receipt.contains("A missing or empty filesystem result"))
-  assert_true(receipt.contains("Do not select read, shell, glob, grep"))
   assert_false(receipt.contains(long_body))
 }
 

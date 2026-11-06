@@ -156,7 +156,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "shell",
-      "Run one bounded foreground shell command through the configured MoonFort grant. Use cwd for a directory inside the selected MoonBook. Background processes are unsupported. Set verification_kind only for a command whose zero exit status directly proves that check, test or build.",
+      "Run a foreground command in a fresh disposable MoonBook snapshot through MoonFort. Changes and build outputs stay in that snapshot; later calls start from current MoonBook files. Use edit/write/apply_patch for persistent changes. Background processes are unsupported. Set verification_kind only when exit zero proves that check, test or build.",
       {
         "type": "object",
         "properties": {

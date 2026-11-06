@@ -5,6 +5,33 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Built-in skill content audit 2026-11-06
+
+- The remaining 34084-char guide was shipped by internal/skills/system_assets,
+  not a personal skill. It duplicated tutorials and contradicted its current
+  workflow preface. An empty upstream gitlink (56150a5) could not regenerate
+  the checked-in modified blob. Source is now maintained at the same path in
+  this repo, with original LICENSE, using the unchanged embed-skills.py and
+  installer/fingerprint. No new loader, summary, cap or state.
+- Live read_skill returns the complete 1991-char entrypoint, with existing
+  reference routing. Old journal instructions are untouched. Receipt shrank
+  709 -> 275 chars while retaining identity/digest/loaded fact. Tests still
+  verify that a selected arbitrary long resource is not truncated.
+- Loader fixture snapshots no longer repeat built-in metadata or the whole
+  common prompt; the existing system installation test validates the actual
+  packaged guide and references. Tests net -277 lines, count unchanged.
+- One actual historical-bug run: 8 responses, 74750 input (cached 5120)/1685
+  output, 134.394 sec; one edit call with two atomic edits, no post-edit failure.
+  Exact prior prompt/model/config; current HEAD has one extra existing /// case.
+  This is not a new unknown bug benchmark. Missing AGENTS read/red test retained.
+- One pointless cleanup targeted the previous shell's already-cleaned snapshot.
+  Clarified the existing Shell description afterward; no rm ban or execution
+  change, and no claimed measured saving from that wording. Final answer also
+  omitted initial red/edit history; journal counts remain authoritative.
+- Native 1844/1844, Loader 26/26, independent MoonLib 108/108 and JS 12/12,
+  Desk consumer 1726/1726. Full report in sibling MoonDesk:
+  docs/MOONCODE_SKILL_COST_AUDIT_2026-11-06.md. Evaluation daemon stopped.
+
 ## Follow-up token audit 2026-11-06
 
 - Removed duplicate inspection excerpts/hashes and automatic task/recent-results

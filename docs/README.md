@@ -62,6 +62,10 @@ and MoonLib defines shared paths.
 7. [Context provenance](MOONCODE_CONTEXT_PROVENANCE.md),
    [compaction](LONG_CONTEXT_COMPACTION.md), and
    [canonical watch](MOONCODE_STREAM_RESUME.md): current context/transport contracts.
+   The bundled [MoonBit skill](../internal/skills/system/moonbit-agent-guide/SKILL.md)
+   and its references are maintained in this repository. Regenerate embedded
+   assets with the existing `scripts/embed-skills.py` after resource edits;
+   do not patch generated prose or restore the former empty submodule.
 8. [Harness regression](HARNESS_REGRESSION_GATES.md) and
    [paired replay](HARNESS_REPLAY.md): fixtures, qualification, and measured comparison.
 9. [Capability invocation](CAPABILITY_INVOCATION.md): pack resolution, health,

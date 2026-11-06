@@ -39,6 +39,20 @@ async test "system/install-writes-assets" (t : @test.Test) {
       @fsx.exists(@pathx.join(root, ".moonclaw-system-skills.marker")),
     )
     inspect(@fsx.read_file(marker_path).trim(), content=fingerprint)
+    let loader = Loader::new(home~, cwd=home, logger~)
+    loader.load()
+    let guide = loader.skills().get("moonbit-agent-guide").unwrap()
+    let body = @fsx.read_file(guide.location)
+    let links = body.split("](")
+    ignore(links.next())
+    for link in links {
+      let target = link.split(")").next().unwrap().to_owned()
+      let resource = @pathx.join(
+        @pathx.dirname(guide.location).to_owned(),
+        target,
+      )
+      assert_false(@fsx.read_file(resource).is_empty())
+    }
   })
 }
 

@@ -36,6 +36,12 @@ same compiled request and never changes the task to handle provider overload.
 
 ## Evidence and recall
 
+The bundled MoonBit skill is maintained under `internal/skills/system` and
+embedded with the existing generator. Its small entrypoint links optional
+language/build references; a read_skill response still contains the complete
+selected resource. This is resource authoring, not context truncation. Generic
+long guides should not be duplicated into the always-read entrypoint.
+
 Task revisions and saved cross-command notes have one owner in the task
 prefix. Current checkpoints remain in tool history. The former automatic
 task/recent-results message is removed. A compact cumulative index retains

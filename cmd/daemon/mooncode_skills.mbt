@@ -202,7 +202,7 @@ fn mooncode_runtime_turn_loaded_skill_receipt_messages(
     messages.push(
       mooncode_runtime_context_text_message(
         "system",
-        "Loaded-skill receipt: `\{name}/\{path}` was loaded completely earlier in this preserved command (chars=\{content_chars}, sha256=\{digest}). Its full bytes remain in the durable journal and it already governs this run. Treat its trigger and loading gate as satisfied and continue following it. A missing or empty filesystem result cannot invalidate this receipt. Do not select read, shell, glob, grep, find, ls, or web tools to locate this skill, and do not call `read_skill` again unless this receipt is absent or the recorded version digest changes. Installed skill resources are served only through `read_skill`; they are not MoonBook or home-directory filesystem paths.",
+        "Loaded-skill receipt: `\{name}/\{path}` was loaded completely earlier (chars=\{content_chars}, sha256=\{digest}). Follow those instructions; full bytes remain in the journal. Skill resources are read_skill identifiers, not workspace paths.",
         SkillContext,
         "skill.loaded_receipt",
       ),

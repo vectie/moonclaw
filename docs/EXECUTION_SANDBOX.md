@@ -58,6 +58,12 @@ with a generic grant failure or silently raise/clamp the configured limit.
 
 ## Output And Recovery
 
+Each shell call uses a fresh disposable snapshot of current MoonBook files.
+Files/build outputs created by that process stay in its snapshot and are cleaned
+with the run; another shell call does not continue that scratch directory.
+Native file editing tools own persistent MoonBook source changes. Seeing `.tmp`
+in a command's own Git output does not mean it was created in the canonical Book.
+
 Small output remains bounded inline. Large output may carry a signed opaque
 `output_artifact` reference. Retrieval remains subject to the configured Fort
 reader's authorization, binding, size, expiry, and digest validation.

@@ -1,4 +1,11 @@
 ///|
+fn fixture_skills(loader : @skills.Loader) -> Map[String, @skills.Skill] {
+  loader
+  .skills()
+  .filter(fn(_, skill) { !skill.location.contains("/skills/.system/") })
+}
+
+///|
 async test "load" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
@@ -48,14 +55,7 @@ async test "load" (t : @test.Test) {
     let cwd = @pathx.join(home, "cwd")
     let loader = @skills.Loader::new(home~, cwd~)
     loader.load()
-    json_inspect(mock.json(loader.skills()), content={
-      "moonbit-agent-guide": {
-        "id": "moonbit-agent-guide",
-        "name": "moonbit-agent-guide",
-        "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
-        "allowed_tools": [],
-        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
-      },
+    json_inspect(mock.json(fixture_skills(loader)), content={
       "pdf-processing": {
         "id": "pdf-processing",
         "name": "pdf-processing",
@@ -81,82 +81,10 @@ async test "load" (t : @test.Test) {
         "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
       )
     }
-    inspect(
-      mock.show(content),
-      content=(
-        #|You are an AI assistant.
-        #|
-        #|====
-        #|
-        #|SKILLS
-        #|
-        #|You are equipped with skill capabilities that you can use to solve many
-        #|tasks. A skill is a folder containing a SKILL.md file. This file includes:
-        #|
-        #|- name: The name of the skill
-        #|- description: A brief description of what the skill does
-        #|- location: The location of the skill on disk
-        #|- instructions (as the main body): Instructions on how to use the skill.
-        #|
-        #|Optionally, a skill folder may also contain:
-        #|
-        #|- scripts: Python/Shell/... scripts for common operations
-        #|- references: Reference materials such as documentation, cheat sheets,
-        #|  etc.
-        #|- templates: Code templates/snippets for common patterns
-        #|
-        #|Here is an example layout of a skill folder:
-        #|
-        #|```plaintext
-        #|skills/
-        #|  my-skill/
-        #|    SKILL.md
-        #|    scripts/
-        #|      helper.py
-        #|    references/
-        #|      doc.md
-        #|    templates/
-        #|      snippet.mbt
-        #|```
-        #|
-        #|To use skills efficiently, you should follow a progressive approach to
-        #|discover, load and apply skills to tasks. Usually, this means:
-        #|
-        #|1. First, You should identify relevant skills for the task from the
-        #|available skills list below.
-        #|
-        #|2. Next, You should load the identified skills into your working context,
-        #|by calling read_skill with the installed <id> as its name argument.
-        #|The frontmatter <name> is a display label and may repeat. Defer
-        #|the loading of resources such as scripts, references, templates until they
-        #|are actually needed.
-        #|
-        #|3. Finally, you should utilize the knowledge/rules/instructions provided
-        #|by the loaded SKILL.md files to assist in completing the task. Optionally
-        #|you may want to leverage the scripts/templates/references provided by
-        #|the skill folders to accomplish the task.
-        #|<available_skills>
-        #|  <skill>
-        #|    <id>moonbit-agent-guide</id>
-        #|    <name>moonbit-agent-guide</name>
-        #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
-        #|  </skill>
-        #|  <skill>
-        #|    <id>pdf-processing</id>
-        #|    <name>pdf-processing</name>
-        #|    <description>A skill to process PDF documents.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md</location>
-        #|  </skill>
-        #|  <skill>
-        #|    <id>text-summarization</id>
-        #|    <name>text-summarization</name>
-        #|    <description>A skill to summarize text documents.</description>
-        #|    <location>(mock:cwd)/cwd/.moonsuite/products/moonclaw/skills/text-summarization/SKILL.md</location>
-        #|  </skill>
-        #|</available_skills>
-      ),
-    )
+    assert_true(content.has_prefix("You are an AI assistant."))
+    assert_true(content.contains("<available_skills>"))
+    assert_true(content.contains("<id>pdf-processing</id>"))
+    assert_true(content.contains("<id>text-summarization</id>"))
   })
 }
 
@@ -184,70 +112,9 @@ async test "load/empty" (t : @test.Test) {
         "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
       )
     }
-    inspect(
-      mock.show(content),
-      content=(
-        #|You are an AI assistant.
-        #|
-        #|====
-        #|
-        #|SKILLS
-        #|
-        #|You are equipped with skill capabilities that you can use to solve many
-        #|tasks. A skill is a folder containing a SKILL.md file. This file includes:
-        #|
-        #|- name: The name of the skill
-        #|- description: A brief description of what the skill does
-        #|- location: The location of the skill on disk
-        #|- instructions (as the main body): Instructions on how to use the skill.
-        #|
-        #|Optionally, a skill folder may also contain:
-        #|
-        #|- scripts: Python/Shell/... scripts for common operations
-        #|- references: Reference materials such as documentation, cheat sheets,
-        #|  etc.
-        #|- templates: Code templates/snippets for common patterns
-        #|
-        #|Here is an example layout of a skill folder:
-        #|
-        #|```plaintext
-        #|skills/
-        #|  my-skill/
-        #|    SKILL.md
-        #|    scripts/
-        #|      helper.py
-        #|    references/
-        #|      doc.md
-        #|    templates/
-        #|      snippet.mbt
-        #|```
-        #|
-        #|To use skills efficiently, you should follow a progressive approach to
-        #|discover, load and apply skills to tasks. Usually, this means:
-        #|
-        #|1. First, You should identify relevant skills for the task from the
-        #|available skills list below.
-        #|
-        #|2. Next, You should load the identified skills into your working context,
-        #|by calling read_skill with the installed <id> as its name argument.
-        #|The frontmatter <name> is a display label and may repeat. Defer
-        #|the loading of resources such as scripts, references, templates until they
-        #|are actually needed.
-        #|
-        #|3. Finally, you should utilize the knowledge/rules/instructions provided
-        #|by the loaded SKILL.md files to assist in completing the task. Optionally
-        #|you may want to leverage the scripts/templates/references provided by
-        #|the skill folders to accomplish the task.
-        #|<available_skills>
-        #|  <skill>
-        #|    <id>moonbit-agent-guide</id>
-        #|    <name>moonbit-agent-guide</name>
-        #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
-        #|  </skill>
-        #|</available_skills>
-      ),
-    )
+    assert_true(content.has_prefix("You are an AI assistant."))
+    assert_true(content.contains("<available_skills>"))
+    assert_true(fixture_skills(loader).is_empty())
   })
 }
 
@@ -291,76 +158,9 @@ async test "load/lowercase" (t : @test.Test) {
         "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
       )
     }
-    inspect(
-      mock.show(content),
-      content=(
-        #|You are an AI assistant.
-        #|
-        #|====
-        #|
-        #|SKILLS
-        #|
-        #|You are equipped with skill capabilities that you can use to solve many
-        #|tasks. A skill is a folder containing a SKILL.md file. This file includes:
-        #|
-        #|- name: The name of the skill
-        #|- description: A brief description of what the skill does
-        #|- location: The location of the skill on disk
-        #|- instructions (as the main body): Instructions on how to use the skill.
-        #|
-        #|Optionally, a skill folder may also contain:
-        #|
-        #|- scripts: Python/Shell/... scripts for common operations
-        #|- references: Reference materials such as documentation, cheat sheets,
-        #|  etc.
-        #|- templates: Code templates/snippets for common patterns
-        #|
-        #|Here is an example layout of a skill folder:
-        #|
-        #|```plaintext
-        #|skills/
-        #|  my-skill/
-        #|    SKILL.md
-        #|    scripts/
-        #|      helper.py
-        #|    references/
-        #|      doc.md
-        #|    templates/
-        #|      snippet.mbt
-        #|```
-        #|
-        #|To use skills efficiently, you should follow a progressive approach to
-        #|discover, load and apply skills to tasks. Usually, this means:
-        #|
-        #|1. First, You should identify relevant skills for the task from the
-        #|available skills list below.
-        #|
-        #|2. Next, You should load the identified skills into your working context,
-        #|by calling read_skill with the installed <id> as its name argument.
-        #|The frontmatter <name> is a display label and may repeat. Defer
-        #|the loading of resources such as scripts, references, templates until they
-        #|are actually needed.
-        #|
-        #|3. Finally, you should utilize the knowledge/rules/instructions provided
-        #|by the loaded SKILL.md files to assist in completing the task. Optionally
-        #|you may want to leverage the scripts/templates/references provided by
-        #|the skill folders to accomplish the task.
-        #|<available_skills>
-        #|  <skill>
-        #|    <id>moonbit-agent-guide</id>
-        #|    <name>moonbit-agent-guide</name>
-        #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
-        #|  </skill>
-        #|  <skill>
-        #|    <id>pdf-processing</id>
-        #|    <name>pdf-processing</name>
-        #|    <description>A skill to process PDF documents.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/skill.md</location>
-        #|  </skill>
-        #|</available_skills>
-      ),
-    )
+    assert_true(content.has_prefix("You are an AI assistant."))
+    assert_true(content.contains("<available_skills>"))
+    assert_true(fixture_skills(loader).contains("pdf-processing"))
   })
 }
 
@@ -401,70 +201,9 @@ async test "load/invalid-skill" (t : @test.Test) {
         "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
       )
     }
-    inspect(
-      mock.show(content),
-      content=(
-        #|You are an AI assistant.
-        #|
-        #|====
-        #|
-        #|SKILLS
-        #|
-        #|You are equipped with skill capabilities that you can use to solve many
-        #|tasks. A skill is a folder containing a SKILL.md file. This file includes:
-        #|
-        #|- name: The name of the skill
-        #|- description: A brief description of what the skill does
-        #|- location: The location of the skill on disk
-        #|- instructions (as the main body): Instructions on how to use the skill.
-        #|
-        #|Optionally, a skill folder may also contain:
-        #|
-        #|- scripts: Python/Shell/... scripts for common operations
-        #|- references: Reference materials such as documentation, cheat sheets,
-        #|  etc.
-        #|- templates: Code templates/snippets for common patterns
-        #|
-        #|Here is an example layout of a skill folder:
-        #|
-        #|```plaintext
-        #|skills/
-        #|  my-skill/
-        #|    SKILL.md
-        #|    scripts/
-        #|      helper.py
-        #|    references/
-        #|      doc.md
-        #|    templates/
-        #|      snippet.mbt
-        #|```
-        #|
-        #|To use skills efficiently, you should follow a progressive approach to
-        #|discover, load and apply skills to tasks. Usually, this means:
-        #|
-        #|1. First, You should identify relevant skills for the task from the
-        #|available skills list below.
-        #|
-        #|2. Next, You should load the identified skills into your working context,
-        #|by calling read_skill with the installed <id> as its name argument.
-        #|The frontmatter <name> is a display label and may repeat. Defer
-        #|the loading of resources such as scripts, references, templates until they
-        #|are actually needed.
-        #|
-        #|3. Finally, you should utilize the knowledge/rules/instructions provided
-        #|by the loaded SKILL.md files to assist in completing the task. Optionally
-        #|you may want to leverage the scripts/templates/references provided by
-        #|the skill folders to accomplish the task.
-        #|<available_skills>
-        #|  <skill>
-        #|    <id>moonbit-agent-guide</id>
-        #|    <name>moonbit-agent-guide</name>
-        #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
-        #|  </skill>
-        #|</available_skills>
-      ),
-    )
+    assert_true(content.has_prefix("You are an AI assistant."))
+    assert_true(content.contains("<available_skills>"))
+    assert_true(fixture_skills(loader).is_empty())
   })
 }
 
@@ -495,14 +234,7 @@ async test "reload" (t : @test.Test) {
     mock.add_json_tree({ "cwd": { ".git": {} } })
     let loader = @skills.Loader::new(home~, cwd~)
     loader.load()
-    json_inspect(mock.json(loader.skills()), content={
-      "moonbit-agent-guide": {
-        "id": "moonbit-agent-guide",
-        "name": "moonbit-agent-guide",
-        "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
-        "allowed_tools": [],
-        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
-      },
+    json_inspect(mock.json(fixture_skills(loader)), content={
       "pdf-processing": {
         "id": "pdf-processing",
         "name": "pdf-processing",
@@ -537,14 +269,7 @@ async test "reload" (t : @test.Test) {
       },
     })
     loader.load()
-    json_inspect(mock.json(loader.skills()), content={
-      "moonbit-agent-guide": {
-        "id": "moonbit-agent-guide",
-        "name": "moonbit-agent-guide",
-        "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
-        "allowed_tools": [],
-        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
-      },
+    json_inspect(mock.json(fixture_skills(loader)), content={
       "pdf-processing": {
         "id": "pdf-processing",
         "name": "pdf-processing",
@@ -644,14 +369,7 @@ async test "load/parent-directories" (t : @test.Test) {
     loader.load()
     // If inside a git repo, load skills from the repo root and all
     // ancestors down to cwd. That means project + sub, and still global.
-    json_inspect(mock.json(loader.skills()), content={
-      "moonbit-agent-guide": {
-        "id": "moonbit-agent-guide",
-        "name": "moonbit-agent-guide",
-        "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
-        "allowed_tools": [],
-        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
-      },
+    json_inspect(mock.json(fixture_skills(loader)), content={
       "global-skill": {
         "id": "global-skill",
         "name": "global-skill",
@@ -731,14 +449,7 @@ async test "load/no-git-loads-cwd-and-home" (t : @test.Test) {
     let cwd = @pathx.join(home, "cwd")
     let loader = @skills.Loader::new(home~, cwd~)
     loader.load()
-    json_inspect(mock.json(loader.skills()), content={
-      "moonbit-agent-guide": {
-        "id": "moonbit-agent-guide",
-        "name": "moonbit-agent-guide",
-        "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
-        "allowed_tools": [],
-        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
-      },
+    json_inspect(mock.json(fixture_skills(loader)), content={
       "global-skill": {
         "id": "global-skill",
         "name": "global-skill",
