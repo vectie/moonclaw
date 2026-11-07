@@ -5,6 +5,29 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Existing Codex full delivery comparison 2026-11-07
+
+- User authorized a live four-framework comparison via existing Codex OAuth;
+  prior paid-pause notes below refer to earlier rounds. Reuse Loader selector
+  codex/gpt-5.6-sol and existing openai.chat; no new vendor key, auth code or
+  product provider/router is needed. Temporary tests/adapters are archived
+  outside source in /Users/kq/mooncode-live-peers-20261107/harness.
+- Same full Git tree/task: MoonCode, Pi, OpenSeek and DSH all autonomously
+  repaired and ran Native 108/108. Independent absolute-path Native 108/108,
+  pathx JS 12/12, unchanged tests and single-file diff checks all pass.
+  MoonCode: 12 responses, 124777 input/1850 output, 85628 ms journal service
+  duration, five failed tool results including environment, edit ABI and
+  replace_ext rework. No runtime/test source change in this round.
+- Full costs, bootstrap failures, tool/SDK differences and per-round usage:
+  ../moondesk/docs/MOONCODE_FULL_DELIVERY_COMPARISON_2026-11-07.md and .json.
+  Two charged Pi follow-ups failed in our temporary adapter because internal
+  message FromJson rejects assistant content=null. Normalize that wire shape
+  in a temporary peer adapter; do not call this a Pi execution/loop defect.
+  DSH title is an extra billable response, not a subagent; include it.
+- Sandboxed full clones cannot read external Git alternates. Repack local
+  objects before running; keep the common tree and accepted tests unchanged.
+  A successful process exit alone is not acceptance. No new gates were added.
+
 ## Main input source quantified 2026-11-07
 
 - Paid reruns remain paused. Sibling moondesk/docs/

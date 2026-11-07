@@ -82,6 +82,11 @@ real authority or decision gaps. Remove duplicate mechanisms before adding
 abstractions. The [runtime boundary](executable_book_runtime_boundary.md)
 describes the implemented path and the limits of its verification evidence.
 
+The [four-framework live delivery observation](../../moondesk/docs/MOONCODE_FULL_DELIVERY_COMPARISON_2026-11-07.md)
+reuses existing Codex credentials, records every observed response and setup
+failure, and verifies the same full-repository bug independently. It does not
+add a product provider layer or establish a general cost/success-rate claim.
+
 Do not introduce a permanent agent Router, a checker registry, a second
 operation database, or a new runtime framework. Optional generic job and worker
 capabilities remain available without defining the default coding path.
