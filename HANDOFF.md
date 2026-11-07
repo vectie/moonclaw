@@ -5,6 +5,16 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Default Native/Git follow-up 2026-11-07
+
+- Fort's existing macOS policy lacked `/var` alias metadata, blocking default
+  xcode-select despite authorized developer/select roots. Three production
+  lines fix that plus private Git system config/attributes. Default Exec moon
+  Native 108/108 and Shell Git pass on the original real-repository executor.
+- No Claw runtime change or paid/model call. Explicit Shell exports are no
+  longer required for this default deployment. Evidence and retained failures:
+  /Users/kq/mooncode-toolchain-20261107; sibling Pi input-gap report updated.
+
 ## Pi input-gap reduction 2026-11-07
 
 - No paid/model rerun. Both successful traces have 12 responses: MoonCode

@@ -43,13 +43,13 @@ the actual authority policy decides.
 Absolute SDK/environment paths in a shell command are resolved by that same
 executor profile; MoonCode does not reject them by HOME/Users/temp substring.
 The macOS [Native configuration](../../moonfort/docs/EXECUTOR_CONFIG.md#macos-moonbit-native-commands)
-uses existing Shell assignments, not a new environment API. Those assignments
-do not carry over into a later moon_cmd invocation.
-On macOS, a registered executable resolving to `SDK/bin/moon` supplies its
-companion `MOON_HOME=SDK` while HOME remains private scratch. This fixes the
-IDE registry lookup; Native compiler/SDK selection still uses the explicit
-Shell configuration above. Workspace snapshots preserve source execute bits
-without copying group/other read or write permissions.
+authorizes the installed developer directory, selection directory and Moon SDK.
+Fort resolves the system `/var` alias and supplies `MOON_HOME=SDK` for a
+registered `SDK/bin/moon`; default moon_cmd Native and Git calls need no Shell
+environment workaround. HOME remains private; Git skips host system config
+and attributes. Custom Shell assignments remain local to that invocation.
+Workspace snapshots preserve source execute bits without copying group/other
+read or write permissions.
 
 Publisher refusal preserves its existing error code/message, including the
 requested timeout and deployment ceiling. A refused plan has not executed;
