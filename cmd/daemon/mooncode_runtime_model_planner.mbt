@@ -420,6 +420,11 @@ fn mooncode_runtime_turn_model_tools_for_command(
 ) -> Array[@openai.ChatCompletionToolParam] {
   let all_tools = mooncode_runtime_turn_model_tools()
   let allowed = mooncode_runtime_turn_explicit_allowed_tool_names(command)
+  let has_mcp = mooncode_journal_json_field(
+      mooncode_json_object_field_or_empty(command, "task_context"),
+      "available_mcp_integrations",
+    ) !=
+    Some(Json::array([]))
   let tools = all_tools.filter(tool => {
     let name = mooncode_json_string(
       mooncode_json_object_field_or_empty(tool.to_json(), "function"),
@@ -429,7 +434,9 @@ fn mooncode_runtime_turn_model_tools_for_command(
     if allowed.length() > 0 {
       allowed.contains(name)
     } else {
-      name != "spawn_workers" && name != "wait_workers"
+      name != "spawn_workers" &&
+      name != "wait_workers" &&
+      (has_mcp || !["mcp_list_tools", "mcp_call_tool"].contains(name))
     }
   })
   if !allowed.is_empty() {
@@ -703,9 +710,18 @@ fn mooncode_runtime_turn_model_messages(
 
 ///|
 fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
+  let populated = fn(value : Json) -> Bool {
+    value != Json::null() &&
+    value != Json("") &&
+    value != Json::array([]) &&
+    value != Json::object({})
+  }
   let action = mooncode_json_string(command, "command", default="prompt")
   let request = mooncode_runtime_turn_prompt_text(command)
-  let task = mooncode_runtime_horizon_contract(command)
+  let task = match mooncode_runtime_horizon_contract(command) {
+    Object(fields) => Json(fields.filter((_, value) => populated(value)))
+    value => value
+  }
   let checkpoint = mooncode_json_object_field_or_empty(
     mooncode_json_object_field_or_empty(command, "payload"),
     "horizon_checkpoint",
@@ -724,7 +740,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   let context_path = mooncode_json_string(command, "context_path", default="")
   let deferred = mooncode_json_array_items(command, "deferred_steering")
   let context = if context_path == "" {
-    "No file is preselected."
+    ""
   } else {
     "Selected context: `\{context_path}`."
   }
@@ -746,6 +762,27 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   } else {
     "\nGoverned active capability resolution: " + active_capability.stringify()
   }
+  let task_context = match
+    mooncode_json_object_field_or_empty(command, "task_context") {
+    Object(fields) =>
+      Json(
+        fields.filter((key, value) => {
+          match key {
+            "book_instructions" =>
+              mooncode_json_string(value, "content", default="") != ""
+            "retrieved_knowledge" =>
+              !mooncode_json_array_items(value, "passages").is_empty()
+            _ => populated(value)
+          }
+        }),
+      )
+    value => value
+  }
+  let personal_memory = mooncode_json_string(
+    command,
+    "personal_memory",
+    default="",
+  )
   "Action: \{action}\n" +
   "Current task: " +
   task.stringify() +
@@ -756,10 +793,17 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
   capability_context +
-  "\nConversation context and user plan: " +
-  mooncode_json_object_field_or_empty(command, "task_context").stringify() +
-  "\nUser-saved personal preferences (follow current instructions when they differ): " +
-  mooncode_json_string(command, "personal_memory", default="")
+  (if populated(task_context) {
+    "\nConversation context and user plan: " + task_context.stringify()
+  } else {
+    ""
+  }) +
+  (if personal_memory != "" {
+    "\nUser-saved personal preferences (follow current instructions when they differ): " +
+    personal_memory
+  } else {
+    ""
+  })
 }
 
 ///|
@@ -817,84 +861,6 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
 }
 
 ///|
-fn mooncode_runtime_turn_model_evidence_ledger_message(
-  tool_results : Array[Json],
-) -> Json {
-  let read_paths : Array[String] = []
-  let complete_read_paths : Array[String] = []
-  let failed_calls : Array[Json] = []
-  for execution in tool_results {
-    let tool = mooncode_json_string(execution, "tool", default="")
-    let arguments = mooncode_json_object_field_or_empty(execution, "arguments")
-    let path = mooncode_json_string(arguments, "path", default="")
-    let accepted = mooncode_json_bool(execution, "accepted", default=false)
-    let result = mooncode_json_object_field_or_empty(execution, "result")
-    let ok = mooncode_json_bool(result, "ok", default=accepted)
-    if accepted && ok {
-      let metadata = mooncode_json_object_field_or_empty(result, "metadata")
-      let (observed_path, complete) = match tool {
-        "read" =>
-          (
-            mooncode_json_string(metadata, "path", default=path),
-            !mooncode_json_bool(metadata, "truncated", default=false) &&
-            !mooncode_json_bool(metadata, "range_requested", default=false),
-          )
-        "shell" => {
-          let observation = mooncode_json_object_field_or_empty(
-            metadata, "file_observation",
-          )
-          (
-            mooncode_json_string(observation, "path", default=""),
-            mooncode_json_string(observation, "scope", default="partial") ==
-            "complete",
-          )
-        }
-        _ => ("", false)
-      }
-      if observed_path != "" {
-        if !read_paths.contains(observed_path) {
-          read_paths.push(observed_path)
-        }
-        if complete && !complete_read_paths.contains(observed_path) {
-          complete_read_paths.push(observed_path)
-        }
-      }
-    } else if !accepted || !ok {
-      let failure : Json = {
-        "tool": tool,
-        "path": path,
-        "message": mooncode_json_string(result, "message", default=""),
-      }
-      // This is an index, not the invocation log retained in the journal.
-      if !failed_calls.contains(failure) {
-        failed_calls.push(failure)
-      }
-    }
-  }
-  if read_paths.length() == 0 && failed_calls.length() == 0 {
-    return {}
-  }
-  let retained_reads : Array[Json] = read_paths.map(path => Json::string(path))
-  let retained_complete_reads : Array[Json] = complete_read_paths.map(path => {
-    Json::string(path)
-  })
-  mooncode_runtime_context_message(
-    {
-      "role": "user",
-      "content": "Retained evidence for the next planner opportunity:\n" +
-      Json::object({
-        "successful_read_paths": Json::array(retained_reads),
-        "complete_read_paths": Json::array(retained_complete_reads),
-        "failed_tool_calls": Json::array(failed_calls),
-      }).stringify(indent=2) +
-      "\nIndex of past observations, not current file contents. Reuse retained results; inspect again when needed.",
-    },
-    EnvironmentContext,
-    "environment.evidence_ledger",
-  )
-}
-
-///|
 async fn mooncode_runtime_turn_model_followup_messages(
   command : Json,
   previous_plan : Json,
@@ -940,14 +906,6 @@ async fn mooncode_runtime_turn_model_followup_messages(
         "warning.finish_rejection",
       ),
     )
-  }
-  // Keep the compact read/error index across compaction. Commands and output
-  // already belong to tool messages and retained journal results.
-  let evidence_ledger = mooncode_runtime_turn_model_evidence_ledger_message(
-    all_tool_results,
-  )
-  if mooncode_runtime_turn_model_message_present(evidence_ledger) {
-    messages.push(evidence_ledger)
   }
   if patient_replan_guidance != "" {
     messages.push(
@@ -1198,8 +1156,11 @@ fn mooncode_runtime_turn_model_tool_result_messages(
 }
 
 ///|
+/// Keep structured status and recall identity in the first line; source and
+/// diagnostics follow verbatim. The journal retains the complete result.
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_tool_result_value(execution)
+  let output = mooncode_json_string(result, "output", default="")
   let tool = mooncode_json_string(
     execution,
     "tool",
@@ -1210,7 +1171,8 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
       let projected = metadata.filter(fn(key, _) {
         ![
           "verification_inputs", "approval_plan_digest", "approval_id", "run_id",
-          "profile_digest",
+          "profile_digest", "absolute_path", "before_fingerprint", "execution_sandbox_required",
+          "execution_sandbox_configured", "execution_sandbox_policy",
         ].contains(key) &&
         !(key == "cmd" && tool == "shell") &&
         (
@@ -1222,7 +1184,8 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
         let evidence = sandbox.filter(fn(key, _) {
           ![
             "changed_paths", "changes", "requested_policy", "approval_digest", "approval_plan_digest",
-            "profile_digest", "command_digest",
+            "profile_digest", "command_digest", "backend", "cleanup_verified", "unverified_limits",
+            "artifacts",
           ].contains(key)
         })
         if sandbox.get("changed_paths") is Some(Array(paths)) {
@@ -1236,6 +1199,11 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   }
   let event = mooncode_json_object_field_or_empty(execution, "event")
   let event_id = mooncode_json_string(event, "id", default="")
+  let result = match result {
+    Object(fields) =>
+      Json(fields.filter((key, _) => key != "output" && key != "is_error"))
+    value => value
+  }
   let payload : Json = {
     "result": result,
     "evidence_ref": if event_id == "" {
@@ -1244,7 +1212,11 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
       event_id
     },
   }
-  payload.stringify()
+  if output == "" {
+    payload.stringify()
+  } else {
+    payload.stringify() + "\n" + output
+  }
 }
 
 ///|

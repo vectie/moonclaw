@@ -76,13 +76,15 @@ before returning their error. Failure excerpts preserve the diagnostic tail;
 the complete artifact and receipt references remain available.
 
 MoonCode's model projection omits full sandbox change inventories and requested
-policy, internal grant digests/IDs and verification-input inventories, retaining
-the change count, output/error, execution status, enforcement,
-cleanup and retained evidence/artifact references. Native file edits also omit
+policy, internal grant digests/IDs, verification-input inventories and repeated
+setup/audit fields, retaining the change count, output/error, execution status,
+enforcement and retained evidence/artifact references. Native file edits also omit
 the redundant whole-file diff from this projection. The original result stays
-in the journal for UI inspection and existing read_result recall. Follow-ups
-keep one compact read/error index with distinct failure summaries, without
-repeating general repair guidance. Invocation counts remain in the journal.
+in the journal for UI inspection and existing read_result recall. Model tool
+messages contain one JSON header with the result/reference, then unescaped
+output text. The context compiler reads references from the header. Follow-ups
+reuse the transcript and compacted result ranges, without a second read/error
+index. Invocation counts remain in the journal.
 Pipeline ambiguity stays in the tool metadata and evidence checks; there is no
 separate planner user warning that can outlive the call. Follow-ups do not
 duplicate shell excerpts or

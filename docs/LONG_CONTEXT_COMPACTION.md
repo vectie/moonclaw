@@ -44,10 +44,12 @@ long guides should not be duplicated into the always-read entrypoint.
 
 Task revisions and saved cross-command notes have one owner in the task
 prefix. Current checkpoints remain in tool history. The former automatic
-task/recent-results message is removed. A compact cumulative index retains
-read paths/completeness and errors, without copying shell commands, excerpts
-or output hashes. Model result projection also omits verification-input
-inventories and internal grant digests; canonical journal facts remain intact.
+task/recent-results message and cumulative read/error index are removed. The
+transcript retains observations; compacted spans use the existing result ranges.
+Model result projection uses a JSON status/reference header followed by raw
+output text, avoiding JSON escaping of source and logs. It omits repeated audit
+fields, verification-input inventories and internal grant digests; canonical
+journal facts remain intact. Empty task/context sections are not sent.
 
 Projection is lossy. A checkpoint contains working observations, not exact
 source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result

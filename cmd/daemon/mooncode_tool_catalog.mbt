@@ -128,7 +128,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "edit",
-      "Atomically replace text in an existing MoonBook file. Use old_string/new_string for one edit, or edits for an ordered multi-edit; the file is written only after every edit validates.",
+      "Atomically replace text in an existing MoonBook file. Apply old_string/new_string first when supplied, then edits in order; write only after every replacement validates.",
       {
         "type": "object",
         "properties": {

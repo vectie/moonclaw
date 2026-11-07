@@ -42,7 +42,9 @@ fn context_result_reference(
   message : @openai.ChatCompletionMessageParam,
 ) -> String? {
   guard message is Tool(tool) else { return None }
-  let value = @json.parse(checkpoint_content_text(tool.content)) catch {
+  let value = @json.parse(
+    checkpoint_content_text(tool.content).split("\n").head().unwrap_or(""),
+  ) catch {
     _ => return None
   }
   match value {

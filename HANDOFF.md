@@ -5,6 +5,32 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Pi input-gap reduction 2026-11-07
+
+- No paid/model rerun. Both successful traces have 12 responses: MoonCode
+  124777 input, Pi 45950. Same-round exact message duplication is zero. See
+  ../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md/.json.
+- Model result content is now one JSON status/reference header, then verbatim
+  output. Pruner references read only that header; canonical result/journal,
+  exit/error/truncation/version data and artifact references remain. Removed
+  the duplicate read/error index; existing result ranges/read_result own recall.
+  Skip empty task/context fields and MCP schemas only for known empty Book
+  integrations. Unknown/configured/explicit MCP selection is preserved.
+- Mixed edit fields execute top-level replacement then array, using the same
+  all-or-nothing write. The real rejected call after the real first edit produces
+  exactly the accepted delivered source. Do not force read/replan/retry steps.
+- Temporary offline audit/replay archived outside source at
+  /Users/kq/mooncode-pi-gap-20261107: fixed 12 rounds, 95 observations unchanged,
+  local 132150 -> 113335 (14.2%). This does not predict actual billing/cache
+  or fewer model responses; original environment/parameter errors remain in
+  the fixed trace. Do not present it as a newly measured 2.7 ratio.
+- Registry update makes unversioned .mbtx async select 0.22.7, requiring a newer
+  core; 0.19.4 lacks the fixture's fs API. Pin the existing post-commit generated
+  script to SDK-compatible 0.22.5; keep its six operations and check assertions.
+- Final Native 1843/1843, pruner 18/18 and post-cleanup focused tests pass.
+  info/fmt and public interfaces unchanged; MoonBit production -31 lines,
+  tests -22. Original paid-log/cost hashes and 11 archive hashes unchanged.
+
 ## Existing Codex full delivery comparison 2026-11-07
 
 - User authorized a live four-framework comparison via existing Codex OAuth;

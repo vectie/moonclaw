@@ -389,12 +389,6 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   let new_string = mooncode_json_string(arguments, "new_string", default="")
   let replace_all = mooncode_json_bool(arguments, "replace_all", default=false)
   let has_single_edit = old_string != "" || new_string != "" || replace_all
-  if !edits.is_empty() && has_single_edit {
-    return mooncode_tool_error_result(
-      "edit",
-      message="use either edits or old_string/new_string, not both",
-    )
-  }
   let edits : Array[Json] = if has_single_edit {
     [
       {
@@ -402,6 +396,7 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
         "new_string": new_string,
         "replace_all": replace_all,
       },
+      ..edits,
     ]
   } else {
     edits

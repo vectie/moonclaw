@@ -85,7 +85,7 @@ test "all planner truncation surfaces preserve UTF-8 boundaries" {
     "result": { "ok": true, "output": "a".repeat(3999) + unicode.repeat(500) },
   })
   assert_true(planner_content.contains(unicode.repeat(500)))
-  ignore(@json.parse(planner_content))
+  ignore(@json.parse(planner_content.split("\n").head().unwrap()))
   assert_eq(
     @encoding/utf8.decode(@encoding/utf8.encode(planner_content)),
     planner_content,

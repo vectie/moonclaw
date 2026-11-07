@@ -16,11 +16,9 @@ async test "result handles survive redaction and repeated context compaction" (
       messages.push(
         @openai.tool_message(
           tool_call_id="call-\{index}",
-          content=(
-            {
-              "evidence_ref": "result-\{index}",
-              "output": "source ".repeat(500),
-            } : Json).stringify(),
+          content=({ "evidence_ref": "result-\{index}" } : Json).stringify() +
+            "\n" +
+            "source \"quoted\"\n".repeat(500),
         ),
       )
       messages.push(
@@ -49,11 +47,9 @@ async test "result handles survive redaction and repeated context compaction" (
       extended.push(
         @openai.tool_message(
           tool_call_id="call-\{index}",
-          content=(
-            {
-              "evidence_ref": "result-\{index}",
-              "output": "later ".repeat(300),
-            } : Json).stringify(),
+          content=({ "evidence_ref": "result-\{index}" } : Json).stringify() +
+            "\n" +
+            "later \"quoted\"\n".repeat(300),
         ),
       )
       extended.push(

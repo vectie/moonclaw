@@ -35,21 +35,21 @@ test "default tasks share one catalog regardless of language or inferred purpose
       ] {
       assert_true(names.contains(needed), msg=needed)
     }
-    assert_eq(
-      mooncode_test_model_tool_names(
-        mooncode_runtime_turn_model_tools_for_command(command),
-      ),
-      names,
-    )
   }
 }
 
 ///|
 test "explicit tools and optional workers use the same authoritative catalog" {
-  for allowed in [["read", "finish"], ["spawn_workers", "wait_workers"]] {
+  for
+    allowed in [
+      ["read", "finish"],
+      ["spawn_workers", "wait_workers"],
+      ["mcp_list_tools"],
+    ] {
     let command : Json = {
       "command": "prompt",
       "text": "Complete the task",
+      "task_context": { "available_mcp_integrations": [] },
       "payload": {
         "planner_allowed_tools": Json::array(allowed.map(name => Json(name))),
       },
@@ -60,6 +60,17 @@ test "explicit tools and optional workers use the same authoritative catalog" {
       ),
       allowed,
     )
+  }
+  for servers in [[], ["configured"]] {
+    let names = mooncode_test_model_tool_names(
+      mooncode_runtime_turn_model_tools_for_command({
+        "task_context": { "available_mcp_integrations": Json(servers) },
+      }),
+    )
+    for name in ["mcp_list_tools", "mcp_call_tool"] {
+      assert_eq(names.contains(name), !servers.is_empty())
+    }
+    assert_true(names.contains("shell"))
   }
 }
 

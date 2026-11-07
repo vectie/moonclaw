@@ -86,6 +86,9 @@ The [four-framework live delivery observation](../../moondesk/docs/MOONCODE_FULL
 reuses existing Codex credentials, records every observed response and setup
 failure, and verifies the same full-repository bug independently. It does not
 add a product provider layer or establish a general cost/success-rate claim.
+The [Pi input-gap audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md)
+then verifies result/context reduction and the real mixed-edit repair using
+captured logs, with zero new provider calls.
 
 Do not introduce a permanent agent Router, a checker registry, a second
 operation database, or a new runtime framework. Optional generic job and worker

@@ -904,28 +904,6 @@ test "mooncode planner retry delays and events retain bounded backoff evidence" 
 }
 
 ///|
-test "mooncode line-range reads remain partial observations" {
-  let message = mooncode_runtime_turn_model_evidence_ledger_message([
-    {
-      "accepted": true,
-      "tool": "read",
-      "arguments": { "path": "src/main.mbt", "start_line": 20, "end_line": 40 },
-      "result": {
-        "ok": true,
-        "metadata": {
-          "path": "src/main.mbt",
-          "range_requested": true,
-          "truncated": false,
-        },
-      },
-    },
-  ])
-  let content = mooncode_json_string(message, "content", default="")
-  assert_true(content.contains("src/main.mbt"))
-  assert_true(content.contains("\"complete_read_paths\": []"))
-}
-
-///|
 test "mooncode live steering becomes an explicit planner user message" {
   let steering : Json = {
     "command_id": "steer-live-1",
@@ -972,6 +950,25 @@ async test "mooncode followup makes retained reads errors and path hints actiona
         WarningContext,
         "warning.pipeline_evidence",
       ),
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "earlier",
+            "type": "function",
+            "function": {
+              "name": "read",
+              "arguments": "{\"path\":\"src/earlier-retained.mbt\"}",
+            },
+          },
+        ],
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "earlier",
+        "content": "earlier retained source",
+      },
     ],
     "model_response_message": {
       "role": "assistant",
@@ -1093,29 +1090,14 @@ async test "mooncode followup makes retained reads errors and path hints actiona
   )
   let transcript = Json::array(messages).stringify()
   assert_false(transcript.contains("obsolete pipeline guidance"))
-  assert_true(transcript.contains("successful_read_paths"))
-  assert_true(transcript.contains("complete_read_paths"))
   assert_true(transcript.contains("sed -n '1,80p' src/adapter.mbt"))
   assert_true(transcript.contains("current adapter source"))
   assert_true(transcript.contains("src/parser.mbt"))
-  assert_true(transcript.contains("src/adapter.mbt"))
   assert_true(transcript.contains("src/earlier-retained.mbt"))
-  assert_true(transcript.contains("failed_tool_calls"))
   assert_true(transcript.contains("src/guessed.mbt"))
   assert_true(transcript.contains("path does not exist"))
   assert_true(transcript.contains("internal/parser/parser.mbt"))
   assert_true(transcript.contains("paths in this steering as authoritative"))
-  let ledger = mooncode_runtime_turn_model_evidence_ledger_message(
-    all_tool_results,
-  )
-  assert_eq(
-    ledger,
-    mooncode_runtime_turn_model_evidence_ledger_message(
-      [..all_tool_results, tool_results[1]],
-    ),
-  )
-  assert_false(ledger.stringify().contains("current adapter source"))
-  assert_false(ledger.stringify().contains("sed -n"))
   let receipts = messages.filter(message => {
     mooncode_json_string(
       mooncode_runtime_context_provenance(message),
@@ -1136,34 +1118,6 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     ),
     true,
   )
-  let next = mooncode_runtime_turn_model_followup_messages(
-    command,
-    mooncode_json_object_with_field(previous, "model_messages", Json(messages)),
-    [],
-    [],
-    all_tool_results,
-    [],
-    -1,
-  )
-  for
-    (source, count) in [
-      ("environment.evidence_ledger", 1),
-      ("environment.horizon_progress", 0),
-    ] {
-    assert_eq(
-      next
-      .filter(message => {
-        mooncode_json_string(
-          mooncode_runtime_context_provenance(message),
-          "source",
-          default="",
-        ) ==
-        source
-      })
-      .length(),
-      count,
-    )
-  }
 }
 
 ///|
@@ -1818,7 +1772,7 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     "tool": "edit",
     "result": {
       "ok": true,
-      "output": "Total tests: 108, passed: 108, failed: 0.",
+      "output": "Total tests: 108, passed: 108, failed: 0.\nsource \"quoted\"\n",
       "metadata": {
         "exit_code": 0,
         "diff": "entire-file-copy".repeat(1000),
@@ -1847,8 +1801,18 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   assert_true(projected.contains("retained-output"))
   assert_true(projected.contains("Degraded"))
   assert_true(projected.contains("\"changed_path_count\":1"))
+  assert_true(
+    projected.has_suffix(
+      "\nTotal tests: 108, passed: 108, failed: 0.\nsource \"quoted\"\n",
+    ),
+  )
+  let header = @json.parse(projected.split("\n").head().unwrap())
+  assert_eq(
+    mooncode_json_string(header, "evidence_ref", default=""),
+    "retained-reference",
+  )
   assert_eq(raw.stringify(), before)
-  ignore(@json.parse(oversized))
+  ignore(@json.parse(oversized.split("\n").head().unwrap()))
   let retained_source = mooncode_runtime_turn_model_tool_result_content({
     "tool": "read",
     "result": { "output": "x".repeat(9000) },
@@ -1859,7 +1823,7 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     "result": { "output": "x".repeat(50000) },
   })
   assert_true(oversized_source.contains("x".repeat(50000)))
-  ignore(@json.parse(oversized_source))
+  ignore(@json.parse(oversized_source.split("\n").head().unwrap()))
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
   assert_true(
     mooncode_runtime_turn_tool_calls_include_finish([
