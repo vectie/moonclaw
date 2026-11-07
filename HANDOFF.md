@@ -5,6 +5,23 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Main input source quantified 2026-11-07
+
+- Paid reruns remain paused. Sibling moondesk/docs/
+  MOONCODE_INPUT_BUDGET_AUDIT_2026-11-07.md decomposes all 35 actual requests.
+  Local estimate 954652 differs from billed input 935131; grep output alone
+  contributes 552582 over six requests. Skill bodies were not loaded.
+- Actual Killed receipt through the existing terminal converter and projection
+  preserves failure/ref/artifact, limits output to 20000, and reduces the fixed
+  trace by 509634 local tokens. Full follow-up carry replay gives 441848; it
+  must inherit candidate messages, not reset to the captured bloated prefix.
+- Two temporary offline tests passed and were moved out with their imports;
+  runtime/tests unchanged this round. Do not add a second cap, retry gate or
+  heuristic prompt to manufacture a source change. Repeated model-chosen
+  storage retries and semantic rework remain unproven improvements.
+- After removing the temporary entries: existing Native 1844/1844; info/fmt,
+  interface and whitespace checks pass. Desk existing Native 1726/1726.
+
 ## Offline-only context cleanup 2026-11-07
 
 - User paused paid reruns; no further live model canary unless newly authorized.
