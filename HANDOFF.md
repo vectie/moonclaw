@@ -5,6 +5,21 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Schema and input follow-up 2026-11-07
+
+- Shorten repeated tool descriptions and existing main prompt; guide targeted
+  search of implementation/callers/tests and range reads with optional expansion.
+  No runtime branch, tool removal, new budget/truncation/retry or hardening.
+- ABI is identical apart from descriptions, including strictness and every
+  parameter; 15 historical calls validate. Fixed producer replay retains all
+  12 responses/95 observations and every non-planner message exactly: local
+  113335 -> 108403 (4.35%), 4068 schema + 864 main prompt. No paid rerun.
+- Full tests, skills and failures remain; search guidance has no new measured
+  model behavior. Do not count it as saved reads or fewer turns. Private audits
+  and added test import removed; evidence: /Users/kq/mooncode-input-followup-20261107.
+- Full Native 1843/1843; check/info/fmt pass, public interfaces unchanged.
+  Production net -12 lines, product tests unchanged.
+
 ## Default Native/Git follow-up 2026-11-07
 
 - Fort's existing macOS policy lacked `/var` alias metadata, blocking default

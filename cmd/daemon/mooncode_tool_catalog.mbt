@@ -55,11 +55,10 @@ fn mooncode_tool_execution_arguments_error(
 fn mooncode_build_native_tool_catalog() -> Array[
   @openai.ChatCompletionToolParam,
 ] {
-  let finish_description = "Deliver completed work with a concise summary. For tool authorization, select the exact tool call and let the runtime handle approval."
   [
     mooncode_runtime_turn_model_tool(
       "ask_user",
-      "Ask a necessary product or planning question and wait for the user's answer before dependent work. Give short choices when useful; use a stable id for this question. Do not use this for tool approvals.",
+      "Ask a necessary question with a stable id and optional short choices; wait before dependent work. Not for tool approvals.",
       {
         "type": "object",
         "properties": {
@@ -73,7 +72,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read",
-      "Read a whole file or an inclusive line range inside the selected MoonBook. Prefer start_line/end_line over shell-based sed slices.",
+      "Read a MoonBook file or inclusive start_line/end_line range.",
       {
         "type": "object",
         "properties": {
@@ -88,7 +87,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read_result",
-      "Read an earlier result from this session without rerunning its tool. Use an evidence_ref from retained context. With end_ref, list result references in that recorded range; then read the needed reference. start_line/end_line select lines of the original result JSON.",
+      "Recall a session result by evidence_ref without rerunning. end_ref lists references in a range; start_line/end_line select original result JSON lines.",
       {
         "type": "object",
         "properties": {
@@ -104,7 +103,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "view_image",
-      "Inspect PNG, JPEG, WebP, or GIF pixels from a file inside the selected MoonBook. The image is attached to the next model turn without embedding its bytes in the durable journal.",
+      "Inspect pixels of a MoonBook PNG, JPEG, WebP or GIF file.",
       {
         "type": "object",
         "properties": { "path": { "type": "string" } },
@@ -156,7 +155,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "shell",
-      "Run a foreground command in a fresh disposable MoonBook snapshot through MoonFort. Changes and build outputs stay in that snapshot; later calls start from current MoonBook files. Use edit/write/apply_patch for persistent changes. Background processes are unsupported. Set verification_kind only when exit zero proves that check, test or build.",
+      "Run a foreground command in a fresh disposable MoonBook snapshot. Changes/build outputs do not persist between calls; use edit/write/apply_patch for persistent edits. Background processes are unsupported. Set verification_kind only if exit zero proves that check/test/build.",
       {
         "type": "object",
         "properties": {
@@ -176,7 +175,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "browser",
-      "Operate an isolated native browser session for UI-to-UI work. Prefer snapshot for semantic state, screenshot plus view_image for visual judgment, and console/errors for diagnosis. Snapshot returns element refs such as e21; pass them to click/fill/wait as selectors with the required @ prefix (for example @e21). Visible labels such as button text are not selectors. Take a fresh snapshot after navigation or a DOM-changing action before reusing refs.",
+      "Operate an isolated browser. Use snapshot for semantic state, screenshot plus view_image for pixels, console/errors for diagnosis. Refresh snapshot refs after navigation or DOM changes.",
       {
         "type": "object",
         "properties": {
@@ -190,7 +189,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
           "url": { "type": "string" },
           "selector": {
             "type": "string",
-            "description": "CSS, XPath, or a snapshot element reference with @ prefix such as @e21; never pass visible label text as the selector.",
+            "description": "CSS, XPath or a snapshot ref such as @e21; not visible label text.",
           },
           "text": { "type": "string" },
           "key": { "type": "string" },
@@ -236,7 +235,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "moon_cmd",
-      "Run a structured MoonBit command at a MoonBit module root. Use cwd for a known nested module, or path/paths so the runtime can infer the nearest module. `fmt` accepts paths and formatter options but no target or package selector; check/test/info/build preserve valid target and package/file selectors.",
+      "Run a MoonBit command at its module root. cwd selects a module; path/paths infer the nearest module. arg/args pass command options; program_args follow run's --. For fmt omit target and package selectors; file paths and formatter options are valid.",
       {
         "type": "object",
         "properties": {
@@ -247,31 +246,16 @@ fn mooncode_build_native_tool_catalog() -> Array[
           "cwd": { "type": "string" },
           "target": {
             "type": "string",
-            "description": "Backend for check, test, info, build, or run. Omit for fmt.",
             "enum": ["wasm", "wasm-gc", "js", "native", "llvm", "all"],
           },
-          "arg": {
-            "type": "string",
-            "description": "One command-specific option. Do not put target or package selectors here for fmt.",
-          },
-          "args": {
-            "type": "array",
-            "description": "Command-specific options. Do not put target or package selectors here for fmt.",
-            "items": { "type": "string" },
-          },
-          "path": {
-            "type": "string",
-            "description": "One package directory or file selector; may identify a nested module when cwd is omitted.",
-          },
-          "paths": {
-            "type": "array",
-            "description": "Package directory or file selectors within one MoonBit module.",
-            "items": { "type": "string" },
-          },
+          "arg": { "type": "string" },
+          "args": { "type": "array", "items": { "type": "string" } },
+          "path": { "type": "string" },
+          "paths": { "type": "array", "items": { "type": "string" } },
           "program_args": { "type": "array", "items": { "type": "string" } },
           "expected_exit_code": {
             "type": "integer",
-            "description": "Expected process exit code (default 0). MoonBit test failures return 2; use the actual exit code for intentional negative checks.",
+            "description": "Default 0; MoonBit test failures return 2. Set for intentional negative checks.",
           },
           "test_update_kind": { "type": "string" },
           "test_update_reason": { "type": "string" },
@@ -290,7 +274,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
         "properties": {
           "cwd": {
             "type": "string",
-            "description": "MoonBook-relative directory containing moon.mod; use this for nested modules.",
+            "description": "MoonBook-relative module directory.",
           },
           "target": {
             "type": "string",
@@ -302,15 +286,19 @@ fn mooncode_build_native_tool_catalog() -> Array[
         "additionalProperties": false,
       },
     ),
-    mooncode_runtime_turn_model_tool("finish", finish_description, {
-      "type": "object",
-      "properties": { "answer": { "type": "string" } },
-      "required": ["answer"],
-      "additionalProperties": false,
-    }),
+    mooncode_runtime_turn_model_tool(
+      "finish",
+      "Deliver completed work with a concise summary and verification.",
+      {
+        "type": "object",
+        "properties": { "answer": { "type": "string" } },
+        "required": ["answer"],
+        "additionalProperties": false,
+      },
+    ),
     mooncode_runtime_turn_model_tool(
       "apply_patch",
-      "Apply one unified diff, including a multi-file diff, inside the selected MoonBook. The diff must use standard `--- a/path`, `+++ b/path`, and `@@` syntax; do not wrap it in `*** Begin Patch` / `*** Update File` markers. For a diff, omit path because targets come from its file headers.",
+      "Apply a MoonBook unified diff with --- a/path, +++ b/path and @@ headers; no *** Begin Patch markers. Multi-file diffs select paths from headers; omit path.",
       {
         "type": "object",
         "properties": {
@@ -327,7 +315,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "checkpoint",
-      "Save optional working progress and a useful next action. Milestones may be revised or reopened; they do not establish completion.",
+      "Save optional, revisable progress and a next action; not completion evidence.",
       {
         "type": "object",
         "properties": {
@@ -356,7 +344,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read_skill",
-      "Load the complete installed SKILL.md, or a referenced file inside that selected skill. Use path only after SKILL.md identifies the resource as relevant.",
+      "Load an installed SKILL.md, or a relevant resource it references via path.",
       {
         "type": "object",
         "properties": {
@@ -369,7 +357,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "mcp_list_tools",
-      "Discover tools and their input schemas on enabled MCP integrations. Omit server to list all configured connections. Use cursor with server to fetch the next page.",
+      "Discover enabled MCP tool schemas. Omit server for all connections; server/cursor fetch the next page.",
       {
         "type": "object",
         "properties": {
@@ -381,7 +369,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "mcp_call_tool",
-      "Call a configured MCP integration tool. First inspect its schema with mcp_list_tools; provide the exact server, tool name and arguments.",
+      "Call a configured MCP tool using its discovered schema and exact server/name/arguments.",
       {
         "type": "object",
         "properties": {
@@ -395,7 +383,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "spawn_workers",
-      "Spawn ordinary MoonCode prompt sessions in caller-supplied isolated MoonBook roots. The parent session remains the controller.",
+      "Spawn child prompt sessions in caller-supplied isolated MoonBooks; the parent controls them.",
       {
         "type": "object",
         "properties": {

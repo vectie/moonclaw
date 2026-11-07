@@ -85,6 +85,12 @@ messages contain one JSON header with the result/reference, then unescaped
 output text. The context compiler reads references from the header. Follow-ups
 reuse the transcript and compacted result ranges, without a second read/error
 index. Invocation counts remain in the journal.
+Tool descriptions and the main working prompt omit repeated explanations;
+tool names, parameter schemas and validation remain unchanged. Targeted search
+and range reads are working guidance, with expansion when needed. They do not
+trim retained observations or impose an execution gate. The fixed Pi comparison
+replay records input savings separately from unmeasured model behavior in the
+[input audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md).
 Pipeline ambiguity stays in the tool metadata and evidence checks; there is no
 separate planner user warning that can outlive the call. Follow-ups do not
 duplicate shell excerpts or
