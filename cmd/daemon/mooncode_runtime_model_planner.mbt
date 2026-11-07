@@ -1191,17 +1191,16 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let event_id = mooncode_json_string(event, "id", default="")
   let result = match result {
     Object(fields) =>
-      Json(fields.filter((key, _) => key != "output" && key != "is_error"))
+      Json(
+        fields.filter((key, _) => !["output", "is_error", "tool"].contains(key)),
+      )
     value => value
   }
-  let payload : Json = {
-    "result": result,
-    "evidence_ref": if event_id == "" {
-      ""
-    } else {
-      event_id
-    },
-  }
+  let payload = mooncode_json_object_with_field(
+    result,
+    "evidence_ref",
+    Json(event_id),
+  )
   if output == "" {
     payload.stringify()
   } else {

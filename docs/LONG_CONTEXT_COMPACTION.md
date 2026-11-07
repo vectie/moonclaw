@@ -55,6 +55,10 @@ Model result projection uses a JSON status/reference header followed by raw
 output text, avoiding JSON escaping of source and logs. It omits repeated audit
 fields, verification-input inventories and internal grant digests; canonical
 journal facts remain intact. Empty task/context sections are not sent.
+Status, message, metadata and evidence_ref share one header object; there is no
+outer result wrapper or duplicate tool name (the tool_call_id already binds the
+protocol call). This changes only model presentation, not the canonical result
+or exact result-reader format. Exit/error/truncation/limit/artifact data remain.
 
 Projection is lossy. A checkpoint contains working observations, not exact
 source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result

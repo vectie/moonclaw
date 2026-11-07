@@ -5,6 +5,28 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Residual Pi comparison 2026-11-08
+
+- No provider call. Pair existing Pi47355 with current MoonCode76295 using the
+  same counter. Gap28940: schema9876, system/catalog4056, loaded skill5027,
+  task504, assistant2297, tools7180. Tool bodies20318 are below Pi22397;
+  the9259 header/protocol tokens account for the net tool-presentation excess.
+- Four aligned basic tools: MoonCode430/schema/request versus Pi599. Extra
+  nine tools992; primary system248 versus Pi502, skill catalog592 additional.
+  Do not label available abilities/full skill instructions as proven waste.
+- Eight continuous ablations: runtime metadata77886, flat75840, SDK76067,
+  runtime+flat77423, runtime+SDK77658, flat+SDK78057, all77262; baseline76295.
+  Only flattening ships: remove result wrapper and duplicate tool name. All
+  status/message/metadata/body/reference data remain; canonical results and
+  journal/read_result unchanged. No new branch, state, gate or smaller window.
+- Actual producer75840 (-455/0.60%), same full system/task/skill/assistant and
+  latest result data after unwrapping; edit literals/final verdicts retained.
+  No claim of new billing/fewer decisions/quality. Evidence and failed local
+  fixture compiles: /Users/kq/mooncode-pi-residual-20261108. Tool definitions
+  have no FromJson/public constructors; use the existing @openai.tool factory.
+- Final Native1837/1837 (--strip -j2), check/info/fmt pass; interfaces unchanged.
+  No added test items; existing header parser assertion moves to the flat root.
+
 ## Remaining input measured cleanup 2026-11-07
 
 - Same 12 recorded responses, no provider: 78258 ->76295 (-1963 /2.51%).

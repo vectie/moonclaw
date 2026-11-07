@@ -1759,8 +1759,9 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   let skipped = @json.parse(
     mooncode_json_string(settled[2], "content", default=""),
   )
-  let skipped_metadata = mooncode_json_object_field_or_empty(skipped, "result")
-    |> mooncode_json_object_field_or_empty("metadata")
+  let skipped_metadata = mooncode_json_object_field_or_empty(
+    skipped, "metadata",
+  )
   assert_true(mooncode_json_bool(skipped_metadata, "skipped", default=false))
   let oversized = mooncode_runtime_turn_model_tool_result_content({
     "result": { "output": "x".repeat(9000) },
