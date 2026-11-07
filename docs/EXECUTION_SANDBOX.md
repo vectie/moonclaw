@@ -81,8 +81,11 @@ the change count, output/error, execution status, enforcement,
 cleanup and retained evidence/artifact references. Native file edits also omit
 the redundant whole-file diff from this projection. The original result stays
 in the journal for UI inspection and existing read_result recall. Follow-ups
-keep one compact read/error index without repeating general repair guidance;
-they do not duplicate shell excerpts or
+keep one compact read/error index with distinct failure summaries, without
+repeating general repair guidance. Invocation counts remain in the journal.
+Pipeline ambiguity stays in the tool metadata and evidence checks; there is no
+separate planner user warning that can outlive the call. Follow-ups do not
+duplicate shell excerpts or
 emit another task/recent-results progress message. Saved cross-command notes
 are included in the existing task prompt, with new checkpoints in tool history.
 User/project-required skills and needed workflows load through read_skill;

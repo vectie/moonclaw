@@ -578,9 +578,9 @@ fn mooncode_runtime_turn_model_followup_base_messages(
       let provenance = mooncode_runtime_context_provenance(message)
       if mooncode_json_string(provenance, "source", default="") ==
         "user.content_parts" ||
-        ["environment.evidence_ledger", "environment.horizon_progress"].contains(
-          mooncode_json_string(provenance, "source", default=""),
-        ) {
+        [
+          "environment.evidence_ledger", "environment.horizon_progress", "warning.pipeline_evidence",
+        ].contains(mooncode_json_string(provenance, "source", default="")) {
         continue
       }
       if !content.has_prefix("Loaded-skill receipt:") {
@@ -860,11 +860,15 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
         }
       }
     } else if !accepted || !ok {
-      failed_calls.push({
+      let failure : Json = {
         "tool": tool,
         "path": path,
         "message": mooncode_json_string(result, "message", default=""),
-      })
+      }
+      // This is an index, not the invocation log retained in the journal.
+      if !failed_calls.contains(failure) {
+        failed_calls.push(failure)
+      }
     }
   }
   if read_paths.length() == 0 && failed_calls.length() == 0 {
@@ -923,19 +927,6 @@ async fn mooncode_runtime_turn_model_followup_messages(
       command, tool_results,
     ) {
     messages.push(message)
-  }
-  let pipeline_warning = mooncode_runtime_turn_pipeline_evidence_warning(
-    tool_results,
-  )
-  if pipeline_warning != "" {
-    messages.push(
-      mooncode_runtime_context_text_message(
-        "user",
-        pipeline_warning,
-        WarningContext,
-        "warning.pipeline_evidence",
-      ),
-    )
   }
   let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
     command, tool_calls, all_tool_results,
@@ -1091,25 +1082,6 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     followup=true,
     now~,
   )
-}
-
-///|
-fn mooncode_runtime_turn_pipeline_evidence_warning(
-  tool_results : Array[Json],
-) -> String {
-  for result in tool_results {
-    if mooncode_json_string(result, "tool", default="") != "shell" {
-      continue
-    }
-    let metadata = mooncode_json_object_field_or_empty(
-      mooncode_json_object_field_or_empty(result, "result"),
-      "metadata",
-    )
-    if mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) {
-      return "Evidence boundary: this inspection pipeline did not enable pipefail. Its output is usable observation, but its exit status cannot prove that an upstream command succeeded and cannot advance a check, test, or build checkpoint. Rerun only if verification evidence is required, using a direct command or pipefail."
-    }
-  }
-  ""
 }
 
 ///|

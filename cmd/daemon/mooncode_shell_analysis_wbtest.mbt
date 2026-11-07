@@ -25,11 +25,6 @@ async test "mooncode shell marks pipeline status as non-evidence" {
             default=false,
           ),
         )
-        assert_true(
-          mooncode_runtime_turn_pipeline_evidence_warning([execution]).contains(
-            "cannot prove",
-          ),
-        )
       }
     })
   })

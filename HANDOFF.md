@@ -5,6 +5,25 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Offline-only context cleanup 2026-11-07
+
+- User paused paid reruns; no further live model canary unless newly authorized.
+  No provider calls this round. See sibling moondesk/docs/
+  MOONCODE_OFFLINE_REPLAY_AUDIT_2026-11-07.md.
+- Captured capped-1 requests 2–15 retained one old pipeline user warning. Deleted
+  automatic warning generation and its assertions; existing source filtering
+  drops it from recovered context. Keep actual pipeline_exit_ambiguous metadata
+  and all execution/completion evidence rules. No new prompt, gate or state.
+- Failure index now stores distinct tool/path/message summaries, like its read
+  path sets. Journal/transcript retain every invocation; the index is not a
+  failure counter or a queue to repair. Do not use it to block retries.
+- Actual follow-up producer replay: 41 requests, 339 cumulative observations
+  identical, all other context identical; 13796 content chars / 0.47% removed.
+  This does not predict fewer model decisions. Native full 1844/1844, API stable.
+- Replay must unwrap journal event.command, freeze enriched Book context and
+  use captured provider-visible evidence_ref; canonical event IDs can differ.
+  Temporary replay source moved out of product; no new framework was shipped.
+
 ## Non-Exited result cap and full cost 2026-11-07
 
 - mooncode_sandbox_terminal_result returned raw receipt.output before capping

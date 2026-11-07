@@ -966,6 +966,12 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     "model_messages": [
       { "role": "system", "content": "planner contract" },
       { "role": "user", "content": "repair request" },
+      mooncode_runtime_context_text_message(
+        "user",
+        "obsolete pipeline guidance",
+        WarningContext,
+        "warning.pipeline_evidence",
+      ),
     ],
     "model_response_message": {
       "role": "assistant",
@@ -1086,6 +1092,7 @@ async test "mooncode followup makes retained reads errors and path hints actiona
     -1,
   )
   let transcript = Json::array(messages).stringify()
+  assert_false(transcript.contains("obsolete pipeline guidance"))
   assert_true(transcript.contains("successful_read_paths"))
   assert_true(transcript.contains("complete_read_paths"))
   assert_true(transcript.contains("sed -n '1,80p' src/adapter.mbt"))
@@ -1100,6 +1107,12 @@ async test "mooncode followup makes retained reads errors and path hints actiona
   assert_true(transcript.contains("paths in this steering as authoritative"))
   let ledger = mooncode_runtime_turn_model_evidence_ledger_message(
     all_tool_results,
+  )
+  assert_eq(
+    ledger,
+    mooncode_runtime_turn_model_evidence_ledger_message(
+      [..all_tool_results, tool_results[1]],
+    ),
   )
   assert_false(ledger.stringify().contains("current adapter source"))
   assert_false(ledger.stringify().contains("sed -n"))
@@ -1848,28 +1861,6 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   assert_true(oversized_source.contains("x".repeat(50000)))
   ignore(@json.parse(oversized_source))
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
-  assert_eq(
-    mooncode_runtime_turn_pipeline_evidence_warning([
-      {
-        "tool": "shell",
-        "arguments": { "cmd": "scripts/validate.sh full 2>&1 | tail -100" },
-        "result": { "metadata": { "pipeline_exit_ambiguous": true } },
-      },
-    ]).contains("cannot prove"),
-    true,
-  )
-  assert_eq(
-    mooncode_runtime_turn_pipeline_evidence_warning([
-      {
-        "tool": "shell",
-        "arguments": {
-          "cmd": "set -o pipefail; scripts/validate.sh full 2>&1 | tail -100",
-        },
-        "result": { "metadata": { "pipeline_exit_ambiguous": false } },
-      },
-    ]),
-    "",
-  )
   assert_true(
     mooncode_runtime_turn_tool_calls_include_finish([
       { "tool": "finish", "arguments": { "answer": "done" } },
