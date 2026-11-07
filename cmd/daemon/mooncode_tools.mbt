@@ -85,7 +85,6 @@ async fn mooncode_execute_tool_call_in_runtime(
           "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
           "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
           "shell" => mooncode_tool_shell(book_root, arguments)
-          "browser" => mooncode_tool_browser(session_id, book_root, arguments)
           "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
           "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
           "finish" => mooncode_tool_finish(arguments)

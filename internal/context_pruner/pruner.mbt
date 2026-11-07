@@ -103,7 +103,6 @@ fn context_cleared_tool_content(
       Json::object({
         "evidence_ref": Json(reference),
         "context_omitted": Json(true),
-        "output": Json(ClearedToolOutputPlaceholder),
       }).stringify()
   }
 }

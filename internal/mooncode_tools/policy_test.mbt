@@ -10,7 +10,6 @@ test "instruction loading, concurrency and replay have separate contracts" {
     ("moon_cmd", { "command": "fmt" }),
     ("moon_cmd", { "command": "test", "args": ["--update"] }),
     ("moon_cmd", { "command": "test", "arg": "-u" }),
-    ("browser", { "action": "eval" }),
     ("future_tool", {}),
   ]
   for (tool, arguments) in calls {

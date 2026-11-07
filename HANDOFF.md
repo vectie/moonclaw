@@ -5,6 +5,27 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Remaining input measured cleanup 2026-11-07
+
+- Same 12 recorded responses, no provider: 78258 ->76295 (-1963 /2.51%).
+  Remove the browser schema/driver that always refuses, its dispatch/policy
+  and obsolete fixture cases. It never had a grant/adapter implementation.
+  Book default without MCP is now 13 tools; existing 15 calls still validate.
+- Skill listing keeps every id/name/full description in compact JSON; complete
+  loaded instructions remain byte-identical. Omitted results with a durable
+  reference keep the handle and omitted flag without repeating generic prose.
+  No window change, state/layer/gate or new tool; journal/read_result unchanged.
+- Schema -2832, system/catalog -1596, headers -537, older bodies +3002. Pressure
+  interactions matter: browser alone increases 154; short handles alone 320.
+  Only the complete replay supports the final net gain, not summed field sizes.
+  Task/assistant/calls/latest batch/edit literals/final test verdict preserved;
+  first full-test read unchanged. No new usage/round/quality claims.
+- Evidence: /Users/kq/mooncode-remaining-input-20261107. Keep original costs and
+  failed local audit logs. `moon test -f` filters test names, not source files;
+  use a positional file path and check nonzero executed test count.
+- Final Native1837/1837, info/fmt pass, public interfaces unchanged. Production
+  net-84 /tests-4 lines, no new test items; temporary audits/import removed.
+
 ## Measured working-set and duplicate-tool cleanup 2026-11-07
 
 - No paid rerun. Full loaded skills now use existing loaded_skill_messages in

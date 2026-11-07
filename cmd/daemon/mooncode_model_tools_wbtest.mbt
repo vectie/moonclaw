@@ -27,10 +27,11 @@ test "default tasks share one catalog regardless of language or inferred purpose
       mooncode_runtime_turn_model_tools_for_command(command),
     )
     assert_eq(names, expected, msg=text)
+    assert_false(names.contains("browser"))
     for
       needed in [
         "ask_user", "read", "write", "edit", "apply_patch", "shell", "moon_ide",
-        "moon_cmd", "browser", "view_image", "mcp_list_tools", "mcp_call_tool", "finish",
+        "moon_cmd", "view_image", "mcp_list_tools", "mcp_call_tool", "finish",
       ] {
       assert_true(names.contains(needed), msg=needed)
     }

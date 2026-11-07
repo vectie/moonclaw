@@ -152,3 +152,11 @@ Tests cover default compaction, current-task preservation after hydration, recen
 verification, source provenance, unknown effects, cancellation, torn-tail
 repair, append-cache invalidation and directory-sync failure/retry. Local
 fixtures do not establish live-provider deliverable quality or power-cut behavior.
+
+Referenced omitted results carry only `evidence_ref` and `context_omitted`;
+the same generic recall paragraph is no longer repeated in every handle.
+Unreferenced results keep the existing omission/no-effect-replay notice. The
+source journal, exact result reader and pressure/window rules are unchanged.
+The measured follow-up in the sibling Pi input-gap report counts schema,
+skill listing and reference changes through continuous compilation; smaller
+framing can retain more older evidence, so field savings do not add linearly.

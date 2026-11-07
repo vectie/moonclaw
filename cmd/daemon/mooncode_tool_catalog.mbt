@@ -174,44 +174,6 @@ fn mooncode_build_native_tool_catalog() -> Array[
       },
     ),
     mooncode_runtime_turn_model_tool(
-      "browser",
-      "Operate an isolated browser. Use snapshot for semantic state, screenshot plus view_image for pixels, console/errors for diagnosis. Refresh snapshot refs after navigation or DOM changes.",
-      {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": [
-              "open", "snapshot", "screenshot", "set_viewport", "click", "fill",
-              "press", "wait", "get", "eval", "console", "errors", "reload", "close",
-            ],
-          },
-          "url": { "type": "string" },
-          "selector": {
-            "type": "string",
-            "description": "CSS, XPath or a snapshot ref such as @e21; not visible label text.",
-          },
-          "text": { "type": "string" },
-          "key": { "type": "string" },
-          "path": { "type": "string" },
-          "full_page": { "type": "boolean" },
-          "interactive": { "type": "boolean" },
-          "compact": { "type": "boolean" },
-          "depth": { "type": "integer" },
-          "width": { "type": "integer" },
-          "height": { "type": "integer" },
-          "what": { "type": "string" },
-          "attribute": { "type": "string" },
-          "script": { "type": "string" },
-          "wait_ms": { "type": "integer" },
-          "timeout_ms": { "type": "integer" },
-          "max_output_chars": { "type": "integer" },
-        },
-        "required": ["action"],
-        "additionalProperties": false,
-      },
-    ),
-    mooncode_runtime_turn_model_tool(
       "moon_ide",
       "Run read-only MoonBit semantic navigation inside the selected MoonBook.",
       {

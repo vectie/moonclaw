@@ -113,21 +113,19 @@ async fn mooncode_runtime_turn_skill_catalog(book_root : String) -> String {
       #|
     ),
   )
-  for name in names {
+  let entries : Array[Json] = names.filter_map(name => {
     match loader.skills().get(name) {
-      Some(skill) => {
-        out.write_string("  <skill>\n")
-        out.write_string("    <id>\{skill.id}</id>\n")
-        out.write_string("    <name>\{skill.name}</name>\n")
-        out.write_string(
-          "    <description>\{skill.description}</description>\n",
-        )
-        out.write_string("  </skill>\n")
-      }
-      None => ()
+      Some(skill) =>
+        Some({
+          "id": skill.id,
+          "name": skill.name,
+          "description": skill.description,
+        })
+      None => None
     }
-  }
-  out.write_string("</available_skills>")
+  })
+  out.write_string(Json(entries).stringify())
+  out.write_string("\n</available_skills>")
   out.to_string()
 }
 

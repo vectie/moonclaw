@@ -1,5 +1,10 @@
 # Daemon Server
 
+The MoonCode catalog advertises executable tools. The former native `browser`
+entry only returned a refusal and has been removed; `view_image` remains for
+image evidence. The skill listing presents complete id/name/description rows
+as compact JSON; selected skill instructions are still loaded in full.
+
 ## Run
 
 From the root directory of the repository, run:

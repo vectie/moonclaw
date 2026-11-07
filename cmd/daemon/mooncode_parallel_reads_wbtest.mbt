@@ -120,22 +120,6 @@ async test "mooncode parallel read batches accept independent read-only tools" {
       resuming_step=false,
     ),
   )
-  let browser_mutation : Array[Json] = [
-    calls[0],
-    {
-      "tool": "browser",
-      "planner": "model-tool-call",
-      "arguments": { "action": "eval", "expression": "document.body.remove()" },
-    },
-  ]
-  assert_false(
-    mooncode_runtime_turn_parallel_read_batch_allowed(
-      root,
-      parallel_read_test_plan(browser_mutation),
-      browser_mutation,
-      resuming_step=false,
-    ),
-  )
   let mixed : Array[Json] = [
     calls[0],
     {

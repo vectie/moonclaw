@@ -8,10 +8,6 @@ test "explicit approval is independent of tool words and planner claims" {
       "tool": "moon_cmd",
       "arguments": { "command": "test", "args": ["--update"] },
     },
-    {
-      "tool": "browser",
-      "arguments": { "action": "open", "url": "https://example.com" },
-    },
   ]
   for call in calls {
     assert_false(mooncode_runtime_tool_requires_approval(call))

@@ -19,7 +19,6 @@ async test "mooncode exposes bounded image evidence without journaling bytes" {
   let serialized = execution.stringify()
   assert_false(serialized.contains("base64"))
   assert_true(serialized.contains("model_image_evidence"))
-  assert_true(mooncode_tool_supported("browser"))
 }
 
 ///|

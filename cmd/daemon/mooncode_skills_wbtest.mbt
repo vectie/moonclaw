@@ -32,7 +32,25 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
     "fixture checklist",
   )
   let catalog = mooncode_runtime_turn_skill_catalog(book_root)
-  assert_true(catalog.contains("<name>fixture-review</name>"))
+  let listing = catalog
+    .split("<available_skills>\n")
+    .nth(1)
+    .unwrap()
+    .split("\n</available_skills>")
+    .head()
+    .unwrap()
+  guard @json.parse(listing) is Array(entries) else { fail("skill listing") }
+  assert_true(
+    entries.any(entry => {
+      entry
+      is {
+        "id": "fixture-review",
+        "name": "fixture-review",
+        "description": "Review fixture files using the installed fixture procedure.",
+        ..
+      }
+    }),
+  )
   let loaded = mooncode_execute_tool_call(
     "session-skills",
     book_root,

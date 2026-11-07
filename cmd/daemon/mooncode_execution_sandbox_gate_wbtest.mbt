@@ -1,6 +1,6 @@
 ///|
 test "MoonCode missing deployment refusal identifies the execution boundary" {
-  for tool in ["shell", "moon_ide", "moon_cmd", "browser"] {
+  for tool in ["shell", "moon_ide", "moon_cmd"] {
     let refusal = mooncode_execution_sandbox_refusal(tool)
     assert_false(mooncode_json_bool(refusal, "ok", default=true))
     assert_true(mooncode_json_bool(refusal, "is_error", default=false))
@@ -390,7 +390,6 @@ async test "MoonCode process entry points refuse before host spawn" {
     mooncode_tool_shell("/", { "cmd": "true" }),
     mooncode_tool_moon_ide("/", { "action": "outline", "path": "." }),
     mooncode_tool_moon_cmd("/", { "command": "check" }),
-    mooncode_tool_browser("session", "/", { "action": "snapshot" }),
   ]
   for result in results {
     assert_false(mooncode_json_bool(result, "ok", default=true))

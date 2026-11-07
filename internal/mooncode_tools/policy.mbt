@@ -85,13 +85,6 @@ pub fn classify(tool : String, arguments : Json) -> Policy {
         !moon_cmd_is_test_update(arguments)
       policy(parallel_read=check)
     }
-    "browser" => {
-      let action = string_field(arguments, "action")
-      let observation = ["snapshot", "screenshot", "get", "console", "errors"].contains(
-        action,
-      )
-      policy(parallel_read=observation)
-    }
     _ => policy()
   }
 }
