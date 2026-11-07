@@ -55,16 +55,6 @@ pub fn native_event_projection_command_scope_keys() -> Array[String] {
 }
 
 ///|
-pub fn native_event_projection_diagnostic_sources() -> Array[String] {
-  ["moonclaw-native-moon-check-watcher"]
-}
-
-///|
-pub fn native_event_projection_diagnostic_titles() -> Array[String] {
-  ["MoonCode moon_check update"]
-}
-
-///|
 pub fn native_event_has_command_scope(event : Json) -> Bool {
   let packet = native_event_json_object_field_or_empty(event, "command_packet")
   native_event_json_string(packet, "command_id", default="") != "" ||
@@ -79,11 +69,7 @@ pub fn native_event_has_command_scope(event : Json) -> Bool {
 ///|
 pub fn native_event_is_diagnostic_only(event : Json) -> Bool {
   let kind = native_event_kind(event)
-  let source = native_event_json_string(event, "source", default="")
-  let title = native_event_json_string(event, "title", default="")
-  runtime_diagnostic_event_name_is_supported(kind) ||
-  native_event_projection_diagnostic_sources().contains(source) ||
-  native_event_projection_diagnostic_titles().contains(title)
+  runtime_diagnostic_event_name_is_supported(kind)
 }
 
 ///|
@@ -234,8 +220,6 @@ pub fn native_event_projection_contract_json() -> Json {
     "moonclaw_event_mapping": moonclaw_event_mapping_json(),
     "command_scope_keys": native_event_projection_command_scope_keys(),
     "diagnostic_events": runtime_diagnostic_event_names(),
-    "diagnostic_sources": native_event_projection_diagnostic_sources(),
-    "diagnostic_titles": native_event_projection_diagnostic_titles(),
     "user_visible_events_require_command_scope": [
       event_lane_transcript(),
       event_lane_tool(),

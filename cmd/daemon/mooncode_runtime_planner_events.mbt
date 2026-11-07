@@ -190,7 +190,6 @@ fn mooncode_runtime_turn_tool_call_id(
 fn mooncode_runtime_turn_tool_call_lane(tool : String, path : String) -> String {
   match tool {
     "moon_cmd" => "test"
-    "moon_check" => "test"
     "write" | "edit" => "diff"
     "finish" => "review"
     _ if path != "" => "diff"

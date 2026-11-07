@@ -175,15 +175,6 @@ async fn mooncode_native_eval_harness_report(
     expected_kind="moon_cmd.finished",
     expected_detail="runs structured MoonBit commands from the selected book root",
   )
-  let moon_check_case = mooncode_eval_tool_case(
-    session_id,
-    fixture_root,
-    "moon_check",
-    "eval-moon-check",
-    { "timeout_ms": 30000 },
-    now~,
-    expected_detail="runs MoonBit checks from the selected book root",
-  )
   let finish_case = mooncode_eval_tool_case(
     session_id,
     fixture_root,
@@ -195,8 +186,7 @@ async fn mooncode_native_eval_harness_report(
     expected_detail="records terminal finish output",
   )
   let tool_cases = [
-    write_case, read_case, shell_case, moon_ide_case, moon_cmd_case, moon_check_case,
-    finish_case,
+    write_case, read_case, shell_case, moon_ide_case, moon_cmd_case, finish_case,
   ]
   let file_edit_cases = [
     edit_case, apply_patch_case, revert_patch_case, apply_unified_case, revert_unified_case,
@@ -396,6 +386,5 @@ async test "mooncode native eval harness proves tools and file edits" (
   assert_eq(mooncode_json_string(harnesses[1], "id", default=""), "file_edit")
   assert_true(report.stringify().contains("moon_ide"))
   assert_true(report.stringify().contains("moon_cmd"))
-  assert_true(report.stringify().contains("moon_check"))
   assert_true(report.stringify().contains("+hello MoonCode"))
 }

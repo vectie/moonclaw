@@ -267,26 +267,6 @@ fn mooncode_build_native_tool_catalog() -> Array[
       },
     ),
     mooncode_runtime_turn_model_tool(
-      "moon_check",
-      "Run moon check inside the selected MoonBook.",
-      {
-        "type": "object",
-        "properties": {
-          "cwd": {
-            "type": "string",
-            "description": "MoonBook-relative module directory.",
-          },
-          "target": {
-            "type": "string",
-            "enum": ["wasm", "wasm-gc", "js", "native", "llvm", "all"],
-          },
-          "timeout_ms": { "type": "integer" },
-          "max_output_chars": { "type": "integer" },
-        },
-        "additionalProperties": false,
-      },
-    ),
-    mooncode_runtime_turn_model_tool(
       "finish",
       "Deliver completed work with a concise summary and verification.",
       {

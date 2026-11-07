@@ -11,7 +11,7 @@ New messages use `_moonclaw_context` with
 
 - `kind`: the closed set `system`, `skill`, `environment`, `warning`,
   `tool_result`, `user`, or `assistant`.
-- `source`: a producer identifier such as `skill.loaded_receipt`.
+- `source`: a producer identifier such as `skill.loaded_resource`.
 - `content_items`: one provenance entry per visible content item, with a
   recognized kind and valid source.
 - `requires_separate_message`: a Boolean preserving required message boundaries.

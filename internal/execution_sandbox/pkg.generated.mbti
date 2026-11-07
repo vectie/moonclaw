@@ -22,8 +22,6 @@ pub fn local_sandbox_executor_config(String, String, String, String, String, all
 
 pub async fn make_exec_plan(SandboxExecutorConfig, String, String, String, Array[String], Int) -> SandboxApprovalPlan
 
-pub async fn make_moon_check_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
-
 pub async fn make_moon_diagnostics_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
 
 pub async fn make_sandbox_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
@@ -48,15 +46,11 @@ pub async fn run_approved_shell(SandboxExecutorConfig, String, String, String, S
 
 pub async fn run_exec(SandboxExecutorConfig, String, String, String, Array[String], Int) -> SandboxExecution
 
-pub async fn run_moon_check(SandboxExecutorConfig, String, String, String, Int) -> SandboxExecution
-
 pub async fn run_moon_diagnostics(SandboxExecutorConfig, String, String, String, Int) -> SandboxExecution
 
 pub async fn validate_approved_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
 
 pub async fn validate_exec_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String, Array[String]) -> Unit
-
-pub async fn validate_moon_check_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
 
 pub async fn validate_moon_diagnostics_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
 

@@ -28,10 +28,6 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
           "arguments": mooncode_runtime_turn_moon_cmd_arguments(command),
         },
         {
-          "tool": "moon_check",
-          "arguments": mooncode_runtime_turn_moon_check_arguments(command),
-        },
-        {
           "tool": "finish",
           "arguments": {
             "answer": "Native MoonCode runtime completed \{action}.",
@@ -108,32 +104,20 @@ fn mooncode_runtime_turn_prompt_text(command : Json) -> String {
 }
 
 ///|
-fn mooncode_runtime_turn_moon_check_arguments(command : Json) -> Json {
-  let payload = mooncode_json_object_field_or_empty(command, "payload")
-  let target = mooncode_json_string(payload, "moon_check_target", default="")
-  if target == "" {
-    { "timeout_ms": 60000, "max_output_chars": 16000 }
-  } else {
-    { "target": target, "timeout_ms": 60000, "max_output_chars": 16000 }
-  }
-}
-
-///|
 fn mooncode_runtime_turn_moon_cmd_arguments(command : Json) -> Json {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let action = mooncode_json_string(command, "command", default="prompt")
-  let default_command = if action == "run_build" { "build" } else { "check" }
+  let default_command = match action {
+    "run_build" => "build"
+    "run_tests" => "test"
+    _ => "check"
+  }
   let moon_command = mooncode_json_string(
     payload,
     "moon_cmd_command",
     default=default_command,
   )
   let target = mooncode_json_string(payload, "moon_cmd_target", default="")
-  let target = if target == "" {
-    mooncode_json_string(payload, "moon_check_target", default="")
-  } else {
-    target
-  }
   if target == "" {
     { "command": moon_command, "timeout_ms": 60000, "max_output_chars": 16000 }
   } else {

@@ -59,11 +59,6 @@ pub fn runtime_tool_moon_cmd() -> String {
 }
 
 ///|
-pub fn runtime_tool_moon_check() -> String {
-  "moon_check"
-}
-
-///|
 pub fn runtime_tool_finish() -> String {
   "finish"
 }
@@ -122,7 +117,6 @@ pub fn runtime_tool_names() -> Array[String] {
     runtime_tool_write(),
     runtime_tool_moon_ide(),
     runtime_tool_moon_cmd(),
-    runtime_tool_moon_check(),
     runtime_tool_finish(),
     runtime_tool_spawn_workers(),
     runtime_tool_wait_workers(),
@@ -149,7 +143,6 @@ pub fn runtime_tool_native_required_tools() -> Array[String] {
     runtime_tool_shell(),
     runtime_tool_moon_ide(),
     runtime_tool_moon_cmd(),
-    runtime_tool_moon_check(),
     runtime_tool_finish(),
     runtime_tool_spawn_workers(),
     runtime_tool_wait_workers(),

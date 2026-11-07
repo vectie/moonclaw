@@ -81,8 +81,7 @@ fn mooncode_tool_output_maximum(arguments : Json) -> Int32 {
 ///|
 fn mooncode_runtime_turn_tool_supports_output_limit(tool : String) -> Bool {
   match tool {
-    "read" | "shell" | "browser" | "moon_ide" | "moon_cmd" | "moon_check" =>
-      true
+    "read" | "shell" | "browser" | "moon_ide" | "moon_cmd" => true
     _ => false
   }
 }

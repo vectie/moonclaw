@@ -88,7 +88,6 @@ async fn mooncode_execute_tool_call_in_runtime(
           "browser" => mooncode_tool_browser(session_id, book_root, arguments)
           "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
           "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
-          "moon_check" => mooncode_tool_moon_check(book_root, arguments)
           "finish" => mooncode_tool_finish(arguments)
           "spawn_workers" =>
             match runtime {
@@ -1651,7 +1650,6 @@ fn mooncode_tool_event_lane(
 ) -> String {
   match tool {
     "moon_cmd" => "test"
-    "moon_check" => "test"
     "finish" => "review"
     "apply_patch" | "revert_patch" => "review"
     "write" | "edit" => "diff"
@@ -1665,7 +1663,6 @@ fn mooncode_tool_event_kind(tool : String) -> String {
   match tool {
     "moon_ide" => "moon_ide.finished"
     "moon_cmd" => "moon_cmd.finished"
-    "moon_check" => "moon_check.finished"
     "finish" => "finish"
     "apply_patch" => "runtime.patch_applied"
     "revert_patch" => "runtime.patch_reverted"
@@ -1679,7 +1676,6 @@ fn mooncode_tool_event_name(tool : String) -> String {
     "apply_patch" => "patch_applied"
     "revert_patch" => "patch_reverted"
     "moon_cmd" => "tool_result"
-    "moon_check" => "tool_result"
     "finish" => "finish"
     _ => "tool_result"
   }

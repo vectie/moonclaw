@@ -130,17 +130,6 @@ async fn Daemon::mooncode_runtime_events_state_payload(
   let journal_path = mooncode_session_journal_path(book_root, session_id)
   let journal = mooncode_read_session_journal(book_root, session_id)
   let events = mooncode_journal_entries(journal, mooncode_journal_event())
-  let watcher_state = mooncode_moon_check_read_state(book_root)
-  let watcher_update = mooncode_moon_check_runtime_update_event(
-    session_id,
-    book_root,
-    watcher_state,
-    now=self.clock.now(),
-  )
-  let projected_events = events.copy()
-  if watcher_update is Some(event) {
-    projected_events.push(event)
-  }
   {
     "kind": "mooncode-runtime-events-state",
     "protocol": mooncode_protocol_version(),
@@ -148,77 +137,11 @@ async fn Daemon::mooncode_runtime_events_state_payload(
     "session_id": session_id,
     "book_root": book_root,
     "journal_jsonl": journal_path,
-    "event_count": projected_events.length(),
+    "event_count": events.length(),
     "durable_event_count": events.length(),
-    "watcher_update_ready": watcher_update is Some(_),
-    "moon_check_watcher": watcher_state,
     "live_binding_ready": self.mooncode_sessions.get(session_id) is Some(_),
-    "events": Json::array(projected_events),
+    "events": Json::array(events),
   }
-}
-
-///|
-fn mooncode_moon_check_runtime_update_event(
-  session_id : String,
-  book_root : String,
-  watcher_state : Json,
-  now~ : @clock.Timestamp,
-) -> Json? {
-  if mooncode_json_string(watcher_state, "kind", default="") !=
-    "mooncode-moon-check-watcher" {
-    return None
-  }
-  let status = mooncode_json_string(watcher_state, "status", default="stopped")
-  let event_status = if status == "running" { "running" } else { "done" }
-  Some({
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-moon-check-update-\{mooncode_json_int(watcher_state, "seq", default=0)}-\{now}",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": "",
-    "lane": "test",
-    "kind": "runtime_update",
-    "event": "runtime_update",
-    "title": "MoonCode moon_check update",
-    "status": event_status,
-    "detail": mooncode_moon_check_update_text(watcher_state),
-    "content": mooncode_moon_check_update_text(watcher_state),
-    "created_at": now,
-    "source": "moonclaw-native-moon-check-watcher",
-    "moon_check_watcher": watcher_state,
-  })
-}
-
-///|
-fn mooncode_moon_check_update_text(watcher_state : Json) -> String {
-  let output = mooncode_json_string(watcher_state, "output", default="")
-  let output = if output == "" { "(no output yet)" } else { output }
-  let exit = if mooncode_json_string(watcher_state, "status", default="") ==
-    "running" {
-    ""
-  } else {
-    "\nexit=\{mooncode_json_int(watcher_state, "exit_status", default=-1)}"
-  }
-  let truncated = if mooncode_json_bool(
-      watcher_state,
-      "truncated",
-      default=false,
-    ) {
-    "\ntruncated=true\nmax_output_chars=\{mooncode_json_int(watcher_state, "max_output_chars", default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS)}"
-  } else {
-    ""
-  }
-  let restart_count = mooncode_json_int(
-    watcher_state,
-    "restart_count",
-    default=0,
-  )
-  let restart = if restart_count > 0 {
-    "\nrestart_count=\{restart_count}\nrestart_limit=\{mooncode_json_int(watcher_state, "restart_limit", default=3)}"
-  } else {
-    ""
-  }
-  "[moon_check update]\nevents=1\nid=\{mooncode_json_string(watcher_state, "id", default="moon-check")}\ncwd=.\ncommand=\{mooncode_json_string(watcher_state, "command", default="moon check --watch --diagnostic-limit 10")}\nstatus=\{mooncode_json_string(watcher_state, "status", default="stopped")}\nseq=\{mooncode_json_int(watcher_state, "seq", default=0)}\{exit}\{truncated}\{restart}\n\{output}"
 }
 
 ///|
@@ -319,6 +242,12 @@ fn mooncode_runtime_event_lane(raw : Json, kind : String) -> String {
   if lane != "" {
     return lane
   }
+  if kind.has_suffix(".finished") {
+    let tool = kind[:kind.length() - 9].to_owned()
+    if mooncode_tool_supported(tool) {
+      return mooncode_tool_event_lane(tool, path="", diff="")
+    }
+  }
   if kind.contains("assistant") || kind.contains("message") {
     "transcript"
   } else if kind.contains("tool") ||
@@ -415,7 +344,7 @@ test "mooncode runtime events normalize batch into durable lanes" {
           "content": "working",
         },
         {
-          "kind": "moon_check.finished",
+          "kind": "moon_cmd.finished",
           "command_packet": { "command_id": "cmd-2" },
           "status": "passed",
           "detail": "27/27 tests passed",
@@ -452,46 +381,4 @@ test "mooncode runtime events accept single tool event payload" {
     mooncode_json_string(records[0], "command_id", default=""),
     "cmd-tool",
   )
-}
-
-///|
-test "mooncode runtime events synthesize moon_check watcher update" {
-  let watcher : Json = {
-    "kind": "mooncode-moon-check-watcher",
-    "protocol": mooncode_protocol_version(),
-    "owner": "moonclaw",
-    "book_root": "/tmp/book",
-    "target": "",
-    "key": "moon-check:/tmp/book",
-    "id": "moon-check-123",
-    "command": "moon check --watch --diagnostic-limit 10",
-    "watcher": "reused",
-    "status": "running",
-    "seq": 7,
-    "exit_status": 0,
-    "elapsed_ms": 42,
-    "restart_count": 1,
-    "restart_limit": 3,
-    "truncated": false,
-    "max_output_chars": 12000,
-    "output": "Success, waiting for filesystem changes...",
-  }
-  guard mooncode_moon_check_runtime_update_event(
-      "session-demo",
-      "/tmp/book",
-      watcher,
-      now=@clock.Timestamp::from_ms(77L),
-    )
-    is Some(event) else {
-    fail("expected moon_check watcher event")
-  }
-  assert_eq(mooncode_json_string(event, "kind", default=""), "runtime_update")
-  assert_eq(mooncode_json_string(event, "lane", default=""), "test")
-  assert_eq(mooncode_json_string(event, "status", default=""), "running")
-  let content = mooncode_json_string(event, "content", default="")
-  assert_true(content.contains("[moon_check update]"))
-  assert_true(content.contains("id=moon-check-123"))
-  assert_true(content.contains("watch --diagnostic-limit 10"))
-  assert_true(content.contains("restart_count=1"))
-  assert_true(content.contains("Success"))
 }

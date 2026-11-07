@@ -10,14 +10,17 @@ fn mooncode_runtime_turn_test_results(
   let command_id = mooncode_command_id(command)
   let packet = mooncode_json_object_field_or_empty(command, "packet")
   for index, execution in tool_results {
-    if mooncode_json_string(execution, "tool", default="") != "moon_check" {
+    let arguments = mooncode_json_object_field_or_empty(execution, "arguments")
+    let moon_command = mooncode_json_string(arguments, "command", default="")
+    if mooncode_json_string(execution, "tool", default="") != "moon_cmd" ||
+      !["check", "test"].contains(moon_command) {
       continue
     }
     let result = mooncode_json_object_field_or_empty(execution, "result")
     let metadata = mooncode_json_object_field_or_empty(result, "metadata")
     let accepted = mooncode_json_bool(execution, "accepted", default=false)
-    let target = mooncode_json_string(metadata, "target", default="")
-    let exit_status = mooncode_json_int(metadata, "exit_status", default=-1)
+    let target = mooncode_json_string(arguments, "target", default="")
+    let exit_status = mooncode_json_int(metadata, "exit_code", default=-1)
     let elapsed_ms = mooncode_json_int(metadata, "elapsed_ms", default=0)
     let output = mooncode_json_string(result, "output", default="")
     let detail = mooncode_json_string(result, "message", default="")
@@ -49,7 +52,7 @@ fn mooncode_runtime_turn_test_results(
       "detail": detail,
       "content": output,
       "output": output,
-      "tool": "moon_check",
+      "tool": "moon_cmd",
       "target": target,
       "exit_status": exit_status,
       "elapsed_ms": elapsed_ms,

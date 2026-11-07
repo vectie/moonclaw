@@ -5,6 +5,36 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Measured working-set and duplicate-tool cleanup 2026-11-07
+
+- No paid rerun. Full loaded skills now use existing loaded_skill_messages in
+  the protected prefix, one body; tool receipt retains the journal reference.
+  Delete separate loaded-skill receipt and merge normal/recovery message paths.
+  Existing continuation hydration restores complete tool executions from journal.
+- Existing compiler defaults to a 12288 working window, overridable by existing
+  payload; no stop/approval. Sweeps reject smaller settings that lose recorded
+  edit inputs. 12 frozen responses: 108403 -> 78258 local tokens (-27.8%):
+  671 prefix/receipt +28322 old presentations +1152 check schema. Full test
+  read stays; its later presentations account for 21789. This is not new usage,
+  fewer turns, guaranteed future recall cost or quality across tasks.
+- Remove moon_check, simulated watcher state/events, duplicate SDK grant wrappers
+  and appended check. run_tests runs one test; run_build one build. Core catalogs
+  aligned with Desk. Known finished native events reuse the tool's existing lane.
+- Delete uncalled Request.compact_for_overload and three dedicated tests; token
+  gain zero. Review expected removal-only public API diffs; no new exports.
+- All 15 canonical results recalled exactly via 553 local pages/55.7s; no original
+  operation replayed. Metadata trim prototype saved 82 after actual compaction
+  (some individual deletions increased input), so none of those branches ship.
+- Pitfall: source fixtures can contain literal ///|; splitting a source file by
+  that marker cannot reliably identify whole test blocks. Use explicit patches
+  for test migrations. Retain audit fixture/failed-check logs, not product tests.
+  Evidence: /Users/kq/mooncode-cost-components-20261107; original costs unchanged.
+- Final Native 1837/1837 and Desk 1726/1726, info/fmt pass. Claw production
+  -957 / tests -239 lines; Desk -23 / -12. Removal-only generated interfaces.
+- Audit provider content may be string or text-part arrays; normalize both
+  before checking retained bytes. The initial string-only loss report was
+  invalid and excluded from the window decision.
+
 ## Schema and input follow-up 2026-11-07
 
 - Shorten repeated tool descriptions and existing main prompt; guide targeted

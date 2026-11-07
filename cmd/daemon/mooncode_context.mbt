@@ -46,10 +46,12 @@ async fn mooncode_runtime_turn_compile_context(
   model_window : Int32,
   output_tokens : Int32,
 ) -> MoonCodeContextProjection {
+  // Keep an active working set, rather than waiting for the model's full
+  // capacity. The existing payload override can request a larger window.
   let requested_window = mooncode_json_int(
     mooncode_json_object_field_or_empty(command, "payload"),
     "planner_context_window_tokens",
-    default=model_window,
+    default=model_window.min(12288),
   )
   let window = if model_window > 0 {
     if requested_window > 0 {

@@ -1,5 +1,5 @@
 ///|
-fn context_test_messages() -> Array[Json] {
+fn context_test_messages(count~ : Int32 = 50) -> Array[Json] {
   let messages : Array[Json] = [
     mooncode_runtime_context_text_message(
       "system",
@@ -14,7 +14,7 @@ fn context_test_messages() -> Array[Json] {
       "user.test_task",
     ),
   ]
-  for index in 0..<50 {
+  for index in 0..<count {
     let id = "call-\{index}"
     messages.push(
       mooncode_runtime_context_message(
@@ -80,6 +80,23 @@ async test "default context projection preserves task, latest result and source 
     128,
   )
   assert_eq(roomy.messages, messages)
+  let larger = context_test_messages(count=500)
+  let active = mooncode_runtime_turn_compile_context(
+    {},
+    larger,
+    [],
+    100000,
+    128,
+  )
+  assert_true(mooncode_json_bool(active.metrics, "applied", default=false))
+  let expanded = mooncode_runtime_turn_compile_context(
+    { "payload": { "planner_context_window_tokens": 100000 } },
+    larger,
+    [],
+    100000,
+    128,
+  )
+  assert_eq(expanded.messages, larger)
 }
 
 ///|

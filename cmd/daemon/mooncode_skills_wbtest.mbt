@@ -88,7 +88,7 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
 }
 
 ///|
-test "mooncode retains full loaded skill instructions across checkpoints" {
+async test "mooncode retains one full skill through repeated context compilation" {
   let long_body = "a".repeat(6000)
   let execution : Json = {
     "accepted": true,
@@ -105,20 +105,57 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
     },
   }
   let content = mooncode_runtime_turn_model_tool_result_content(execution)
-  assert_true(content.length() > 6000)
+  assert_false(content.contains(long_body))
   assert_false(content.contains("truncated for planner context"))
   let retained = mooncode_runtime_turn_loaded_skill_messages([execution])
   assert_eq(retained.length(), 1)
   assert_true(
     mooncode_json_string(retained[0], "content", default="").contains(long_body),
   )
-  let receipts = mooncode_runtime_turn_loaded_skill_receipt_messages([execution])
-  assert_eq(receipts.length(), 1)
-  let receipt = mooncode_json_string(receipts[0], "content", default="")
-  assert_true(receipt.contains("loaded completely earlier"))
-  assert_true(receipt.contains("fixture-review/SKILL.md"))
-  assert_true(receipt.contains("fixture-digest"))
-  assert_false(receipt.contains(long_body))
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(execution, "result"),
+      "output",
+      default="",
+    ),
+    long_body,
+  )
+  let command : Json = {
+    "command": "prompt",
+    "text": "complete the original task",
+  }
+  let projected = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    { "model_messages": Json(context_test_messages()) },
+    [],
+    all_tool_results=[execution],
+  )
+  let first = mooncode_runtime_turn_compile_context(
+    command,
+    projected,
+    [],
+    2000,
+    128,
+  )
+  assert_true(mooncode_json_bool(first.metrics, "applied", default=false))
+  let resumed = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    { "model_messages": Json(first.messages) },
+    [],
+    all_tool_results=[execution],
+  )
+  let second = mooncode_runtime_turn_compile_context(
+    command,
+    resumed,
+    [],
+    2000,
+    128,
+  )
+  for messages in [first.messages, second.messages] {
+    let visible = Json(mooncode_runtime_context_visible_messages(messages)).stringify()
+    assert_eq(visible.split(long_body).count(), 2)
+    assert_false(visible.contains("Loaded-skill receipt:"))
+  }
 }
 
 ///|

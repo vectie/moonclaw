@@ -397,104 +397,6 @@ async test "mooncode native shell allows read-only inline interpreter inspection
 }
 
 ///|
-async test "mooncode moon_check records reusable watcher state" (t : @test.Test) {
-  ignore(t)
-  let suite_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-check-watch-suite-XXXXXX"),
-  )
-  let book_root = suite_root |> @pathx.join("books/research-demo")
-  @fsx.make_directory(book_root, recursive=true, exists_ok=true)
-  mooncode_prepare_eval_fixture(book_root)
-  let first = mooncode_execute_tool_call(
-    "session-check-watch",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-check-watch",
-      "book_root": book_root,
-      "tool": "moon_check",
-      "command_id": "cmd-check-start",
-      "arguments": { "timeout_ms": 30000 },
-    },
-    now=@clock.Timestamp::from_ms(61L),
-  )
-  let first_result = mooncode_json_object_field_or_empty(first, "result")
-  if !mooncode_execution_sandbox_deployment_configured() {
-    mooncode_assert_execution_sandbox_refusal(first_result)
-    assert_false(@fsx.exists(mooncode_moon_check_state_path(book_root)))
-    return
-  }
-  assert_true(mooncode_json_bool(first_result, "ok", default=false))
-  let first_metadata = mooncode_json_object_field_or_empty(
-    first_result, "metadata",
-  )
-  assert_eq(
-    mooncode_json_string(first_metadata, "watcher", default=""),
-    "started",
-  )
-  assert_eq(
-    mooncode_json_string(first_metadata, "status", default=""),
-    "running",
-  )
-  assert_eq(mooncode_json_int(first_metadata, "seq", default=0), 1)
-  let state_path = mooncode_moon_check_state_path(book_root)
-  assert_eq(
-    state_path,
-    suite_root
-    |> @pathx.join(
-      ".moonsuite/products/moonclaw/mooncode/watchers/moon-check.json",
-    ),
-  )
-  assert_true(@fsx.exists(state_path))
-  assert_false(state_path.contains("/books/research-demo/.moonsuite"))
-  let second = mooncode_execute_tool_call(
-    "session-check-watch",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-check-watch",
-      "book_root": book_root,
-      "tool": "moon_check",
-      "command_id": "cmd-check-reuse",
-      "arguments": { "timeout_ms": 30000 },
-    },
-    now=@clock.Timestamp::from_ms(62L),
-  )
-  let second_metadata = mooncode_json_object_field_or_empty(
-    mooncode_json_object_field_or_empty(second, "result"),
-    "metadata",
-  )
-  assert_eq(
-    mooncode_json_string(second_metadata, "watcher", default=""),
-    "reused",
-  )
-  assert_eq(mooncode_json_int(second_metadata, "seq", default=0), 2)
-  let third = mooncode_execute_tool_call(
-    "session-check-watch",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-check-watch",
-      "book_root": book_root,
-      "tool": "moon_check",
-      "command_id": "cmd-check-replace",
-      "arguments": { "target": "native", "timeout_ms": 30000 },
-    },
-    now=@clock.Timestamp::from_ms(63L),
-  )
-  let third_metadata = mooncode_json_object_field_or_empty(
-    mooncode_json_object_field_or_empty(third, "result"),
-    "metadata",
-  )
-  assert_eq(
-    mooncode_json_string(third_metadata, "watcher", default=""),
-    "replaced",
-  )
-  assert_eq(mooncode_json_int(third_metadata, "restart_count", default=0), 1)
-  assert_eq(mooncode_json_int(third_metadata, "seq", default=0), 3)
-}
-
-///|
 test "mooncode moon_ide qualifies line-column locations with path" {
   let book_root = "/tmp/mooncode-loc-book"
   assert_eq(
@@ -809,10 +711,6 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   )
   let nested_result = mooncode_json_object_field_or_empty(
     nested_outline, "result",
-  )
-  assert_true(mooncode_moon_check_args("") == ["check"])
-  assert_true(
-    mooncode_moon_check_args("native") == ["check", "--target", "native"],
   )
   if !mooncode_execution_sandbox_deployment_configured() {
     mooncode_assert_execution_sandbox_refusal(nested_result)

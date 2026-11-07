@@ -476,7 +476,6 @@ pub struct Request {
   tool_choice : ChatCompletionToolChoice?
   parallel_tool_calls : Bool?
 }
-pub fn Request::compact_for_overload(Self, Int) -> Self
 pub fn Request::to_json(Self) -> Json
 pub impl ToJson for Request
 

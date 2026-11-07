@@ -609,45 +609,6 @@ fn moon_diagnostics_arguments(target : String) -> Array[String] raise {
 }
 
 ///|
-pub async fn make_moon_check_plan(
-  config : SandboxExecutorConfig,
-  workspace : String,
-  working_directory : String,
-  target : String,
-  timeout_ms : Int32,
-) -> SandboxApprovalPlan {
-  validate_operator_config(config)
-  guard config.allowed_commands.contains("moon") else {
-    fail("MoonFort configuration does not allow the moon capability")
-  }
-  let workspace_root = @fsx.resolve(workspace)
-  let canonical_working_directory = @fsx.resolve(working_directory)
-  let relative = relative_directory(workspace_root, canonical_working_directory)
-  let now_ms = @clock.epoch.now().ms()
-  let grant = MoonFortExecutionGrant::{
-    protocol_version: 3,
-    approval_id: secure_identifier("approval"),
-    request_id: secure_identifier("run"),
-    workspace_id: config.workspace_id,
-    backend: config.backend,
-    enforcement_requirement: config.enforcement_requirement,
-    network: config.network,
-    allowed_egress: config.allowed_egress.copy(),
-    allowed_commands: ["moon"],
-    limits: { ..config.limits, wall_clock_ms: timeout_ms, },
-    working_directory: relative,
-    command: Exec(tool="moon", args=moon_check_arguments(target)),
-    backend_config_id: config.backend_config_id,
-    expires_at_ms: now_ms + config.grant_ttl_ms,
-  }
-  {
-    grant,
-    expected_approval_digest: moonfort_grant_digest(grant),
-    runtime_binding_digest: runtime_binding_digest(config),
-  }
-}
-
-///|
 pub async fn make_moon_diagnostics_plan(
   config : SandboxExecutorConfig,
   workspace : String,
@@ -749,35 +710,6 @@ pub async fn validate_exec_plan(
     tool == expected_tool &&
     args == expected_args else {
     fail("approved MoonFort executable command does not match the request")
-  }
-}
-
-///|
-pub async fn validate_moon_check_plan(
-  plan : SandboxApprovalPlan,
-  config : SandboxExecutorConfig,
-  expected_workspace : String,
-  expected_working_directory : String,
-  expected_target : String,
-) -> Unit {
-  guard plan.expected_approval_digest == moonfort_grant_digest(plan.grant) else {
-    fail("approved MoonFort grant digest is invalid")
-  }
-  guard plan.runtime_binding_digest == runtime_binding_digest(config) else {
-    fail("MoonFort operator configuration changed after approval")
-  }
-  guard plan.grant.expires_at_ms > @clock.epoch.now().ms() else {
-    fail("approved MoonFort grant expired")
-  }
-  let workspace = @fsx.resolve(expected_workspace)
-  let working_directory = @fsx.resolve(expected_working_directory)
-  let relative = relative_directory(workspace, working_directory)
-  let expected_args = moon_check_arguments(expected_target)
-  guard plan.grant.working_directory == relative &&
-    plan.grant.command is Exec(tool~, args~) &&
-    tool == "moon" &&
-    args == expected_args else {
-    fail("approved MoonFort moon check command does not match the request")
   }
 }
 
@@ -1044,26 +976,6 @@ pub(all) struct SandboxExecution {
   receipt : MoonFortReceipt
   audit_path : String
 } derive(Debug, Eq, ToJson, @json.FromJson)
-
-///|
-/// Run only the fixed `moon check` capability through the configured grant
-/// publisher and one-shot executor. No host fallback or executable selector is
-/// exposed.
-pub async fn run_moon_check(
-  config : SandboxExecutorConfig,
-  workspace : String,
-  working_directory : String,
-  target : String,
-  timeout_ms : Int32,
-) -> SandboxExecution {
-  let plan = make_moon_check_plan(
-    config, workspace, working_directory, target, timeout_ms,
-  )
-  validate_moon_check_plan(plan, config, workspace, working_directory, target)
-  let receipt = invoke_moonfort(config, plan)
-  let audit_path = persist_sandbox_audit(config, plan, receipt)
-  { plan, receipt, audit_path, }
-}
 
 ///|
 /// Run only the fixed structured-diagnostics form of `moon check` through

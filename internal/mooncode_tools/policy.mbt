@@ -65,7 +65,7 @@ pub fn classify(tool : String, arguments : Json) -> Policy {
     // actions wait until the model has consumed those instructions.
     "read_skill" | "finish" | "checkpoint" => policy(replay=true)
     "mcp_list_tools" | "read_result" => policy(parallel_read=true, replay=true)
-    "moon_ide" | "moon_check" => policy(parallel_read=true)
+    "moon_ide" => policy(parallel_read=true)
     "glob" | "grep" | "web_fetch" | "web_search" => policy(after_skill=true)
     "shell" => {
       let read_only = shell_is_demonstrably_read_only(

@@ -7,9 +7,10 @@ summary service, feature flag or human confirmation is required.
 
 ## Model window
 
-The configured model's `safe_zone_tokens` supplies the window. Optional
-`payload.planner_context_window_tokens` can narrow a known window, or supply an
-otherwise unknown one. Input budget is the smaller of 75% of that window and
+The default working window is the smaller of 12,288 tokens and the configured
+model's `safe_zone_tokens`. The existing `payload.planner_context_window_tokens`
+can request a larger or smaller window, bounded by known model capacity, or
+supply an otherwise unknown one. Input budget is the smaller of 75% of that window and
 the window minus the request's output-token allowance. Tool schemas count
 toward the input budget. Counts use the existing cl100k tokenizer, so they are
 estimates for other providers. Its immutable vocabulary is initialized lazily
@@ -25,9 +26,9 @@ Unknown windows, unsupported provider message shapes and compiler errors leave
 the original messages intact with a reason. Malformed overflowing tool batches
 are not transformed. An immutable prefix or newest exchange that cannot fit
 remains a minimum safe projection with `within_budget=false`; this is not a
-promise that every possible input fits. There is no secondary suffix fallback.
+promise that every possible input fits or an execution stop/approval gate.
 
-The 32-message suffix, active/shadow experiments, threshold knobs, provenance-v1
+The 32-message suffix, active/shadow experiments, provenance-v1
 reader and repeated per-follow-up output clipping were removed. Tool execution
 still owns its explicit output limits and artifact references. Tool results
 enter Context as complete JSON with their evidence reference; they are no
@@ -38,8 +39,12 @@ same compiled request and never changes the task to handle provider overload.
 
 The bundled MoonBit skill is maintained under `internal/skills/system` and
 embedded with the existing generator. Its small entrypoint links optional
-language/build references; a read_skill response still contains the complete
-selected resource. This is resource authoring, not context truncation. Generic
+language/build references. The complete accepted skill resource has one copy
+in the protected instruction prefix; its tool message keeps status/metadata
+and the journal reference. Later follow-ups rebuild this prefix from existing
+results, including after restart. The separate loaded-skill receipt and its
+string-prefix filter were removed; instruction bytes survive context pressure.
+Failed or unlocated skill reads still return their output. Generic
 long guides should not be duplicated into the always-read entrypoint.
 
 Task revisions and saved cross-command notes have one owner in the task
@@ -67,6 +72,14 @@ Missing references return an ordinary tool error. No original operation runs.
 This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
+
+The 12,288 default was selected from recorded continuous sweeps: smaller tested
+windows dropped source needed by recorded edits; this setting preserved those
+inputs, the full skill, task prefix and final verification verdict. The original
+test file is still read whole; older presentations are replaced by journal
+references after consumption. Fixed-trace savings do not prove new model
+decisions, zero recall requests, cash savings or quality across larger tasks.
+See the [component audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md).
 
 ## Journal
 

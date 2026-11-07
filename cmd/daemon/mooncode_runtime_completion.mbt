@@ -455,9 +455,6 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
     exit_code != Json(0) {
     return ""
   }
-  if tool == "moon_check" {
-    return "check"
-  }
   if tool == "moon_cmd" {
     let command = mooncode_json_string(
       mooncode_json_object_field_or_empty(result, "arguments"),

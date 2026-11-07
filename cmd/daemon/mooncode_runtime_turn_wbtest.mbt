@@ -1104,7 +1104,7 @@ async test "mooncode followup makes retained reads errors and path hints actiona
       "source",
       default="",
     ) ==
-    "skill.loaded_receipt"
+    "skill.loaded_resource"
   })
   assert_eq(receipts.length(), 1)
   assert_true(
@@ -1188,14 +1188,12 @@ test "mooncode retains planner memory across accepted checkpoints" {
   )
   assert_eq(checkpointed.length(), 5)
   assert_eq(
-    mooncode_json_string(checkpointed[3], "content", default=""),
+    mooncode_json_string(checkpointed[4], "content", default=""),
     "remembered plan inventory",
   )
-  let receipt = mooncode_json_string(checkpointed[4], "content", default="")
-  assert_true(receipt.contains("Loaded-skill receipt"))
+  let receipt = mooncode_json_string(checkpointed[3], "content", default="")
   assert_true(receipt.contains("fixture-review/SKILL.md"))
-  assert_true(receipt.contains("fixture-digest"))
-  assert_false(receipt.contains("complete retained skill instructions"))
+  assert_true(receipt.contains("complete retained skill instructions"))
 }
 
 ///|
@@ -2427,17 +2425,25 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     assert_true(mooncode_json_bool(result, "accepted", default=false))
     let execution = mooncode_json_object_field_or_empty(result, "execution")
     let tool_results = mooncode_json_array_items(execution, "tool_results")
-    assert_eq(tool_results.length(), 3)
+    assert_eq(tool_results.length(), 2)
     assert_eq(
       mooncode_json_string(tool_results[0], "tool", default=""),
       "moon_cmd",
     )
     assert_eq(
       mooncode_json_string(tool_results[1], "tool", default=""),
-      "moon_check",
+      "finish",
     )
     let test_results = mooncode_json_array_items(execution, "test_results")
     assert_eq(test_results.length(), 1)
+    assert_eq(
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(tool_results[0], "arguments"),
+        "command",
+        default="",
+      ),
+      "test",
+    )
     assert_eq(
       mooncode_json_string(test_results[0], "kind", default=""),
       "test_result",
@@ -2459,7 +2465,6 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
       mooncode_session_journal_path(book_root, session_id),
     )
     assert_true(events_log.contains("\"moon_cmd.finished\""))
-    assert_true(events_log.contains("\"moon_check.finished\""))
     assert_true(events_log.contains("\"test_result\""))
     assert_true(events_log.contains("\"test_status\":\"passed\""))
     assert_true(events_log.contains("\"runtime.turn_finished\""))
@@ -2531,7 +2536,7 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     assert_true(mooncode_json_bool(result, "accepted", default=false))
     let execution = mooncode_json_object_field_or_empty(result, "execution")
     let tool_results = mooncode_json_array_items(execution, "tool_results")
-    assert_eq(tool_results.length(), 3)
+    assert_eq(tool_results.length(), 2)
     assert_eq(
       mooncode_json_string(tool_results[0], "tool", default=""),
       "moon_cmd",
@@ -2546,35 +2551,15 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     )
     assert_eq(
       mooncode_json_string(tool_results[1], "tool", default=""),
-      "moon_check",
+      "finish",
     )
     let test_results = mooncode_json_array_items(execution, "test_results")
-    assert_eq(test_results.length(), 1)
-    assert_eq(
-      mooncode_json_string(test_results[0], "kind", default=""),
-      "test_result",
-    )
-    assert_eq(
-      mooncode_json_string(test_results[0], "test_status", default=""),
-      "passed",
-    )
-    assert_eq(mooncode_json_int(test_results[0], "exit_status", default=-1), 0)
-    assert_eq(
-      mooncode_json_string(
-        mooncode_json_object_field_or_empty(test_results[0], "command_packet"),
-        "command_id",
-        default="",
-      ),
-      command_id,
-    )
+    assert_eq(test_results.length(), 0)
     let events_log = @fsx.read_file(
       mooncode_session_journal_path(book_root, session_id),
     )
     assert_true(events_log.contains("\"moon_cmd.finished\""))
     assert_true(events_log.contains("\"moon_command\":\"build\""))
-    assert_true(events_log.contains("\"moon_check.finished\""))
-    assert_true(events_log.contains("\"test_result\""))
-    assert_true(events_log.contains("\"test_status\":\"passed\""))
     assert_true(events_log.contains("\"runtime.turn_finished\""))
   })
 }

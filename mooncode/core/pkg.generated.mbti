@@ -223,10 +223,6 @@ pub fn native_event_projection_contract_json() -> Json
 
 pub fn native_event_projection_contract_kind() -> String
 
-pub fn native_event_projection_diagnostic_sources() -> Array[String]
-
-pub fn native_event_projection_diagnostic_titles() -> Array[String]
-
 pub fn native_event_projection_problem(Json, reason~ : String) -> Json
 
 pub fn native_event_projection_report(Json, session_id~ : String, observed_at~ : String) -> Json
@@ -632,8 +628,6 @@ pub fn runtime_tool_glob() -> String
 pub fn runtime_tool_grep() -> String
 
 pub fn runtime_tool_is_supported(String) -> Bool
-
-pub fn runtime_tool_moon_check() -> String
 
 pub fn runtime_tool_moon_cmd() -> String
 

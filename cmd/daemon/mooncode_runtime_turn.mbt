@@ -1483,9 +1483,6 @@ fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
 fn mooncode_runtime_turn_call_is_verification(tool_call : Json) -> Bool {
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  if tool == "moon_check" {
-    return true
-  }
   if tool == "moon_cmd" {
     let command = mooncode_json_string(arguments, "command", default="")
     return command == "check" || command == "test" || command == "build"

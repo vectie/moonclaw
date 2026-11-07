@@ -161,11 +161,6 @@ test "mooncode core owns native event projection contract" {
     native_event_projection_command_scope_keys().contains("command_id"),
   )
   assert_true(
-    native_event_projection_diagnostic_sources().contains(
-      "moonclaw-native-moon-check-watcher",
-    ),
-  )
-  assert_true(
     native_event_has_command_scope({
       "command_packet": { "command_id": "cmd-packet" },
     }),
@@ -179,12 +174,6 @@ test "mooncode core owns native event projection contract" {
   assert_false(native_event_is_progress({ "lane": "transcript" }))
   assert_true(
     native_event_is_diagnostic_only({ "kind": "runtime.service_finished" }),
-  )
-  assert_true(
-    native_event_is_diagnostic_only({
-      "source": "moonclaw-native-moon-check-watcher",
-      "kind": "runtime_update",
-    }),
   )
   assert_true(
     native_event_requires_command_scope({ "kind": "assistant_message" }),
@@ -205,10 +194,10 @@ test "mooncode core owns native event projection contract" {
         "status": "done",
       },
       {
-        "id": "watcher",
-        "kind": "runtime_update",
-        "source": "moonclaw-native-moon-check-watcher",
-        "status": "running",
+        "id": "service",
+        "kind": "runtime.service_finished",
+        "source": "moonclaw-service",
+        "status": "done",
       },
       {
         "id": "unsafe-answer",
@@ -255,7 +244,6 @@ test "mooncode core owns native event projection contract" {
     contract.contains("\"contract_id\":\"mooncode-native-event-projection.v1\""),
   )
   assert_true(contract.contains("\"moonclaw_event_mapping\""))
-  assert_true(contract.contains("\"diagnostic_sources\""))
   assert_true(contract.contains("\"command_scope_keys\""))
   assert_false(contract.contains("internal/mooncode"))
   assert_false(contract.contains("internal/moonwiki"))

@@ -563,70 +563,47 @@ fn mooncode_runtime_turn_model_followup_base_messages(
 ) -> Array[Json] {
   ignore(tool_results)
   let previous = mooncode_json_array_items(previous_plan, "model_messages")
-  if previous.length() >= 2 {
-    // A milestone checkpoint records durable task progress; it is not evidence
-    // that the planner can forget the source, diagnostics, and ownership
-    // inventory used to reach that milestone. Keep the actual transcript so a
-    // long-horizon task continues from retained reasoning instead of repeating
-    // discovery after every checkpoint.
-    // Build the follow-up transcript without mutating the durable prior plan.
-    // A resumed patient-replan checkpoint stores `plan` and `planner_steps`
-    // separately after journal decoding; mutating only `plan.model_messages`
-    // would make the next continuation fail its integrity check.
-    let task_contract = mooncode_runtime_turn_model_prompt(command)
-    let compacted = mooncode_runtime_turn_context_previous_messages(
-      previous, task_contract,
+  let retained = if previous.length() >= 2 {
+    mooncode_runtime_turn_context_previous_messages(
+      previous,
+      mooncode_runtime_turn_model_prompt(command),
     )
-    let messages : Array[Json] = []
-    // Replace any prior receipt with the current durable receipts so they do
-    // not accumulate across long runs and survive transcript compaction.
-    for message in compacted {
-      let content = mooncode_json_string(message, "content", default="")
-      let provenance = mooncode_runtime_context_provenance(message)
-      if mooncode_json_string(provenance, "source", default="") ==
-        "user.content_parts" ||
-        [
-          "environment.evidence_ledger", "environment.horizon_progress", "warning.pipeline_evidence",
-        ].contains(mooncode_json_string(provenance, "source", default="")) {
-        continue
-      }
-      if !content.has_prefix("Loaded-skill receipt:") {
-        messages.push(message)
-      }
-    }
-    for media in mooncode_runtime_turn_user_media_messages(command) {
-      messages.push(media)
-    }
-    for
-      receipt in mooncode_runtime_turn_loaded_skill_receipt_messages(
-        all_tool_results,
-      ) {
-      messages.push(
-        mooncode_runtime_context_normalize_message(
-          receipt,
-          fallback_kind=SkillContext,
-          fallback_source="skill.loaded_receipt",
-        ),
-      )
-    }
-    messages
   } else {
-    let messages = mooncode_runtime_turn_model_initial_messages(
-      command,
-      skill_catalog~,
-    )
-    for
-      retained in mooncode_runtime_turn_loaded_skill_messages(all_tool_results) {
-      messages.push(
-        mooncode_runtime_context_normalize_message(
-          retained,
-          fallback_kind=SkillContext,
-          fallback_source="skill.loaded_resource",
-        ),
-      )
-    }
-    messages
+    mooncode_runtime_turn_model_initial_messages(command, skill_catalog~)
   }
+  let skills = mooncode_runtime_turn_loaded_skill_messages(all_tool_results)
+  let messages : Array[Json] = []
+  let mut inserted_skills = false
+  for message in retained {
+    let source = mooncode_json_string(
+      mooncode_runtime_context_provenance(message),
+      "source",
+      default="",
+    )
+    if [
+        "user.content_parts", "skill.loaded_resource", "skill.loaded_receipt", "environment.evidence_ledger",
+        "environment.horizon_progress", "warning.pipeline_evidence",
+      ].contains(source) {
+      continue
+    }
+    if !inserted_skills &&
+      mooncode_json_string(message, "role", default="") == "assistant" {
+      for skill in skills {
+        messages.push(skill)
+      }
+      inserted_skills = true
+    }
+    messages.push(message)
+  }
+  if !inserted_skills {
+    for skill in skills {
+      messages.push(skill)
+    }
+  }
+  for media in mooncode_runtime_turn_user_media_messages(command) {
+    messages.push(media)
+  }
+  messages
 }
 
 ///|
@@ -1160,12 +1137,25 @@ fn mooncode_runtime_turn_model_tool_result_messages(
 /// diagnostics follow verbatim. The journal retains the complete result.
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_tool_result_value(execution)
-  let output = mooncode_json_string(result, "output", default="")
   let tool = mooncode_json_string(
     execution,
     "tool",
     default=mooncode_json_string(result, "tool", default=""),
   )
+  // Loaded instructions have one full copy in the protected prefix. The tool
+  // receipt keeps its journal reference; failed/unlocated reads keep their body.
+  let output = if tool == "read_skill" &&
+    mooncode_json_bool(execution, "accepted", default=false) &&
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(result, "metadata"),
+      "location",
+      default="",
+    ) !=
+    "" {
+    ""
+  } else {
+    mooncode_json_string(result, "output", default="")
+  }
   let result = match result {
     { "metadata": Object(metadata), .. } => {
       let projected = metadata.filter(fn(key, _) {

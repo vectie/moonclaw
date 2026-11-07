@@ -1,6 +1,6 @@
 ///|
 test "MoonCode missing deployment refusal identifies the execution boundary" {
-  for tool in ["shell", "moon_ide", "moon_cmd", "moon_check", "browser"] {
+  for tool in ["shell", "moon_ide", "moon_cmd", "browser"] {
     let refusal = mooncode_execution_sandbox_refusal(tool)
     assert_false(mooncode_json_bool(refusal, "ok", default=true))
     assert_true(mooncode_json_bool(refusal, "is_error", default=false))
@@ -131,55 +131,6 @@ async fn[T] mooncode_with_fake_moonfort(
       executor_args: [bridge, "execute", pending, capture, consumed],
     }
     body(config, capture)
-  })
-}
-
-///|
-async test "MoonCode moon_check pairs missing-config refusal with configured grant success" (
-  t : @test.Test,
-) {
-  ignore(t)
-  @fsx.with_temporary_directory("mooncode-moon-check-route-XXXXXX", async fn(
-    book_root,
-  ) {
-    let refused = mooncode_tool_moon_check_with_config(book_root, {}, None)
-    mooncode_assert_execution_sandbox_refusal(refused)
-    mooncode_with_fake_moonfort(async fn(config, capture_path) {
-      let result = mooncode_tool_moon_check_with_config(
-        book_root,
-        { "target": "native", "timeout_ms": 5_000 },
-        Some(config),
-      )
-      assert_true(mooncode_json_bool(result, "ok", default=false))
-      assert_true(
-        mooncode_json_string(result, "output", default="").contains(
-          "configured MoonFort moon check passed",
-        ),
-      )
-      let metadata = mooncode_json_object_field_or_empty(result, "metadata")
-      assert_eq(
-        mooncode_json_string(metadata, "execution_sandbox_policy", default=""),
-        "grant-bound",
-      )
-      let capture = @json.parse(@fsx.read_file(capture_path))
-      let digest = mooncode_json_string(capture, "approval_digest", default="")
-      assert_eq(
-        mooncode_json_string(metadata, "approval_plan_digest", default=""),
-        digest,
-      )
-      assert_false(metadata.stringify().contains("audit_path"))
-      let run_id = mooncode_json_string(metadata, "run_id", default="")
-      assert_true(
-        @fsx.exists(@pathx.join(config.receipt_root, "\{run_id}.json")),
-      )
-      let command = mooncode_json_array_items(
-        mooncode_json_object_field_or_empty(capture, "grant"),
-        "command",
-      )
-      assert_true(Json(command).stringify().contains("moon"))
-      assert_true(Json(command).stringify().contains("check"))
-      assert_false(@fsx.exists(@pathx.join(book_root, "host-fallback-marker")))
-    })
   })
 }
 
@@ -439,7 +390,6 @@ async test "MoonCode process entry points refuse before host spawn" {
     mooncode_tool_shell("/", { "cmd": "true" }),
     mooncode_tool_moon_ide("/", { "action": "outline", "path": "." }),
     mooncode_tool_moon_cmd("/", { "command": "check" }),
-    mooncode_tool_moon_check("/", {}),
     mooncode_tool_browser("session", "/", { "action": "snapshot" }),
   ]
   for result in results {

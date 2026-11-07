@@ -30,8 +30,7 @@ test "default tasks share one catalog regardless of language or inferred purpose
     for
       needed in [
         "ask_user", "read", "write", "edit", "apply_patch", "shell", "moon_ide",
-        "moon_cmd", "moon_check", "browser", "view_image", "mcp_list_tools", "mcp_call_tool",
-        "finish",
+        "moon_cmd", "browser", "view_image", "mcp_list_tools", "mcp_call_tool", "finish",
       ] {
       assert_true(names.contains(needed), msg=needed)
     }

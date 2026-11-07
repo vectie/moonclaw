@@ -114,7 +114,7 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_tools.mbt` owns the generic native tool endpoint, shared tool
   result/event helpers, file read/write/edit tools, and patch application.
 - `mooncode_process_tools.mbt` owns process-backed tools: `shell`,
-  `moon_ide`, `moon_cmd`, and `moon_check` watcher state.
+  `moon_ide` and `moon_cmd`.
 - `mooncode_runtime_turn.mbt` owns the native runtime-turn orchestration loop,
   command claiming, tool execution sequencing, package persistence handoff, and
   planner/tool/package/review/test/eval/commit boundary ordering.
@@ -123,7 +123,7 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_runtime_turn_receipts.mbt` owns native runtime-turn completion
   events and queue settlement receipt projection.
 - `mooncode_runtime_test_results.mbt` owns command-scoped test-result event
-  projection from native `moon_check` tool output.
+  projection from native `moon_cmd` check/test output.
 - `mooncode_runtime_model_planner.mbt` owns explicit/model tool-call planning,
   OpenAI tool schemas, model planner request/response decoding, bounded
   follow-up turns, and planner request/result contracts.
@@ -486,13 +486,9 @@ after daemon restart. Durable runtime events live in
 `.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/journal.jsonl`
 alongside the other totally ordered session records.
 
-The response also projects the native `moon_check` watcher sidecar at
-`.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json` into a
-synthetic `runtime_update` event when the watcher belongs to the selected book.
-That event carries `[moon_check update]` content, test-lane status, command
-line, sequence, exit status when stopped, restart metadata, and capped output.
-The `event_count` field includes projected watcher evidence, while
-`durable_event_count` reports only persisted event-kind journal records.
+The response contains durable journal events only; event_count and
+durable_event_count describe the same persisted facts. No simulated watcher
+sidecar is synthesized into progress.
 
 ### `GET /v1/code/sessions/{id}/eval-report`
 
@@ -501,7 +497,7 @@ Reports native MoonCode eval/readiness evidence for a session. Pass
 product-home sidecar after daemon restart; without `book_root`, the report only
 reflects the daemon's live binding. The
 report also runs MoonClaw's first deterministic native eval harness over
-`read`, `write`, `edit`, `shell`, `moon_ide`, `moon_cmd`, `moon_check`,
+`read`, `write`, `edit`, `shell`, `moon_ide`, `moon_cmd`,
 `finish`, and file-edit diff evidence, returning `ok`, `required_harnesses`,
 `passed_count`, `failed_count`, and nested native harness results for
 MoonDesk's Eval Report panel.
@@ -610,7 +606,7 @@ from runtime-turn, write `wiki/reviews/mooncode/{safe-session-id}/eval-report.js
 inside the selected MoonBook, and emit `eval_report.manifest` evidence with
 `tool_harness` and `file_edit` results so MoonDesk can gate review/package work
 on MoonClaw-owned eval proof.
-Run-tests commands now turn native `moon_check` execution into a first-class
+Run-tests commands turn native `moon_cmd test` execution into a first-class
 command-scoped `test_result` event that carries pass/fail status, exit status,
 capped output, and the original command packet. This gives MoonDesk a durable
 test proof event without asking the desktop shell to infer test state from a
@@ -625,9 +621,8 @@ navigation actions (`doc`, `outline`, `peek_def`, `hover`, and
 commands (`check`, `test`, `run`, `info`, `fmt`, and `build`) with bounded
 output, snapshot-update guard metadata, test-lane events, and
 `moon_cmd.finished` proof. Runtime `run_tests`, `run_build`, and `run_eval`
-deterministic plans run `moon_cmd` before `moon_check`; `run_build` defaults to
-`moon build`, so MoonBit validation has a typed path rather than depending on
-arbitrary shell commands.
+deterministic plans run one `moon_cmd`; `run_tests` defaults to `moon test` and
+`run_build` to `moon build`. No redundant check is appended.
 These process-backed tools live in `mooncode_process_tools.mbt`, with focused
 coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.
@@ -639,18 +634,10 @@ inline interpreter commands remain available; the planner contract, rather
 than a misleading syntactic block, requires authored workspace mutations to
 use reviewable `write`, `edit`, or `apply_patch` tools.
 
-The native `moon_check` tool also records a MoonCode watcher snapshot
-under `.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json`.
-MoonClaw keys the snapshot by the selected MoonBook root, returns
-`watcher=started|reused|replaced|restarted`, keeps a monotonic `seq`, exposes
-human watcher `status` separately from numeric `exit_status`, and increments
-`restart_count` when changed options replace the previous watcher record. This
-gives MoonDesk and future standalone `mooncode` the same no-duplicate-watcher
-contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
-`moon_check`, and `finish`. Coding turns carry a task contract; optional
+and `finish`. Coding turns carry a task contract; optional
 checkpoints save advisory progress. Native tools come from one catalog, with
 read-only subsets and explicit `planner_allowed_tools` selection. Worker tools
 are absent by default. MCP tools retain their own existing inventory/call path.
@@ -662,7 +649,7 @@ differences do not create another planner policy. The
 maps this path to execution, memory, files, IO, synchronization and recovery.
 The actual planner transcript and tool results remain available after a
 checkpoint; recording a milestone does not itself discard earlier source
-observations. Separate context projection and opt-in pressure-based compaction
+observations. The existing pressure-based working-set projection
 are described in [Long-context compaction](../../docs/LONG_CONTEXT_COMPACTION.md).
 Tool failures are fed back to the model for diagnosis and recovery.
 Shell commands may declare `verification_kind=check|test|build` only when a
@@ -714,7 +701,7 @@ only execution sequencing around the selected tool calls.
 Completion uses one accepted `finish` for model-planned and explicit coding
 batches. It does not require a file modification or an all-done checkpoint.
 Coding tasks need successful current verification; explicit required checks
-match native sandbox receipts. `moon_check`, `moon_cmd check|test|build`,
+match native sandbox receipts. `moon_cmd check|test|build`,
 recognized shell verification and verified patches provide typed results.
 Requested tests need typed test evidence. Mutations and failed verification
 invalidate earlier checks; a failed ordinary observation requires recovery but
@@ -743,7 +730,7 @@ also accept `hunk_index`/`hunk_id` or hunk targets such as
 `hunk_control_scope`, `selected_hunk_index`, `available_hunk_count`, and
 `file_path` metadata. Patch tool packets can request post-change verification
 with `verification_command`,
-`test_command`, `verify_after`, or `moon_check_target`; MoonClaw records the
+`test_command`, `verify_after`, or `moon_cmd_target`; MoonClaw records the
 command, status, capped output, and pass/fail result under the patch proof
 metadata.
 Unsupported or empty model plans fall back to deterministic planning.

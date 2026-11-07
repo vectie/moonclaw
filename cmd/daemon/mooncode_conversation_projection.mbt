@@ -1413,7 +1413,7 @@ fn mooncode_conversation_tool_title(
     } else {
       "Prepared output"
     }
-  } else if tool == "shell" || tool == "moon_cmd" || tool == "moon_check" {
+  } else if tool == "shell" || tool == "moon_cmd" {
     if failed {
       "Command failed"
     } else if started {
