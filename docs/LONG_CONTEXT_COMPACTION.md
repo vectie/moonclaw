@@ -29,6 +29,10 @@ derived history checkpoint. A generated checkpoint is neither protected rules
 nor a new user-turn boundary. Repeated overflow replaces its historical span
 instead of accumulating protected checkpoints. Range handles and the existing
 768-token checkpoint allowance remain; only repeated framing text is shortened.
+The generated context message has one checkpoint marker, followed by unchanged
+range references and observations. Its historical-message count stays in
+compiler metrics rather than being repeated in model input. The same allowance
+includes the marker and references; this is not a smaller context window.
 
 Unknown windows, unsupported provider message shapes and compiler errors leave
 the original messages intact with a reason. Malformed overflowing tool batches
@@ -99,12 +103,17 @@ automatic recall model call or mandatory retrieval stage.
 The working window remains9,472 after the earlier ABI calibration; the latest
 cleanup does not shrink it. Same-window ablations separate the read ABI,
 bundled-guide duplication and complete-exchange compaction. The default producer
-replays12 frozen responses at49,552 tokens (one warmup plus seven measurements),
+replays12 frozen responses at49,166 tokens (one warmup plus seven measurements),
 with at most one checkpoint message in each of96frames, full edit inputs,
 selected instructions and final verdicts retained. Natural-text responses use
 the existing internal finish adapter/acceptance; only its default model schema
 and forced-call requirement are removed. Opaque metadata stays.
 Conditional profile/recall/directory-plus-recall cases include all13/13/14 requests.
+The 2026-11-09 SDK/checkpoint follow-up saves386 at the same window; conditional
+cases save386/424/424 including issuing requests, receipts and later carrying.
+Removing equal status/exit aliases or a generic success message saved small
+amounts alone but lost final verdicts in combination. Recovery costs55,092 or
+55,085, so those header changes are not deployed.
 The earlier ABI sweep's rejected windows remain historical evidence, not a claim
 that this implementation has been qualified at other defaults.
 This is the existing soft projection, not an execution stop/budget gate. The original

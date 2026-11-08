@@ -19,7 +19,20 @@ fn mooncode_runtime_turn_test_results(
     let result = mooncode_json_object_field_or_empty(execution, "result")
     let metadata = mooncode_json_object_field_or_empty(result, "metadata")
     let accepted = mooncode_json_bool(execution, "accepted", default=false)
-    let target = mooncode_json_string(arguments, "target", default="")
+    let args = mooncode_moon_cmd_command_args(arguments)
+    let target = for index, arg in args {
+      if arg == "--" {
+        break ""
+      }
+      if arg == "--target" {
+        break args.get(index + 1).unwrap_or("")
+      }
+      if arg.has_prefix("--target=") {
+        break arg[9:].to_owned()
+      }
+    } nobreak {
+      ""
+    }
     let exit_status = mooncode_json_int(metadata, "exit_code", default=-1)
     let elapsed_ms = mooncode_json_int(metadata, "elapsed_ms", default=0)
     let output = mooncode_json_string(result, "output", default="")

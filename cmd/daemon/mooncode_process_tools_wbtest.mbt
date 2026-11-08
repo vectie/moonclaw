@@ -485,7 +485,7 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
       "command_id": "cmd-moon-cmd",
       "arguments": {
         "command": "check",
-        "target": "native",
+        "args": ["--target", "native"],
         "timeout_ms": 30000,
       },
     },
@@ -528,7 +528,7 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
       "command_id": "cmd-negative-default",
       "arguments": {
         "command": "check",
-        "target": "native",
+        "args": ["--target", "native"],
         "timeout_ms": 30000,
       },
     },
@@ -550,7 +550,7 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
       "command_id": "cmd-negative-expected",
       "arguments": {
         "command": "check",
-        "target": "native",
+        "args": ["--target", "native"],
         "timeout_ms": 30000,
         "expected_exit_code": status,
       },
@@ -586,8 +586,10 @@ test "mooncode normalizes command-specific moon arguments" {
     mooncode_moon_cmd_args(
       {
         "command": "fmt",
-        "target": "native",
-        "args": ["--package", "example/demo/src", "--target=native", "--check"],
+        "args": [
+          "--target", "native", "--package", "example/demo/src", "--target=native",
+          "--check",
+        ],
         "paths": ["tools/demo/src"],
       },
       "fmt",
@@ -600,8 +602,7 @@ test "mooncode normalizes command-specific moon arguments" {
     mooncode_moon_cmd_args(
       {
         "command": "check",
-        "target": "native",
-        "args": ["--warn-list", "+73"],
+        "args": ["--target", "native", "--warn-list", "+73"],
         "paths": ["tools/demo/src"],
       },
       "check",
@@ -614,8 +615,7 @@ test "mooncode normalizes command-specific moon arguments" {
     mooncode_moon_cmd_args(
       {
         "command": "test",
-        "target": "native",
-        "args": ["--package", "example/demo/src"],
+        "args": ["--target", "native", "--package", "example/demo/src"],
       },
       "test",
       selector_root="/book",
@@ -627,7 +627,7 @@ test "mooncode normalizes command-specific moon arguments" {
     mooncode_moon_cmd_args(
       {
         "command": "info",
-        "target": "all",
+        "args": ["--target", "all"],
         "paths": ["tools/demo/src/main.mbt"],
       },
       "info",
@@ -649,7 +649,7 @@ test "mooncode normalizes command-specific moon arguments" {
     "command": "run_tests",
     "payload": { "moon_cmd_command": "test", "moon_cmd_target": "native" },
   })
-  assert_eq(mooncode_json_string(fallback, "target", default=""), "native")
+  assert_eq(mooncode_moon_cmd_command_args(fallback), ["--target", "native"])
   assert_eq(
     mooncode_json_string(fallback, "path", default="missing"),
     "missing",
@@ -779,25 +779,38 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   let nested_commands : Array[(String, Json, String)] = [
     (
       "check",
-      { "command": "check", "target": "native", "paths": ["tools/demo/src"] },
+      {
+        "command": "check",
+        "args": ["--target", "native"],
+        "paths": ["tools/demo/src"],
+      },
       "moon check --target native src",
     ),
     (
       "test",
-      { "command": "test", "target": "native", "paths": ["tools/demo/src"] },
-      "moon test --target native src",
+      {
+        "command": "test",
+        "args": ["--target=native"],
+        "paths": ["tools/demo/src"],
+      },
+      "moon test --target=native src",
     ),
     (
       "info",
-      { "command": "info", "target": "native", "paths": ["tools/demo/src"] },
+      {
+        "command": "info",
+        "args": ["--target", "native"],
+        "paths": ["tools/demo/src"],
+      },
       "moon info --target native src",
     ),
     (
       "fmt",
       {
         "command": "fmt",
-        "target": "native",
-        "args": ["--package", "example/demo/src", "--target", "native"],
+        "args": [
+          "--target", "native", "--package", "example/demo/src", "--target", "native",
+        ],
         "paths": ["tools/demo/src"],
       },
       "moon fmt src",
@@ -826,6 +839,17 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
       mooncode_json_string(metadata, "command", default=""),
       expected_command,
     )
+    if ["check", "test"].contains(command) {
+      let events = mooncode_runtime_turn_test_results(
+        "session-tool-validation",
+        book_root,
+        {},
+        [execution],
+        now=@clock.Timestamp::from_ms(75L),
+      )
+      assert_eq(events.length(), 1)
+      assert_eq(mooncode_json_string(events[0], "target", default=""), "native")
+    }
   }
   assert_true(
     @fsx.read_file(@pathx.join(nested_module, "src/main.mbt")).contains(

@@ -180,7 +180,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "moon_cmd",
-      "Run a MoonBit command at its module root. cwd selects a module; paths infer the nearest module. args pass command options; program_args follow run's --. For fmt omit target and package selectors; file paths and formatter options are valid.",
+      "Run a MoonBit command at its module root. cwd selects a module; paths infer the nearest module. args pass CLI options including --target; program_args follow run's --. For fmt omit target and package selectors; file paths and formatter options are valid.",
       {
         "type": "object",
         "properties": {
@@ -189,10 +189,6 @@ fn mooncode_build_native_tool_catalog() -> Array[
             "enum": ["check", "test", "run", "info", "fmt", "build"],
           },
           "cwd": { "type": "string" },
-          "target": {
-            "type": "string",
-            "enum": ["wasm", "wasm-gc", "js", "native", "llvm", "all"],
-          },
           "args": { "type": "array", "items": { "type": "string" } },
           "paths": { "type": "array", "items": { "type": "string" } },
           "program_args": { "type": "array", "items": { "type": "string" } },

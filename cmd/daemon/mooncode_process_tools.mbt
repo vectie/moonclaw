@@ -569,14 +569,6 @@ async fn mooncode_tool_moon_cmd(
       metadata={ "command": command },
     )
   }
-  let target = mooncode_json_string(arguments, "target", default="")
-  if command != "fmt" && !mooncode_moon_target_supported(target) {
-    return mooncode_tool_error_result(
-      "moon_cmd",
-      message="unsupported moon_cmd target: \{target}",
-      metadata={ "target": target },
-    )
-  }
   if command != "run" &&
     mooncode_json_array_string_items(arguments, "program_args").length() > 0 {
     return mooncode_tool_error_result(
@@ -796,11 +788,6 @@ fn mooncode_moon_cmd_args(
   cwd_path~ : String,
 ) -> Array[String] {
   let args : Array[String] = [command]
-  let target = mooncode_json_string(arguments, "target", default="")
-  if command != "fmt" && target != "" {
-    args.push("--target")
-    args.push(target)
-  }
   let command_args = mooncode_moon_cmd_command_args(arguments)
   if command == "fmt" {
     for value in mooncode_moon_fmt_normalized_args(command_args) {

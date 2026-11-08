@@ -668,6 +668,12 @@ are absent by default. MCP tools retain their own existing inventory/call path.
 Accepted skill results supply declarations for subsequent model requests,
 including after journal recovery. Explicit selection stays authoritative;
 ordinary initial prompts do not carry every optional schema.
+`moon_cmd` passes CLI options, including `--target`, through `args`; `paths`
+and `program_args` retain their ordering roles. There is no separate target
+property/enum. CLI validation, scoped argv authorization and execution stay
+on the existing path; `moon_ide` keeps its own target property. Built-in fallback
+and eval calls use the same argv contract. Check/test events derive the displayed
+target from `--target value` or `--target=value` in those arguments.
 All models share the same working instruction and initial-message builder:
 identify the observable result, locate the implementation, decompose until
 action and verification are clear, then execute and repair. Provider transport

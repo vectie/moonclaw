@@ -159,7 +159,11 @@ async test "MoonCode typed moon_ide and moon_cmd grants preserve exact argv" (
     mooncode_with_fake_moonfort(async fn(config, capture_path) {
       let result = mooncode_tool_moon_cmd(
         book_root,
-        { "command": "build", "target": "native", "timeout_ms": 5_000 },
+        {
+          "command": "build",
+          "args": ["--target", "native"],
+          "timeout_ms": 5_000,
+        },
         sandbox_config=config,
       )
       assert_true(mooncode_json_bool(result, "ok", default=false))
@@ -326,7 +330,7 @@ async test "MoonCode rejects approved moon_cmd argv substitution" (
         book_root,
         {
           "command": "test",
-          "target": "native",
+          "args": ["--target", "native"],
           "timeout_ms": 5_000,
           "_execution_sandbox_plan": plan,
         },

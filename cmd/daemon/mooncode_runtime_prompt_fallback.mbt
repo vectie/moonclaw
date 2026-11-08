@@ -118,14 +118,14 @@ fn mooncode_runtime_turn_moon_cmd_arguments(command : Json) -> Json {
     default=default_command,
   )
   let target = mooncode_json_string(payload, "moon_cmd_target", default="")
-  if target == "" {
-    { "command": moon_command, "timeout_ms": 60000, "max_output_chars": 16000 }
-  } else {
-    {
-      "command": moon_command,
-      "target": target,
-      "timeout_ms": 60000,
-      "max_output_chars": 16000,
-    }
+  {
+    "command": moon_command,
+    "args": if target == "" {
+      []
+    } else {
+      ["--target", target]
+    },
+    "timeout_ms": 60000,
+    "max_output_chars": 16000,
   }
 }

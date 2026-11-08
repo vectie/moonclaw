@@ -5,6 +5,28 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## SDK args and checkpoint framing 2026-11-09
+
+- Remove moon_cmd target property/enum/duplicate dispatch; use existing args
+  CLI options. Fallback/eval/tests migrated, exact argv preserved; check/test
+  target display derives from both flag forms. MoonIDE target and program_args
+  remain. One checkpoint marker, no redundant count; refs/observations/768 cap
+  and metrics retained. No result metadata/header removal.
+- Same9472/7104,10 ablations14 conditional groups. SDK233/checkpoint153 net386:
+  49552->49166, Pi47355 ratio1.0382/residual1811. Final8 replays96frames retain
+  task bytes, completeSkill, edit literals, final108/108 and existing Auto.
+  Profile/recall/directory+recall53912/53229/57296 including all extra requests.
+- Isolated status72/success text104 gains fail in selected combinations:
+  proof restoration55092/13 and55085/13, both rejected. Do not add marginal
+  schema/header savings: projection retention and proof recovery are nonlinear.
+- Evidence /Users/kq/mooncode-residual4-20261108 (cross-midnight experiment).
+  Initial valid96frames had a one-iteration summary loop; keep failed driver
+  and first samples. Fixed split/join, new production-verified directory;
+  replayer writes timestamp dirs. No model call/new state/layer/confirmation.
+- Native1836/1836, pruner17/SDK13/Skill3/tools3, info/fmt pass, mbti unchanged.
+  Runtime-7/test+28, no new test items. Compiler median/p95488/499ms per12frames,
+  fixture794/821; measured samples without an interleaved speed baseline.
+
 ## Checkpoint prefix and default return 2026-11-08
 
 - Fixed generated checkpoints being protected as pre-assistant instructions

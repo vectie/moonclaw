@@ -169,7 +169,7 @@ async fn mooncode_native_eval_harness_report(
     fixture_root,
     "moon_cmd",
     "eval-moon-cmd",
-    { "command": "check", "target": "native", "timeout_ms": 30000 },
+    { "command": "check", "args": ["--target", "native"], "timeout_ms": 30000 },
     now~,
     expected_kind="moon_cmd.finished",
     expected_detail="runs structured MoonBit commands from the selected book root",

@@ -88,7 +88,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "command_id": "cmd-fmt-scope",
         "arguments": {
           "command": "test",
-          "target": "native",
+          "args": ["--target", "native"],
           "paths": ["tools/demo/src"],
         },
       },
@@ -106,7 +106,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "command_id": "cmd-fmt-scope",
         "arguments": {
           "command": "check",
-          "target": "all",
+          "args": ["--target", "all"],
           "paths": ["tools/demo/src"],
         },
       },

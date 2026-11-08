@@ -286,9 +286,10 @@ fn Pruner::context_checkpoint(
     }
   }
   let recall = if first_ref == "" {
-    ""
+    ContextCheckpoint + "\n"
   } else {
-    "[Context checkpoint: MoonClaw compacted]\n" +
+    ContextCheckpoint +
+    "\n" +
     ContextResultRangePrefix +
     Json::object({ "evidence_ref": Json(first_ref), "end_ref": Json(last_ref) }).stringify() +
     "\n"
@@ -304,10 +305,6 @@ fn Pruner::context_checkpoint(
     index -= 1
   }
   let checkpoint = StringBuilder()
-  checkpoint.write_string(ContextCheckpoint)
-  checkpoint.write_string(
-    " Compacted \{compacted_end - compacted_start} historical messages.",
-  )
   if !observations.is_empty() {
     checkpoint.write_string("\nObservations:")
     for index = observations.length() - 1; index >= 0; index = index - 1 {
