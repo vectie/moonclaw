@@ -1,7 +1,5 @@
 ///|
-async test "result handles survive redaction and repeated context compaction" (
-  t : @test.Test,
-) {
+async test "result handles survive repeated context compaction" (t : @test.Test) {
   @mock.run(t, mock => {
     let messages : Array[@openai.ChatCompletionMessageParam] = [
       @openai.system_message(content="system"),
@@ -34,7 +32,7 @@ async test "result handles survive redaction and repeated context compaction" (
     let first = pruner.compile_messages(messages)
     assert_true(first.within_budget)
     assert_true(first.compacted_messages > 0)
-    let text = Json(first.messages.map(message => message.to_json())).stringify()
+    let text = compile_transcript_json(first.messages)
     assert_true(text.contains("result-0"))
     assert_true(text.contains("Retained result range:"))
     let extended = first.messages.copy()
@@ -61,8 +59,17 @@ async test "result handles survive redaction and repeated context compaction" (
     let second = pruner.compile_messages(extended)
     assert_true(second.within_budget)
     assert_true(second.compacted_messages > 0)
-    let text = Json(second.messages.map(message => message.to_json())).stringify()
+    let text = compile_transcript_json(second.messages)
     assert_true(text.contains("result-0"))
     assert_true(text.contains("result-23"))
+    assert_true(text.contains("Implement the requested change"))
+    assert_eq(
+      second.messages
+      .filter(message => {
+        compile_transcript_json([message]).contains("Retained result range:")
+      })
+      .length(),
+      1,
+    )
   })
 }

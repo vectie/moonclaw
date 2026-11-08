@@ -4,7 +4,10 @@ The MoonCode catalog advertises executable tools. The former native `browser`
 entry only returned a refusal and has been removed; `view_image` remains for
 image evidence. The default skill index presents IDs; `read_skill()` returns
 full descriptions and `read_skill(name=...)` loads complete instructions.
-Without MCP, seven base tools are exposed by default. A loaded Skill's existing
+Without MCP, six base tools are exposed by default. Text answers use the existing
+internal finish adapter and acceptance checks; the default request uses auto
+tool choice instead of requiring a finish function call. Explicit tool lists
+can still select the registered finish schema. A loaded Skill's existing
 `allowed-tools` declaration supplements them through the same catalog; load
 `mooncode-tools` for image/IDE/SDK/patch/checkpoint tools. This grants no authority.
 Loaded Skill receipts keep the relative-reference location. Full Markdown

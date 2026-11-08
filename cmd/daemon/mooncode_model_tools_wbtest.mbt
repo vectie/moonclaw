@@ -18,7 +18,7 @@ test "default tools retain base controls and defer additional capabilities" {
       mooncode_runtime_turn_model_tools_for_command({}),
     ),
     [
-      "ask_user", "read", "write", "edit", "shell", "finish", "read_skill", "mcp_list_tools",
+      "ask_user", "read", "write", "edit", "shell", "read_skill", "mcp_list_tools",
       "mcp_call_tool",
     ],
   )
@@ -70,7 +70,7 @@ test "read-only tool selection retains inspection without workspace mutation too
   let names = mooncode_test_model_tool_names(
     mooncode_runtime_turn_model_tools_for_command(command),
   )
-  for needed in ["read", "read_skill", "mcp_list_tools", "finish"] {
+  for needed in ["read", "read_skill", "mcp_list_tools"] {
     assert_true(names.contains(needed))
   }
   for

@@ -5,6 +5,41 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Checkpoint prefix and default return 2026-11-08
+
+- Fixed generated checkpoints being protected as pre-assistant instructions
+  and counted as user-turn boundaries. Skills now follow canonical task,
+  before derived history; delete insertion flag/fallback. Existing single
+  compiler/range/768-token checkpoint limit remains, framing is shorter.
+- Default request uses Auto, not Required. Hide default finish schema and
+  reuse existing text->internal finish decoding/acceptance. Explicit finish
+  selection/catalog remains.6 default no-MCP tools,8 MoonBit,11 full profile.
+  No new completion state, layers, human step, memory store or provider run.
+- 18 raw ablations:boundary50728 (480 saved), framing-fixed50521 (687),
+  natural50548 (660); selected boundary+framing+natural49552 (1656/3.23%).
+  Ordered savings480+516+660; no sum of isolated values. Same9472/7104.
+  One warmup+7 real default measurements,96frames all49552, <=1 checkpoint,
+  all12 task bytes/complete Skill/edit literals/final verdicts preserved.
+- Paired profile54576->54298/13,recall55582->53653/13,
+  directory+recall60206->57720/14. All issuing requests/receipts/carry counted.
+  Full candidate initially51459 lost verdicts; restoration54956/13 (3748
+  worse). Hash inspection needs2 metadata reads+1 verdict repair66876/15
+  vs baseline51208/12. No metadata/nonce/status fields removed in final.
+- Initial gap3853=sum(4246,3850,4523,4107,504)-13377. Earlier commentary
+  mis-summed the offset as17377; components/net unchanged, corrected in docs.
+  Current residual2197:schemas3622/Skill3850/headers4523/checkpoint3111/
+  task504 offset by system1728/assistant2909/bodies8776. Pi47355 ->1.0464;
+  local fixed-trace ratio, no new billing/cache/future behavior/quality proof.
+- Native1836/1836; final pruner17/17, Skill3/3, tools3/3, info/fmt pass.
+  Runtime-6/test+8 lines, no new test items, .mbti unchanged. Current timing
+  compiler410/416ms median/p95 per12frames, fixture671/674; not interleaved.
+- Evidence /Users/kq/mooncode-residual3-20261108. Raw paid hashes unchanged.
+  Metadata first full-read assumption failed under existing50k cap; fixed
+  conditional fixture pages first12k then tail20 by returned line_count,
+  charging every request plus proof repair. No runtime output-cap change.
+  Framing v1 put a fixed header outside cap; fixed before shipping, all
+  prototypes kept. Reproducer writes new run directories to retain samples.
+
 ## Complete-exchange input cleanup 2026-11-08
 
 - Same9472 window and7104 budget; 8 paired main ablations. Baseline60749,

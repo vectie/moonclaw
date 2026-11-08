@@ -793,6 +793,7 @@ test "mooncode planner permits parallel tool calls" {
   assert_true(
     mooncode_json_bool(request.to_json(), "parallel_tool_calls", default=false),
   )
+  assert_true(request.to_json() is { "tool_choice": "auto", .. })
   assert_false(
     mooncode_runtime_turn_stops_tool_batch(
       { "planner_mode": "model-tool-calls" },

@@ -77,7 +77,7 @@ fn context_result_span(
 }
 
 ///|
-const ContextCheckpoint : String = "[Context checkpoint: MoonClaw compacted older model-facing messages to control prompt cost. The original task contract and complete durable journal are unchanged. Continue from the retained recent exchange; re-read exact evidence only when needed.]"
+const ContextCheckpoint : String = "[Context checkpoint: retained observations, not exact evidence]"
 
 ///|
 const DefaultRecentContextTokens : Int32 = 20000
@@ -129,15 +129,22 @@ fn tool_transcript_is_valid(
 }
 
 ///|
+fn is_context_checkpoint(message : @openai.ChatCompletionMessageParam) -> Bool {
+  message is User(user) &&
+  checkpoint_content_text(user.content).has_prefix("[Context checkpoint:")
+}
+
+///|
 /// Returns the end of the protected task prefix. Rules are injected as user
-/// messages before the original task, so retaining everything before the first
-/// assistant response protects both without depending on their exact count.
+/// messages before the original task. Generated checkpoints are derived
+/// history, not another protected instruction prefix.
 fn protected_prefix_end(
   messages : Array[@openai.ChatCompletionMessageParam],
 ) -> Int32 {
   for index in 0..<messages.length() {
     match messages[index] {
       Assistant(_) => return index
+      User(_) if is_context_checkpoint(messages[index]) => return index
       _ => ()
     }
   }
@@ -147,7 +154,8 @@ fn protected_prefix_end(
 ///|
 /// Find the newest boundary that still retains a complete final exchange. A
 /// suffix must never begin with a tool result because providers require the
-/// corresponding assistant tool call to precede it.
+/// corresponding assistant tool call to precede it. A generated checkpoint
+/// does not start a new user turn.
 fn newest_complete_suffix_start(
   messages : Array[@openai.ChatCompletionMessageParam],
   prefix_end : Int32,
@@ -158,6 +166,7 @@ fn newest_complete_suffix_start(
   while index >= prefix_end {
     match messages[index] {
       Tool(_) => index -= 1
+      User(_) if is_context_checkpoint(messages[index]) => index -= 1
       User(_) => return index
       Assistant(_) => {
         if latest_assistant < 0 {
@@ -300,17 +309,12 @@ fn Pruner::context_checkpoint(
     " Compacted \{compacted_end - compacted_start} historical messages.",
   )
   if !observations.is_empty() {
-    checkpoint.write_string(
-      "\nRecent historical observations from the compacted span:",
-    )
+    checkpoint.write_string("\nObservations:")
     for index = observations.length() - 1; index >= 0; index = index - 1 {
       checkpoint.write_string("\n")
       checkpoint.write_string(observations[index])
     }
   }
-  checkpoint.write_string(
-    "\nExact tool outputs are omitted from this checkpoint; re-read only when exact evidence is needed.",
-  )
   let checkpoint_limit = MaxCheckpointTokens.min(
     (pruner.safe_zone_tokens / 4).max(96),
   )

@@ -24,6 +24,12 @@ the observations. The complete instruction/task prefix and latest
 complete exchange remain. Follow-ups refresh the canonical task, including its
 ordered revisions, before projection. Tool calls and results stay paired.
 
+Selected Skill instructions are inserted after the canonical task, before any
+derived history checkpoint. A generated checkpoint is neither protected rules
+nor a new user-turn boundary. Repeated overflow replaces its historical span
+instead of accumulating protected checkpoints. Range handles and the existing
+768-token checkpoint allowance remain; only repeated framing text is shortened.
+
 Unknown windows, unsupported provider message shapes and compiler errors leave
 the original messages intact with a reason. Malformed overflowing tool batches
 are not transformed. An immutable prefix or newest exchange that cannot fit
@@ -93,8 +99,11 @@ automatic recall model call or mandatory retrieval stage.
 The working window remains9,472 after the earlier ABI calibration; the latest
 cleanup does not shrink it. Same-window ablations separate the read ABI,
 bundled-guide duplication and complete-exchange compaction. The default producer
-replays12 frozen responses at51,208 tokens (one warmup plus seven measurements),
-with edit inputs, full selected instructions and final verdicts retained.
+replays12 frozen responses at49,552 tokens (one warmup plus seven measurements),
+with at most one checkpoint message in each of96frames, full edit inputs,
+selected instructions and final verdicts retained. Natural-text responses use
+the existing internal finish adapter/acceptance; only its default model schema
+and forced-call requirement are removed. Opaque metadata stays.
 Conditional profile/recall/directory-plus-recall cases include all13/13/14 requests.
 The earlier ABI sweep's rejected windows remain historical evidence, not a claim
 that this implementation has been qualified at other defaults.
@@ -102,7 +111,7 @@ This is the existing soft projection, not an execution stop/budget gate. The ori
 test file is still read whole; older presentations are replaced by journal
 references after consumption. Fixed-trace savings do not prove new model
 decisions, zero recall requests, cash savings or quality across larger tasks.
-See the [same-window benchmark](../../moondesk/docs/MOONCODE_INPUT_BENCHMARK_2026-11-08.md#整段历史压缩与读取接口收敛).
+See the [same-window benchmark](../../moondesk/docs/MOONCODE_INPUT_BENCHMARK_2026-11-08.md#前缀边界与默认返回).
 
 The protected skill prefix keeps complete selected instructions. The default
 system index contains IDs; `read_skill()` reuses the full catalog for descriptions,
