@@ -33,7 +33,7 @@ async test "same-millisecond operations retain distinct recallable results and e
       let result = mooncode_tool_ok_result(
         "read",
         message="read",
-        output="original-\{index}",
+        output="original-\{index}\nsecond line",
         metadata=arguments,
       )
       let execution = mooncode_runtime_operation_finished(
@@ -98,6 +98,7 @@ async test "same-millisecond operations retain distinct recallable results and e
     @fsx.write_to_file(root + "/file-0.txt", "new version")
     let exact = mooncode_tool_read_result(root, session, {
       "evidence_ref": refs[0],
+      "details": true,
     })
     assert_true(mooncode_json_bool(exact, "ok", default=false))
     assert_true(
@@ -120,7 +121,14 @@ async test "same-millisecond operations retain distinct recallable results and e
       "start_line": 1,
       "end_line": 1,
     })
-    assert_eq(mooncode_json_string(page, "output", default=""), "{")
+    assert_eq(mooncode_json_string(page, "output", default=""), "original-0")
+    let details = mooncode_tool_read_result(root, session, {
+      "evidence_ref": refs[0],
+      "details": true,
+      "start_line": 1,
+      "end_line": 1,
+    })
+    assert_eq(mooncode_json_string(details, "output", default=""), "{")
     let invalid : Array[Json] = [
       { "evidence_ref": "" },
       { "evidence_ref": refs[0], "end_ref": "missing" },
@@ -175,11 +183,11 @@ async test "same-millisecond operations retain distinct recallable results and e
       "patch",
       "apply_patch",
       {},
-      mooncode_tool_ok_result(
+      mooncode_tool_error_result(
         "apply_patch",
-        message="applied",
+        message="failed patch",
         output="retained diff",
-        metadata={},
+        metadata={ "truncated": true },
       ),
       now~,
     )
@@ -197,6 +205,17 @@ async test "same-millisecond operations retain distinct recallable results and e
       mooncode_json_string(recalled, "output", default="").contains(
         "retained diff",
       ),
+    )
+    assert_true(mooncode_json_bool(recalled, "ok", default=false))
+    let source = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(recalled, "metadata"),
+      "source",
+    )
+    assert_false(mooncode_json_bool(source, "ok", default=true))
+    assert_true(mooncode_json_bool(source, "truncated", default=false))
+    assert_eq(
+      mooncode_json_string(source, "message", default=""),
+      "failed patch",
     )
   })
 }

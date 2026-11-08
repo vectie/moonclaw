@@ -188,6 +188,10 @@ async test "mooncode retains one full skill through repeated context compilation
     },
   }
   let content = mooncode_runtime_turn_model_tool_result_content(execution)
+  assert_eq(
+    mooncode_json_object_field_or_empty(@json.parse(content), "metadata"),
+    { "location": "/installed/fixture-review/SKILL.md" },
+  )
   assert_false(content.contains(long_body))
   assert_false(content.contains("truncated for planner context"))
   let retained = mooncode_runtime_turn_loaded_skill_messages([execution])

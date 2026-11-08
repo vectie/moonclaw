@@ -1,6 +1,6 @@
 ///|
-/// Exact recall uses the existing session journal. A range returns a small index
-/// of available results; it never executes the original operation.
+/// Read saved output lines, or details=true for canonical JSON. A result range
+/// returns an index. Recall never executes the original operation.
 async fn mooncode_tool_read_result(
   book_root : String,
   session_id : String,
@@ -54,11 +54,13 @@ async fn mooncode_tool_read_result(
     )
   }
   let value = if end_ref == "" { selected[0] } else { Json(selected) }
-  let lines = value
-    .stringify(indent=2)
-    .split("\n")
-    .map(line => line.to_owned())
-    .collect()
+  let details = mooncode_json_bool(arguments, "details", default=false)
+  let text = if end_ref == "" && !details {
+    mooncode_json_string(value, "output", default="")
+  } else {
+    value.stringify(indent=2)
+  }
+  let lines = text.split("\n").map(line => line.to_owned()).collect()
   let start = mooncode_json_int(arguments, "start_line", default=1)
   let end = mooncode_json_int(arguments, "end_line", default=lines.length()).min(
     lines.length(),
@@ -82,6 +84,19 @@ async fn mooncode_tool_read_result(
       "evidence_ref": reference,
       "end_ref": end_ref,
       "result_count": selected.length(),
+      "source": if end_ref == "" && !details {
+        {
+          "ok": mooncode_json_bool(value, "ok", default=false),
+          "message": mooncode_json_string(value, "message", default=""),
+          "truncated": mooncode_json_bool(
+            mooncode_json_object_field_or_empty(value, "metadata"),
+            "truncated",
+            default=false,
+          ),
+        }
+      } else {
+        Json::null()
+      },
       "start_line": start,
       "end_line": end,
       "line_count": lines.length(),

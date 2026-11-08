@@ -1162,21 +1162,25 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   )
   // Loaded instructions have one full copy in the protected prefix. The tool
   // receipt keeps its journal reference; failed/unlocated reads keep their body.
-  let output = if tool == "read_skill" &&
+  let loaded_skill = tool == "read_skill" &&
     mooncode_json_bool(execution, "accepted", default=false) &&
     mooncode_json_string(
       mooncode_json_object_field_or_empty(result, "metadata"),
       "location",
       default="",
     ) !=
-    "" {
+    ""
+  let output = if loaded_skill {
     ""
   } else {
     mooncode_json_string(result, "output", default="")
   }
   let result = match result {
     { "metadata": Object(metadata), .. } => {
+      // Loaded instructions already carry the resource identity and full body.
+      // Keep the location for relative references; selectors use canonical data.
       let projected = metadata.filter(fn(key, _) {
+        (!loaded_skill || key == "location") &&
         ![
           "verification_inputs", "approval_plan_digest", "approval_id", "run_id",
           "profile_digest", "absolute_path", "before_fingerprint", "execution_sandbox_required",

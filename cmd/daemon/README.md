@@ -7,6 +7,11 @@ full descriptions and `read_skill(name=...)` loads complete instructions.
 Without MCP, eight base tools are exposed by default. A loaded Skill's existing
 `allowed-tools` declaration supplements them through the same catalog; load
 `mooncode-tools` for image/IDE/SDK/patch/checkpoint tools. This grants no authority.
+Loaded Skill receipts keep the relative-reference location; full instructions
+remain in the protected prefix and all metadata remains in the journal.
+`read_result` reads saved output lines by default. `details=true` selects full
+canonical JSON and JSON-line pagination; `end_ref` still lists a result range.
+Retrieval success is separate from the original result's status/truncation.
 
 ## Run
 

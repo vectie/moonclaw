@@ -5,6 +5,32 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Result receipts and recall costs 2026-11-08
+
+- /Users/kq/mooncode-receipts-20261108: same12 responses,10240 window, no provider.
+  Skill receipts keep location for relative references; canonical metadata still
+  drives selection/recovery. read_result defaults to saved output lines;
+  details=true retains canonical JSON paging. Source status/truncation is separate
+  from successful retrieval. Full instructions/assistant/non-Skill outputs stay.
+- 62730 ->62508 receipt-only ->62544 with recall schema (+36): only186 saved,
+  still1.32x Pi47355. Full test appears only once2348; outline1986, source5184,
+  original SDK failure4896, Shell bodies2902. Do not remove historical failures.
+- Fully charged recall73469/14requests ->69381/13; directory+recall77907/15
+  ->73895/14. Old66733/71176 lost final verdicts; charge one repair request with
+  an oracle JSON line before comparing. These are synthetic branches, not new
+  observed choices or turn savings. Directory query adds4485 in the final path;
+  unannotated Skill pair68635 ->68136/13 each, sharing a common fixture path.
+- Runtime-metadata removal63615 and equal status alias dedup63806 increase input
+  through longer history retention: rejected. Removing Skill location loses a
+  relative-reference base: rejected. Keep all negative and failed audit evidence.
+- 15 original outputs match; details mode restores15 canonical results in553
+  pages/52.19s, plus15 output reads; original tools never rerun. Conditional
+  copies rebind event IDs to captured model refs. Paid journal/hashes stay intact.
+  No new tool, store, state, authority gate or automatic retrieval stage.
+- Final Native1837/1837; recall1/1 and Skill3/3; check/info/fmt pass, no interface
+  change or new test items. Handwritten runtime net+20, tests+23; no speculative
+  metadata deletion is shipped merely to achieve a negative source-line count.
+
 ## On-demand tools and skills 2026-11-08
 
 - Reuse Skill.allowed_tools, canonical read_skill results, native catalog/filter

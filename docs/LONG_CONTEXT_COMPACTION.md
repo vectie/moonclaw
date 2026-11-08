@@ -57,8 +57,9 @@ fields, verification-input inventories and internal grant digests; canonical
 journal facts remain intact. Empty task/context sections are not sent.
 Status, message, metadata and evidence_ref share one header object; there is no
 outer result wrapper or duplicate tool name (the tool_call_id already binds the
-protocol call). This changes only model presentation, not the canonical result
-or exact result-reader format. Exit/error/truncation/limit/artifact data remain.
+protocol call). This changes only model presentation, not the canonical result.
+Exact result JSON remains available through `read_result(details=true)`.
+Exit/error/truncation/limit/artifact data remain.
 
 Projection is lossy. A checkpoint contains working observations, not exact
 source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result
@@ -69,8 +70,12 @@ recall paths. Do not replay a mutation to recover its old output.
 
 The read-only `read_result` tool scans the current session journal by
 `evidence_ref`. With `end_ref`, it lists result references in that inclusive
-range; then an individual reference retrieves the canonical retained result.
-`start_line`/`end_line` select lines of its JSON representation and
+range; an individual reference reads the saved output directly.
+`start_line`/`end_line` select saved output lines, preserving their exact text.
+Use `details=true` for canonical result JSON, including metadata; line ranges
+then address JSON lines. The default receipt's `source` records the original
+ok/message/truncated status, separately from successful retrieval. Original
+tool truncation cannot be repaired by reading a retained result.
 `max_output_chars` defaults to 12000. Metadata reports line count and truncation.
 Missing references return an ordinary tool error. No original operation runs.
 This recovers retained tool output, not stdout already truncated by the tool,

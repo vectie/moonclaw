@@ -87,11 +87,12 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read_result",
-      "Recall a session result by evidence_ref without rerunning. end_ref lists references in a range; start_line/end_line select original result JSON lines.",
+      "Recall saved output lines by evidence_ref without rerunning. details=true reads full result JSON; end_ref lists references in a range.",
       {
         "type": "object",
         "properties": {
           "evidence_ref": { "type": "string" },
+          "details": { "type": "boolean" },
           "end_ref": { "type": "string" },
           "start_line": { "type": "integer", "minimum": 1 },
           "end_line": { "type": "integer", "minimum": 1 },
