@@ -5,6 +5,23 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+
+## Unwrap checkpoint observations 2026-11-09
+
+- Only unwrap prior checkpoint Observations instead of summarizing its header
+  as a new User. Same96/768 budget, outer result ranges identical all12frames.
+  Existing rolling-chat test fails2!=1 before fix, passes with old/new anchors.
+- 13 main ablations19 fully priced branches. Main49166->49157, net9 (0.0183%),
+  Pi47355 ratio1.0381/residual1802. Profile/recall/combined53900/53217/57284,
+  save12 each. Eight real producer replays96frames, <=1 checkpoint marker total,
+  full tasks/Skill/edits/final108 proof preserved. Window9472/7104 unchanged.
+- Background/null/metadata-equality removals all lose proof at11/12;
+  all11 variants priced with a real reader repair cost more than54000.
+  Keep their schemas/metadata/arguments unchanged; do not add isolated gains.
+- Native1836/1836, pruner17, info/fmt, mbti unchanged; no new test items.
+  Evidence /Users/kq/mooncode-residual5-20261109 includes counts/failures/
+  replay/raw paid hashes. No provider calls, new layers, states or hardening.
+
 ## SDK args and checkpoint framing 2026-11-09
 
 - Remove moon_cmd target property/enum/duplicate dispatch; use existing args

@@ -94,6 +94,16 @@ async test "compile_messages/long_chat_is_deterministic_and_bounded" (
     assert_true(transcript.contains("Context checkpoint"))
     assert_false(transcript.contains("OLD-ASSISTANT-0"))
     assert_eq(transcript, compile_transcript_json(second.messages))
+    let rolling = first.messages.copy()
+    rolling.push(@openai.assistant_message(content="new detail ".repeat(800)))
+    rolling.push(@openai.user_message(content="NEXT-REQUEST"))
+    rolling.push(@openai.assistant_message(content="NEXT-ANSWER"))
+    let continued = pruner.compile_messages(rolling)
+    let continued_text = compile_transcript_json(continued.messages)
+    assert_true(continued.within_budget)
+    assert_eq(continued_text.split("[Context checkpoint:").count() - 1, 1)
+    assert_true(continued_text.contains("OLD-ASSISTANT-8"))
+    assert_true(continued_text.contains("NEXT-ANSWER"))
   })
 }
 

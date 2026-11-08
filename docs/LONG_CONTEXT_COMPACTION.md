@@ -31,7 +31,10 @@ instead of accumulating protected checkpoints. Range handles and the existing
 768-token checkpoint allowance remain; only repeated framing text is shortened.
 The generated context message has one checkpoint marker, followed by unchanged
 range references and observations. Its historical-message count stays in
-compiler metrics rather than being repeated in model input. The same allowance
+compiler metrics rather than being repeated in model input. When compacting
+a checkpoint again, only its Observations are carried into the observation
+slot (same96-token allowance); its marker/range is not quoted as user content.
+The existing span merger carries that range once in the outer checkpoint. The same allowance
 includes the marker and references; this is not a smaller context window.
 
 Unknown windows, unsupported provider message shapes and compiler errors leave
@@ -103,13 +106,16 @@ automatic recall model call or mandatory retrieval stage.
 The working window remains9,472 after the earlier ABI calibration; the latest
 cleanup does not shrink it. Same-window ablations separate the read ABI,
 bundled-guide duplication and complete-exchange compaction. The default producer
-replays12 frozen responses at49,166 tokens (one warmup plus seven measurements),
+replays12 frozen responses at49,157 tokens (one warmup plus seven measurements),
 with at most one checkpoint message in each of96frames, full edit inputs,
 selected instructions and final verdicts retained. Natural-text responses use
 the existing internal finish adapter/acceptance; only its default model schema
 and forced-call requirement are removed. Opaque metadata stays.
 Conditional profile/recall/directory-plus-recall cases include all13/13/14 requests.
-The 2026-11-09 SDK/checkpoint follow-up saves386 at the same window; conditional
+The subsequent observation-unwrapping fix saves9 on the main trace and12
+on each fully charged conditional path; all other header/schema reductions
+were rejected after real-reader proof repair. The earlier 2026-11-09
+SDK/checkpoint follow-up saves386 at the same window; conditional
 cases save386/424/424 including issuing requests, receipts and later carrying.
 Removing equal status/exit aliases or a generic success message saved small
 amounts alone but lost final verdicts in combination. Recovery costs55,092 or

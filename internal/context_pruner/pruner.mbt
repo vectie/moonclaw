@@ -226,7 +226,14 @@ fn Pruner::checkpoint_observation(
   match message {
     User(user) => {
       let text = checkpoint_content_text(user.content).trim().to_owned()
-      if text == "" {
+      if is_context_checkpoint(message) {
+        text
+        .split("\nObservations:\n")
+        .nth(1)
+        .map(observations => {
+          pruner.token_counter.truncate_string(observations.to_owned(), 96)
+        })
+      } else if text == "" {
         None
       } else {
         Some("- User: " + pruner.token_counter.truncate_string(text, 96))
