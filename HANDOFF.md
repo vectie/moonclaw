@@ -5,6 +5,27 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Measured input benchmark 2026-11-08
+
+- /Users/kq/mooncode-input-benchmark-20261108: one warmup+7 measured12-frame
+  replays through current producer/compiler,62544 stable. Pi recorded requests
+  count47355; no new Pi/runtime/model calls.1.32 is not current provider usage.
+- Original MC request132150 estimate vs124777 billed (+5.91%), cache18176;
+  Pi47355 vs45950 (+3.06%), cache16000. Do not scale old calibration to new code.
+- Basic4 schema5160 vsPi7188. Control4=3900, SDK/IDE2=4070, full Skill5126.
+  Recarried bodies12129 vsPi19751; full test2348 once.3 edits each, weighted
+  edit args3854 vs2246. No observed catalog/profile/read_result queries in the
+  old trace; synthetic recall savings do not explain the primary input gap.
+- Finish-schema/prose adapter ablation63274 vs62544: schema-624/system-36,
+  headers+195 and bodies+1195 (outline331/source864 each retained another round).
+  Restored original source. All three Native benchmark checks1/1; product source,
+  interfaces and test items unchanged. No new full-suite/paid quality claim.
+- Harness aggregation must run after the producer in one test; separate async
+  test cases raced fresh output. Cache usage has two shapes: normalized MC
+  cache_read_tokens, Pi nested prompt_tokens_details.cached_tokens. Missing is
+  unknown, not0. Keep failed harness logs and all7 timing samples, including the
+  slow sample (compiler median343ms/p95636ms per12 frames, Native debug).
+
 ## Result receipts and recall costs 2026-11-08
 
 - /Users/kq/mooncode-receipts-20261108: same12 responses,10240 window, no provider.
