@@ -2,6 +2,7 @@
 name: moonbit-agent-guide
 description: MoonBit package, API navigation, testing and build conventions for work that needs language or tooling guidance.
 license: Apache-2.0
+allowed-tools: moon_cmd moon_ide
 ---
 
 # MoonBit work

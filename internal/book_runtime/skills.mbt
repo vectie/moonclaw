@@ -77,6 +77,7 @@ pub async fn read_skill(book_root : String, arguments : Json) -> Json {
       "id": skill.id,
       "display_name": skill.name,
       "description": skill.description,
+      "allowed_tools": skill.allowed_tools,
       "path": if requested == "" {
         "SKILL.md"
       } else {

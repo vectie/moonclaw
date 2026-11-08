@@ -7,7 +7,7 @@ summary service, feature flag or human confirmation is required.
 
 ## Model window
 
-The default working window is the smaller of 12,288 tokens and the configured
+The default working window is the smaller of 10,240 tokens and the configured
 model's `safe_zone_tokens`. The existing `payload.planner_context_window_tokens`
 can request a larger or smaller window, bounded by known model capacity, or
 supply an otherwise unknown one. Input budget is the smaller of 75% of that window and
@@ -77,13 +77,25 @@ This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
 
-The 12,288 default was selected from recorded continuous sweeps: smaller tested
-windows dropped source needed by recorded edits; this setting preserved those
-inputs, the full skill, task prefix and final verification verdict. The original
+The working window was recalibrated with the smaller default tool/skill index.
+Matched sweeps separate window savings from on-demand loading savings. 10,240
+preserves the recorded edit inputs, full instructions and final verdicts both
+in the12-response trace and in a13-request conditional profile-load branch;
+9,216 drops edit inputs/final verification in the latter and is not the default.
+This is the existing soft projection, not an execution stop/budget gate. The original
 test file is still read whole; older presentations are replaced by journal
 references after consumption. Fixed-trace savings do not prove new model
 decisions, zero recall requests, cash savings or quality across larger tasks.
 See the [component audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md).
+
+The protected skill prefix keeps complete selected resources. The default
+system index contains IDs; `read_skill()` reuses the full catalog for descriptions,
+and `read_skill(name=...)` retains full instruction/reference loading. Native
+tool selection derives declared `allowed_tools` from accepted, journal-backed
+skill results at each model request. There is no second selected-tool store.
+Explicit tool selection and existing read-only/MCP/worker boundaries still
+apply; visibility grants no execution authority. Normal follow-ups reuse their
+retained system index instead of reloading an ignored catalog argument.
 
 ## Journal
 

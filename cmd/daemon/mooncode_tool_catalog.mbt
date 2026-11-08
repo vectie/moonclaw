@@ -286,14 +286,13 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read_skill",
-      "Load an installed SKILL.md, or a relevant resource it references via path.",
+      "Load a complete installed Skill or referenced path; omit name to list full descriptions. Declared tools become available next turn.",
       {
         "type": "object",
         "properties": {
           "name": { "type": "string" },
           "path": { "type": "string" },
         },
-        "required": ["name"],
         "additionalProperties": false,
       },
     ),

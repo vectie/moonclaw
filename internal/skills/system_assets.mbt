@@ -215,6 +215,7 @@ let system_assets : Array[@assets.Asset] = [
       #|name: moonbit-agent-guide
       #|description: MoonBit package, API navigation, testing and build conventions for work that needs language or tooling guidance.
       #|license: Apache-2.0
+      #|allowed-tools: moon_cmd moon_ide
       #|---
       #|
       #|# MoonBit work
@@ -321,7 +322,21 @@ let system_assets : Array[@assets.Asset] = [
       #|`moon ide find-references <symbol>`.
     ),
   },
+  @assets.Asset::{
+    path: "mooncode-tools/SKILL.md",
+    content: (
+      #|---
+      #|name: mooncode-tools
+      #|description: Load additional native tools for images, semantic navigation, SDK commands, patches and progress notes.
+      #|allowed-tools: view_image moon_ide moon_cmd apply_patch checkpoint
+      #|---
+      #|
+      #|These tools are available on the next model turn. Use the relevant tool;
+      #|execution still follows the task scope and configured grants. A loaded tool
+      #|does not grant authority or make a checkpoint completion evidence.
+    ),
+  },
 ]
 
 ///|
-let system_assets_fingerprint : String = "f968a85b7eee7c4710008829d6453afe5d2363b544096f61f08c428fa605e11b"
+let system_assets_fingerprint : String = "3cab1aaac6f1e613310e1cd27bce3d8d578119b9f36e22cbb5aedf0e75b88425"

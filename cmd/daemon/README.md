@@ -2,8 +2,11 @@
 
 The MoonCode catalog advertises executable tools. The former native `browser`
 entry only returned a refusal and has been removed; `view_image` remains for
-image evidence. The skill listing presents complete id/name/description rows
-as compact JSON; selected skill instructions are still loaded in full.
+image evidence. The default skill index presents IDs; `read_skill()` returns
+full descriptions and `read_skill(name=...)` loads complete instructions.
+Without MCP, eight base tools are exposed by default. A loaded Skill's existing
+`allowed-tools` declaration supplements them through the same catalog; load
+`mooncode-tools` for image/IDE/SDK/patch/checkpoint tools. This grants no authority.
 
 ## Run
 
@@ -646,6 +649,9 @@ and `finish`. Coding turns carry a task contract; optional
 checkpoints save advisory progress. Native tools come from one catalog, with
 read-only subsets and explicit `planner_allowed_tools` selection. Worker tools
 are absent by default. MCP tools retain their own existing inventory/call path.
+Accepted skill results supply declarations for subsequent model requests,
+including after journal recovery. Explicit selection stays authoritative;
+ordinary initial prompts do not carry every optional schema.
 All models share the same working instruction and initial-message builder:
 identify the observable result, locate the implementation, decompose until
 action and verification are clear, then execute and repair. Provider transport
@@ -673,9 +679,10 @@ same turn continues until completion is accepted or the command is cancelled.
 When assistant prose is projected as a synthetic `finish`, recovery appends the
 contract rejection as a user message without inventing a provider tool-result
 item for a function call the model did not make.
-Installed skills are exposed to the planner as a compact catalog. When a skill
-is named or clearly applicable, the planner must select `read_skill`; that call
-ends the current batch so the complete skill resource governs the next prompt.
+Installed skills are exposed as an ID index with full descriptions on demand.
+When the planner chooses a Skill or project instructions require it, `read_skill`
+ends the current batch so the complete resource governs the next prompt and
+its declared tools become visible. Descriptions/index reads do not activate tools.
 This progressive-disclosure path is shared by MoonBit-specific and general
 coding workflows rather than being special-cased to one language.
 When a selected tool needs operator authority, the planner selects that exact

@@ -22,6 +22,7 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
     #|---
     #|name: fixture-review
     #|description: Review fixture files using the installed fixture procedure.
+    #|allowed-tools: moon_ide apply_patch
     #|---
     #|
     #|Read references/checklist.md only when a review is requested.
@@ -40,6 +41,12 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
     .head()
     .unwrap()
   guard @json.parse(listing) is Array(entries) else { fail("skill listing") }
+  assert_true(entries.contains(Json("fixture-review")))
+  let full = mooncode_tool_read_skill(book_root, {})
+  guard @json.parse(mooncode_json_string(full, "output", default=""))
+    is { "skills": Array(entries), .. } else {
+    fail("descriptions")
+  }
   assert_true(
     entries.any(entry => {
       entry
@@ -64,6 +71,64 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
   assert_true(mooncode_json_bool(loaded, "accepted", default=false))
   let result = mooncode_json_object_field_or_empty(loaded, "result")
   assert_eq(mooncode_json_string(result, "output", default=""), body)
+  let command : Json = {
+    "command": "prompt",
+    "task_context": { "available_mcp_integrations": [] },
+  }
+  let initial = mooncode_test_model_tool_names(
+    mooncode_runtime_turn_model_tools_for_command(command),
+  )
+  assert_false(initial.contains("moon_ide"))
+  assert_false(initial.contains("apply_patch"))
+  let selected = mooncode_test_model_tool_names(
+    mooncode_runtime_turn_model_tools_for_command(command, skill_results=[
+      loaded,
+    ]),
+  )
+  assert_true(selected.contains("moon_ide"))
+  assert_true(selected.contains("apply_patch"))
+  let durable = mooncode_runtime_operation_finished(
+    "skill-load",
+    { "tool": "read_skill", "arguments": { "name": "fixture-review" } },
+    loaded,
+    step=0,
+    index=0,
+  )
+  mooncode_append_session_journal(
+    book_root,
+    "session-skills",
+    mooncode_journal_event(),
+    mooncode_json_object_field_or_empty(durable, "event"),
+  )
+  let restored = mooncode_tool_execution_from_event(
+    mooncode_journal_entries(
+      mooncode_read_session_journal(book_root, "session-skills"),
+      mooncode_journal_event(),
+    )[0],
+  )
+  assert_eq(
+    selected,
+    mooncode_test_model_tool_names(
+      mooncode_runtime_turn_model_tools_for_command(command, skill_results=[
+        restored,
+      ]),
+    ),
+  )
+  let additional = mooncode_execute_tool_call(
+    "session-skills",
+    book_root,
+    { "tool": "read_skill", "arguments": { "name": "mooncode-tools" } },
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  let all = mooncode_test_model_tool_names(
+    mooncode_runtime_turn_model_tools_for_command(command, skill_results=[
+      additional,
+    ]),
+  )
+  for
+    name in ["view_image", "moon_ide", "moon_cmd", "apply_patch", "checkpoint"] {
+    assert_true(all.contains(name))
+  }
   assert_false(
     mooncode_json_bool(
       mooncode_json_object_field_or_empty(result, "metadata"),

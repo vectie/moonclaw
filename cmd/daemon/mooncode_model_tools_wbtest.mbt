@@ -12,30 +12,16 @@ fn mooncode_test_model_tool_names(
 }
 
 ///|
-test "default tasks share one catalog regardless of language or inferred purpose" {
-  let expected = mooncode_test_model_tool_names(
-    mooncode_runtime_turn_model_tools(),
-  ).filter(name => name != "spawn_workers" && name != "wait_workers")
-  for
-    text in [
-      "Fix the parser and run tests.", "Refactor the MoonBit package.", "Fix the web UI and inspect screenshots.",
-      "修复解析器并验证结果", "Choose a plan, then implement it.", "Explain the word fix",
-      "请解释 fix 的含义", "Review the implementation without editing", "Reply briefly",
-    ] {
-    let command : Json = { "command": "prompt", "text": text }
-    let names = mooncode_test_model_tool_names(
-      mooncode_runtime_turn_model_tools_for_command(command),
-    )
-    assert_eq(names, expected, msg=text)
-    assert_false(names.contains("browser"))
-    for
-      needed in [
-        "ask_user", "read", "write", "edit", "apply_patch", "shell", "moon_ide",
-        "moon_cmd", "view_image", "mcp_list_tools", "mcp_call_tool", "finish",
-      ] {
-      assert_true(names.contains(needed), msg=needed)
-    }
-  }
+test "default tools retain base controls and defer additional capabilities" {
+  assert_eq(
+    mooncode_test_model_tool_names(
+      mooncode_runtime_turn_model_tools_for_command({}),
+    ),
+    [
+      "ask_user", "read", "read_result", "write", "edit", "shell", "finish", "read_skill",
+      "mcp_list_tools", "mcp_call_tool",
+    ],
+  )
 }
 
 ///|
@@ -85,9 +71,7 @@ test "read-only tool selection retains inspection without workspace mutation too
     mooncode_runtime_turn_model_tools_for_command(command),
   )
   for
-    needed in [
-      "read", "view_image", "moon_ide", "read_skill", "mcp_list_tools", "finish",
-    ] {
+    needed in ["read", "read_result", "read_skill", "mcp_list_tools", "finish"] {
     assert_true(names.contains(needed))
   }
   for
@@ -96,4 +80,22 @@ test "read-only tool selection retains inspection without workspace mutation too
     ] {
     assert_false(names.contains(omitted))
   }
+  let loaded : Json = {
+    "accepted": true,
+    "tool": "read_skill",
+    "result": {
+      "metadata": {
+        "allowed_tools": ["view_image", "moon_ide", "write", "spawn_workers"],
+      },
+    },
+  }
+  let selected = mooncode_test_model_tool_names(
+    mooncode_runtime_turn_model_tools_for_command(command, skill_results=[
+      loaded,
+    ]),
+  )
+  assert_true(selected.contains("view_image"))
+  assert_true(selected.contains("moon_ide"))
+  assert_false(selected.contains("write"))
+  assert_false(selected.contains("spawn_workers"))
 }

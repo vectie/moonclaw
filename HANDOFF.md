@@ -5,6 +5,34 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## On-demand tools and skills 2026-11-08
+
+- Reuse Skill.allowed_tools, canonical read_skill results, native catalog/filter
+  and journal recovery. No MCP:8 base tools; bundled MoonBit Skill adds SDK/IDE
+  (10), mooncode-tools restores all5 deferred tools (13). Explicit selections,
+  read-only/MCP/worker controls and executor grants retain their boundaries.
+- Default skill prefix is IDs; native read_skill() reuses the full catalog,
+  name/path still load full resources. Loading descriptions is not activation.
+  Normal follow-up no longer reloads a catalog its message builder ignored.
+- Matched10240 window: full baseline68383, index65247, tools67088, both62730.
+  Starting75840:7457 window-only +3136 index/discovery +2517 declared tools.
+  Initial default12288 without calibration saved only16 using deployed assets.
+  Window10240 retains tested facts in both12-response and13-request conditional
+  custom/unannotated Skill paths;9216 loses inputs/verdict in the latter.
+- Custom unannotated branch explicitly includes one synthetic profile request
+  and full receipt:68626 input, not a real model observation. New choices,
+  extra discovery turns, cash and autonomous quality are not measured.
+- /Users/kq/mooncode-on-demand-20261108 stores all sweeps/prototypes/failures.
+  Current installed guide resolves to .system with declarations. Do not infer
+  current installed metadata from an old receipt; a prior override assertion
+  was wrong and corrected. The unannotated branch uses an explicit fixture.
+- Disk-full interrupted one matrix; remove only366 completed MoonCode script
+  compiler caches (~746MiB), preserving scripts/evidence and product builds.
+  Recovered full matrix and3 original paid-log hashes verified. No paid rerun.
+- Final Native1837/1837, focused6/6, check/info/fmt pass; interfaces unchanged.
+  Runtime handwritten+27, generated assets+15, tests+67 lines; no added test
+  items, duplicated keyword/catalog checks removed. Code stays on main.
+
 ## Residual Pi comparison 2026-11-08
 
 - No provider call. Pair existing Pi47355 with current MoonCode76295 using the

@@ -417,6 +417,7 @@ fn mooncode_runtime_turn_model_max_tokens(model_name : String) -> Int32 {
 ///|
 fn mooncode_runtime_turn_model_tools_for_command(
   command : Json,
+  skill_results~ : Array[Json] = [],
 ) -> Array[@openai.ChatCompletionToolParam] {
   let all_tools = mooncode_runtime_turn_model_tools()
   let allowed = mooncode_runtime_turn_explicit_allowed_tool_names(command)
@@ -442,12 +443,32 @@ fn mooncode_runtime_turn_model_tools_for_command(
   if !allowed.is_empty() {
     return tools
   }
-  if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
-    return mooncode_runtime_turn_select_model_tools(tools, [
+  let tools = if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
+    mooncode_runtime_turn_select_model_tools(tools, [
       "read", "read_result", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
     ])
+  } else {
+    tools
   }
-  tools
+  let selected = [
+    "ask_user", "read", "read_result", "read_skill", "write", "edit", "shell", "finish",
+    "mcp_list_tools", "mcp_call_tool",
+  ]
+  for execution in skill_results {
+    if mooncode_json_bool(execution, "accepted", default=false) &&
+      mooncode_json_string(execution, "tool", default="") == "read_skill" {
+      selected.append(
+        mooncode_json_array_string_items(
+          mooncode_json_object_field_or_empty(
+            mooncode_tool_result_value(execution),
+            "metadata",
+          ),
+          "allowed_tools",
+        ),
+      )
+    }
+  }
+  mooncode_runtime_turn_select_model_tools(tools, selected[:])
 }
 
 ///|
@@ -995,9 +1016,6 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       now~,
     )
   }
-  let skill_catalog = mooncode_runtime_turn_skill_catalog(
-    mooncode_book_root(command),
-  )
   let messages = mooncode_runtime_turn_model_followup_messages(
     command,
     previous_plan,
@@ -1007,7 +1025,6 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     live_steering,
     remaining_steps,
     patient_replan_guidance~,
-    skill_catalog~,
   )
   self.mooncode_runtime_model_round(
     command,
@@ -1015,6 +1032,7 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     messages,
     started,
     followup=true,
+    skill_results=all_tool_results,
     now~,
   )
 }
@@ -1241,6 +1259,7 @@ async fn Daemon::mooncode_runtime_model_round(
   messages : Array[Json],
   started : Json,
   followup~ : Bool,
+  skill_results~ : Array[Json] = [],
   now~ : @clock.Timestamp,
 ) -> Json {
   let session_id = mooncode_json_string(command, "session_id", default="")
@@ -1253,7 +1272,10 @@ async fn Daemon::mooncode_runtime_model_round(
       model_name,
     ) {
     Some(model) => {
-      let tools = mooncode_runtime_turn_model_tools_for_command(command)
+      let tools = mooncode_runtime_turn_model_tools_for_command(
+        command,
+        skill_results~,
+      )
       let context = mooncode_runtime_turn_compile_context(
         command,
         messages,

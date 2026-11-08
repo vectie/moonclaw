@@ -95,6 +95,11 @@ async fn mooncode_runtime_turn_skill_catalog(book_root : String) -> String {
   }
   let names = loader.skills().keys().collect()
   names.sort()
+  mooncode_skill_index_prompt(names)
+}
+
+///|
+fn mooncode_skill_index_prompt(names : Array[String]) -> String {
   if names.is_empty() {
     return "\n\nNo installed skills were discovered for this MoonBook."
   }
@@ -103,34 +108,34 @@ async fn mooncode_runtime_turn_skill_catalog(book_root : String) -> String {
     (
       #|
       #|
-      #|Use `read_skill` when the user or project requests a skill, or when you
-      #|need its workflow or references for the current task. Use its <id> as
-      #|the name argument to distinguish repeated display names. Read the complete
-      #|SKILL.md when selecting a skill, then load references as needed.
-      #|`read_skill` ends the current tool batch so its instructions govern the next step.
+      #|Use read_skill(name=id) for full instructions and referenced paths, or
+      #|read_skill() for full descriptions. Read selected instructions completely.
+      #|Load mooncode-tools for view_image, moon_ide, moon_cmd, apply_patch or checkpoint.
+      #|read_skill ends the batch; declared tools are exposed next turn, not authorized.
       #|
       #|<available_skills>
       #|
     ),
   )
-  let entries : Array[Json] = names.filter_map(name => {
-    match loader.skills().get(name) {
-      Some(skill) =>
-        Some({
-          "id": skill.id,
-          "name": skill.name,
-          "description": skill.description,
-        })
-      None => None
-    }
-  })
-  out.write_string(Json(entries).stringify())
+  out.write_string(Json(names).stringify())
   out.write_string("\n</available_skills>")
   out.to_string()
 }
 
 ///|
 async fn mooncode_tool_read_skill(book_root : String, arguments : Json) -> Json {
+  if mooncode_json_string(arguments, "name", default="").trim().is_empty() {
+    return match mooncode_skill_catalog_json(book_root) {
+      Ok(catalog) =>
+        mooncode_tool_ok_result(
+          "read_skill",
+          message="Installed skill descriptions",
+          output=catalog.stringify(),
+          metadata={},
+        )
+      Err(error) => mooncode_tool_error_result("read_skill", message=error)
+    }
+  }
   @book_runtime.read_skill(book_root, arguments)
 }
 
