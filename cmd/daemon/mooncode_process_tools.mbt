@@ -595,16 +595,6 @@ async fn mooncode_tool_moon_cmd(
       message="moon_cmd expected_exit_code must be between 0 and 255",
     )
   }
-  if @mooncode_tools.moon_cmd_is_test_update(arguments) &&
-    (
-      mooncode_json_string(arguments, "test_update_kind", default="") == "" ||
-      mooncode_json_string(arguments, "test_update_reason", default="") == ""
-    ) {
-    return mooncode_tool_error_result(
-      "moon_cmd",
-      message="moon test --update requires test_update_kind and test_update_reason",
-    )
-  }
   let command_args = mooncode_moon_cmd_command_args(arguments)
   if command == "fmt" && mooncode_moon_fmt_has_malformed_selector(command_args) {
     return mooncode_tool_error_result(
@@ -729,11 +719,6 @@ async fn mooncode_tool_moon_cmd(
       "moon_command": command,
       "cwd": mooncode_json_string(cwd, "relative_path", default="."),
       "expected_exit_code": expected_exit_code,
-      "test_update_kind": mooncode_json_string(
-        arguments,
-        "test_update_kind",
-        default="",
-      ),
     },
   )
   if command == "fmt" && explicit_paths.length() > 0 {
@@ -866,25 +851,22 @@ async fn mooncode_moon_cmd_resolved_args(
       Json(mooncode_json_string(resolved, "absolute_path", default="")),
     )
   }
-  let arguments = mooncode_json_object_with_field(arguments, "path", Json(""))
-    |> mooncode_json_object_with_field("paths", Json::array(paths))
+  let arguments = mooncode_json_object_with_field(
+    arguments,
+    "paths",
+    Json::array(paths),
+  )
   mooncode_moon_cmd_args(arguments, command, selector_root~, cwd_path~)
 }
 
 ///|
 fn mooncode_moon_cmd_command_args(arguments : Json) -> Array[String] {
-  let values : Array[String] = []
-  mooncode_push_json_string_field(values, arguments, "arg")
-  mooncode_push_json_string_array_field(values, arguments, "args")
-  values
+  mooncode_json_array_string_items(arguments, "args")
 }
 
 ///|
 fn mooncode_moon_cmd_paths(arguments : Json) -> Array[String] {
-  let paths : Array[String] = []
-  mooncode_push_json_string_field(paths, arguments, "path")
-  mooncode_push_json_string_array_field(paths, arguments, "paths")
-  paths
+  mooncode_json_array_string_items(arguments, "paths")
 }
 
 ///|
@@ -943,29 +925,6 @@ fn mooncode_moon_cmd_path_relative_to_cwd(
   let absolute = mooncode_json_string(resolved, "absolute_path", default=path)
   @pathx.relative(cwd_path, absolute) catch {
     _ => path
-  }
-}
-
-///|
-fn mooncode_push_json_string_field(
-  args : Array[String],
-  json : Json,
-  key : String,
-) -> Unit {
-  let value = mooncode_json_string(json, key, default="")
-  if value != "" {
-    args.push(value)
-  }
-}
-
-///|
-fn mooncode_push_json_string_array_field(
-  args : Array[String],
-  json : Json,
-  key : String,
-) -> Unit {
-  for value in mooncode_json_array_string_items(json, key) {
-    args.push(value)
   }
 }
 

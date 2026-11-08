@@ -7,8 +7,10 @@ full descriptions and `read_skill(name=...)` loads complete instructions.
 Without MCP, eight base tools are exposed by default. A loaded Skill's existing
 `allowed-tools` declaration supplements them through the same catalog; load
 `mooncode-tools` for image/IDE/SDK/patch/checkpoint tools. This grants no authority.
-Loaded Skill receipts keep the relative-reference location; full instructions
-remain in the protected prefix and all metadata remains in the journal.
+Loaded Skill receipts keep the relative-reference location. Full Markdown
+instructions remain in the protected prefix; standard routing frontmatter
+stays in the registry and canonical journal. Custom frontmatter and reference
+files remain verbatim.
 `read_result` reads saved output lines by default. `details=true` selects full
 canonical JSON and JSON-line pagination; `end_ref` still lists a result range.
 Retrieval success is separate from the original result's status/truncation.
@@ -632,10 +634,15 @@ navigation actions (`doc`, `outline`, `peek_def`, `hover`, and
 `find_references`) inside the selected MoonBook root and emits a
 `moon_ide.finished` proof event. `moon_cmd` runs selected structured `moon`
 commands (`check`, `test`, `run`, `info`, `fmt`, and `build`) with bounded
-output, snapshot-update guard metadata, test-lane events, and
+output, test-lane events, and
 `moon_cmd.finished` proof. Runtime `run_tests`, `run_build`, and `run_eval`
 deterministic plans run one `moon_cmd`; `run_tests` defaults to `moon test` and
 `run_build` to `moon build`. No redundant check is appended.
+The native edit ABI is `{path, edits:[{old_string,new_string,replace_all?}]}`:
+one ordered array and one atomic write. `moon_cmd` accepts `args` and `paths`
+arrays; scalar aliases and snapshot-update kind/reason fields were removed.
+Execution grants and physical module/path validation remain at their existing
+boundaries. Snapshot updates use ordinary authorization and project instructions.
 These process-backed tools live in `mooncode_process_tools.mbt`, with focused
 coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.

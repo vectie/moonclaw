@@ -34,9 +34,6 @@ pub fn moon_cmd_is_test_update(arguments : Json) -> Bool {
     return false
   }
   let update = arg => arg == "--update" || arg == "-u"
-  if update(string_field(arguments, "arg")) {
-    return true
-  }
   match arguments {
     { "args": Array(args), .. } =>
       args.any(arg => {

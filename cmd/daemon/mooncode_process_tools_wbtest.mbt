@@ -124,8 +124,7 @@ async test "mooncode context application failures identify their file" (
     } else {
       {
         "path": "target.mbt",
-        "old_string": "stale",
-        "new_string": "replacement",
+        "edits": [{ "old_string": "stale", "new_string": "replacement" }],
       }
     }
     let execution = mooncode_execute_tool_call(
@@ -578,9 +577,6 @@ test "mooncode normalizes command-specific moon arguments" {
     ]),
   )
   assert_true(
-    @mooncode_tools.moon_cmd_is_test_update({ "command": "test", "arg": "-u" }),
-  )
-  assert_true(
     @mooncode_tools.moon_cmd_is_test_update({
       "command": "test",
       "args": ["-u"],
@@ -592,7 +588,7 @@ test "mooncode normalizes command-specific moon arguments" {
         "command": "fmt",
         "target": "native",
         "args": ["--package", "example/demo/src", "--target=native", "--check"],
-        "path": "tools/demo/src",
+        "paths": ["tools/demo/src"],
       },
       "fmt",
       selector_root="/book",
@@ -606,7 +602,7 @@ test "mooncode normalizes command-specific moon arguments" {
         "command": "check",
         "target": "native",
         "args": ["--warn-list", "+73"],
-        "path": "tools/demo/src",
+        "paths": ["tools/demo/src"],
       },
       "check",
       selector_root="/book",
@@ -629,7 +625,11 @@ test "mooncode normalizes command-specific moon arguments" {
   )
   assert_true(
     mooncode_moon_cmd_args(
-      { "command": "info", "target": "all", "path": "tools/demo/src/main.mbt" },
+      {
+        "command": "info",
+        "target": "all",
+        "paths": ["tools/demo/src/main.mbt"],
+      },
       "info",
       selector_root="/book",
       cwd_path="/book/tools/demo",
@@ -638,7 +638,7 @@ test "mooncode normalizes command-specific moon arguments" {
   )
   assert_true(
     mooncode_moon_cmd_args(
-      { "command": "check", "path": "src" },
+      { "command": "check", "paths": ["src"] },
       "check",
       selector_root="/book/tools/demo",
       cwd_path="/book/tools/demo",
@@ -779,17 +779,17 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   let nested_commands : Array[(String, Json, String)] = [
     (
       "check",
-      { "command": "check", "target": "native", "path": "tools/demo/src" },
+      { "command": "check", "target": "native", "paths": ["tools/demo/src"] },
       "moon check --target native src",
     ),
     (
       "test",
-      { "command": "test", "target": "native", "path": "tools/demo/src" },
+      { "command": "test", "target": "native", "paths": ["tools/demo/src"] },
       "moon test --target native src",
     ),
     (
       "info",
-      { "command": "info", "target": "native", "path": "tools/demo/src" },
+      { "command": "info", "target": "native", "paths": ["tools/demo/src"] },
       "moon info --target native src",
     ),
     (
@@ -798,7 +798,7 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
         "command": "fmt",
         "target": "native",
         "args": ["--package", "example/demo/src", "--target", "native"],
-        "path": "tools/demo/src",
+        "paths": ["tools/demo/src"],
       },
       "moon fmt src",
     ),

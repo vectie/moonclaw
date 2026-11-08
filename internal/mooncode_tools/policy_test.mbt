@@ -9,7 +9,6 @@ test "instruction loading, concurrency and replay have separate contracts" {
   let calls : Array[(String, Json)] = [
     ("moon_cmd", { "command": "fmt" }),
     ("moon_cmd", { "command": "test", "args": ["--update"] }),
-    ("moon_cmd", { "command": "test", "arg": "-u" }),
     ("future_tool", {}),
   ]
   for (tool, arguments) in calls {

@@ -124,7 +124,10 @@ async test "mooncode parallel read batches accept independent read-only tools" {
     calls[0],
     {
       "tool": "edit",
-      "arguments": { "path": "a.txt", "old_string": "a", "new_string": "b" },
+      "arguments": {
+        "path": "a.txt",
+        "edits": [{ "old_string": "a", "new_string": "b" }],
+      },
     },
   ]
   assert_false(

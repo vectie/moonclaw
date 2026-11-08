@@ -7,7 +7,7 @@ summary service, feature flag or human confirmation is required.
 
 ## Model window
 
-The default working window is the smaller of 10,240 tokens and the configured
+The default working window is the smaller of 9,472 tokens and the configured
 model's `safe_zone_tokens`. The existing `payload.planner_context_window_tokens`
 can request a larger or smaller window, bounded by known model capacity, or
 supply an otherwise unknown one. Input budget is the smaller of 75% of that window and
@@ -39,8 +39,12 @@ same compiled request and never changes the task to handle provider overload.
 
 The bundled MoonBit skill is maintained under `internal/skills/system` and
 embedded with the existing generator. Its small entrypoint links optional
-language/build references. The complete accepted skill resource has one copy
-in the protected instruction prefix; its tool message keeps status/metadata
+language/build references. The complete Markdown instruction body has one copy
+in the protected prefix. The existing YAML parser separates standard routing
+frontmatter (`name`, `description`, `license`, `allowed-tools`), whose full data
+stays in the registry and canonical result. Unknown/custom frontmatter, plain
+resources and reference files remain verbatim; no instruction summary is made.
+Its tool message keeps status/location
 and the journal reference. Later follow-ups rebuild this prefix from existing
 results, including after restart. The separate loaded-skill receipt and its
 string-prefix filter were removed; instruction bytes survive context pressure.
@@ -82,18 +86,20 @@ This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
 
-The working window was recalibrated with the smaller default tool/skill index.
-Matched sweeps separate window savings from on-demand loading savings. 10,240
-preserves the recorded edit inputs, full instructions and final verdicts both
-in the12-response trace and in a13-request conditional profile-load branch;
-9,216 drops edit inputs/final verification in the latter and is not the default.
+The working window was recalibrated after the array-only edit/SDK ABI and
+Skill prefix cleanup. Matched sweeps keep code savings separate from window
+changes. The current9,472 default retains edit inputs, all Markdown instructions
+and final verdicts in both12-response and13-request conditional profile cases;
+9,216 loses an edit input in the latter and is rejected. The old implementation
+also loses an edit input at9,472, so window-only savings cannot justify this
+setting without the source changes. The benchmark stores all failing groups.
 This is the existing soft projection, not an execution stop/budget gate. The original
 test file is still read whole; older presentations are replaced by journal
 references after consumption. Fixed-trace savings do not prove new model
 decisions, zero recall requests, cash savings or quality across larger tasks.
 See the [component audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md).
 
-The protected skill prefix keeps complete selected resources. The default
+The protected skill prefix keeps complete selected instructions. The default
 system index contains IDs; `read_skill()` reuses the full catalog for descriptions,
 and `read_skill(name=...)` retains full instruction/reference loading. Native
 tool selection derives declared `allowed_tools` from accepted, journal-backed

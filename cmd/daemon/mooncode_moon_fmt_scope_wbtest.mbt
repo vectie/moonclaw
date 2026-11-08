@@ -65,8 +65,12 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
       "command_id": "cmd-fmt-scope",
       "arguments": {
         "path": "tools/demo/src/requested.mbt",
-        "old_string": "pub fn requested()->Int{1}",
-        "new_string": "pub fn requested()->Int{2}",
+        "edits": [
+          {
+            "old_string": "pub fn requested()->Int{1}",
+            "new_string": "pub fn requested()->Int{2}",
+          },
+        ],
       },
     },
     now=@clock.Timestamp::from_ms(77L),
@@ -85,7 +89,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "arguments": {
           "command": "test",
           "target": "native",
-          "path": "tools/demo/src",
+          "paths": ["tools/demo/src"],
         },
       },
       now=@clock.Timestamp::from_ms(78L),
@@ -103,7 +107,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "arguments": {
           "command": "check",
           "target": "all",
-          "path": "tools/demo/src",
+          "paths": ["tools/demo/src"],
         },
       },
       now=@clock.Timestamp::from_ms(79L),
@@ -120,7 +124,7 @@ async test "mooncode contained scoped fmt permits verified terminal completion w
         "command_id": "cmd-fmt-scope",
         "arguments": {
           "command": "fmt",
-          "path": "tools/demo/src/requested.mbt",
+          "paths": ["tools/demo/src/requested.mbt"],
         },
       },
       now=@clock.Timestamp::from_ms(80L),
@@ -353,7 +357,7 @@ async test "mooncode scoped fmt fails before execution when state cannot be snap
       "book_root": book_root,
       "tool": "moon_cmd",
       "command_id": "cmd-fmt-no-git",
-      "arguments": { "command": "fmt", "path": "main.mbt" },
+      "arguments": { "command": "fmt", "paths": ["main.mbt"] },
     },
     now=@clock.Timestamp::from_ms(81L),
   )

@@ -51,7 +51,7 @@ async fn mooncode_runtime_turn_compile_context(
   let requested_window = mooncode_json_int(
     mooncode_json_object_field_or_empty(command, "payload"),
     "planner_context_window_tokens",
-    default=model_window.min(10240),
+    default=model_window.min(9472),
   )
   let window = if model_window > 0 {
     if requested_window > 0 {

@@ -68,11 +68,17 @@ async test "one model loop repairs edits, repeats observations and retries a tra
       ("read", { "path": "source.txt" }),
       (
         "edit",
-        { "path": "source.txt", "old_string": "missing", "new_string": "after" },
+        {
+          "path": "source.txt",
+          "edits": [{ "old_string": "missing", "new_string": "after" }],
+        },
       ),
       (
         "edit",
-        { "path": "source.txt", "old_string": "before", "new_string": "after" },
+        {
+          "path": "source.txt",
+          "edits": [{ "old_string": "before", "new_string": "after" }],
+        },
       ),
       ("read", { "path": "source.txt" }),
       ("read", { "path": "source.txt" }),

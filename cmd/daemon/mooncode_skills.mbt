@@ -163,11 +163,34 @@ fn mooncode_runtime_turn_loaded_skill_messages(
       mooncode_runtime_context_text_message(
         "user",
         "Retained installed skill resource `\{name}/\{path}`. Continue to follow it:\n\n" +
-        mooncode_json_string(result, "output", default=""),
+        mooncode_skill_instruction_text(
+          mooncode_json_string(result, "output", default=""),
+          path,
+        ),
         SkillContext,
         "skill.loaded_resource",
       ),
     )
   }
   messages
+}
+
+///|
+/// Routing metadata stays in the canonical resource, not in every model prefix.
+/// Unknown frontmatter may carry custom instructions, so retain it verbatim.
+fn mooncode_skill_instruction_text(content : String, path : String) -> String {
+  if path != "SKILL.md" {
+    return content
+  }
+  let doc = @yamd.parse(content) catch { _ => return content }
+  if !doc.meta.contains("name") ||
+    !doc.meta.contains("description") ||
+    doc.meta
+    .keys()
+    .any(key => {
+      !["name", "description", "license", "allowed-tools"].contains(key)
+    }) {
+    return content
+  }
+  doc.text
 }

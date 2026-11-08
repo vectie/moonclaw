@@ -128,14 +128,11 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "edit",
-      "Atomically replace text in an existing MoonBook file. Apply old_string/new_string first when supplied, then edits in order; write only after every replacement validates.",
+      "Atomically apply edits in order. Keep matches short and exact; avoid large unchanged regions. Write only after every replacement validates.",
       {
         "type": "object",
         "properties": {
           "path": { "type": "string" },
-          "old_string": { "type": "string" },
-          "new_string": { "type": "string" },
-          "replace_all": { "type": "boolean" },
           "edits": {
             "type": "array",
             "items": {
@@ -150,7 +147,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
             },
           },
         },
-        "required": ["path"],
+        "required": ["path", "edits"],
         "additionalProperties": false,
       },
     ),
@@ -198,7 +195,7 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "moon_cmd",
-      "Run a MoonBit command at its module root. cwd selects a module; path/paths infer the nearest module. arg/args pass command options; program_args follow run's --. For fmt omit target and package selectors; file paths and formatter options are valid.",
+      "Run a MoonBit command at its module root. cwd selects a module; paths infer the nearest module. args pass command options; program_args follow run's --. For fmt omit target and package selectors; file paths and formatter options are valid.",
       {
         "type": "object",
         "properties": {
@@ -211,17 +208,13 @@ fn mooncode_build_native_tool_catalog() -> Array[
             "type": "string",
             "enum": ["wasm", "wasm-gc", "js", "native", "llvm", "all"],
           },
-          "arg": { "type": "string" },
           "args": { "type": "array", "items": { "type": "string" } },
-          "path": { "type": "string" },
           "paths": { "type": "array", "items": { "type": "string" } },
           "program_args": { "type": "array", "items": { "type": "string" } },
           "expected_exit_code": {
             "type": "integer",
             "description": "Default 0; MoonBit test failures return 2. Set for intentional negative checks.",
           },
-          "test_update_kind": { "type": "string" },
-          "test_update_reason": { "type": "string" },
           "timeout_ms": { "type": "integer" },
           "max_output_chars": { "type": "integer" },
         },

@@ -37,8 +37,7 @@ async fn mooncode_native_eval_harness_report(
     "eval-edit",
     {
       "path": "tools/eval.txt",
-      "old_string": "mooncode",
-      "new_string": "MoonCode",
+      "edits": [{ "old_string": "mooncode", "new_string": "MoonCode" }],
     },
     now~,
     expected_path="tools/eval.txt",

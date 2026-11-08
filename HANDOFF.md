@@ -5,6 +5,32 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Source ABI and Skill prefix cleanup 2026-11-08
+
+- Edit has only `{path,edits:[{old_string,new_string,replace_all?}]}`. SDK only
+  args[]/paths[]; scalar aliases and kind/reason snapshot-update fields/gate are
+  gone. No compatibility code. Existing grants, path identity, exact argv,
+  atomic writes and test-update concurrency classification remain.
+- Prefix uses the existing YAML parser to omit name/description/license/
+  allowed-tools routing frontmatter. Full Markdown, canonical raw file/hash,
+  unknown/custom frontmatter and non-root reference resources are preserved.
+- 25 main groups +10 full-load groups. At9472: baseline61154/edit60799/SDK60685/
+  Skill60615/all60749. At10240 all63304 (+760), not a saving. Calibration stays
+  explicit: old9728 valid for both cases, old9472 loses a custom edit; new9472
+  valid, new9216 loses an edit. Default9472 is the same soft compiler/override.
+- Actual default producer1warmup+7measured replays all60749 vs62544 (-1795),
+  local Pi47355 ratio1.2828. Main budget7104; full original Markdown and checks
+  stay. Conditional custom Skill loading68133 ->62623/13 requests each; all
+  issuing requests, receipts and later carrying counted. Different private
+  fixture from prior68xxx numbers; don't cross-subtract. No model/provider call.
+- Offline arguments/responses are mechanically migrated to new shapes, all
+  old/new edit literals retained; SDK exact argv checked against captured
+  `moon test --target native --frozen pathx`. No historical failure erased.
+- Native1837/1837, edit3/3, SDK13/13, Skill3/3 and policy pass; info/fmt, mbti
+  unchanged. Unused collectors deleted after reference search, cleanup checks
+  pass. No new product test items/state/layer/confirmation. Full evidence:
+  /Users/kq/mooncode-abi-20261108. Input estimates don't prove new billed cost.
+
 ## Measured input benchmark 2026-11-08
 
 - /Users/kq/mooncode-input-benchmark-20261108: one warmup+7 measured12-frame

@@ -172,6 +172,24 @@ async test "mooncode discovers and fully loads arbitrary installed skills" (
 
 ///|
 async test "mooncode retains one full skill through repeated context compilation" {
+  let body = "# Instructions\nUse the exact source and [reference](references/a.md).\n"
+  let front = "---\nname: example\ndescription: routing only\nlicense: Apache-2.0\nallowed-tools: read\n---\n"
+  let full = front + body
+  assert_eq(mooncode_skill_instruction_text(full, "SKILL.md"), body)
+  assert_eq(mooncode_skill_instruction_text(full, "references/a.md"), full)
+  let custom = front.replace(
+      old="license:",
+      new="compatibility: Preserve this constraint\nlicense:",
+    ) +
+    body
+  assert_eq(mooncode_skill_instruction_text(custom, "SKILL.md"), custom)
+  assert_eq(
+    mooncode_skill_instruction_text(
+      full.split("\n").collect().join("\r\n"),
+      "SKILL.md",
+    ),
+    body.split("\n").collect().join("\r\n"),
+  )
   let long_body = "a".repeat(6000)
   let execution : Json = {
     "accepted": true,

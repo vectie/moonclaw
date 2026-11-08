@@ -47,6 +47,7 @@ import {
   "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/skills",
+  "vectie/moonclaw/internal/yamd",
   "vectie/moonclaw/mooncode/core" @mooncode_core,
   "vectie/moonclaw/job",
   "vectie/moonclaw/plugin/moongate",

@@ -383,22 +383,6 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   let absolute = mooncode_json_string(path, "absolute_path", default="")
   let relative = mooncode_json_string(path, "relative_path", default="")
   let edits = mooncode_json_array_items(arguments, "edits")
-  let old_string = mooncode_json_string(arguments, "old_string", default="")
-  let new_string = mooncode_json_string(arguments, "new_string", default="")
-  let replace_all = mooncode_json_bool(arguments, "replace_all", default=false)
-  let has_single_edit = old_string != "" || new_string != "" || replace_all
-  let edits : Array[Json] = if has_single_edit {
-    [
-      {
-        "old_string": old_string,
-        "new_string": new_string,
-        "replace_all": replace_all,
-      },
-      ..edits,
-    ]
-  } else {
-    edits
-  }
   if edits.length() == 0 {
     return mooncode_tool_error_result(
       "edit",
@@ -1743,8 +1727,7 @@ async test "mooncode native tool execution writes edits and reads book files" (
       "command_id": "cmd-edit",
       "arguments": {
         "path": "tools/demo.txt",
-        "old_string": "mooncode",
-        "new_string": "MoonCode",
+        "edits": [{ "old_string": "mooncode", "new_string": "MoonCode" }],
       },
     },
     now=@clock.Timestamp::from_ms(43L),
