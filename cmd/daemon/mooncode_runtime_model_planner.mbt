@@ -445,14 +445,14 @@ fn mooncode_runtime_turn_model_tools_for_command(
   }
   let tools = if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
     mooncode_runtime_turn_select_model_tools(tools, [
-      "read", "read_result", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
+      "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
     ])
   } else {
     tools
   }
   let selected = [
-    "ask_user", "read", "read_result", "read_skill", "write", "edit", "shell", "finish",
-    "mcp_list_tools", "mcp_call_tool",
+    "ask_user", "read", "read_skill", "write", "edit", "shell", "finish", "mcp_list_tools",
+    "mcp_call_tool",
   ]
   for execution in skill_results {
     if mooncode_json_bool(execution, "accepted", default=false) &&

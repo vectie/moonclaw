@@ -96,7 +96,6 @@ pub struct CompileResult {
   messages : Array[@openai.ChatCompletionMessageParam]
   origin_token_count : Int
   final_token_count : Int
-  redacted_tool_results : Int
   compacted_messages : Int
   within_budget : Bool
 }

@@ -11,7 +11,8 @@ async fn mooncode_runtime_parallel_read_identity(
 ) -> String {
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  if tool == "read" || tool == "view_image" {
+  if (tool == "read" || tool == "view_image") &&
+    mooncode_json_string(arguments, "evidence_ref", default="") == "" {
     let path = mooncode_json_string(arguments, "path", default="")
     if path == "" {
       return ""

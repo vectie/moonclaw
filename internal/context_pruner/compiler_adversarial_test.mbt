@@ -55,9 +55,6 @@ async fn assert_malformed_overflow_rejected(
   guard !result.within_budget else {
     fail("malformed case unexpectedly fit: " + label)
   }
-  guard result.redacted_tool_results == 0 else {
-    fail("malformed case was redacted: " + label)
-  }
   guard result.compacted_messages == 0 else {
     fail("malformed case was compacted: " + label)
   }
@@ -189,8 +186,8 @@ async test "compile_messages/preserves_complete_parallel_active_tool_batch" (
     ).compile_messages(messages)
     let transcript = adversarial_transcript_json(result.messages)
     assert_true(result.within_budget)
-    assert_eq(result.redacted_tool_results, 1)
-    assert_true(transcript.contains("Cleared: tool output"))
+    assert_true(result.compacted_messages > 0)
+    assert_true(transcript.contains("Context checkpoint"))
     for
       marker in [
         "active-a", "active-b", "active-c", "ACTIVE-A", "ACTIVE-B", "ACTIVE-C",
@@ -336,44 +333,6 @@ async test "compile_messages/images_are_described_not_leaked_from_checkpoint" (
 }
 
 ///|
-async test "compile_messages/already_cleared_outputs_are_idempotent" (
-  t : @test.Test,
-) {
-  @mock.run(t, mock => {
-    let cleared = "[Cleared: tool output. Recover exact evidence from retained sources or repeat a safe observation; never replay an effect just to recover output.]"
-    let messages = [
-      @openai.system_message(content="system"),
-      @openai.user_message(content="IDEMPOTENT-TASK"),
-      @openai.assistant_message(content="", tool_calls=[
-        @openai.tool_call(id="cleared-call", name="read", arguments="{}"),
-      ]),
-      @openai.tool_message(tool_call_id="cleared-call", content=cleared),
-      @openai.assistant_message(content="old context ".repeat(1800)),
-      @openai.user_message(content="latest request"),
-      @openai.assistant_message(content="", tool_calls=[
-        @openai.tool_call(id="latest-call", name="read", arguments="{}"),
-      ]),
-      @openai.tool_message(tool_call_id="latest-call", content="latest result"),
-    ]
-    let input_before = adversarial_transcript_json(messages)
-    let pruner = @context_pruner.Pruner::new(
-      safe_zone_tokens=400,
-      logger=mock.logger,
-    )
-    let first = pruner.compile_messages(messages)
-    let second = pruner.compile_messages(first.messages)
-    assert_true(first.within_budget)
-    assert_eq(first.redacted_tool_results, 0)
-    assert_eq(adversarial_transcript_json(messages), input_before)
-    assert_eq(
-      adversarial_transcript_json(first.messages),
-      adversarial_transcript_json(second.messages),
-    )
-    assert_true(adversarial_tool_protocol_is_valid(first.messages))
-  })
-}
-
-///|
 fn generated_adversarial_history(
   case_index : Int32,
 ) -> Array[@openai.ChatCompletionMessageParam] {
@@ -439,7 +398,6 @@ async test "compile_messages/deterministic_generated_property_matrix" (
     let mut total_before = 0
     let mut total_after = 0
     let mut total_compacted = 0
-    let mut total_redacted = 0
     for case_index in 0..<24 {
       let messages = generated_adversarial_history(case_index)
       let input_before = adversarial_transcript_json(messages)
@@ -472,16 +430,15 @@ async test "compile_messages/deterministic_generated_property_matrix" (
       guard adversarial_transcript_json(messages) == input_before else {
         fail("generated case mutated input: \{case_index}")
       }
-      guard first.compacted_messages > 0 || first.redacted_tool_results > 0 else {
+      guard first.compacted_messages > 0 else {
         fail("generated overflow case did no work: \{case_index}")
       }
       total_before += first.origin_token_count
       total_after += first.final_token_count
       total_compacted += first.compacted_messages
-      total_redacted += first.redacted_tool_results
     }
     println(
-      "CONTEXT_BENCH case=generated_24 before=\{total_before} after=\{total_after} redacted=\{total_redacted} compacted=\{total_compacted} within_budget=true",
+      "CONTEXT_BENCH case=generated_24 before=\{total_before} after=\{total_after} compacted=\{total_compacted} within_budget=true",
     )
   })
 }
@@ -511,7 +468,7 @@ async test "compile_messages/five_thousand_message_scaling_case" (
     ).compile_messages(messages)
     let transcript = adversarial_transcript_json(result.messages)
     println(
-      "CONTEXT_BENCH case=five_thousand_messages before=\{result.origin_token_count} after=\{result.final_token_count} redacted=\{result.redacted_tool_results} compacted=\{result.compacted_messages} within_budget=\{result.within_budget}",
+      "CONTEXT_BENCH case=five_thousand_messages before=\{result.origin_token_count} after=\{result.final_token_count} compacted=\{result.compacted_messages} within_budget=\{result.within_budget}",
     )
     assert_true(result.within_budget)
     assert_true(result.compacted_messages > 4800)

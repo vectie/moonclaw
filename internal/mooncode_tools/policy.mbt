@@ -61,7 +61,7 @@ pub fn classify(tool : String, arguments : Json) -> Policy {
     // Loading instructions is not a filesystem mutation. Later semantic
     // actions wait until the model has consumed those instructions.
     "read_skill" | "finish" | "checkpoint" => policy(replay=true)
-    "mcp_list_tools" | "read_result" => policy(parallel_read=true, replay=true)
+    "mcp_list_tools" => policy(parallel_read=true, replay=true)
     "moon_ide" => policy(parallel_read=true)
     "glob" | "grep" | "web_fetch" | "web_search" => policy(after_skill=true)
     "shell" => {

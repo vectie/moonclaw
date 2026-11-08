@@ -72,33 +72,18 @@ fn mooncode_build_native_tool_catalog() -> Array[
     ),
     mooncode_runtime_turn_model_tool(
       "read",
-      "Read a MoonBook file or inclusive start_line/end_line range.",
+      "Read file lines by path, or saved output by evidence_ref without rerunning. details=true reads result JSON; end_ref lists a result range.",
       {
         "type": "object",
         "properties": {
           "path": { "type": "string" },
-          "start_line": { "type": "integer", "minimum": 1 },
-          "end_line": { "type": "integer", "minimum": 1 },
-          "max_output_chars": { "type": "integer" },
-        },
-        "required": ["path"],
-        "additionalProperties": false,
-      },
-    ),
-    mooncode_runtime_turn_model_tool(
-      "read_result",
-      "Recall saved output lines by evidence_ref without rerunning. details=true reads full result JSON; end_ref lists references in a range.",
-      {
-        "type": "object",
-        "properties": {
           "evidence_ref": { "type": "string" },
           "details": { "type": "boolean" },
           "end_ref": { "type": "string" },
           "start_line": { "type": "integer", "minimum": 1 },
           "end_line": { "type": "integer", "minimum": 1 },
-          "max_output_chars": { "type": "integer", "minimum": 1 },
+          "max_output_chars": { "type": "integer" },
         },
-        "required": ["evidence_ref"],
         "additionalProperties": false,
       },
     ),

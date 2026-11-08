@@ -5,6 +5,40 @@ runtime behavior.
 
 Work directly on `main`; do not create a branch unless the user requests one.
 
+## Complete-exchange input cleanup 2026-11-08
+
+- Same9472 window and7104 budget; 8 paired main ablations. Baseline60749,
+  read-only ABI merge60137, bundled Skill dedup60444, checkpoint-only52989;
+  checkpoint+read51945, checkpoint+Skill52252, read+Skill59400, final51208.
+  Final deployed default producer1warmup+7measurements all51208 (15.7% less),
+  same-counter Pi47355 ->1.0814. Frozen original decisions, no paid rerun.
+- Delete output-only clearing plus dead helpers/metric, use existing whole
+  exchange checkpoint. Full task/instruction prefix and latest batch stay;
+  journal/range refs remain. Old exact call arguments are not automatically
+  returned by result reads; checkpoints are lossy, not a general quality proof.
+- One read ABI: path for files, evidence_ref for existing retained reader.
+  Delete read_result schema/dispatch/policy and use metadata for graph recall.
+  Parallel result reads reuse exact-arguments identity; no alias or new layer.
+- Bundled guide only drops duplicated generic advice. Complete current
+  instructions350 tokens/message (was417), references/view-offset/checks kept;
+  unknown/custom Skill bodies unchanged. Existing assets generator/installer.
+- Fully charged paired profile/recall/directory+recall cases:62626->54576/13,
+  66292->55582/13,68944->60206/14 requests. All checked edits/verdicts remain.
+  Removing SDK declarations then loading the existing profile costs55388
+  (+4180) with equal instruction body/location: rejected; keep declarations.
+- Native1836/1836, recall1/1, parallel3/3, selection3/3, skills26/26; info/fmt.
+  One obsolete clearing-specific test removed. Runtime-125, assets-5, tests-51
+  lines. Only .mbti change removes obsolete CompileResult.redacted_tool_results.
+  Native new read boundary recovers15 outputs+553 JSON/page reads (568 total,
+  46.958s), exact original values, no effects replayed, private journal unchanged.
+- Preserve all failures/negative candidates/private paid logs and costs at
+  /Users/kq/mooncode-residual2-20261108. No billing/cache/new autonomy claims.
+  Reproduced compiler median410ms/12frames, fixture669ms; no speed claim.
+- Harness pitfall: String.replace changes only the first occurrence. Use
+  split/join for all fixture roots/ABI substitutions and restore saved sources
+  even on failure. Embedded skill assets trim final newline; compare complete
+  deployed text with the generator's normalization, not raw-file byte equality.
+
 ## Source ABI and Skill prefix cleanup 2026-11-08
 
 - Edit has only `{path,edits:[{old_string,new_string,replace_all?}]}`. SDK only

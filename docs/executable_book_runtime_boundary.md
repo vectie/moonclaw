@@ -13,7 +13,7 @@ operating system, agent role or state machine.
 | Responsibility | Interface and logic | Owned guarantee and limit |
 | --- | --- | --- |
 | Process / Thread | A claimed prompt/package command is the logical task. `mooncode_start_runtime_service` owns the main coroutine; `mooncode_runtime_loop_execute` acquires session ownership; `mooncode_runtime_turn_execute_under_runtime_gates` runs one execution quantum. Safe tool children belong to its TaskGroup and join in source order. | Session is a Book-bound queue/journal container, not an OS process. A model round is not a thread. Cancellation follows owned tasks; there is no independent address space or persistent program stack. |
-| Memory | `mooncode_runtime_turn_compile_context(command,messages,tools,window,output_tokens)` returns messages/metrics. `Pruner::compile_messages` is the sole projection algorithm. `read_result` reads retained session output by reference or first/last range. | Budgeted working set, durable facts and source files have distinct owners. Projection is lossy; original truncated stdout and old file versions are not recreated. No extra model round or mandatory retrieval stage. |
+| Memory | `mooncode_runtime_turn_compile_context(command,messages,tools,window,output_tokens)` returns messages/metrics. `Pruner::compile_messages` is the sole projection algorithm. `read(path=...)` reads files; `read(evidence_ref=...)` reads retained session output or a first/last result range. | Budgeted working set, durable facts and source files have distinct owners. Projection is lossy; original truncated stdout and old file versions are not recreated. No extra model round or mandatory retrieval stage. |
 | Filesystem | `mooncode_workspace_path(book_root,path)` resolves identity. `mooncode_workspace_replace(root,absolute,expected,content)` compares the observed contents under a stable file lock and stages a sibling rename. | Native file tools share per-resource conditional writes. This is not MVCC, a multi-file transaction or a lock observed by arbitrary shell/external writers. |
 | I/O | Catalog schema → `mooncode_execute_tool_call_in_runtime` → bound grant/executor where required → canonical result → `mooncode_tool_execution` envelope/event → journal and model/UI adapters. Provider transport owns model protocol. | Arguments, authorization, execution outcome and loop control are separate contracts. A successful function/MCP call does not prove permissions, idempotency or task completion. Repairable errors go to the same agent. |
 | Synchronization | Lifecycle shared/exclusive gate protects session lifecycle; execution lease owns session execution; journal/session lock orders claims/appends; file lock protects one canonical path; TaskGroup joins children. | External execution entry points acquire gates; internal `*_under_runtime_gates` calls borrow them. No runtime boolean chooses whether to reacquire ownership. Different resource locks are not a universal Book mutex or cross-service clock. |
@@ -43,7 +43,7 @@ definitions. The daemon still contains substantial orchestration and Json
 records; it is not a fully typed compiler kernel. Native file synchronization
 is cooperative. Fingerprints cover touched/declared check inputs, not all
 semantic dependencies. Journal order is local commit order; remote timeouts
-do not prove non-execution. Snapshot rebuilds/read_result still scan history.
+do not prove non-execution. Snapshot rebuilds/retained-result reads still scan history.
 
 The 2026-11-06 boundary cleanup closes two concrete interfaces without
 splitting eight packages. Continuation decoding returns the tool step/index,
@@ -403,7 +403,7 @@ suffixes, active/shadow experiments and overload-driven transcript rewriting
 were removed. Tool execution owns output limits; Context owns model projection.
 Canonical task revisions and the newest exchange survive projection. Omitted
 history is lossy; retained result references and compacted first/last ranges
-can be read through the current-session `read_result` tool, without execution.
+can be read through current-session `read(evidence_ref=...)`, without execution.
 
 Canonical watch now belongs to MoonClaw. The desktop reuses the existing codec
 and metadata adapter; it does not download raw event bodies to advance a cursor

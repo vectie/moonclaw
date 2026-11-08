@@ -10,7 +10,7 @@ async fn mooncode_tool_read_result(
   let end_ref = mooncode_json_string(arguments, "end_ref", default="")
   if reference == "" {
     return mooncode_tool_error_result(
-      "read_result",
+      "read",
       message="A result reference is required.",
     )
   }
@@ -48,7 +48,7 @@ async fn mooncode_tool_read_result(
   }
   if selected.is_empty() || (end_ref != "" && !ended) {
     return mooncode_tool_error_result(
-      "read_result",
+      "read",
       message="Result reference is not available in this session.",
       metadata={ "evidence_ref": reference },
     )
@@ -67,7 +67,7 @@ async fn mooncode_tool_read_result(
   )
   if start < 1 || end < start {
     return mooncode_tool_error_result(
-      "read_result",
+      "read",
       message="Result line range is outside the retained result.",
     )
   }
@@ -77,7 +77,7 @@ async fn mooncode_tool_read_result(
     mooncode_json_int(arguments, "max_output_chars", default=12000),
   )
   mooncode_tool_ok_result(
-    "read_result",
+    "read",
     message="Retained result read without execution.",
     output=mooncode_json_string(capped, "output", default=""),
     metadata={

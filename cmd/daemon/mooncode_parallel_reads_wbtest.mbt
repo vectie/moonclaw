@@ -106,10 +106,7 @@ async test "mooncode parallel read batches accept independent read-only tools" {
   )
   let observations : Array[Json] = [
     calls[0],
-    {
-      "tool": "read_result",
-      "arguments": { "evidence_ref": "retained-result" },
-    },
+    { "tool": "read", "arguments": { "evidence_ref": "retained-result" } },
     { "tool": "mcp_list_tools", "arguments": {} },
   ]
   assert_true(

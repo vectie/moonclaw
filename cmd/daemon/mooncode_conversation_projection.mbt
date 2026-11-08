@@ -675,12 +675,7 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
     "planner_step": mooncode_json_int(event, "planner_step", default=0),
     "path": mooncode_json_string(event, "path", default=""),
     "changed_paths": mooncode_json_array_string_items(event, "changed_paths"),
-    "recalls": if mooncode_json_string(event, "tool", default="") ==
-      "read_result" {
-      mooncode_json_string(metadata, "evidence_ref", default="")
-    } else {
-      ""
-    },
+    "recalls": mooncode_json_string(metadata, "evidence_ref", default=""),
     "inputs": mooncode_json_array_items(metadata, "verification_inputs").map(input => {
       (
         {

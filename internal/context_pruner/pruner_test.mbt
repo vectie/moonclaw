@@ -29,7 +29,7 @@ fn print_compile_metrics(
   result : @context_pruner.CompileResult,
 ) -> Unit {
   println(
-    "CONTEXT_BENCH case=\{label} before=\{result.origin_token_count} after=\{result.final_token_count} redacted=\{result.redacted_tool_results} compacted=\{result.compacted_messages} within_budget=\{result.within_budget}",
+    "CONTEXT_BENCH case=\{label} before=\{result.origin_token_count} after=\{result.final_token_count} compacted=\{result.compacted_messages} within_budget=\{result.within_budget}",
   )
 }
 
@@ -50,7 +50,6 @@ async test "compile_messages/in_budget_identity" (t : @test.Test) {
     print_compile_metrics("in_budget", result)
     assert_eq(compile_transcript_json(result.messages), before)
     assert_eq(result.origin_token_count, result.final_token_count)
-    assert_eq(result.redacted_tool_results, 0)
     assert_eq(result.compacted_messages, 0)
     assert_true(result.within_budget)
   })
@@ -99,7 +98,7 @@ async test "compile_messages/long_chat_is_deterministic_and_bounded" (
 }
 
 ///|
-async test "compile_messages/tool_heavy_redacts_old_evidence_first" (
+async test "compile_messages/tool_heavy_compacts_complete_old_exchange" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
@@ -137,10 +136,9 @@ async test "compile_messages/tool_heavy_redacts_old_evidence_first" (
     let transcript = compile_transcript_json(result.messages)
     print_compile_metrics("tool_heavy", result)
     assert_true(result.within_budget)
-    assert_eq(result.redacted_tool_results, 1)
-    assert_eq(result.compacted_messages, 0)
+    assert_true(result.compacted_messages > 0)
     assert_false(transcript.contains("OLD-EVIDENCE"))
-    assert_true(transcript.contains("Cleared: tool output"))
+    assert_true(transcript.contains("Context checkpoint"))
     assert_true(transcript.contains("LATEST-EVIDENCE"))
     assert_true(tool_protocol_is_valid(result.messages))
   })

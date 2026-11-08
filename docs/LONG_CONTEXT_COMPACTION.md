@@ -16,9 +16,11 @@ toward the input budget. Counts use the existing cl100k tokenizer, so they are
 estimates for other providers. Its immutable vocabulary is initialized lazily
 once per process rather than rebuilt for every planner request.
 
-In-budget messages remain unchanged. On overflow, the existing compiler first
-omits older tool output, then replaces a coherent history span with a bounded,
-deterministic checkpoint. The complete instruction/task prefix and latest
+In-budget messages remain unchanged. On overflow, the existing compiler
+replaces a coherent history span, including old calls and results, with its
+bounded deterministic checkpoint. The separate output-clearing pass is removed:
+it kept large historical edit arguments and call/result wrappers after omitting
+the observations. The complete instruction/task prefix and latest
 complete exchange remain. Follow-ups refresh the canonical task, including its
 ordered revisions, before projection. Tool calls and results stay paired.
 
@@ -62,18 +64,20 @@ journal facts remain intact. Empty task/context sections are not sent.
 Status, message, metadata and evidence_ref share one header object; there is no
 outer result wrapper or duplicate tool name (the tool_call_id already binds the
 protocol call). This changes only model presentation, not the canonical result.
-Exact result JSON remains available through `read_result(details=true)`.
+Exact result JSON remains available through `read(evidence_ref=..., details=true)`.
 Exit/error/truncation/limit/artifact data remain.
 
 Projection is lossy. A checkpoint contains working observations, not exact
-source evidence or a proof of completion. Retained messages preserve provenance. Cleared tool messages keep their result
-ID; a compacted span keeps its first/last result IDs, including across repeated
+source evidence or a proof of completion. Retained messages preserve provenance.
+A compacted span keeps its first/last result IDs, including across repeated
 compaction. Existing file reads,
 installed-skill reads and available artifact/backend retrieval remain the
 recall paths. Do not replay a mutation to recover its old output.
 
-The read-only `read_result` tool scans the current session journal by
-`evidence_ref`. With `end_ref`, it lists result references in that inclusive
+The read-only `read` tool selects a workspace file with `path`, or scans the
+current session journal with `evidence_ref`. The latter reuses the existing
+reader; there is no separate `read_result` model schema or compatibility alias.
+With `end_ref`, it lists result references in that inclusive
 range; an individual reference reads the saved output directly.
 `start_line`/`end_line` select saved output lines, preserving their exact text.
 Use `details=true` for canonical result JSON, including metadata; line ranges
@@ -86,18 +90,19 @@ This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
 
-The working window was recalibrated after the array-only edit/SDK ABI and
-Skill prefix cleanup. Matched sweeps keep code savings separate from window
-changes. The current9,472 default retains edit inputs, all Markdown instructions
-and final verdicts in both12-response and13-request conditional profile cases;
-9,216 loses an edit input in the latter and is rejected. The old implementation
-also loses an edit input at9,472, so window-only savings cannot justify this
-setting without the source changes. The benchmark stores all failing groups.
+The working window remains9,472 after the earlier ABI calibration; the latest
+cleanup does not shrink it. Same-window ablations separate the read ABI,
+bundled-guide duplication and complete-exchange compaction. The default producer
+replays12 frozen responses at51,208 tokens (one warmup plus seven measurements),
+with edit inputs, full selected instructions and final verdicts retained.
+Conditional profile/recall/directory-plus-recall cases include all13/13/14 requests.
+The earlier ABI sweep's rejected windows remain historical evidence, not a claim
+that this implementation has been qualified at other defaults.
 This is the existing soft projection, not an execution stop/budget gate. The original
 test file is still read whole; older presentations are replaced by journal
 references after consumption. Fixed-trace savings do not prove new model
 decisions, zero recall requests, cash savings or quality across larger tasks.
-See the [component audit](../../moondesk/docs/MOONCODE_PI_INPUT_GAP_AUDIT_2026-11-07.md).
+See the [same-window benchmark](../../moondesk/docs/MOONCODE_INPUT_BENCHMARK_2026-11-08.md#整段历史压缩与读取接口收敛).
 
 The protected skill prefix keeps complete selected instructions. The default
 system index contains IDs; `read_skill()` reuses the full catalog for descriptions,
@@ -164,7 +169,7 @@ the cached tokenizer avoids repeated vocabulary construction, not tokenization.
 ## Observability and checks
 
 Planner results expose `context_projection`: `applied`, `input_budget_tokens`,
-before/after token estimates, redacted-result and compacted-message counts, and
+before/after token estimates, compacted-message counts, and
 `within_budget`; unprojectable input reports a reason. These metrics carry no
 prompt text or tool output. They do not decide task acceptance.
 

@@ -68,9 +68,7 @@ async test "same-millisecond operations retain distinct recallable results and e
     let daemon = mooncode_control_test_daemon(root)
     defer daemon.httpx.close()
     let calls = refs.map(reference => {
-      (
-        { "tool": "read_result", "arguments": { "evidence_ref": reference } } :
-        Json)
+      ({ "tool": "read", "arguments": { "evidence_ref": reference } } : Json)
     })
     let recalled = daemon.mooncode_runtime_turn_execute_parallel_reads(
       {
@@ -157,7 +155,7 @@ async test "same-millisecond operations retain distinct recallable results and e
     assert_eq(mooncode_json_array_items(graph, "edges").length(), 4)
     let recall : Json = {
       "item_id": "recall-call",
-      "tool": "read_result",
+      "tool": "read",
       "planner_step": 3,
       "recalls": refs[0],
       "evidence": { "sandbox_evidence": { "artifacts": ["generated.txt"] } },

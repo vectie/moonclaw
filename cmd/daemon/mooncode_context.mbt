@@ -79,8 +79,7 @@ async fn mooncode_runtime_turn_compile_context(
   ) catch {
     _ => return { messages, metrics: { "reason": "compiler-failed" }, }
   }
-  let changed = compiled.redacted_tool_results > 0 ||
-    compiled.compacted_messages > 0
+  let changed = compiled.compacted_messages > 0
   {
     messages: if changed {
       mooncode_runtime_context_merge_messages(
@@ -95,7 +94,6 @@ async fn mooncode_runtime_turn_compile_context(
       "input_budget_tokens": budget,
       "before_tokens": compiled.origin_token_count,
       "after_tokens": compiled.final_token_count,
-      "redacted_tool_results": compiled.redacted_tool_results,
       "compacted_messages": compiled.compacted_messages,
       "within_budget": compiled.within_budget,
     },

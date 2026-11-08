@@ -222,10 +222,6 @@ let system_assets : Array[@assets.Asset] = [
       #|
       #|Adapted for MoonClaw from `moonbitlang/moonbit-agent-guide` (Apache-2.0).
       #|
-      #|Follow the repository's instructions and existing style. Reuse the enclosing
-      #|module/package and the sources already observed; inspect affected callers and
-      #|test cases when changing behavior.
-      #|
       #|- `moon.mod` owns module metadata and dependencies; each `moon.pkg` owns package
       #|  imports/options. Source files do not define namespaces. Separate top-level
       #|  declarations with `///|` and call imported packages through `@alias`.
@@ -233,21 +229,20 @@ let system_assets : Array[@assets.Asset] = [
       #|  `find-references` for semantic navigation. Read source ranges for the actual
       #|  implementation. Compiler diagnostics resolve uncertainty about syntax/APIs.
       #|- Use `.mbtx` for authored automation, with `@shell.Cmd` from
-      #|  `moonbitlang/async/shell` for process orchestration. Direct tools suit small actions.
+      #|  `moonbitlang/async/shell` for process orchestration.
       #|- Keep changes in the relevant package. A `StringView` may refer to a slice of
       #|  another string; preserve its boundaries rather than assuming an offset of zero.
       #|- Use `moon check` and focused `moon test` while iterating. Before delivery run
-      #|  the required project checks, `moon info` and `moon fmt`; review generated
-      #|  `.mbti` changes. For a private bug fix the public interface usually stays stable.
+      #|  the required project checks, `moon info` and `moon fmt`; review generated `.mbti` changes.
       #|- Use assertions for stable results and `Debug`/`debug_inspect` for diagnostic
       #|  snapshots. Update snapshots only for reviewed, intended output changes.
       #|
-      #|Read only the reference needed for the next action:
+      #|References:
       #|
       #|- [Language fundamentals](references/moonbit-language-fundamentals.md): unfamiliar
       #|  error handling, views, mutation, methods or test visibility.
       #|- [Build configuration](references/advanced-moonbit-build.md): imports, backend
-      #|  selection or Native stubs. Prefer existing repository configuration examples.
+      #|  selection or Native stubs.
     ),
   },
   @assets.Asset::{
@@ -339,4 +334,4 @@ let system_assets : Array[@assets.Asset] = [
 ]
 
 ///|
-let system_assets_fingerprint : String = "3cab1aaac6f1e613310e1cd27bce3d8d578119b9f36e22cbb5aedf0e75b88425"
+let system_assets_fingerprint : String = "9e10bb1fa831c25a574da3d2c2aa9dca6e8ec7577f485b9e84b321047f2942e4"

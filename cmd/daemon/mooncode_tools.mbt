@@ -69,9 +69,12 @@ async fn mooncode_execute_tool_call_in_runtime(
       Some(message) => mooncode_tool_error_result(tool, message~)
       None =>
         match tool {
-          "read" => mooncode_tool_read(book_root, arguments)
-          "read_result" =>
-            mooncode_tool_read_result(book_root, session_id, arguments)
+          "read" =>
+            if mooncode_json_string(arguments, "evidence_ref", default="") != "" {
+              mooncode_tool_read_result(book_root, session_id, arguments)
+            } else {
+              mooncode_tool_read(book_root, arguments)
+            }
           "ask_user" =>
             mooncode_task_ask_user(
               session_id, book_root, command_id, arguments, now,

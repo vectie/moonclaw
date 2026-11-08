@@ -4,14 +4,15 @@ The MoonCode catalog advertises executable tools. The former native `browser`
 entry only returned a refusal and has been removed; `view_image` remains for
 image evidence. The default skill index presents IDs; `read_skill()` returns
 full descriptions and `read_skill(name=...)` loads complete instructions.
-Without MCP, eight base tools are exposed by default. A loaded Skill's existing
+Without MCP, seven base tools are exposed by default. A loaded Skill's existing
 `allowed-tools` declaration supplements them through the same catalog; load
 `mooncode-tools` for image/IDE/SDK/patch/checkpoint tools. This grants no authority.
 Loaded Skill receipts keep the relative-reference location. Full Markdown
 instructions remain in the protected prefix; standard routing frontmatter
 stays in the registry and canonical journal. Custom frontmatter and reference
 files remain verbatim.
-`read_result` reads saved output lines by default. `details=true` selects full
+`read(path=...)` reads workspace files; `read(evidence_ref=...)` reads saved
+output through the same line-range ABI. `details=true` selects full
 canonical JSON and JSON-line pagination; `end_ref` still lists a result range.
 Retrieval success is separate from the original result's status/truncation.
 

@@ -10,14 +10,13 @@ struct Pruner {
 ///
 /// Compilation is deliberately projection-only: the durable conversation is
 /// never changed. Normal, in-budget requests are returned unchanged. When a
-/// request is over budget, old tool evidence is redacted first and an old
-/// history span may be replaced by a deterministic checkpoint while retaining
+/// request is over budget, an old history span is replaced by the existing
+/// deterministic checkpoint while retaining
 /// the system/rules/task prefix and the newest complete exchange.
 pub struct CompileResult {
   messages : Array[@openai.ChatCompletionMessageParam]
   origin_token_count : Int32
   final_token_count : Int32
-  redacted_tool_results : Int32
   compacted_messages : Int32
   within_budget : Bool
 }
@@ -33,9 +32,6 @@ pub fn Pruner::new(
     safe_zone_tokens,
   }
 }
-
-///|
-const ClearedToolOutputPlaceholder : String = "[Cleared: tool output. Recover exact evidence from retained sources or repeat a safe observation; never replay an effect just to recover output.]"
 
 ///|
 fn context_result_reference(
@@ -81,33 +77,6 @@ fn context_result_span(
 }
 
 ///|
-fn context_tool_is_cleared(
-  message : @openai.ChatCompletionMessageParam,
-) -> Bool {
-  guard message is Tool(tool) else { return false }
-  let text = checkpoint_content_text(tool.content)
-  if text == ClearedToolOutputPlaceholder {
-    return true
-  }
-  let value = @json.parse(text) catch { _ => return false }
-  value is { "context_omitted": true, .. }
-}
-
-///|
-fn context_cleared_tool_content(
-  message : @openai.ChatCompletionMessageParam,
-) -> String {
-  match context_result_reference(message) {
-    None => ClearedToolOutputPlaceholder
-    Some(reference) =>
-      Json::object({
-        "evidence_ref": Json(reference),
-        "context_omitted": Json(true),
-      }).stringify()
-  }
-}
-
-///|
 const ContextCheckpoint : String = "[Context checkpoint: MoonClaw compacted older model-facing messages to control prompt cost. The original task contract and complete durable journal are unchanged. Continue from the retained recent exchange; re-read exact evidence only when needed.]"
 
 ///|
@@ -118,27 +87,6 @@ const MaxCheckpointTokens : Int32 = 768
 
 ///|
 const MaxCheckpointObservations : Int32 = 8
-
-///|
-fn latest_tool_batch_ids(
-  messages : Array[@openai.ChatCompletionMessageParam],
-) -> Map[String, Bool] {
-  let ids : Map[String, Bool] = Map([])
-  let mut latest = -1
-  for index in 0..<messages.length() {
-    match messages[index] {
-      Assistant(param) if !param.tool_calls.is_empty() => latest = index
-      _ => ()
-    }
-  }
-  if latest >= 0 {
-    guard messages[latest] is Assistant(param) else { return ids }
-    for call in param.tool_calls {
-      ids[call.id] = true
-    }
-  }
-  ids
-}
 
 ///|
 /// Check the provider ordering contract before transforming an overflowing
@@ -401,14 +349,12 @@ async fn Pruner::log_compilation(
   pruner : Pruner,
   origin_token_count : Int32,
   final_token_count : Int32,
-  redacted_tool_results : Int32,
   compacted_messages : Int32,
   within_budget : Bool,
 ) -> Unit {
   pruner.logger.info("ContextCompiled", data={
     "origin_token_count": origin_token_count,
     "final_token_count": final_token_count,
-    "redacted_tool_results": redacted_tool_results,
     "compacted_messages": compacted_messages,
     "within_budget": within_budget,
   })
@@ -420,11 +366,10 @@ async fn Pruner::log_compilation(
 /// The fast path performs one token count and returns the input values in the
 /// same order. The overflow path:
 ///
-/// 1. redacts old tool results, retaining the newest tool batch;
-/// 2. retains the complete system/rules/initial-task prefix;
-/// 3. retains up to 20k recent message tokens after reserving the measured
+/// 1. retains the complete system/rules/initial-task prefix;
+/// 2. retains up to 20k recent message tokens after reserving the measured
 ///    protected-prefix/tool-schema cost and a bounded checkpoint;
-/// 4. falls back once to the newest complete turn if the conservative estimate
+/// 3. falls back once to the newest complete turn if the conservative estimate
 ///    still misses the budget.
 ///
 /// If the protected prefix plus newest complete exchange cannot fit, the
@@ -445,66 +390,22 @@ pub async fn Pruner::compile_messages(
       messages: projected,
       origin_token_count,
       final_token_count: origin_token_count,
-      redacted_tool_results: 0,
       compacted_messages: 0,
       within_budget: true,
     }
   }
 
-  // Never transform a malformed overflow transcript. In particular, redacting
-  // an orphan or duplicate tool result could hide the protocol defect while
+  // Never transform a malformed overflow transcript. Compacting an orphan
+  // or duplicate tool result could hide the protocol defect while
   // still producing an invalid provider request.
   if !tool_transcript_is_valid(projected) {
-    pruner.log_compilation(origin_token_count, origin_token_count, 0, 0, false)
+    pruner.log_compilation(origin_token_count, origin_token_count, 0, false)
     return {
       messages: projected,
       origin_token_count,
       final_token_count: origin_token_count,
-      redacted_tool_results: 0,
       compacted_messages: 0,
       within_budget: false,
-    }
-  }
-
-  // Preserve the newest tool batch as the active working set. Older outputs
-  // usually dominate prompt cost; their omission never authorizes replay.
-  let protected_tool_ids = latest_tool_batch_ids(projected)
-  let mut current_tokens = origin_token_count
-  let mut redacted_tool_results = 0
-  for index, message in projected {
-    guard current_tokens > pruner.safe_zone_tokens else { break }
-    match message {
-      Tool(tool) => {
-        if protected_tool_ids.contains(tool.tool_call_id) ||
-          context_tool_is_cleared(message) {
-          continue
-        }
-        let replacement = @openai.tool_message(
-          content=context_cleared_tool_content(message),
-          tool_call_id=tool.tool_call_id,
-        )
-        let savings = pruner.token_counter.count_message(message) -
-          pruner.token_counter.count_message(replacement)
-        if savings > 0 {
-          projected[index] = replacement
-          current_tokens -= savings
-          redacted_tool_results += 1
-        }
-      }
-      _ => ()
-    }
-  }
-  if current_tokens <= pruner.safe_zone_tokens {
-    pruner.log_compilation(
-      origin_token_count, current_tokens, redacted_tool_results, 0, true,
-    )
-    return {
-      messages: projected,
-      origin_token_count,
-      final_token_count: current_tokens,
-      redacted_tool_results,
-      compacted_messages: 0,
-      within_budget: true,
     }
   }
 
@@ -513,14 +414,11 @@ pub async fn Pruner::compile_messages(
   // With no assistant turn there is no safe distinction between injected
   // rules, the initial task, and later user context. Keep it all.
   if prefix_end >= projected.length() || minimum_suffix_start <= prefix_end {
-    pruner.log_compilation(
-      origin_token_count, current_tokens, redacted_tool_results, 0, false,
-    )
+    pruner.log_compilation(origin_token_count, origin_token_count, 0, false)
     return {
       messages: projected,
       origin_token_count,
-      final_token_count: current_tokens,
-      redacted_tool_results,
+      final_token_count: origin_token_count,
       compacted_messages: 0,
       within_budget: false,
     }
@@ -529,14 +427,11 @@ pub async fn Pruner::compile_messages(
   // system messages are expected in the leading prefix; fail safely if a
   // provider-specific adapter inserted one later.
   if contains_system_after(projected, prefix_end) {
-    pruner.log_compilation(
-      origin_token_count, current_tokens, redacted_tool_results, 0, false,
-    )
+    pruner.log_compilation(origin_token_count, origin_token_count, 0, false)
     return {
       messages: projected,
       origin_token_count,
-      final_token_count: current_tokens,
-      redacted_tool_results,
+      final_token_count: origin_token_count,
       compacted_messages: 0,
       within_budget: false,
     }
@@ -604,14 +499,12 @@ pub async fn Pruner::compile_messages(
   let compacted_messages = suffix_start - prefix_end
   let within_budget = final_token_count <= pruner.safe_zone_tokens
   pruner.log_compilation(
-    origin_token_count, final_token_count, redacted_tool_results, compacted_messages,
-    within_budget,
+    origin_token_count, final_token_count, compacted_messages, within_budget,
   )
   {
     messages: compiled,
     origin_token_count,
     final_token_count,
-    redacted_tool_results,
     compacted_messages,
     within_budget,
   }
