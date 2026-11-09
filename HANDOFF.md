@@ -6,6 +6,26 @@ runtime behavior.
 Work directly on `main`; do not create a branch unless the user requests one.
 
 
+
+## Complete batch cutoff root cause 2026-11-09
+
+- Field removal delayed pressure at round10:7116->7072 vs7104. At11 old
+  scan raw6 hit prefix3 while seeking User, reset to latest19, losing result18.
+  An Assistant-backward prototype still overflowed7301 and fell back19:
+  rejected. Forward-skip orphan older Tool tail to7, clamp with existing
+  newest complete turn. Same7334 input ->5537 fits and keeps proof (old3758
+  fits but loses it). No test/result keyword policy, pin, state or new layer.
+- 6 variants12 fully priced paths. Main49157->53513 (+4356=1452x3 last rounds),
+  null counterfactual repaired54925/13 ->55034/12 (+109, no cost win).
+  Profile/recall/combined58556/59025/63092; no field/schema changes shipped.
+  8 real producer replays96frames; full task/Skill/edit/final108 retained.
+- Existing test fails before (16/17),17/17 after; Native1836/1836, context3,
+  info/fmt, mbti unchanged. Only cutoff fix and existing regression extended.
+- Evidence /Users/kq/mooncode-compaction6-20261109, per-round candidates,
+  traces/counterfactual/repairs/raw paid hashes; no provider calls. Compiler
+  heuristic and serialized ledger differ813 here; no token-calibration change.
+  Total carrying is not monotonic under pressure; do not promise it is.
+
 ## Unwrap checkpoint observations 2026-11-09
 
 - Only unwrap prior checkpoint Observations instead of summarizing its header

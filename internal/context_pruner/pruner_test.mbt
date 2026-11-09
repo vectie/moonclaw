@@ -127,6 +127,13 @@ async test "compile_messages/tool_heavy_compacts_complete_old_exchange" (
         tool_call_id="old-read",
       ),
       @openai.assistant_message(content="", tool_calls=[
+        @openai.tool_call(id="verification", name="test", arguments="{}"),
+      ]),
+      @openai.tool_message(
+        content="VERIFIED-RESULT",
+        tool_call_id="verification",
+      ),
+      @openai.assistant_message(content="", tool_calls=[
         @openai.tool_call(
           id="latest-read",
           name="read",
@@ -150,6 +157,7 @@ async test "compile_messages/tool_heavy_compacts_complete_old_exchange" (
     assert_false(transcript.contains("OLD-EVIDENCE"))
     assert_true(transcript.contains("Context checkpoint"))
     assert_true(transcript.contains("LATEST-EVIDENCE"))
+    assert_true(transcript.contains("VERIFIED-RESULT"))
     assert_true(tool_protocol_is_valid(result.messages))
   })
 }

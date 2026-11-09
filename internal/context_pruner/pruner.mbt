@@ -375,8 +375,8 @@ async fn Pruner::log_compilation(
 /// same order. The overflow path:
 ///
 /// 1. retains the complete system/rules/initial-task prefix;
-/// 2. retains up to 20k recent message tokens after reserving the measured
-///    protected-prefix/tool-schema cost and a bounded checkpoint;
+/// 2. retains complete recent exchanges within the remaining token allowance,
+///    dropping an incomplete older batch at the cut instead of expanding it;
 /// 3. falls back once to the newest complete turn if the conservative estimate
 ///    still misses the budget.
 ///
@@ -470,17 +470,11 @@ pub async fn Pruner::compile_messages(
     suffix_start = index
     recent_tokens += message_tokens
   }
-  // Extend backwards to a coherent user-turn boundary when available. If this
-  // is one long initial tool turn, retaining its assistant call is the next
-  // safest boundary.
-  while suffix_start > prefix_end {
-    match projected[suffix_start] {
-      User(_) => break
-      _ => suffix_start -= 1
-    }
-  }
-  if suffix_start <= prefix_end {
-    suffix_start = minimum_suffix_start
+  // Drop an incomplete older batch; keep the newest complete turn.
+  suffix_start = suffix_start.min(minimum_suffix_start)
+  while suffix_start < minimum_suffix_start &&
+        projected[suffix_start] is Tool(_) {
+    suffix_start += 1
   }
 
   let mut compiled = pruner.build_compacted_projection(

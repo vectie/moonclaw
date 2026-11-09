@@ -103,10 +103,19 @@ This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
 
+The cutoff is a whole-exchange boundary, not a backward search for a User.
+Skip an orphan older Tool tail toward the next complete call, clamping to the
+existing newest-complete-turn boundary; keep parallel results and latest user
+context together. The former prefix reset could unnecessarily discard fitting
+recent results. Same-input and delayed-pressure counterfactuals reproduce the
+bug and its fix without pinning outcomes or adding state. Keeping more valid
+recent work raises main input49157->53513; repaired-null54925/13->55034/12
+is109 more. This is a retention fix, not a billed cost improvement.
+
 The working window remains9,472 after the earlier ABI calibration; the latest
 cleanup does not shrink it. Same-window ablations separate the read ABI,
 bundled-guide duplication and complete-exchange compaction. The default producer
-replays12 frozen responses at49,157 tokens (one warmup plus seven measurements),
+replays12 frozen responses at53,513 tokens (one warmup plus seven measurements),
 with at most one checkpoint message in each of96frames, full edit inputs,
 selected instructions and final verdicts retained. Natural-text responses use
 the existing internal finish adapter/acceptance; only its default model schema
