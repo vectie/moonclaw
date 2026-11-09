@@ -600,9 +600,11 @@ fn mooncode_runtime_turn_model_followup_base_messages(
       "source",
       default="",
     )
+    // Applied steering is in the current task; old notices were consumed.
     if [
         "user.content_parts", "skill.loaded_resource", "skill.loaded_receipt", "environment.evidence_ledger",
-        "environment.horizon_progress", "warning.pipeline_evidence",
+        "environment.horizon_progress", "warning.pipeline_evidence", "user.live_steering",
+        "warning.finish_rejection", "warning.patient_replan",
       ].contains(source) {
       continue
     }

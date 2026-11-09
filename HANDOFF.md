@@ -7,6 +7,27 @@ Work directly on `main`; do not create a branch unless the user requests one.
 
 
 
+
+## Long task notice lifecycle 2026-11-09
+
+- Existing followup filter drops consumed user.live_steering and one-shot
+  warning.finish_rejection/warning.patient_replan. Applied updates remain in
+  Current task; fresh notices and retry regeneration remain. Old User copies
+  pinned an entire long tool turn:128steps102 unfit/max31848, fixed0/max<=7104.
+- Paired4x128, full initial1027 charged; plain input identical. Verified1024
+  steps/1025input frames6066562,0unfit,287compactions,8real old-result reads,
+  32correct after-step journal restores, same next request. Fresh Native
+  process restores1024results/2updates/exact next request and old output.
+- First extended fixture reloaded projected messages, not actual after-step
+  resume; verified-2 saves pre-response plan and rebuilds followup. Comparing
+  raw events to journal projection fails on journal_sequence: reuse existing
+  unproject helper in harness, not new production compatibility logic.
+- Short12-response trace53513 x8/96frames unchanged; Native1836/1836,
+  context regression before2/3 after3/3, info/fmt, mbti unchanged.
+  No new state/layer/hardening/provider call. Evidence long7-20261109 under
+  /Users/kq includes failed fixtures, all sums/initial/recall/recovery costs.
+  These are simulated decisions, not1024real LLM turns or a service kill test.
+
 ## Complete batch cutoff root cause 2026-11-09
 
 - Field removal delayed pressure at round10:7116->7072 vs7104. At11 old

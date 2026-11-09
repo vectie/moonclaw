@@ -100,7 +100,7 @@ async test "default context projection preserves task, latest result and source 
 }
 
 ///|
-test "followup refresh keeps complete task revisions and transcript before projection" {
+async test "followup refresh keeps complete task revisions and transcript before projection" {
   let messages = context_test_messages()
   let task = "updated task\n" + "constraint".repeat(2000)
   let refreshed = mooncode_runtime_turn_context_previous_messages(
@@ -109,6 +109,34 @@ test "followup refresh keeps complete task revisions and transcript before proje
   assert_eq(refreshed.length(), messages.length())
   assert_eq(mooncode_json_string(refreshed[1], "content", default=""), task)
   assert_eq(refreshed[refreshed.length() - 1], messages[messages.length() - 1])
+  let update : Json = {
+    "command_id": "revision",
+    "steering_text": "Preserve REQUIRED-REVISION and the public interface",
+  }
+  let command = mooncode_runtime_task_with_update(
+    { "command": "prompt", "text": "Deliver the feature" },
+    update,
+  )
+  let history = context_test_messages(count=128)
+  history.insert(4, mooncode_runtime_turn_model_live_steering_message(update))
+  let followup = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    { "model_messages": Json(history) },
+    [],
+  )
+  let projected = mooncode_runtime_turn_compile_context(
+    command,
+    followup,
+    [],
+    3000,
+    128,
+  )
+  assert_true(
+    mooncode_json_bool(projected.metrics, "within_budget", default=false),
+  )
+  let visible = Json(projected.messages).stringify()
+  assert_true(visible.contains("REQUIRED-REVISION"))
+  assert_true(visible.contains("observed-127"))
 }
 
 ///|

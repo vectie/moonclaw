@@ -103,6 +103,15 @@ This recovers retained tool output, not stdout already truncated by the tool,
 missing artifacts or overwritten source versions. There is no new index,
 automatic recall model call or mandatory retrieval stage.
 
+Consumed steering/replan/rejected-finish notices expire through the existing
+followup filter. Applied steering is already in the protected current task,
+and restored from applied events. Keeping old User notices indefinitely pins
+all subsequent tool work to one user turn. Fresh notices are still delivered;
+ordinary task text, provenance and authoritative completion facts remain.
+Paired128-step traces and1024-step mixed journal/read/restore checks stay
+bounded; an independent Native process reconstructs the same next request.
+These are offline control-flow tests, not1024real model calls.
+
 The cutoff is a whole-exchange boundary, not a backward search for a User.
 Skip an orphan older Tool tail toward the next complete call, clamping to the
 existing newest-complete-turn boundary; keep parallel results and latest user
