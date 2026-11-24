@@ -126,6 +126,16 @@ async fn Daemon::spawn_task(
   self.by_id[task.id] = Running(task)
   // FIXME: The daemon does not ends anyway, so the `no_wait` option is
   // unnecessary.
-  group.spawn_bg(() => self.listen_for_status_change(task), no_wait=true)
+  // This subscription belongs to one worker. Retiring or losing that worker
+  // can interrupt its HTTP event stream while the daemon serves other tasks.
+  group.spawn_bg(
+    () => {
+      self.listen_for_status_change(task) catch {
+        error =>
+          logger.error("Status stream for task \{task.id} ended: \{error}")
+      }
+    },
+    no_wait=true,
+  )
   task
 }

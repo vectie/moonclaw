@@ -46,7 +46,9 @@ pub struct MoonGateModel {
   context_window : Int?
   input_modalities : Array[String]
   text_only : Bool
+  acp_tools : Bool
 }
+pub fn MoonGateModel::acp_tools(Self) -> Bool
 pub fn MoonGateModel::context_window(Self) -> Int?
 pub fn MoonGateModel::from_json(Json) -> Result[Self, String]
 pub fn MoonGateModel::id(Self) -> String

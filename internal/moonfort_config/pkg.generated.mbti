@@ -12,7 +12,7 @@ pub async fn load_promotion_adapter_config() -> PromotionAdapterConfig?
 
 pub async fn load_recovery_inspection_config() -> RecoveryInspectionConfig?
 
-pub async fn load_sandbox_executor_config() -> @execution_sandbox.SandboxExecutorConfig?
+pub async fn load_sandbox_executor_config(workspace? : String) -> @execution_sandbox.SandboxExecutorConfig?
 
 // Errors
 

@@ -29,6 +29,7 @@ async test "Loader" (t : @test.Test) {
         "supports_apply_patch": false,
         "input_modalities": ["text"],
         "text_only": false,
+        "acp_tools": false,
       },
     ])
     let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
@@ -44,6 +45,7 @@ async test "Loader" (t : @test.Test) {
         "supports_apply_patch": false,
         "input_modalities": ["text"],
         "text_only": false,
+        "acp_tools": false,
       },
     ])
   })
@@ -119,6 +121,7 @@ async test "load" (t : @test.Test) {
         "supports_apply_patch": false,
         "input_modalities": ["text"],
         "text_only": false,
+        "acp_tools": false,
       },
     ])
     json_inspect(
@@ -137,6 +140,7 @@ async test "load" (t : @test.Test) {
           "supports_apply_patch": false,
           "input_modalities": ["text"],
           "text_only": false,
+          "acp_tools": false,
         },
       ],
     )
@@ -174,6 +178,7 @@ async test "removes-old-models" (t : @test.Test) {
         "supports_apply_patch": false,
         "input_modalities": ["text"],
         "text_only": false,
+        "acp_tools": false,
       },
     ])
     let new_model = @model.new(
@@ -197,6 +202,7 @@ async test "removes-old-models" (t : @test.Test) {
         "supports_apply_patch": false,
         "input_modalities": ["text"],
         "text_only": false,
+        "acp_tools": false,
       },
     ])
   })

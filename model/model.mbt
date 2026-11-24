@@ -12,6 +12,7 @@ pub struct Model {
   input_modalities : Array[String]
   // Explicit text-chat transport: no tool execution or generation controls.
   text_only : Bool
+  acp_tools : Bool
   // OAuth credentials for CodexOAuth provider
   access_token : String?
   account_id : String?
@@ -80,6 +81,7 @@ pub fn Model::new(
   supports_anthropic_prompt_caching~ : Bool = false,
   input_modalities~ : Array[String] = ["text"],
   text_only~ : Bool = false,
+  acp_tools~ : Bool = false,
   access_token? : String,
   account_id? : String,
   refresh_token? : String,
@@ -105,6 +107,7 @@ pub fn Model::new(
     supports_apply_patch,
     input_modalities,
     text_only,
+    acp_tools,
     access_token,
     account_id,
     refresh_token,

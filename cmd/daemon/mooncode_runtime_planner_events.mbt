@@ -33,7 +33,8 @@ fn mooncode_runtime_turn_planner_progress_events(
     "content",
     default="",
   )
-  if assistant_content != "" {
+  if assistant_content != "" &&
+    !mooncode_json_bool(plan, "assistant_text_streamed", default=false) {
     events.push(
       mooncode_runtime_turn_assistant_event(
         session_id,

@@ -1,4 +1,23 @@
 ///|
+test "Book command configuration matches the registered canonical workspace" {
+  let registry : Json = {
+    "workspaces": { "demo": { "root": "/suite/books/demo" } },
+  }
+  assert_true(
+    sandbox_registry_matches_workspace(registry, "demo", "/suite/books/demo"),
+  )
+  assert_false(
+    sandbox_registry_matches_workspace(registry, "demo", "/suite/books/other"),
+  )
+  assert_false(
+    sandbox_registry_matches_workspace(registry, "missing", "/suite/books/demo"),
+  )
+  assert_false(
+    sandbox_registry_matches_workspace({}, "demo", "/suite/books/demo"),
+  )
+}
+
+///|
 test "sandbox executor config parser rejects malformed input without reflection" {
   try parse_sandbox_executor_config("secret-token-not-json") catch {
     error => {

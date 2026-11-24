@@ -459,6 +459,7 @@ fn model_from_moongate_catalog(
     description="Routed through the active MoonGate service",
     input_modalities=catalog_model.input_modalities(),
     text_only=catalog_model.text_only(),
+    acp_tools=catalog_model.acp_tools(),
   )
 }
 

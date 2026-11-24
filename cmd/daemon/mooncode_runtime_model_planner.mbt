@@ -215,7 +215,9 @@ fn mooncode_runtime_turn_model_extra_body(
   model : @model.Model,
   command : Json,
 ) -> Map[String, Json] {
-  if model.text_only || !model.base_url.contains("/openclaw/v1") {
+  if model.text_only ||
+    model.acp_tools ||
+    !model.base_url.contains("/openclaw/v1") {
     return Map([])
   }
   let session_id = mooncode_json_string(command, "session_id", default="")
@@ -233,6 +235,7 @@ async fn mooncode_runtime_turn_model_chat(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
+  on_text_delta~ : (String) -> Unit = _ => (),
 ) -> (@openai.ChatCompletion, String, Int32, Int32) {
   let started = @async.now()
   let mut retry_count = 0
@@ -245,6 +248,7 @@ async fn mooncode_runtime_turn_model_chat(
         timeout_ms=mooncode_runtime_turn_model_timeout_for_provider(
           model, command,
         ),
+        on_text_delta~,
       ),
     ) catch {
       error => {
@@ -1283,6 +1287,12 @@ async fn Daemon::mooncode_runtime_model_round(
       let request_messages = context.messages
       let request = if model.text_only {
         mooncode_runtime_text_chat_request(model.model_name, request_messages)
+      } else if model.acp_tools {
+        mooncode_runtime_acp_tool_request(
+          model.model_name,
+          request_messages,
+          tools,
+        )
       } else {
         mooncode_runtime_turn_model_plan_request_from_messages(
           model.model_name,
@@ -1291,8 +1301,38 @@ async fn Daemon::mooncode_runtime_model_round(
           reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
         )
       }
-      let (completion, model_transport, model_retry_count, planner_latency_ms) = mooncode_runtime_turn_model_chat(
-        model, request, command,
+      let (
+        (completion, model_transport, model_retry_count, planner_latency_ms),
+        streamed,
+      ) = with_mooncode_reply_stream(
+        on_delta => {
+          mooncode_runtime_turn_model_chat(
+            model,
+            request,
+            command,
+            on_text_delta=on_delta,
+          )
+        },
+        chunk => {
+          let binding = self.mooncode_binding_for_session(session_id)
+          if binding.bind_book_root(mooncode_book_root(command)) {
+            let event = mooncode_runtime_turn_assistant_event(
+              session_id,
+              command_id,
+              step=0,
+              content=chunk,
+              now=self.clock.now(),
+            )
+            let event = mooncode_json_object_with_field(
+              event,
+              "id",
+              Json("moonclaw-live-\{self.uuid.v4()}"),
+            )
+            binding.events.put(event)
+            self.mooncode_persist_event(binding, event)
+          }
+        },
+        enabled=model.acp_tools || model.text_only,
       ) catch {
         error => {
           let failed = mooncode_runtime_turn_planner_error_result(
@@ -1381,6 +1421,7 @@ async fn Daemon::mooncode_runtime_model_round(
           "planner_mode": mooncode_planner_mode_model_tool_calls(),
           "model": model_name,
           "model_transport": model_transport,
+          "assistant_text_streamed": streamed,
           "model_response_id": mooncode_json_string(
             response_json,
             "id",

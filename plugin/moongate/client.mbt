@@ -55,11 +55,17 @@ pub struct MoonGateModel {
   context_window : Int32?
   input_modalities : Array[String]
   text_only : Bool
+  acp_tools : Bool
 }
 
 ///|
 pub fn MoonGateModel::text_only(self : MoonGateModel) -> Bool {
   self.text_only
+}
+
+///|
+pub fn MoonGateModel::acp_tools(self : MoonGateModel) -> Bool {
+  self.acp_tools
 }
 
 ///|
@@ -164,6 +170,7 @@ fn moongate_default_models_from_status(status : Json) -> Array[MoonGateModel] {
       context_window: Some(128_000),
       input_modalities: [],
       text_only: false,
+      acp_tools: false,
     },
   ]
 }
@@ -466,6 +473,7 @@ pub fn MoonGateModel::from_json(json : Json) -> Result[MoonGateModel, String] {
   Ok({
     id,
     text_only: json is { "moongate": { "text_only": True, .. }, .. },
+    acp_tools: json is { "moongate": { "acp_tools": True, .. }, .. },
     owner: moongate_json_string_field(obj, "owned_by"),
     context_window: moongate_json_int_field(obj, "context_window"),
     input_modalities: {

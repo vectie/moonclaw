@@ -137,6 +137,10 @@ pub impl @json.FromJson for Model with fn from_json(
       Some(value) => @json.from_json(value, path=json_path.add_key("text_only"))
       None => false
     },
+    acp_tools: match json.get("acp_tools") {
+      Some(value) => @json.from_json(value, path=json_path.add_key("acp_tools"))
+      None => false
+    },
     access_token,
     account_id,
     refresh_token,

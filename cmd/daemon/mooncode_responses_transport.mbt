@@ -63,14 +63,18 @@ async fn mooncode_runtime_send_model_request(
   request : @openai.Request,
   command : Json,
   timeout_ms~ : Int32?,
+  on_text_delta~ : (String) -> Unit = _ => (),
 ) -> (@openai.ChatCompletion, String) {
-  if model.text_only || !mooncode_runtime_responses_transport_enabled(command) {
+  if model.text_only ||
+    model.acp_tools ||
+    !mooncode_runtime_responses_transport_enabled(command) {
     return (
-      @openai.chat(
+      @openai.chat_with_text_deltas(
         model~,
         request,
         extra_body=mooncode_runtime_turn_model_extra_body(model, command),
         timeout_ms~,
+        on_text_delta~,
       ),
       "chat_completions",
     )

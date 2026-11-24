@@ -244,6 +244,22 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
       let execution = @execution_sandbox.run_approved_shell(
         config, book_root, book_root, "printf bounded", plan,
       )
+      let evidence = mooncode_sandbox_evidence({
+        ..execution,
+        receipt: { ..execution.receipt, retention_id: Some("retention-view"), },
+      })
+      assert_eq(
+        mooncode_task_field(evidence, "retention_id"),
+        Json("retention-view"),
+      )
+      assert_eq(
+        mooncode_task_field(evidence, "network"),
+        execution.plan.grant.network.to_json(),
+      )
+      assert_eq(
+        mooncode_task_field(evidence, "limits"),
+        execution.plan.grant.limits.to_json(),
+      )
       let interrupted = {
         ..execution,
         receipt: {
@@ -274,6 +290,20 @@ async test "MoonCode shell consumes exact approved grant once and exposes eviden
       )
     })
   })
+}
+
+///|
+test "sandbox view distinguishes directory sentinels from file hashes" {
+  let directory = mooncode_sandbox_entry_view({
+    "kind": "DirectoryEntry",
+    "fingerprint": "directory",
+  })
+  assert_eq(mooncode_task_field(directory, "fingerprint"), Json(""))
+  let file = mooncode_sandbox_entry_view({
+    "kind": "RegularFile",
+    "fingerprint": "directory",
+  })
+  assert_eq(mooncode_task_field(file, "fingerprint"), Json("directory"))
 }
 
 ///|

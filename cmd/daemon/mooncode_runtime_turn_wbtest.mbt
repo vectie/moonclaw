@@ -2093,6 +2093,19 @@ test "mooncode native runtime turn emits planner progress events" {
     "call-read",
   )
   assert_false(Json::array(events).stringify().contains("call-finish"))
+  let streamed = mooncode_runtime_turn_planner_progress_events(
+    "session-progress",
+    "cmd-progress",
+    mooncode_json_object_with_field(plan, "assistant_text_streamed", Json(true)),
+    [],
+    step_index=0,
+    now=@clock.Timestamp::from_ms(43L),
+  )
+  assert_eq(streamed.length(), 1)
+  assert_eq(
+    mooncode_json_string(streamed[0], "kind", default=""),
+    "reasoning_delta",
+  )
 }
 
 ///|

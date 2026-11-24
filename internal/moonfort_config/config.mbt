@@ -66,18 +66,50 @@ fn parse_sandbox_executor_config(
 /// Loads the operator-owned MoonFort launcher configuration. Absence disables
 /// host command execution; a present but invalid configuration is a startup
 /// error. The file contents are intentionally omitted from every error.
-pub async fn load_sandbox_executor_config() -> @execution_sandbox.SandboxExecutorConfig? {
+pub async fn load_sandbox_executor_config(
+  workspace? : String,
+) -> @execution_sandbox.SandboxExecutorConfig? {
   let configured = @os.getenv(SandboxExecutorConfigEnv) catch {
     _ => fail("MoonFort configuration environment is unavailable")
   }
   guard configured is Some(raw_path) else { return None }
   let path = raw_path.trim().to_owned()
   guard !path.is_blank() else { fail("MoonFort configuration path is empty") }
-  Some(
-    parse_sandbox_executor_config(
-      read_bounded_canonical_file(path, MaxSandboxExecutorConfigBytes),
-    ),
+  let config = parse_sandbox_executor_config(
+    read_bounded_canonical_file(path, MaxSandboxExecutorConfigBytes),
   )
+  if workspace is Some(root) {
+    let registry = @json.parse(
+      read_bounded_canonical_file(
+        config.executor_config_path,
+        MaxSandboxExecutorConfigBytes,
+      ),
+    )
+    guard sandbox_registry_matches_workspace(
+      registry,
+      config.workspace_id,
+      @fs.realpath(root),
+    ) else {
+      fail("Commands are enabled only for the operator-configured MoonBook")
+    }
+  }
+  Some(config)
+}
+
+///|
+fn sandbox_registry_matches_workspace(
+  registry : Json,
+  id : String,
+  root : String,
+) -> Bool {
+  match registry {
+    { "workspaces": Object(workspaces), .. } =>
+      match workspaces.get(id) {
+        Some({ "root": String(registered), .. }) => registered == root
+        _ => false
+      }
+    _ => false
+  }
 }
 
 ///|

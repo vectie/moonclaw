@@ -53,7 +53,9 @@ async fn mooncode_execution_sandbox_config(
     Some(config) => return Ok(config)
     None => ()
   }
-  let config = @moonfort_config.load_sandbox_executor_config() catch {
+  let config = @moonfort_config.load_sandbox_executor_config(
+    workspace=book_root,
+  ) catch {
     error =>
       return Err(
         mooncode_tool_error_result(
@@ -71,6 +73,18 @@ async fn mooncode_execution_sandbox_config(
     Some(config) => Ok(config)
     None => Err(mooncode_execution_sandbox_refusal(tool))
   }
+}
+
+///|
+fn mooncode_sandbox_entry_view(entry : Json) -> Json {
+  if entry is Object(fields) &&
+    fields.get("kind") == Some(Json("DirectoryEntry")) &&
+    fields.get("fingerprint") == Some(Json("directory")) {
+    // Directory sentinels are not file content digests. The public receipt
+    // view represents their absence as an empty fingerprint.
+    fields["fingerprint"] = Json("")
+  }
+  entry
 }
 
 ///|
@@ -101,10 +115,27 @@ fn mooncode_sandbox_evidence(
     "limit_reason": receipt.limit_reason,
     "unverified_limits": receipt.unverified_limits,
     "changed_paths": receipt.changed_paths,
-    "changes": receipt.changes,
+    "changes": receipt.changes.map(change => {
+      let json = change.to_json()
+      if json is Object(fields) {
+        for key in ["before", "after"] {
+          if fields.get(key) is Some(entry) {
+            fields[key] = mooncode_sandbox_entry_view(entry)
+          }
+        }
+      }
+      json
+    }),
     "artifacts": receipt.artifacts,
     "output_artifact": output_artifact,
-    "retention_id": receipt.retention_id,
+    "retention_id": match receipt.retention_id {
+      Some(id) => Json(id)
+      None => Json::null()
+    },
+    // MoonDesk's receipt view expects the approved policy fields beside the
+    // execution evidence, including explicitly degraded local runs.
+    "network": execution.plan.grant.network,
+    "limits": execution.plan.grant.limits,
     "requested_policy": {
       "backend": execution.plan.grant.backend,
       "enforcement_requirement": execution.plan.grant.enforcement_requirement,
