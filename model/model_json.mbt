@@ -133,6 +133,10 @@ pub impl @json.FromJson for Model with fn from_json(
     supports_anthropic_prompt_caching,
     supports_apply_patch,
     input_modalities,
+    text_only: match json.get("text_only") {
+      Some(value) => @json.from_json(value, path=json_path.add_key("text_only"))
+      None => false
+    },
     access_token,
     account_id,
     refresh_token,

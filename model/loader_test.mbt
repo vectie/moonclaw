@@ -28,6 +28,7 @@ async test "Loader" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
     let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
@@ -42,6 +43,7 @@ async test "Loader" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
   })
@@ -116,6 +118,7 @@ async test "load" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
     json_inspect(
@@ -133,6 +136,7 @@ async test "load" (t : @test.Test) {
           "supports_anthropic_prompt_caching": false,
           "supports_apply_patch": false,
           "input_modalities": ["text"],
+          "text_only": false,
         },
       ],
     )
@@ -169,6 +173,7 @@ async test "removes-old-models" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
     let new_model = @model.new(
@@ -191,6 +196,7 @@ async test "removes-old-models" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
   })

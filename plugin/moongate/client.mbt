@@ -54,6 +54,12 @@ pub struct MoonGateModel {
   owner : String?
   context_window : Int32?
   input_modalities : Array[String]
+  text_only : Bool
+}
+
+///|
+pub fn MoonGateModel::text_only(self : MoonGateModel) -> Bool {
+  self.text_only
 }
 
 ///|
@@ -151,7 +157,15 @@ fn moongate_default_models_from_status(status : Json) -> Array[MoonGateModel] {
     id != "" else {
     return []
   }
-  [{ id, owner: None, context_window: Some(128_000), input_modalities: [], }]
+  [
+    {
+      id,
+      owner: None,
+      context_window: Some(128_000),
+      input_modalities: [],
+      text_only: false,
+    },
+  ]
 }
 
 ///|
@@ -451,6 +465,7 @@ pub fn MoonGateModel::from_json(json : Json) -> Result[MoonGateModel, String] {
   }
   Ok({
     id,
+    text_only: json is { "moongate": { "text_only": True, .. }, .. },
     owner: moongate_json_string_field(obj, "owned_by"),
     context_window: moongate_json_int_field(obj, "context_window"),
     input_modalities: {

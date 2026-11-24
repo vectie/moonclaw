@@ -64,7 +64,7 @@ async fn mooncode_runtime_send_model_request(
   command : Json,
   timeout_ms~ : Int32?,
 ) -> (@openai.ChatCompletion, String) {
-  if !mooncode_runtime_responses_transport_enabled(command) {
+  if model.text_only || !mooncode_runtime_responses_transport_enabled(command) {
     return (
       @openai.chat(
         model~,

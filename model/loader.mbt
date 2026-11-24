@@ -458,6 +458,7 @@ fn model_from_moongate_catalog(
     safe_zone_tokens=catalog_model.context_window().unwrap_or(128_000),
     description="Routed through the active MoonGate service",
     input_modalities=catalog_model.input_modalities(),
+    text_only=catalog_model.text_only(),
   )
 }
 

@@ -107,6 +107,7 @@ async test "load" (t : @test.Test) {
         "supports_anthropic_prompt_caching": true,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
     json_inspect(
@@ -123,6 +124,7 @@ async test "load" (t : @test.Test) {
           "supports_anthropic_prompt_caching": true,
           "supports_apply_patch": false,
           "input_modalities": ["text"],
+          "text_only": false,
         },
       ],
     )
@@ -138,6 +140,7 @@ async test "load" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
   })
@@ -190,6 +193,7 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
         "supports_anthropic_prompt_caching": false,
         "supports_apply_patch": false,
         "input_modalities": ["text"],
+        "text_only": false,
       },
     ])
     let nested = loader.get_model(name="bailian/openai/gpt-5.6-sol").unwrap()

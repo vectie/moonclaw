@@ -215,7 +215,7 @@ fn mooncode_runtime_turn_model_extra_body(
   model : @model.Model,
   command : Json,
 ) -> Map[String, Json] {
-  if !model.base_url.contains("/openclaw/v1") {
+  if model.text_only || !model.base_url.contains("/openclaw/v1") {
     return Map([])
   }
   let session_id = mooncode_json_string(command, "session_id", default="")
@@ -1268,10 +1268,11 @@ async fn Daemon::mooncode_runtime_model_round(
       model_name,
     ) {
     Some(model) => {
-      let tools = mooncode_runtime_turn_model_tools_for_command(
-        command,
-        skill_results~,
-      )
+      let tools = if model.text_only {
+        []
+      } else {
+        mooncode_runtime_turn_model_tools_for_command(command, skill_results~)
+      }
       let context = mooncode_runtime_turn_compile_context(
         command,
         messages,
@@ -1280,12 +1281,16 @@ async fn Daemon::mooncode_runtime_model_round(
         mooncode_runtime_turn_model_max_tokens(model.model_name),
       )
       let request_messages = context.messages
-      let request = mooncode_runtime_turn_model_plan_request_from_messages(
-        model.model_name,
-        request_messages,
-        tools~,
-        reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
-      )
+      let request = if model.text_only {
+        mooncode_runtime_text_chat_request(model.model_name, request_messages)
+      } else {
+        mooncode_runtime_turn_model_plan_request_from_messages(
+          model.model_name,
+          request_messages,
+          tools~,
+          reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
+        )
+      }
       let (completion, model_transport, model_retry_count, planner_latency_ms) = mooncode_runtime_turn_model_chat(
         model, request, command,
       ) catch {
