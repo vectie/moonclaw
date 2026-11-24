@@ -168,8 +168,13 @@ pub async fn call_mcp(
         None => {}
       }
     }
-    let result = mcp_request(server, method_, params) catch {
-      _ => Err("Could not connect to the MCP server")
+    let result = @async.with_timeout(60000, () => {
+      mcp_request(server, method_, params)
+    }) catch {
+      _ =>
+        Err(
+          "The MCP request could not complete; the request timeout is 60 seconds",
+        )
     }
     match result {
       Ok(result) =>

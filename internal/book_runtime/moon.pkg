@@ -2,6 +2,7 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonlib/moonsuite",
   "moonbitlang/async/http",
+  "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
@@ -11,10 +12,6 @@ import {
   "moonbitlang/x/crypto",
   "moonbitlang/x/codec/base64",
 }
-
-import {
-  "moonbitlang/async",
-} for "wbtest"
 
 supported_targets = "native"
 

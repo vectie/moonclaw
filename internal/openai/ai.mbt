@@ -1236,6 +1236,23 @@ async fn ChunkReader::read(self : ChunkReader) -> ChatCompletionChunk? {
       return None
     }
     let json = @json.parse(rest)
+    // Providers can report a terminal error inside an HTTP-200 SSE stream.
+    // Diagnose that envelope before requiring completion metadata such as id.
+    // Otherwise the actionable provider failure becomes "Missing 'id' field".
+    if json is { "error": error, .. } && error != Json::null() {
+      let code = match error {
+        { "code": String("rate_limit_exceeded" | "RateLimitExceeded"), .. } =>
+          429
+        { "code": String("invalid_api_key" | "authentication_error"), .. } =>
+          401
+        {
+          "code": String("context_length_exceeded" | "invalid_request_error"),
+          ..
+        } => 400
+        _ => 502
+      }
+      raise HttpRetryError(code~, body=json.stringify(), retry_after_ms=None)
+    }
     let chunk : ChatCompletionChunk = @json.from_json(json)
     return Some(chunk)
   } nobreak {

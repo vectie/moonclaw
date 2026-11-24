@@ -38,7 +38,7 @@ pub fn tools(book_root : String) -> Array[@tool.AgentTool] {
       "read_skill" =>
         "Load complete installed Skill instructions or one referenced resource through the MoonBook's existing Skill loader."
       "mcp_list_tools" =>
-        "Discover actual tool schemas from enabled MCP integrations configured in the selected MoonBook; follow nextCursor when supplied."
+        "Without server, list enabled MoonBook integrations. Supply one server to retrieve its actual tool schemas; follow nextCursor when supplied."
       _ =>
         "Execute one discovered MCP tool on a selected enabled MoonBook integration. Preserve the returned source/result metadata."
     }
@@ -50,6 +50,18 @@ pub fn tools(book_root : String) -> Array[@tool.AgentTool] {
         let value = try {
           if name == "read_skill" {
             read_skill(book_root, arguments)
+          } else if name == "mcp_list_tools" && text(arguments, "server") == "" {
+            {
+              "tool": name,
+              "ok": true,
+              "servers": mcp_servers(book_root)
+              .filter(server => flag(server, "enabled", default=true))
+              .map(server => {
+                "server": text(server, "id"),
+                "name": text(server, "name", default=text(server, "id")),
+              }),
+              "next_step": "Call mcp_list_tools with one server to retrieve the schemas needed for this task. Do not fetch unrelated catalogs.",
+            }
           } else {
             call_mcp(book_root, name, arguments)
           }
