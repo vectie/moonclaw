@@ -318,7 +318,7 @@ fn capability_http_pack_executor(
     estimate_cost_micros=(_, _) => estimated_cost_micros,
     run=request => {
       match
-        capability_http_post_json(submit_url, request.to_json(), timeout_ms) {
+        capability_http_post_json(submit_url, ToJson::to_json(request), timeout_ms) {
         Err(error) => Ok(capability_http_uncertain_result(error))
         Ok(value) =>
           match capability_http_decode_execution_result(value) {
@@ -329,7 +329,7 @@ fn capability_http_pack_executor(
     },
     reconcile=Some(request => {
       match
-        capability_http_post_json(reconcile_url, request.to_json(), timeout_ms) {
+        capability_http_post_json(reconcile_url, ToJson::to_json(request), timeout_ms) {
         Err(error) => Err(error)
         Ok(value) => capability_http_decode_reconciliation(value)
       }
@@ -503,7 +503,7 @@ async fn capability_http_write_outcome(
   .set("X-MoonClaw-Replayed", if outcome.replayed { "true" } else { "false" })
   w.write_header(200)
   // MoonFind consumes the canonical receipt directly.
-  w.write(outcome.receipt.to_json().stringify())
+  w.write(ToJson::to_json(outcome.receipt).stringify())
 }
 
 ///|

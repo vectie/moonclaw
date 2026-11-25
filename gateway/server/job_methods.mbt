@@ -427,18 +427,20 @@ async fn Gateway::handle_job_runs_get_method(
         ok: true,
         payload: Some({
           "run": run.to_json(),
-          "steps": self
-          .job_runtime()
-          .store()
-          .list_step_runs(run_id)
-          .map(step => step.to_json())
-          .to_json(),
-          "artifacts": self
-          .job_runtime()
-          .store()
-          .list_artifacts(run_id~)
-          .map(artifact => artifact.to_json())
-          .to_json(),
+          "steps": Json::array(
+            self
+            .job_runtime()
+            .store()
+            .list_step_runs(run_id)
+            .map(step => step.to_json()),
+          ),
+          "artifacts": Json::array(
+            self
+            .job_runtime()
+            .store()
+            .list_artifacts(run_id~)
+            .map(artifact => artifact.to_json()),
+          ),
         }),
         error: None,
       })
@@ -529,12 +531,11 @@ async fn Gateway::handle_job_ui_events_method(
         id: request.id,
         ok: true,
         payload: Some({
-          "timeline": @job.load_run_ui_timeline(
-            self.job_runtime().store(),
-            run_id,
-          )
-          .map(entry => entry.to_json())
-          .to_json(),
+          "timeline": Json::array(
+            @job.load_run_ui_timeline(self.job_runtime().store(), run_id).map(
+              entry => entry.to_json(),
+            ),
+          ),
         }),
         error: None,
       })

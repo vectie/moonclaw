@@ -175,14 +175,12 @@ async fn Daemon::mooncode_start_runtime_service(
   {
     errdefer @async.protect_from_cancel(
       () => lifecycle_gate.close(),
-      resume_on_cancel=true,
     )
     ignore(lifecycle_gate.lock(Shared))
   }
   if mooncode_session_suspension_requested(book_root, session_id) {
     @async.protect_from_cancel(
       () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-      resume_on_cancel=true,
     )
     raise json_error(409, "Conflict", {
       "error": {
@@ -195,7 +193,6 @@ async fn Daemon::mooncode_start_runtime_service(
   {
     errdefer @async.protect_from_cancel(
       () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-      resume_on_cancel=true,
     )
     mooncode_require_active_session_state_locked(
       book_root,
@@ -206,7 +203,6 @@ async fn Daemon::mooncode_start_runtime_service(
   let execution_lease = {
     errdefer @async.protect_from_cancel(
       () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-      resume_on_cancel=true,
     )
     mooncode_open_session_execution_lease(book_root, session_id)
   }
@@ -215,8 +211,7 @@ async fn Daemon::mooncode_start_runtime_service(
       execution_lease.close()
       @async.protect_from_cancel(
         () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-        resume_on_cancel=true,
-      )
+        )
     }
     execution_lease.try_lock(Exclusive)
   }
@@ -231,7 +226,6 @@ async fn Daemon::mooncode_start_runtime_service(
     execution_lease.close()
     @async.protect_from_cancel(
       () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-      resume_on_cancel=true,
     )
     return {
       "kind": "mooncode-runtime-service",
@@ -277,8 +271,7 @@ async fn Daemon::mooncode_start_runtime_service(
             lifecycle_gate, execution_lease,
           )
         },
-        resume_on_cancel=true,
-      )
+        )
     }
     ignore(
       mooncode_append_session_journal(
@@ -332,8 +325,7 @@ async fn Daemon::mooncode_start_runtime_service(
                 )
               }
             },
-            resume_on_cancel=true,
-          )
+                )
           Json::object({})
         }
       }
@@ -614,7 +606,6 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
           ),
         )
       },
-      resume_on_cancel=true,
     )
     if drains_queue &&
       !@async.is_being_cancelled() &&

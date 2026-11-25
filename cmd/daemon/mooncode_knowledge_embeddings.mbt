@@ -67,7 +67,9 @@ async fn mooncode_embed_knowledge(
   if url == "" || model == "" {
     return Err("No embedding provider is configured")
   }
-  let headers : Map[String, String] = { "content-type": "application/json" }
+  let headers : Map[@http.CaseInsensitiveString, String] = {
+    "content-type": "application/json",
+  }
   let token = mooncode_json_string(config, "token", default="")
   if token != "" {
     headers["authorization"] = "Bearer " + token

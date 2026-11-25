@@ -23,7 +23,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
       let receipt = @evidence_contract.validate_dossier_in_workspace(
         dossier, book_root,
       )
-      let rendered = receipt.to_json().stringify(indent=2) + "\n"
+      let rendered = ToJson::to_json(receipt).stringify(indent=2) + "\n"
       @fsx.write_to_file(output_path, rendered) catch {
         error => {
           println("MoonClaw evidence write failed: \{error}")

@@ -608,7 +608,7 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     if [
         "user.content_parts", "skill.loaded_resource", "skill.loaded_receipt", "environment.evidence_ledger",
         "environment.horizon_progress", "warning.pipeline_evidence", "user.live_steering",
-        "warning.finish_rejection", "warning.patient_replan",
+        "warning.finish_rejection", "warning.patient_replan", "warning.worker_wait_complete",
       ].contains(source) {
       continue
     }
@@ -887,6 +887,19 @@ async fn mooncode_runtime_turn_model_followup_messages(
       command, tool_results,
     ) {
     messages.push(message)
+  }
+  let worker_wait_guidance = mooncode_runtime_turn_worker_wait_guidance(
+    tool_results, all_tool_results,
+  )
+  if worker_wait_guidance != "" {
+    messages.push(
+      mooncode_runtime_context_text_message(
+        "user",
+        worker_wait_guidance,
+        WarningContext,
+        "warning.worker_wait_complete",
+      ),
+    )
   }
   let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
     command, tool_calls, all_tool_results,
@@ -1223,6 +1236,44 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
     payload.stringify()
   } else {
     payload.stringify() + "\n" + output
+  }
+}
+
+///|
+fn mooncode_runtime_turn_worker_wait_guidance(
+  tool_results : Array[Json],
+  all_tool_results : Array[Json],
+) -> String {
+  let mut ready_in_batch = false
+  for execution in tool_results {
+    let tool = mooncode_json_string(execution, "tool", default="")
+    if tool != "wait_workers" {
+      continue
+    }
+    let result = mooncode_tool_result_value(execution)
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    if mooncode_json_bool(metadata, "ready", default=false) {
+      ready_in_batch = true
+    }
+  }
+  if !ready_in_batch {
+    return ""
+  }
+  let mut total_ready_waits = 0
+  for execution in all_tool_results {
+    if mooncode_json_string(execution, "tool", default="") != "wait_workers" {
+      continue
+    }
+    let result = mooncode_tool_result_value(execution)
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    if mooncode_json_bool(metadata, "ready", default=false) {
+      total_ready_waits += 1
+    }
+  }
+  if total_ready_waits >= 2 {
+    "STOP calling wait_workers for already-terminal workers. You have already received ready=true worker results. Do not poll again; immediately integrate the returned worker contributions into the final deliverable, perform any required verification, and call finish."
+  } else {
+    "All waited workers are now terminal (ready=true). Proceed directly to integrating their returned answers/artifacts into the deliverable and calling finish rather than calling wait_workers again."
   }
 }
 

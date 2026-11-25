@@ -671,7 +671,7 @@ async fn FeishuChannel::handle_feishu_message(
           },
           payload: {
             "chat_id": chat_id,
-            "thread_id": thread_id.to_json(),
+            "thread_id": ToJson::to_json(thread_id),
             "message_id": message_id,
             "content": content,
           },
@@ -786,15 +786,15 @@ async fn FeishuChannel::handle_reaction_event(
         payload: {
           "message_id": message_id,
           "chat_id": lookup.chat_id,
-          "chat_type": lookup.chat_type.to_json(),
-          "thread_id": lookup.thread_id.to_json(),
-          "operator_open_id": operator_open_id.to_json(),
-          "operator_type": operator_type.to_json(),
-          "emoji_type": emoji_type.to_json(),
-          "content": lookup.content.to_json(),
-          "content_type": lookup.content_type.to_json(),
-          "target_sender_id": lookup.sender_id.to_json(),
-          "target_sender_type": lookup.sender_type.to_json(),
+          "chat_type": ToJson::to_json(lookup.chat_type),
+          "thread_id": ToJson::to_json(lookup.thread_id),
+          "operator_open_id": ToJson::to_json(operator_open_id),
+          "operator_type": ToJson::to_json(operator_type),
+          "emoji_type": ToJson::to_json(emoji_type),
+          "content": ToJson::to_json(lookup.content),
+          "content_type": ToJson::to_json(lookup.content_type),
+          "target_sender_id": ToJson::to_json(lookup.sender_id),
+          "target_sender_type": ToJson::to_json(lookup.sender_type),
           "raw_event": event_data,
         },
         timestamp,
@@ -934,7 +934,7 @@ impl @channel.ChannelExtension for FeishuChannel with fn handle_websocket(
       Json::object({
         "type": "feishu.monitor.ready",
         "channel": "feishu",
-        "supports_websocket": self.supports_websocket().to_json(),
+        "supports_websocket": Json::boolean(self.supports_websocket()),
         "accounts": Json::array(
           self
           .websocket_monitor_accounts()
@@ -1013,10 +1013,10 @@ fn feishu_websocket_dial_request(
     "app_secret": config.app_secret,
     "domain": config.domain,
     "url": url,
-    "headers": config.websocket_headers.to_json(),
-    "verify_token": config.verify_token.to_json(),
-    "encryption_key": config.encryption_key.to_json(),
-    "bot_name": config.bot_name.to_json(),
+    "headers": ToJson::to_json(config.websocket_headers),
+    "verify_token": ToJson::to_json(config.verify_token),
+    "encryption_key": ToJson::to_json(config.encryption_key),
+    "bot_name": ToJson::to_json(config.bot_name),
   })
   @channel.WebSocketDialRequest::new(
     client_id=feishu_runtime_client_id(account_id),
@@ -1707,7 +1707,7 @@ fn FeishuChannel::websocket_account_status_json(
   Json::object({
     "account_id": account_id,
     "connection_mode": connection_mode,
-    "running": self.is_running(account_id).to_json(),
+    "running": Json::boolean(self.is_running(account_id)),
   })
 }
 
@@ -1946,7 +1946,7 @@ fn ack_response_payload(response : @channel.ExtensionResponse) -> Bytes {
   } else {
     500
   }
-  let payload : Map[String, Json] = { "code": status_code.to_json() }
+  let payload : Map[String, Json] = { "code": ToJson::to_json(status_code) }
   if status_code == 200 && response.body().length() > 0 {
     payload["data"] = Json::string(@base64.encode(response.body()))
   }

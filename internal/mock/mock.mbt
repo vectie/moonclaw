@@ -390,7 +390,9 @@ pub async fn run(
         @async.with_task_group(group => {
           if @os.getenv("CI") is Some("1" | "true") {
             let test_name = "\{pkg_path}.\{t.name()}"
-            group.add_defer(() => eprintln("[\{test_name}] Completed."))
+            group.add_defer(() => {
+              @async.protect_from_cancel(() => eprintln("[\{test_name}] Completed."))
+            })
             group.spawn_bg(
               () => {
                 eprintln("[\{test_name}] Started.")
@@ -448,7 +450,7 @@ pub async fn run(
             group,
             moon_home,
           }
-          group.add_defer(() => ctx.close())
+          group.add_defer(() => @async.protect_from_cancel(() => ctx.close()))
           action(ctx)
         })
       })

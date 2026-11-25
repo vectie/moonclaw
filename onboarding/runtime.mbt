@@ -490,7 +490,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["channels", "feishu", "enabled"],
-        enabled.to_json(),
+        Json::boolean(enabled),
       )
     None => ()
   }
@@ -505,7 +505,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
         configured = json_set_path(
           configured,
           ["channels", "feishu", "enabled"],
-          true.to_json(),
+          Json::boolean(true),
         )
       }
     }
@@ -522,7 +522,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
         configured = json_set_path(
           configured,
           ["channels", "feishu", "enabled"],
-          true.to_json(),
+          Json::boolean(true),
         )
       }
     }

@@ -294,12 +294,78 @@ async fn Daemon::mooncode_tool_wait_workers(
   self : Daemon,
   parent_session_id : String,
   parent_book_root : String,
+  command_id : String,
   arguments : Json,
 ) -> Json {
   ignore(self)
-  mooncode_wait_workers_projection(
-    parent_session_id, parent_book_root, arguments,
+  let raw_timeout = mooncode_json_int(arguments, "timeout_ms", default=15000)
+  let timeout_ms = if raw_timeout < 0 {
+    0
+  } else if raw_timeout > 60000 {
+    60000
+  } else {
+    raw_timeout
+  }
+  let raw_poll = mooncode_json_int(arguments, "poll_interval_ms", default=500)
+  let poll_ms = if raw_poll < 50 {
+    50
+  } else if raw_poll > 5000 {
+    5000
+  } else {
+    raw_poll
+  }
+  let mut result = mooncode_wait_workers_projection(
+    parent_session_id,
+    parent_book_root,
+    arguments,
+    command_id~,
   )
+  let mut elapsed = 0
+  while elapsed < timeout_ms &&
+        mooncode_json_bool(result, "ok", default=false) &&
+        !mooncode_json_bool(
+          mooncode_json_object_field_or_empty(result, "metadata"),
+          "ready",
+          default=false,
+        ) {
+    let step = if timeout_ms - elapsed < poll_ms {
+      timeout_ms - elapsed
+    } else {
+      poll_ms
+    }
+    @async.sleep(step)
+    elapsed += step
+    result = mooncode_wait_workers_projection(
+      parent_session_id,
+      parent_book_root,
+      arguments,
+      command_id~,
+    )
+  }
+  result
+}
+
+///|
+fn mooncode_wait_workers_summary(
+  ready : Bool,
+  projected : Array[Json],
+  missing : Array[Json],
+) -> String {
+  let parts : Array[String] = []
+  for worker in projected {
+    let id = mooncode_json_string(worker, "worker_id", default="unknown")
+    let status = mooncode_json_string(worker, "status", default="unknown")
+    let terminal = mooncode_json_bool(worker, "terminal", default=false)
+    parts.push("\{id}=\{status}(terminal=\{terminal})")
+  }
+  let joined = if parts.is_empty() { "none" } else { parts.join(", ") }
+  if ready {
+    "ready=true; workers: \{joined}. All waited workers are terminal; do not call wait_workers again for them—synthesize their outputs and finish."
+  } else if !missing.is_empty() {
+    "ready=false; missing=\{missing.length()}; workers: \{joined}."
+  } else {
+    "ready=false; workers still running: \{joined}."
+  }
 }
 
 ///|
@@ -307,6 +373,7 @@ async fn mooncode_wait_workers_projection(
   parent_session_id : String,
   parent_book_root : String,
   arguments : Json,
+  command_id~ : String = "",
 ) -> Json {
   let mode = mooncode_json_string(arguments, "mode", default="all")
   if mode != "all" && mode != "any" {
@@ -316,10 +383,22 @@ async fn mooncode_wait_workers_projection(
     )
   }
   let requested = mooncode_json_array_items(arguments, "worker_ids")
-  let records = mooncode_worker_records(parent_book_root, parent_session_id)
+  let all_records = mooncode_worker_records(parent_book_root, parent_session_id)
+  let scoped_records = if requested.length() == 0 && command_id != "" {
+    let matching = all_records.filter(record => {
+      mooncode_json_string(record, "command_id", default="") == command_id
+    })
+    if matching.length() > 0 {
+      matching
+    } else {
+      all_records
+    }
+  } else {
+    all_records
+  }
   let projected : Array[Json] = []
   let found : Map[String, Bool] = Map([])
-  for record in records {
+  for record in scoped_records {
     let worker_id = mooncode_json_string(record, "worker_id", default="")
     let selected = requested.length() == 0 ||
       requested.any(item => item is String(id) && id == worker_id)
@@ -345,11 +424,17 @@ async fn mooncode_wait_workers_projection(
     projected.all(item => mooncode_json_bool(item, "terminal", default=false))
   }
   let ready = missing.length() == 0 && terminal_ready
+  let next_action = if ready {
+    "All waited workers have reached terminal states. Do not call wait_workers again for these workers; synthesize their returned answers/artifacts into the integrated deliverable, run any required review, and call finish."
+  } else {
+    ""
+  }
   let metadata : Json = {
     "mode": mode,
     "ready": ready,
     "missing_worker_ids": Json::array(missing),
     "workers": Json::array(projected),
+    "next_action": next_action,
   }
   mooncode_tool_ok_result(
     "wait_workers",
@@ -358,7 +443,7 @@ async fn mooncode_wait_workers_projection(
     } else {
       "workers are unfinished or missing"
     },
-    output=metadata.stringify(),
+    output=mooncode_wait_workers_summary(ready, projected, missing),
     metadata~,
   )
 }

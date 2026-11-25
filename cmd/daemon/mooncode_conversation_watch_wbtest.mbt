@@ -64,7 +64,7 @@ async test "native watch HTTP uses the admitted session route and exact snapshot
       "command",
       mooncode_claim_projection_command(fixture.book, "fixture-session"),
     )
-    let headers = {
+    let headers : Map[@http.CaseInsensitiveString, String] = {
       "X-MoonClaw-Execution-Token": fixture.config.auth_token,
       "X-MoonClaw-Instance-ID": fixture.config.instance_id,
     }

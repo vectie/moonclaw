@@ -473,16 +473,13 @@ async test "active cancel waits for local task terminal write before settling" {
           started.put(())
           blocked.get() catch {
             _ =>
-              @async.protect_from_cancel(
-                async fn() {
-                  ignore(
-                    mooncode_active_cancel_test_terminal(
-                      root, item, "runtime-completed",
-                    ),
-                  )
-                },
-                resume_on_cancel=true,
-              )
+              @async.protect_from_cancel(async fn() {
+                ignore(
+                  mooncode_active_cancel_test_terminal(
+                    root, item, "runtime-completed",
+                  ),
+                )
+              })
           }
         },
         no_wait=true,

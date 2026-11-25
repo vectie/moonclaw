@@ -720,6 +720,28 @@ priv struct ResponsesStreamResult {
 }
 
 ///|
+fn headers_to_ci(
+  headers : Map[String, String],
+) -> Map[@http.CaseInsensitiveString, String] {
+  let out : Map[@http.CaseInsensitiveString, String] = Map([])
+  for k, v in headers {
+    out[@http.CaseInsensitiveString(k)] = v
+  }
+  out
+}
+
+///|
+fn headers_from_ci(
+  headers : Map[@http.CaseInsensitiveString, String],
+) -> Map[String, String] {
+  let out : Map[String, String] = Map([])
+  for k, v in headers {
+    out[k.0] = v
+  }
+  out
+}
+
+///|
 async fn do_codex_stream_request(
   access_token : String,
   _account_id : String,
@@ -728,7 +750,7 @@ async fn do_codex_stream_request(
 ) -> ResponsesStreamResult raise Error {
   let client = @http.Client(
     "https://chatgpt.com",
-    headers=codex_request_headers(access_token),
+    headers=headers_to_ci(codex_request_headers(access_token)),
   )
   defer client.close()
   let body = request.to_json()
@@ -859,7 +881,7 @@ async fn do_openai_responses_stream_request(
   let uri = Uri::parse(route.url)
   let client = @http.Client(
     "\{uri.schema}://\{uri.host}",
-    headers=route.headers,
+    headers=headers_to_ci(route.headers),
   )
   defer client.close()
   let response = client.post(uri.path, request.to_json())
@@ -867,7 +889,7 @@ async fn do_openai_responses_stream_request(
     raise HttpRetryError(
       code=response.code,
       body=client.read_all().text(),
-      retry_after_ms=response_retry_after_ms(response.headers),
+      retry_after_ms=response_retry_after_ms(headers_from_ci(response.headers)),
     )
   }
   let reader = ResponseStreamEventReader::new(client)

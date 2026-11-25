@@ -36,7 +36,7 @@ async fn Gateway::handle_cowork_procedures(
     source_root: cwd,
     request_digest: @book_learning.digest(
       @encoding/utf8.encode(
-        Json::array([session_key.to_json(), cwd.to_json()]).stringify(),
+        Json::array([Json::string(session_key), Json::string(cwd)]).stringify(),
       ),
     ),
   }

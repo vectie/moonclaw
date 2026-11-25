@@ -497,7 +497,7 @@ async fn Gateway::handle_health(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(health.to_json().stringify())
+  w.write(ToJson::to_json(health).stringify())
 }
 
 ///|
@@ -524,7 +524,7 @@ async fn Gateway::handle_list_channels(
   let channels = self.channel_manager.list_channels()
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  let result : Json = { "channels": channels.map(ch => ch.to_json()) }
+  let result : Json = { "channels": channels.map(ch => ToJson::to_json(ch)) }
   w.write(result.stringify())
 }
 
@@ -549,7 +549,7 @@ async fn Gateway::handle_get_channel(
     Some(dock) => {
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
-      let result : Json = { "channel": dock.to_json() }
+      let result : Json = { "channel": ToJson::to_json(dock) }
       w.write(result.stringify())
     }
     None =>
@@ -572,17 +572,18 @@ async fn Gateway::handle_list_extensions(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "extensions": extensions
-    .map(ext => {
-      "channel_id": ext.channel_id().to_json(),
-      "webhook_path": ext.webhook_path().to_json(),
-      "supports_websocket": ext.supports_websocket().to_json(),
-      "allowed_methods": ext
-      .allowed_methods()
-      .map(fn(s) { s.to_json() })
-      .to_json(),
-    })
-    .to_json(),
+    "extensions": Json::array(
+      extensions.map(ext => {
+        Json::object({
+          "channel_id": Json::string(ext.channel_id()),
+          "webhook_path": Json::string(ext.webhook_path()),
+          "supports_websocket": Json::boolean(ext.supports_websocket()),
+          "allowed_methods": Json::array(
+            ext.allowed_methods().map(fn(s) { Json::string(s) }),
+          ),
+        })
+      }),
+    ),
   }
   w.write(result.stringify())
 }
@@ -609,13 +610,12 @@ async fn Gateway::handle_get_extension(
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       let info : Json = {
-        "channel_id": @channel.Channel::id(extension).to_json(),
-        "webhook_path": extension.webhook_path().to_json(),
-        "supports_websocket": extension.supports_websocket().to_json(),
-        "allowed_methods": extension
-        .allowed_methods()
-        .map(fn(s) { s.to_json() })
-        .to_json(),
+        "channel_id": Json::string(@channel.Channel::id(extension)),
+        "webhook_path": Json::string(extension.webhook_path()),
+        "supports_websocket": Json::boolean(extension.supports_websocket()),
+        "allowed_methods": Json::array(
+          extension.allowed_methods().map(fn(s) { Json::string(s) }),
+        ),
       }
       let result : Json = { "extension": info }
       w.write(result.stringify())

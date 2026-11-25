@@ -59,7 +59,7 @@ async fn mcp_request(
   method_ : String,
   params : Json,
 ) -> Result[Json, String] {
-  let headers : Map[String, String] = {
+  let headers : Map[@http.CaseInsensitiveString, String] = {
     "content-type": "application/json",
     "accept": "application/json, text/event-stream",
   }

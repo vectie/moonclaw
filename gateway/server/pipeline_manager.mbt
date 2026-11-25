@@ -139,7 +139,7 @@ pub fn PipelineManager::running_count(self : PipelineManager) -> Int32 {
 ///|
 pub fn PipelineManager::to_json(self : PipelineManager) -> Json {
   {
-    "total_pipelines": self.size().to_json(),
-    "running_count": self.running_count().to_json(),
+    "total_pipelines": ToJson::to_json(self.size()),
+    "running_count": ToJson::to_json(self.running_count()),
   }
 }

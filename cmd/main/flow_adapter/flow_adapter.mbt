@@ -1279,8 +1279,8 @@ fn validate_helper_software_with_criteria(
         "wrapper_owned": true,
       },
     ],
-    "test_results": results.to_json(),
-    "execution_transcript": execution_transcript.to_json(),
+    "test_results": Json::array(results),
+    "execution_transcript": Json::array(execution_transcript),
     "test_vectors": fields.get("test_vectors").unwrap_or(Json::array([])),
     "negative_cases": fields.get("negative_cases").unwrap_or(Json::array([])),
     "trial_evidence": [
@@ -1292,7 +1292,7 @@ fn validate_helper_software_with_criteria(
         "evidence_kind": "executed-vector-transcript",
       },
     ],
-    "criterion_preservation": criterion_preservation.to_json(),
+    "criterion_preservation": Json::array(criterion_preservation),
     "criteria_preserved": true,
     "physical_readiness": false,
   }
@@ -1524,8 +1524,8 @@ async fn attest(args : Array[String]) -> Unit {
     "result_id": string_field(result_fields, "result_id"),
     "output_digest": string_field(result_fields, "output_digest"),
     "accepted": true,
-    "observed_contracts": observed_contracts.to_json(),
-    "artifact_refs": artifacts.to_json(),
+    "observed_contracts": ToJson::to_json(observed_contracts),
+    "artifact_refs": ToJson::to_json(artifacts),
     "final_artifact_ref": final_ref,
   })
 }
@@ -1643,9 +1643,9 @@ async fn execute(args : Array[String]) -> Unit {
             feedback = ["governed web evidence draft must be an object"]
             continue
           }
-          draft_fields["tool_provenance"] = web_provenance.to_json()
+          draft_fields["tool_provenance"] = Json::array(web_provenance)
           if uses_legacy_contract_policy(fields) {
-            draft_fields["web_provenance"] = web_provenance.to_json()
+            draft_fields["web_provenance"] = Json::array(web_provenance)
           }
           write_json(capsule_output, draft)
         }
@@ -1689,7 +1689,7 @@ async fn execute(args : Array[String]) -> Unit {
     },
     "output_digest": output_digest,
     "output_artifacts": if completed {
-      artifacts.to_json()
+      ToJson::to_json(artifacts)
     } else {
       Json::array([])
     },

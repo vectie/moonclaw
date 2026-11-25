@@ -291,3 +291,111 @@ test "worker tools are projected by native capability" {
   assert_true(mooncode_tool_supported("spawn_workers"))
   assert_true(mooncode_tool_supported("wait_workers"))
 }
+
+///|
+async test "wait workers scopes default wait to active command and guides progression" {
+  @fsx.with_temporary_directory("mooncode-workers-scoped-XXXXXX", async fn(
+    root,
+  ) {
+    let old_root = @pathx.join(root, "old-worker")
+    let cur_root = @pathx.join(root, "cur-worker")
+    @fsx.make_directory(old_root)
+    @fsx.make_directory(cur_root)
+    let parent = "parent"
+    // Unfinished worker from an earlier command must not poison a new command's default wait.
+    mooncode_worker_test_append(
+      root,
+      parent,
+      mooncode_journal_event(),
+      mooncode_worker_record(
+        parent,
+        root,
+        { "id": "stale", "book_root": old_root },
+        "child-stale",
+        "child-cmd-stale",
+        "worker-child-stale",
+        "earlier-command",
+        @clock.Timestamp::from_ms(1L),
+      ),
+    )
+    mooncode_worker_test_append(
+      root,
+      parent,
+      mooncode_journal_event(),
+      mooncode_worker_record(
+        parent,
+        root,
+        { "id": "fresh", "book_root": cur_root },
+        "child-fresh",
+        "child-cmd-fresh",
+        "worker-child-fresh",
+        "active-command",
+        @clock.Timestamp::from_ms(2L),
+      ),
+    )
+    mooncode_worker_test_append(
+      cur_root,
+      "child-fresh",
+      mooncode_journal_runtime_receipt(),
+      mooncode_runtime_turn_receipt(
+        "child-fresh",
+        cur_root,
+        {
+          "command_id": "child-cmd-fresh",
+          "receipt": { "claim_id": "claim-fresh" },
+        },
+        { "accepted": true },
+        consumer_id="worker-test",
+        now=@clock.Timestamp::from_ms(3L),
+      ),
+    )
+    let scoped = mooncode_wait_workers_projection(
+      parent,
+      root,
+      { "mode": "all" },
+      command_id="active-command",
+    )
+    let meta = mooncode_json_object_field_or_empty(scoped, "metadata")
+    assert_true(mooncode_json_bool(meta, "ready", default=false))
+    assert_eq(mooncode_json_array_items(meta, "workers").length(), 1)
+    assert_true(
+      mooncode_json_string(meta, "next_action", default="").contains(
+        "Do not call wait_workers again",
+      ),
+    )
+    assert_true(
+      mooncode_json_string(scoped, "output", default="").contains("ready=true"),
+    )
+    // Explicit worker_ids still inspects historical workers if requested.
+    let explicit_stale = mooncode_wait_workers_projection(
+      parent,
+      root,
+      { "mode": "all", "worker_ids": ["stale"] },
+      command_id="active-command",
+    )
+    assert_false(
+      mooncode_json_bool(
+        mooncode_json_object_field_or_empty(explicit_stale, "metadata"),
+        "ready",
+        default=true,
+      ),
+    )
+  })
+}
+
+///|
+test "followup planner emits escalating guidance after ready wait_workers" {
+  let ready_exec : Json = {
+    "tool": "wait_workers",
+    "accepted": true,
+    "result": { "ok": true, "metadata": { "ready": true } },
+  }
+  let first = mooncode_runtime_turn_worker_wait_guidance([ready_exec], [
+    ready_exec,
+  ])
+  assert_true(first.contains("ready=true"))
+  let repeated = mooncode_runtime_turn_worker_wait_guidance([ready_exec], [
+    ready_exec, ready_exec,
+  ])
+  assert_true(repeated.contains("STOP calling wait_workers"))
+}

@@ -25,7 +25,7 @@ async fn send_chat_request(
   let uri = Uri::parse(request.url)
   let client = @http.Client(
     "\{uri.schema}://\{uri.host}",
-    headers=request.headers,
+    headers=headers_to_ci(request.headers),
   )
   defer client.close()
   let response = client.post(uri.path, request.body)
@@ -33,7 +33,7 @@ async fn send_chat_request(
     raise HttpRetryError(
       code=response.code,
       body=client.read_all().text(),
-      retry_after_ms=response_retry_after_ms(response.headers),
+      retry_after_ms=response_retry_after_ms(headers_from_ci(response.headers)),
     )
   }
   let completion = if request.stream {

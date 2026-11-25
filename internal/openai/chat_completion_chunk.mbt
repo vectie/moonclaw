@@ -18,6 +18,29 @@ pub impl @json.FromJson for ChatCompletionChunk with fn from_json(
   guard json is Object(json) else {
     raise JsonDecodeError((json_path, "Expected an object"))
   }
+  let error = match json.get("error") {
+    Some(Null) => None
+    Some(error) => {
+      let error : OpenRouterErrorResponse = @json.from_json(
+        error,
+        path=json_path.add_key("error"),
+      )
+      Some(error)
+    }
+    None => None
+  }
+  if error is Some(_) && json.get("id") is None {
+    return {
+      id: "",
+      choices: [],
+      created: 0,
+      model: "",
+      usage: None,
+      system_fingerprint: None,
+      service_tier: None,
+      error,
+    }
+  }
   guard json.get("id") is Some(String(id)) else {
     raise JsonDecodeError((json_path, "Missing 'id' field"))
   }
@@ -62,17 +85,6 @@ pub impl @json.FromJson for ChatCompletionChunk with fn from_json(
         path=json_path.add_key("service_tier"),
       )
       Some(service_tier)
-    }
-    None => None
-  }
-  let error = match json.get("error") {
-    Some(Null) => None
-    Some(error) => {
-      let error : OpenRouterErrorResponse = @json.from_json(
-        error,
-        path=json_path.add_key("error"),
-      )
-      Some(error)
     }
     None => None
   }

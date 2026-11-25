@@ -87,15 +87,11 @@ async test "GET /v1/tasks" (t : @test.Test) {
       @async.pause()
       let (r, b) = @http.get("http://localhost:\{daemon.port()}/v1/tasks")
       json_inspect(r.code, content=200)
-      guard r.headers
-        is {
-          "content-type": "application/json",
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "*",
-          "access-control-allow-headers": "*",
-          "transfer-encoding": "chunked",
-          ..
-        } else {
+      guard r.headers.get("content-type") == Some("application/json") &&
+        r.headers.get("access-control-allow-origin") == Some("*") &&
+        r.headers.get("access-control-allow-methods") == Some("*") &&
+        r.headers.get("access-control-allow-headers") == Some("*") &&
+        r.headers.get("transfer-encoding") == Some("chunked") else {
         fail("Unexpected response headers: \{Repr(r.headers)}")
       }
       json_inspect(b.json(), content={ "tasks": [] })
@@ -172,15 +168,11 @@ async test "GET /v1/models" (t : @test.Test) {
       @async.pause()
       let (r, b) = @http.get("http://localhost:\{daemon.port()}/v1/models")
       json_inspect(r.code, content=200)
-      guard r.headers
-        is {
-          "content-type": "application/json",
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "*",
-          "access-control-allow-headers": "*",
-          "transfer-encoding": "chunked",
-          ..
-        } else {
+      guard r.headers.get("content-type") == Some("application/json") &&
+        r.headers.get("access-control-allow-origin") == Some("*") &&
+        r.headers.get("access-control-allow-methods") == Some("*") &&
+        r.headers.get("access-control-allow-headers") == Some("*") &&
+        r.headers.get("transfer-encoding") == Some("chunked") else {
         fail("Unexpected response headers: \{Repr(r.headers)}")
       }
       let b = b.json()

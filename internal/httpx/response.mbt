@@ -40,7 +40,11 @@ pub async fn ResponseWriter::write_header(
   guard self.sent is false else {
     println("@httpx.ResponseWriter::write_header called multiple times")
   }
-  self.conn.send_response(code, reason, extra_headers=self.header.0)
+  let extra_headers : Map[@http.CaseInsensitiveString, String] = Map([])
+  for k, v in self.header.0 {
+    extra_headers[@http.CaseInsensitiveString(k)] = v
+  }
+  self.conn.send_response(code, reason, extra_headers~)
   self.sent = true
 }
 

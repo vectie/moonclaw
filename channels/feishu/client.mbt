@@ -825,7 +825,7 @@ pub async fn FeishuClient::send_text_message(
         Json::object({
           "content": build_text_content(text).stringify(),
           "msg_type": "text",
-          "reply_in_thread": reply_in_thread.to_json(),
+          "reply_in_thread": Json::boolean(reply_in_thread),
         }),
       ) catch {
         error =>
@@ -930,7 +930,7 @@ pub async fn FeishuClient::start_streaming_card(
         Json::object({
           "content": build_streaming_card_content(card_id).stringify(),
           "msg_type": "interactive",
-          "reply_in_thread": reply_in_thread.to_json(),
+          "reply_in_thread": Json::boolean(reply_in_thread),
         }),
       ) catch {
         error =>

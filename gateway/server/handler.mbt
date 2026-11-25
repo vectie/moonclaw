@@ -60,7 +60,7 @@ async fn Gateway::handle_agent(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(202)
-  w.write(accepted.to_json().stringify())
+  w.write(ToJson::to_json(accepted).stringify())
   w.flush()
   @async.with_task_group(group => {
     group.spawn_bg(() => {
@@ -278,7 +278,7 @@ async fn Gateway::handle_events_stream(
   self.agent_events.listen_forever(include_history=false, event => {
     sse.write_event(
       event="agent_event",
-      data=@encoding/utf8.encode(event.to_json().stringify()),
+      data=@encoding/utf8.encode(ToJson::to_json(event).stringify()),
     )
   })
 }
@@ -304,7 +304,7 @@ async fn Gateway::handle_get_run(
     Some(run) => {
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
-      w.write(run.to_json().stringify())
+      w.write(ToJson::to_json(run).stringify())
     }
     None =>
       raise json_error(404, "NotFound", {
@@ -325,7 +325,7 @@ async fn Gateway::handle_list_runs(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let runs = self.agent_runs.values().to_array()
-  let result : Json = { "runs": runs.map(run => run.to_json()) }
+  let result : Json = { "runs": runs.map(run => ToJson::to_json(run)) }
   w.write(result.stringify())
 }
 
@@ -430,9 +430,9 @@ async fn Gateway::handle_get_artifact(
                       "id": artifact_id,
                       "artifact_type": "job.run.\{output_kind}",
                       "logical_key": if output_kind == "report" {
-                        "final_report".to_json()
+                        Json::string("final_report")
                       } else {
-                        "final_result".to_json()
+                        Json::string("final_result")
                       },
                       "path": path,
                       "content_type": content_type,
@@ -509,7 +509,7 @@ async fn Gateway::handle_list_plugins(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "plugins": self.plugin_runtime().list().map(fn(plugin) { plugin.to_json() }),
+    "plugins": self.plugin_runtime().list().map(fn(plugin) { ToJson::to_json(plugin) }),
   }
   w.write(result.stringify())
 }
@@ -535,7 +535,7 @@ async fn Gateway::handle_get_plugin(
     Some(plugin) => {
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
-      let result : Json = { "plugin": plugin.to_json() }
+      let result : Json = { "plugin": ToJson::to_json(plugin) }
       w.write(result.stringify())
     }
     None =>
@@ -622,7 +622,7 @@ async fn Gateway::handle_create_memory(
   w.header().set("Content-Type", "application/json")
   w.write_header(201)
   let result : Json = {
-    "status": "created".to_json(),
+    "status": Json::string("created"),
     "memory": memory.to_json(),
   }
   w.write(result.stringify())
@@ -688,7 +688,7 @@ async fn Gateway::handle_search_memories(
   )
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  let result : Json = { "hits": hits.map(fn(hit) { hit.to_json() }).to_json() }
+  let result : Json = { "hits": Json::array(hits.map(fn(hit) { hit.to_json() })) }
   w.write(result.stringify())
 }
 

@@ -95,7 +95,7 @@ async fn Gateway::handle_create_coordination(
   )
   w.header().set("Content-Type", "application/json")
   w.write_header(201)
-  w.write(task.to_json().stringify())
+  w.write(ToJson::to_json(task).stringify())
 }
 
 ///|
@@ -117,7 +117,7 @@ async fn Gateway::handle_get_coordination(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(task.to_json().stringify())
+  w.write(ToJson::to_json(task).stringify())
 }
 
 ///|
@@ -130,8 +130,8 @@ async fn Gateway::handle_list_coordinations(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "total": tasks.length().to_json(),
-    "coordinations": tasks.map(fn(t) { t.to_json() }).to_json(),
+    "total": ToJson::to_json(tasks.length()),
+    "coordinations": Json::array(tasks.map(fn(t) { ToJson::to_json(t) })),
   }
   w.write(result.stringify())
 }
@@ -163,7 +163,7 @@ async fn Gateway::handle_start_coordination(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(task.to_json().stringify())
+  w.write(ToJson::to_json(task).stringify())
   @async.with_task_group(group => {
     group.spawn_bg(
       () => self.run_coordination(coordination_id.to_owned()),
@@ -191,7 +191,7 @@ async fn Gateway::handle_cancel_coordination(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(task.to_json().stringify())
+  w.write(ToJson::to_json(task).stringify())
 }
 
 ///|
@@ -264,7 +264,7 @@ async fn Gateway::handle_update_subtask(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(task.to_json().stringify())
+  w.write(ToJson::to_json(task).stringify())
 }
 
 ///|

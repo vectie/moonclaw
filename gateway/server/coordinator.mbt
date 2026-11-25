@@ -169,9 +169,9 @@ pub fn Coordinator::get_pending_subtasks(
 ///|
 pub fn Coordinator::to_json(self : Coordinator) -> Json {
   {
-    "active_count": self.active_count().to_json(),
-    "max_concurrent": self.max_concurrent.to_json(),
-    "total_tasks": self.size().to_json(),
-    "can_accept_more": self.can_accept_more().to_json(),
+    "active_count": ToJson::to_json(self.active_count()),
+    "max_concurrent": ToJson::to_json(self.max_concurrent),
+    "total_tasks": ToJson::to_json(self.size()),
+    "can_accept_more": Json::boolean(self.can_accept_more()),
   }
 }

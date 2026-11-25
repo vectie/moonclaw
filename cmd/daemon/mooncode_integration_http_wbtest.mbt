@@ -325,17 +325,17 @@ async test "real integration routes enforce auth trust aliases immutable session
         )
         assert_eq(missing.code, 401)
         assert_eq(missing.headers.get("cache-control"), Some("no-store"))
-        for
-          headers in [
-            {
-              "X-MoonClaw-Execution-Token": "b".repeat(64),
-              "X-MoonClaw-Instance-ID": fixture.config.instance_id,
-            },
-            {
-              "X-MoonClaw-Execution-Token": fixture.config.auth_token,
-              "X-MoonClaw-Instance-ID": "f".repeat(32),
-            },
-          ] {
+        let bad_headers : Array[Map[@http.CaseInsensitiveString, String]] = [
+          {
+            "X-MoonClaw-Execution-Token": "b".repeat(64),
+            "X-MoonClaw-Instance-ID": fixture.config.instance_id,
+          },
+          {
+            "X-MoonClaw-Execution-Token": fixture.config.auth_token,
+            "X-MoonClaw-Instance-ID": "f".repeat(32),
+          },
+        ]
+        for headers in bad_headers {
           let (denied, _) = @http.post(
             "http://127.0.0.1:\{fixture.daemon.port}\{path}",
             payload.stringify(),

@@ -27,7 +27,7 @@ pub async fn ChannelStateStore::load(self : ChannelStateStore) -> Unit {
 ///|
 pub async fn ChannelStateStore::save(self : ChannelStateStore) -> Unit {
   let states : Array[PersistedChannelState] = self.states.values().to_array()
-  @fsx.write_to_file(self.state_file(), states.to_json().stringify())
+  @fsx.write_to_file(self.state_file(), ToJson::to_json(states).stringify())
 }
 
 ///|

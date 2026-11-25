@@ -53,7 +53,9 @@ pub async fn[T] with_worktree(
 ) -> T {
   @async.with_task_group(group => {
     add_worktree(path, new_branch?, force_new_branch?, commit?, cwd?)
-    group.add_defer(() => remove_worktree(path, force=true, cwd?))
+    group.add_defer(() => {
+      @async.protect_from_cancel(() => remove_worktree(path, force=true, cwd?))
+    })
     f()
   })
 }

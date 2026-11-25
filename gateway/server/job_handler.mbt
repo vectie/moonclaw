@@ -97,7 +97,7 @@ async fn Gateway::handle_create_job(
       })
   }
   let result : Json = {
-    "status": "created".to_json(),
+    "status": Json::string("created"),
     "job": definition.public_json(),
   }
   w.header().set("Content-Type", "application/json")
@@ -140,7 +140,7 @@ async fn Gateway::handle_update_job(
       })
   }
   let result : Json = {
-    "status": "updated".to_json(),
+    "status": Json::string("updated"),
     "job": updated.public_json(),
   }
   w.header().set("Content-Type", "application/json")
@@ -158,7 +158,7 @@ async fn Gateway::handle_run_job(
   match self.trigger_job_definition(job_id) {
     Ok(run) => {
       let result : Json = {
-        "status": "started".to_json(),
+        "status": Json::string("started"),
         "run": run.to_json(),
       }
       w.header().set("Content-Type", "application/json")
@@ -185,7 +185,7 @@ async fn Gateway::handle_cancel_job(
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       let status = if force { "force_cancelling" } else { "cancelling" }
-      let result : Json = { "status": status.to_json(), "run": run.to_json() }
+      let result : Json = { "status": Json::string(status), "run": run.to_json() }
       w.write(result.stringify())
     }
     Err(error) =>
@@ -238,8 +238,8 @@ async fn Gateway::handle_get_job_run(
       let artifacts = self.job_runtime().store().list_artifacts(run_id~)
       let result : Json = {
         "run": run.to_json(),
-        "steps": steps.map(step => step.to_json()).to_json(),
-        "artifacts": artifacts.map(artifact => artifact.to_json()).to_json(),
+        "steps": Json::array(steps.map(step => step.to_json())),
+        "artifacts": Json::array(artifacts.map(artifact => artifact.to_json())),
       }
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
@@ -318,12 +318,11 @@ async fn Gateway::handle_get_job_ui_events(
   match self.job_runtime().store().get_run(run_id) {
     Some(_) => {
       let result : Json = {
-        "timeline": @job.load_run_ui_timeline(
-          self.job_runtime().store(),
-          run_id,
-        )
-        .map(entry => entry.to_json())
-        .to_json(),
+        "timeline": Json::array(
+          @job.load_run_ui_timeline(self.job_runtime().store(), run_id).map(
+            entry => entry.to_json(),
+          ),
+        ),
       }
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
@@ -373,7 +372,9 @@ async fn Gateway::handle_stream_job_ui_events(
   sse.write_header(200)
   sse.write_event(
     event="connected",
-    data=@encoding/utf8.encode({ "run_id": run_id }.to_json().stringify()),
+    data=@encoding/utf8.encode(
+      Json::object({ "run_id": Json::string(run_id) }).stringify(),
+    ),
   )
   let mut sent = 0
   while true {

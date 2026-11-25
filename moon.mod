@@ -3,10 +3,10 @@ name = "vectie/moonclaw"
 version = "0.1.7"
 
 import {
-  "moonbitlang/async@0.19.4",
-  "moonbitlang/x@0.4.50",
-  "moonbitlang/regexp@0.3.6",
-  "moonbit-community/yaml@0.0.6",
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/x@0.5.5",
+  "moonbitlang/regexp@0.3.7",
+  "moonbit-community/yaml@0.0.10",
   "vectie/moonlib@0.1.23",
 }
 

@@ -131,7 +131,7 @@ async fn show_status(args : Array[String]) -> Unit {
   let json_mode = args.contains("--json")
   let status = @onboarding.collect_status(home~, cwd~)
   if json_mode {
-    println(status.to_json().stringify(indent=2))
+    println(ToJson::to_json(status).stringify(indent=2))
   } else {
     println(@onboarding.render_status(status))
   }
@@ -147,7 +147,7 @@ async fn show_models(args : Array[String]) -> Unit {
   let json_mode = args.contains("--json")
   let models = @onboarding.discover_models(home~, cwd~)
   if json_mode {
-    println(models.to_json().stringify(indent=2))
+    println(ToJson::to_json(models).stringify(indent=2))
   } else {
     println(@onboarding.render_model_list(models))
   }
@@ -162,7 +162,7 @@ async fn run_auth(args : Array[String]) -> Unit {
       let home = resolve_home(args)
       let status = @onboarding.auth_status(home~)
       if json_mode {
-        println(status.to_json().stringify(indent=2))
+        println(ToJson::to_json(status).stringify(indent=2))
       } else {
         println(@onboarding.render_auth_status(status))
       }
@@ -189,7 +189,7 @@ async fn run_auth(args : Array[String]) -> Unit {
               "auth": auth_message,
               "primary_model_updated": true,
               "primary_model": target,
-              "onboarding": result.to_json(),
+              "onboarding": ToJson::to_json(result),
             } : Json).stringify(indent=2),
         )
       } else {
@@ -221,7 +221,7 @@ async fn run_auth(args : Array[String]) -> Unit {
               "auth": auth_message,
               "primary_model_updated": true,
               "primary_model": target,
-              "onboarding": result.to_json(),
+              "onboarding": ToJson::to_json(result),
             } : Json).stringify(indent=2),
         )
       } else {
@@ -250,7 +250,7 @@ async fn apply_onboarding(args : Array[String]) -> Unit {
   let options = resolve_options(args)
   let result = @onboarding.bootstrap_with_options(home~, cwd~, options)
   if json_mode {
-    println(result.to_json().stringify(indent=2))
+    println(ToJson::to_json(result).stringify(indent=2))
   } else {
     println(@onboarding.render_bootstrap_result(result))
   }

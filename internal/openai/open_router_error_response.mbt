@@ -13,16 +13,24 @@ pub impl @json.FromJson for OpenRouterErrorResponse with fn from_json(
   guard json is Object(json) else {
     raise JsonDecodeError((json_path, "Expected an object"))
   }
-  guard json.get("code") is Some(Number(code, ..)) else {
-    raise JsonDecodeError((json_path, "Missing 'code' field"))
+  let (code, code_label) = match json.get("code") {
+    Some(Number(code, ..)) => (code.to_int(), "")
+    Some(String(code)) => (502, code)
+    _ => raise JsonDecodeError((json_path, "Missing 'code' field"))
   }
-  guard json.get("message") is Some(String(message)) else {
+  guard json.get("message") is Some(String(raw_message)) else {
     raise JsonDecodeError((json_path, "Missing 'message' field"))
   }
-  guard json.get("metadata") is Some(metadata) else {
-    raise JsonDecodeError((json_path, "Missing 'metadata' field"))
+  let message = if code_label != "" {
+    "\{code_label}: \{raw_message}"
+  } else {
+    raw_message
   }
-  { code: code.to_int(), message, metadata, }
+  let metadata = match json.get("metadata") {
+    Some(metadata) => metadata
+    None => Json::object(json)
+  }
+  { code, message, metadata }
 }
 
 ///|

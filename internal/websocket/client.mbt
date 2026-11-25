@@ -70,7 +70,11 @@ pub struct Client {
 ///|
 pub async fn Client::connect(config : ClientConfig) -> Client {
   try {
-    let conn = @asyncws.connect(config.url, headers=config.headers)
+    let headers : Map[@http.CaseInsensitiveString, String] = Map([])
+    for k, v in config.headers {
+      headers[@http.CaseInsensitiveString(k)] = v
+    }
+    let conn = @asyncws.connect(config.url, headers~)
     {
       conn,
       outbox: Queue(kind=Unbounded),

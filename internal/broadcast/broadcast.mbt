@@ -164,7 +164,7 @@ pub async fn[T, G] Broadcast::spawn_in(
   let start = Barrier::new(self.readers.length())
   group.spawn_bg(
     () => {
-      group.add_defer(() => self.flush())
+      group.add_defer(() => @async.protect_from_cancel(() => self.flush()))
       @async.with_task_group(group => {
         for reader in self.readers {
           group.spawn_bg(

@@ -205,7 +205,7 @@ pub async fn Client::connect(
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
     rpc_method: "connect",
-    params: Some(connect_params.to_json()),
+    params: Some(ToJson::to_json(connect_params)),
   }
   let response = self.send_rpc(request)
   let hello : Result[@protocol.HelloOk, String] = decode_ok_payload(
@@ -242,7 +242,7 @@ pub async fn Client::agent(
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
     rpc_method: "agent",
-    params: Some(params.to_json()),
+    params: Some(ToJson::to_json(params)),
   }
   let response = self.send_rpc(request)
   decode_ok_payload(
@@ -380,7 +380,7 @@ pub async fn Client::configure_channel(
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
     rpc_method: "channels.configure",
-    params: Some({ "channel_id": channel_id, "config": config.to_json() }),
+    params: Some({ "channel_id": channel_id, "config": ToJson::to_json(config) }),
   }
   decode_ok_payload(
     self.send_rpc(request),
@@ -441,7 +441,7 @@ pub async fn Client::ask_job(
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
     rpc_method: "jobs.ask",
-    params: Some(params.to_json()),
+    params: Some(ToJson::to_json(params)),
   }
   decode_ok_payload(
     self.send_rpc(request),
@@ -778,7 +778,7 @@ pub async fn Client::create_memory(
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
     rpc_method: "memories.create",
-    params: Some(params.to_json()),
+    params: Some(ToJson::to_json(params)),
   }
   decode_ok_payload(
     self.send_rpc(request),
@@ -1019,7 +1019,7 @@ async fn Client::send_rpc(
     "method": request.rpc_method,
     "params": request.params,
   }
-  let extra_headers : Map[String, String] = {
+  let extra_headers : Map[@http.CaseInsensitiveString, String] = {
     "Content-Type": "application/json",
   }
   if self.token is Some(token) {

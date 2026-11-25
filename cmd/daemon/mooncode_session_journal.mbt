@@ -1,4 +1,5 @@
 ///|
+#derive(Show)
 priv suberror MoonCodeJournalError {
   InvalidJournal(String)
 }
@@ -241,7 +242,10 @@ async fn[T] mooncode_session_journal_transaction(
           inherited_client_turn_id: client_turn_id,
         },
       )
-      file.write(mooncode_journal_canonical_line(record) + "\n")
+      file.write_at(
+        @encoding/utf8.encode(mooncode_journal_canonical_line(record) + "\n"),
+        position=state.committed_size,
+      )
       mooncode_sync_journal_commit(file, path, state)
       state.cursor = last_sequence.next()
       state.committed_size = file.size()

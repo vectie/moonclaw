@@ -107,7 +107,7 @@ async fn mooncode_execute_tool_call_in_runtime(
             match runtime {
               Some((daemon, _)) =>
                 daemon.mooncode_tool_wait_workers(
-                  session_id, book_root, arguments,
+                  session_id, book_root, command_id, arguments,
                 )
               None =>
                 mooncode_tool_error_result(

@@ -26,5 +26,4 @@ import {
 pkgtype(kind: "executable")
 
 options(
-  overrides: [ "vectie/moonclaw/internal/abort" ],
 )

@@ -198,7 +198,7 @@ async fn Gateway::send_response(
       None => Json::null()
     },
     "error": match response.error {
-      Some(e) => e.to_json()
+      Some(e) => ToJson::to_json(e)
       None => Json::null()
     },
   }

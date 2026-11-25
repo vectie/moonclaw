@@ -65,8 +65,8 @@ async fn Gateway::handle_agent_message(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "message_id": message.message_id.to_json(),
-    "delivered": delivered.to_json(),
+    "message_id": Json::string(message.message_id),
+    "delivered": ToJson::to_json(delivered),
   }
   w.write(result.stringify())
 }
@@ -92,10 +92,10 @@ async fn Gateway::handle_get_messages(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "agent_id": agent_id.to_owned().to_json(),
+    "agent_id": Json::string(agent_id.to_owned()),
     "messages": match messages {
-      Some(msg) => [msg.to_json()].to_json()
-      None => ([] : Array[Json]).to_json()
+      Some(msg) => Json::array([ToJson::to_json(msg)])
+      None => Json::array([])
     },
   }
   w.write(result.stringify())
@@ -161,8 +161,8 @@ async fn Gateway::handle_delete_mailbox(
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       let result : Json = {
-        "deleted": true.to_json(),
-        "agent_id": mailbox_id.to_owned().to_json(),
+        "deleted": Json::boolean(true),
+        "agent_id": Json::string(mailbox_id.to_owned()),
       }
       w.write(result.stringify())
     }
@@ -186,8 +186,8 @@ async fn Gateway::handle_list_mailboxes(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "mailbox_count": agents.length().to_json(),
-    "agents": agents.to_json(),
+    "mailbox_count": ToJson::to_json(agents.length()),
+    "agents": ToJson::to_json(agents),
   }
   w.write(result.stringify())
 }

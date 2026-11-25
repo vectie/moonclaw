@@ -3,5 +3,3 @@ import {
 }
 
 supported_targets = "native"
-
-virtual(implement: "moonbitlang/core/abort")

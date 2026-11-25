@@ -286,7 +286,7 @@ async test "streaming_parallel_tool_call" (t : @test.Test) {
         }
         function_object["arguments"] = @json.parse(arguments)
       }
-      tc_object.to_json()
+      Json::object(tc_object)
     })
     tool_calls.sort_by((a, b) => a.stringify().compare(b.stringify()))
     json_inspect(tool_calls, content=[

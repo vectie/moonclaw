@@ -122,7 +122,7 @@ async fn Gateway::handle_channels_list(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some({ "channels": channels.map(fn(ch) { ch.to_json() }) }),
+    payload: Some({ "channels": channels.map(fn(ch) { ToJson::to_json(ch) }) }),
     error: None,
   })
 }
@@ -172,7 +172,7 @@ async fn Gateway::handle_channels_get(
       self.send_response(w, {
         id: request.id,
         ok: true,
-        payload: Some(dock.to_json()),
+        payload: Some(ToJson::to_json(dock)),
         error: None,
       })
     None =>
@@ -281,7 +281,7 @@ async fn Gateway::handle_channels_configure(
         payload: None,
         error: Some({
           code: "configure_failed",
-          message: "Failed to configure channel: \{e.to_string()}",
+          message: "Failed to configure channel: \{Show::to_string(e)}",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -387,7 +387,7 @@ async fn Gateway::handle_channels_start(
         payload: None,
         error: Some({
           code: "start_failed",
-          message: "Failed to start channel: \{e.to_string()}",
+          message: "Failed to start channel: \{Show::to_string(e)}",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -474,7 +474,7 @@ async fn Gateway::handle_channels_stop(
         payload: None,
         error: Some({
           code: "stop_failed",
-          message: "Failed to stop channel: \{e.to_string()}",
+          message: "Failed to stop channel: \{Show::to_string(e)}",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -494,12 +494,12 @@ async fn Gateway::handle_configure_channel(
   let json = match parse_json_body(body) {
     Ok(json) => json
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   let request = match parse_http_channel_configure_params(channel_id, json) {
     Ok(request) => request
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   self.handle_channels_configure(request, w)
 }
@@ -515,12 +515,12 @@ async fn Gateway::handle_start_channel(
   let json = match parse_json_body(body) {
     Ok(json) => json
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   let request = match parse_http_channel_start_params(channel_id, json) {
     Ok(request) => request
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   self.handle_channels_start(request, w)
 }
@@ -536,12 +536,12 @@ async fn Gateway::handle_stop_channel(
   let json = match parse_json_body(body) {
     Ok(json) => json
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   let request = match parse_http_channel_stop_params(channel_id, json) {
     Ok(request) => request
     Err(error) =>
-      raise json_error(400, "BadRequest", { "error": error.to_json() })
+      raise json_error(400, "BadRequest", { "error": ToJson::to_json(error) })
   }
   self.handle_channels_stop(request, w)
 }

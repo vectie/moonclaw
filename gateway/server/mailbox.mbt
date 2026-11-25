@@ -89,11 +89,11 @@ pub fn AgentMailbox::close(self : AgentMailbox) -> Unit {
 ///|
 pub fn AgentMailbox::to_json(self : AgentMailbox) -> Json {
   {
-    "agent_id": self.agent_id.to_json(),
-    "config": self.config.to_json(),
-    "created_at": self.created_at.to_json(),
-    "last_read_at": self.last_read_at.to_json(),
-    "message_count": self.message_count.to_json(),
+    "agent_id": Json::string(self.agent_id),
+    "config": ToJson::to_json(self.config),
+    "created_at": ToJson::to_json(self.created_at),
+    "last_read_at": ToJson::to_json(self.last_read_at),
+    "message_count": ToJson::to_json(self.message_count),
   }
 }
 
@@ -207,8 +207,8 @@ pub fn MailboxManager::deliver_sync(
 ///|
 pub fn MailboxManager::to_json(self : MailboxManager) -> Json {
   {
-    "config": self.config.to_json(),
-    "mailbox_count": self.mailboxes.length().to_json(),
-    "agents": self.mailboxes.keys().to_array().to_json(),
+    "config": ToJson::to_json(self.config),
+    "mailbox_count": ToJson::to_json(self.mailboxes.length()),
+    "agents": ToJson::to_json(self.mailboxes.keys().to_array()),
   }
 }

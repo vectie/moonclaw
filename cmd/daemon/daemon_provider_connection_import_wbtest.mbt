@@ -170,24 +170,24 @@ fn provider_import_fixture_id(descriptor : Json) -> String {
 async test "provider import authenticates before bounded parsing and validates before every mutation" {
   with_provider_import_fixture(fixture => {
     let url = "http://127.0.0.1:\{fixture.owner.daemon.port}/v1/provider-connections/import"
-    for
-      headers in [
-        Map([]),
-        {
-          "X-MoonClaw-Execution-Token": "b".repeat(64),
-          "X-MoonClaw-Instance-ID": fixture.owner.config.instance_id,
-        },
-        {
-          "X-MoonClaw-Execution-Token": fixture.owner.config.auth_token,
-          "X-MoonClaw-Instance-ID": "f".repeat(32),
-        },
-      ] {
+    let bad_headers : Array[Map[@http.CaseInsensitiveString, String]] = [
+      Map([]),
+      {
+        "X-MoonClaw-Execution-Token": "b".repeat(64),
+        "X-MoonClaw-Instance-ID": fixture.owner.config.instance_id,
+      },
+      {
+        "X-MoonClaw-Execution-Token": fixture.owner.config.auth_token,
+        "X-MoonClaw-Instance-ID": "f".repeat(32),
+      },
+    ]
+    for headers in bad_headers {
       let (r, _) = @http.post(url, "not-json", headers~)
       assert_eq(r.code, 401)
       assert_eq(r.headers.get("cache-control"), Some("no-store"))
     }
     assert_eq(fixture.calls, [])
-    let headers = {
+    let headers : Map[@http.CaseInsensitiveString, String] = {
       "X-MoonClaw-Execution-Token": fixture.owner.config.auth_token,
       "X-MoonClaw-Instance-ID": fixture.owner.config.instance_id,
     }

@@ -121,7 +121,7 @@ async fn gate_request(
   payload : Json?,
   bootstrap~ : Bool = false,
 ) -> Json {
-  let headers : Map[String, String] = {
+  let headers : Map[@http.CaseInsensitiveString, String] = {
     "Accept": "application/json",
     "Content-Type": "application/json",
   }

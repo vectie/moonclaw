@@ -291,7 +291,11 @@ async fn perform_web_fetch(url : String, max_chars : Int32) -> WebFetchResult {
       "web_fetch HTTP \{response.code}: \{@encoding/utf8.decode_lossy(body)}",
     )
   }
-  let content_type = normalized_content_type(response.headers)
+  let resp_headers : Map[String, String] = Map([])
+  for k, v in response.headers {
+    resp_headers[k.0] = v
+  }
+  let content_type = normalized_content_type(resp_headers)
   let is_pdf = content_type_is_pdf(content_type)
   let (truncated_text, truncated, title, extraction_note) = if is_pdf {
     let (text, truncated, note) = extracted_pdf_text(body, max_chars)

@@ -456,7 +456,7 @@ async fn agent_goal_execution_result(
     "goal_runtime_ref": agent_goal_string(action_fields, "goal_runtime_ref"),
     "journal_ref": journal_ref,
     "receipt_ref": receipt_ref,
-    "evidence_refs": Json::array(evidence_refs.map(value => value.to_json())),
+    "evidence_refs": Json::array(evidence_refs.map(value => Json::string(value))),
     "artifact_evidence": Json::array(artifact_evidence),
     "message": agent_goal_string(observed, "message"),
   }

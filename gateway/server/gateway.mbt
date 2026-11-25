@@ -404,7 +404,7 @@ fn merged_acp_linkage_metadata(
   if merged.is_empty() {
     None
   } else {
-    Some(merged.to_json())
+    Some(Json::object(merged))
   }
 }
 

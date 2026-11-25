@@ -109,7 +109,7 @@ async fn Gateway::handle_create_pipeline(
   )
   w.header().set("Content-Type", "application/json")
   w.write_header(201)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
 }
 
 ///|
@@ -131,7 +131,7 @@ async fn Gateway::handle_get_pipeline(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
 }
 
 ///|
@@ -144,8 +144,8 @@ async fn Gateway::handle_list_pipelines(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "total": pipelines.length().to_json(),
-    "pipelines": pipelines.map(fn(p) { p.to_json() }).to_json(),
+    "total": ToJson::to_json(pipelines.length()),
+    "pipelines": Json::array(pipelines.map(fn(p) { ToJson::to_json(p) })),
   }
   w.write(result.stringify())
 }
@@ -169,7 +169,7 @@ async fn Gateway::handle_start_pipeline(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
   @async.with_task_group(group => {
     group.spawn_bg(
       () => self.run_pipeline(pipeline_id.to_owned()),
@@ -197,7 +197,7 @@ async fn Gateway::handle_cancel_pipeline(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
 }
 
 ///|
@@ -267,7 +267,7 @@ async fn Gateway::handle_advance_pipeline_stage(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
 }
 
 ///|
@@ -337,7 +337,7 @@ async fn Gateway::handle_fail_pipeline_stage(
   }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(p.to_json().stringify())
+  w.write(ToJson::to_json(p).stringify())
 }
 
 ///|
@@ -363,12 +363,16 @@ async fn Gateway::handle_pipeline_next_task(
   let result : Json = match next {
     Some((stage_name, input)) =>
       {
-        "has_next": true.to_json(),
-        "stage_name": stage_name.to_json(),
-        "input": input.to_json(),
-        "progress": p.progress().to_json(),
+        "has_next": Json::boolean(true),
+        "stage_name": Json::string(stage_name),
+        "input": Json::string(input),
+        "progress": Json::number(p.progress()),
       }
-    None => { "has_next": false.to_json(), "progress": p.progress().to_json() }
+    None =>
+      {
+        "has_next": Json::boolean(false),
+        "progress": Json::number(p.progress()),
+      }
   }
   w.write(result.stringify())
 }

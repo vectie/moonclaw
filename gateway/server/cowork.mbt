@@ -410,7 +410,7 @@ async fn Gateway::handle_list_cowork_sessions(
   })
   self.write_json(w, {
     "sessions": sessions.map(fn(item) {
-      cowork_session_summary(item.0, item.1).to_json()
+      ToJson::to_json(cowork_session_summary(item.0, item.1))
     }),
   })
 }
@@ -446,7 +446,7 @@ async fn Gateway::handle_create_cowork_session(
   self.save_session_detail(session_key, entry)
   self.write_json(
     w,
-    { "session": self.cowork_session_detail(session_key, entry).to_json() },
+    { "session": ToJson::to_json(self.cowork_session_detail(session_key, entry)) },
     status=201,
   )
 }
@@ -469,7 +469,7 @@ async fn Gateway::handle_get_cowork_session(
       })
   }
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, entry).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, entry)),
   })
 }
 
@@ -540,7 +540,7 @@ async fn Gateway::handle_update_cowork_config(
   }
   self.save_session_detail(session_key, updated)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, updated).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, updated)),
   })
 }
 
@@ -758,9 +758,9 @@ async fn Gateway::handle_cowork_send_message(
       )
       self.save_session_detail(session_key, final_session)
       self.write_json(w, {
-        "session": self
-        .cowork_session_detail(session_key, final_session)
-        .to_json(),
+        "session": ToJson::to_json(
+          self.cowork_session_detail(session_key, final_session),
+        ),
       })
     }
     None => {
@@ -782,9 +782,9 @@ async fn Gateway::handle_cowork_send_message(
           final_session = updated_session
           self.save_session_detail(session_key, final_session)
           self.write_json(w, {
-            "session": self
-            .cowork_session_detail(session_key, final_session)
-            .to_json(),
+            "session": ToJson::to_json(
+              self.cowork_session_detail(session_key, final_session),
+            ),
           })
         }
         Err(error) => {
@@ -793,14 +793,14 @@ async fn Gateway::handle_cowork_send_message(
             "assistant",
             "error",
             error.message,
-            metadata=error.to_json(),
+            metadata=ToJson::to_json(error),
           )
           self.save_session_detail(session_key, final_session)
           raise json_error(500, "AgentError", {
-            "error": error.to_json(),
-            "session": self
-            .cowork_session_detail(session_key, final_session)
-            .to_json(),
+            "error": ToJson::to_json(error),
+            "session": ToJson::to_json(
+              self.cowork_session_detail(session_key, final_session),
+            ),
           })
         }
       }
@@ -869,7 +869,7 @@ async fn Gateway::handle_cowork_plan(
   )
   self.save_session_detail(session_key, session)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, session).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, session)),
   })
 }
 
@@ -940,7 +940,7 @@ async fn Gateway::handle_cowork_preview(
   )
   self.save_session_detail(session_key, session)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, session).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, session)),
   })
 }
 
@@ -1038,7 +1038,7 @@ async fn Gateway::handle_cowork_promote(
   }
   self.save_session_detail(session_key, session)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, session).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, session)),
   })
 }
 
@@ -1112,7 +1112,7 @@ async fn Gateway::handle_cowork_confirm_proposal(
   )
   self.save_session_detail(session_key, session)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, session).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, session)),
   })
 }
 
@@ -1297,6 +1297,6 @@ async fn Gateway::handle_cowork_resume_run(
   )
   self.save_session_detail(session_key, session)
   self.write_json(w, {
-    "session": self.cowork_session_detail(session_key, session).to_json(),
+    "session": ToJson::to_json(self.cowork_session_detail(session_key, session)),
   })
 }

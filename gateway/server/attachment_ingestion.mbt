@@ -60,16 +60,20 @@ fn merge_materialized_starter_attachments_into_input(
       }
     _ => ()
   }
-  merged.set("materialized_starter_attachments", attachments.to_json())
+  merged.set("materialized_starter_attachments", ToJson::to_json(attachments))
   merged.set(
     "starter_attachment_manifest_path",
-    @attachment_ingestion.starter_attachment_manifest_json_path(workspace_dir).to_json(),
+    Json::string(
+      @attachment_ingestion.starter_attachment_manifest_json_path(workspace_dir),
+    ),
   )
   merged.set(
     "starter_attachment_manifest_markdown_path",
-    @attachment_ingestion.starter_attachment_manifest_markdown_path(
-      workspace_dir,
-    ).to_json(),
+    Json::string(
+      @attachment_ingestion.starter_attachment_manifest_markdown_path(
+        workspace_dir,
+      ),
+    ),
   )
   Json::object(merged)
 }
@@ -93,16 +97,16 @@ fn merge_starter_attachment_artifacts_into_input(
   merged.set("starter_attachment_artifacts", artifact_manifest)
   match digest_artifact_id {
     Some(artifact_id) =>
-      merged.set("starter_attachment_digest_artifact_id", artifact_id.to_json())
+      merged.set("starter_attachment_digest_artifact_id", Json::string(artifact_id))
     None => ()
   }
   match digest_path {
-    Some(path) => merged.set("starter_attachment_digest_path", path.to_json())
+    Some(path) => merged.set("starter_attachment_digest_path", Json::string(path))
     None => ()
   }
   match digest_excerpt {
     Some(text) =>
-      merged.set("starter_attachment_digest_excerpt", text.to_json())
+      merged.set("starter_attachment_digest_excerpt", Json::string(text))
     None => ()
   }
   Json::object(merged)
@@ -111,7 +115,7 @@ fn merge_starter_attachment_artifacts_into_input(
 ///|
 fn materialized_starter_attachment_string_field(value : String?) -> Json {
   match value {
-    Some(value) => value.to_json()
+    Some(value) => Json::string(value)
     None => null
   }
 }
@@ -134,9 +138,9 @@ async fn persist_starter_attachment_artifacts(
   let summary_entries : Array[(String, String)] = []
   for attachment in attachments {
     let entry : Map[String, Json] = {
-      "id": attachment.id.to_json(),
-      "filename": attachment.filename.to_json(),
-      "status": attachment.status.to_json(),
+      "id": Json::string(attachment.id),
+      "filename": ToJson::to_json(attachment.filename),
+      "status": Json::string(attachment.status),
       "saved_path": materialized_starter_attachment_string_field(
         attachment.saved_path,
       ),
@@ -208,7 +212,7 @@ async fn persist_starter_attachment_artifacts(
     }
     entry.set(
       "artifact_ids",
-      artifact_ids.map(fn(id) { id.to_json() }).to_json(),
+      Json::array(artifact_ids.map(fn(id) { Json::string(id) })),
     )
     entries.push(Json::object(entry))
   }
@@ -566,7 +570,7 @@ async fn materialize_starter_attachments_for_workspace(
   }
   @fsx.write_to_file(
     @attachment_ingestion.starter_attachment_manifest_json_path(workspace_dir),
-    materialized.to_json().stringify(),
+    ToJson::to_json(materialized).stringify(),
   ) catch {
     _ => ()
   }

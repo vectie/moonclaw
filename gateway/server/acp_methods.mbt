@@ -1005,7 +1005,7 @@ async fn Gateway::handle_acp_sessions_run_method(
       "status": "accepted",
       "session": updated_session.to_json(),
       "run": acp_run.to_json(),
-      "accepted": accepted.to_json(),
+      "accepted": ToJson::to_json(accepted),
       "target": target.to_json(),
       "plan": launch.to_json(),
     }),
@@ -1246,7 +1246,7 @@ async fn Gateway::handle_cancel_acp_run(
     {
       id: self.uuid.v4().to_string(),
       rpc_method: "acp.runs.cancel",
-      params: Some(AcpRunCancelParams::{ run_id, }.to_json()),
+      params: Some(ToJson::to_json(AcpRunCancelParams::{ run_id, })),
     },
     w,
   )
@@ -1475,7 +1475,7 @@ async fn Gateway::handle_run_acp_session(
     {
       id: self.uuid.v4().to_string(),
       rpc_method: "acp.sessions.run",
-      params: Some(AcpSessionRunParams::{ ..params, session_id, }.to_json()),
+      params: Some(ToJson::to_json(AcpSessionRunParams::{ ..params, session_id, })),
     },
     w,
   )

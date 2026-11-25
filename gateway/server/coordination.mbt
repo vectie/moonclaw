@@ -218,11 +218,11 @@ pub fn CoordinationTask::has_failures(self : CoordinationTask) -> Bool {
 ///|
 pub fn CoordinationTask::aggregate_results(self : CoordinationTask) -> Json {
   {
-    "coordination_id": self.coordination_id.to_json(),
-    "status": self.status.to_json(),
-    "total_subtasks": self.subtasks.length().to_json(),
-    "completed": self.completed_count().to_json(),
-    "failed": self.failed_count().to_json(),
-    "results": self.results.to_json(),
+    "coordination_id": Json::string(self.coordination_id),
+    "status": ToJson::to_json(self.status),
+    "total_subtasks": ToJson::to_json(self.subtasks.length()),
+    "completed": ToJson::to_json(self.completed_count()),
+    "failed": ToJson::to_json(self.failed_count()),
+    "results": Json::object(self.results),
   }
 }

@@ -167,7 +167,7 @@ async fn Gateway::handle_connect_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some(hello.to_json()),
+    payload: Some(ToJson::to_json(hello)),
     error: None,
   })
 }
@@ -182,7 +182,7 @@ async fn Gateway::handle_runs_list_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some({ "runs": runs.map(run => run.to_json()) }),
+    payload: Some({ "runs": runs.map(run => ToJson::to_json(run)) }),
     error: None,
   })
 }
@@ -209,7 +209,7 @@ async fn Gateway::handle_runs_get_method(
       self.send_response(w, {
         id: request.id,
         ok: true,
-        payload: Some(run.to_json()),
+        payload: Some(ToJson::to_json(run)),
         error: None,
       })
     None =>
@@ -348,7 +348,7 @@ async fn Gateway::handle_plugins_list_method(
       "plugins": self
       .plugin_runtime()
       .list()
-      .map(fn(plugin) { plugin.to_json() }),
+      .map(fn(plugin) { ToJson::to_json(plugin) }),
     }),
     error: None,
   })
@@ -376,7 +376,7 @@ async fn Gateway::handle_plugins_get_method(
       self.send_response(w, {
         id: request.id,
         ok: true,
-        payload: Some(plugin.to_json()),
+        payload: Some(ToJson::to_json(plugin)),
         error: None,
       })
     None =>
@@ -695,7 +695,7 @@ async fn Gateway::handle_agent_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some(accepted.to_json()),
+    payload: Some(ToJson::to_json(accepted)),
     error: None,
   })
   @async.with_task_group(group => {
@@ -813,7 +813,7 @@ async fn Gateway::handle_sessions_list_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some(payload.to_json()),
+    payload: Some(ToJson::to_json(payload)),
     error: None,
   })
 }
@@ -932,7 +932,7 @@ async fn Gateway::handle_health_method(
   self.send_response(w, {
     id: request.id,
     ok: true,
-    payload: Some(health.to_json()),
+    payload: Some(ToJson::to_json(health)),
     error: None,
   })
 }

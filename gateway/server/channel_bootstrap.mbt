@@ -152,7 +152,7 @@ fn bootstrap_feishu_account_config(
     "domain": Json::string(domain),
     "connection_mode": Json::string(connection_mode),
     "dm_policy": Json::string(dm_policy),
-    "enabled": enabled.to_json(),
+    "enabled": Json::boolean(enabled),
   }
   set_string_field(
     account,
@@ -295,7 +295,7 @@ fn bootstrap_weixin_account_config(
     "app_id": Json::string(app_id),
     "app_secret": Json::string(app_secret),
     "token": Json::string(token),
-    "enabled": enabled.to_json(),
+    "enabled": Json::boolean(enabled),
   }
   set_string_field(
     account,

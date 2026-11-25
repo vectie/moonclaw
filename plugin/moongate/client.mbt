@@ -285,7 +285,11 @@ pub async fn Client::get_text(
     Ok(parts) => parts
     Err(error) => return Err(error)
   }
-  let client = @http.Client(origin, headers=moongate_request_headers()) catch {
+  let req_headers : Map[@http.CaseInsensitiveString, String] = Map([])
+  for k, v in moongate_request_headers() {
+    req_headers[@http.CaseInsensitiveString(k)] = v
+  }
+  let client = @http.Client(origin, headers=req_headers) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()
@@ -313,10 +317,11 @@ pub async fn Client::post(
     Ok(parts) => parts
     Err(error) => return Err(error)
   }
-  let client = @http.Client(
-    origin,
-    headers=moongate_request_headers(content_type=true),
-  ) catch {
+  let req_headers : Map[@http.CaseInsensitiveString, String] = Map([])
+  for k, v in moongate_request_headers(content_type=true) {
+    req_headers[@http.CaseInsensitiveString(k)] = v
+  }
+  let client = @http.Client(origin, headers=req_headers) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()

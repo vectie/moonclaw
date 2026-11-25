@@ -2,13 +2,15 @@
 /// Minimal wire projection of `moonflow.capability-catalog.v1`. MoonClaw does
 /// not compile this catalog; it verifies the selected operation again at the
 /// point where an installed pack is invoked.
+#derive(FromJson)
 priv struct CapabilityCatalogProductV1 {
   product_id : String
   pack_id : String
   pack_version : String
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct CapabilityCatalogOperationV1 {
   operation_ref : String
   product_id : String
@@ -29,20 +31,22 @@ priv struct CapabilityCatalogOperationV1 {
   health_valid_until : String
   health_evidence_ref : String
   health_evidence_digest : String
-} derive(FromJson)
+}
 
 ///|
 // Decoded for wire compatibility; producer diagnostics are not interpreted at
 // the invocation boundary.
+#derive(FromJson)
 #warnings("-unused_field")
 priv struct CapabilityCatalogIssueV1 {
   code : String
   subject : String
   detail : String
   suggestions : Array[String]
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct CapabilityCatalogWireV1 {
   contract_id : String
   catalog_id : String
@@ -51,11 +55,12 @@ priv struct CapabilityCatalogWireV1 {
   products : Array[CapabilityCatalogProductV1]
   operations : Array[CapabilityCatalogOperationV1]
   issues : Array[CapabilityCatalogIssueV1]
-} derive(FromJson)
+}
 
 ///|
 /// MoonFlow's durable adapter request, retained here as a wire-compatible
 /// boundary so MoonClaw does not depend on or duplicate MoonFlow's engine.
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct MoonFlowAdapterRequestV2 {
   request_id : String
   run_id : String
@@ -75,12 +80,13 @@ pub(all) struct MoonFlowAdapterRequestV2 {
   input_artifacts : Array[String]
   timeout_ms : Int32
   created_at : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 /// Host command for one already-selected MoonFlow capability. `config` and
 /// `input` remain opaque to MoonClaw and are interpreted only by the pack-owned
 /// executor.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct CapabilityInvocationV1 {
   contract_id : String
   adapter_id : String
@@ -90,18 +96,19 @@ pub(all) struct CapabilityInvocationV1 {
   request : MoonFlowAdapterRequestV2
   config : Json
   input : Json
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Per-invocation policy. Review identities are canonical operation refs, not
 /// unversioned tool names.
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct CapabilityInvocationPolicyV1 {
   granted_authorities : Array[String]
   reviewed_operation_refs : Array[String]
   max_attempts : Int32
   timeout_ms : Int32
   remaining_budget_micros : Int32
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 priv struct InstalledPackCapabilityV1 {
@@ -115,6 +122,7 @@ priv struct InstalledPackCapabilityV1 {
 /// `AdapterResult`, so the same JSON object can be passed to
 /// `reconcile-attempt`. Additional fields preserve capability and health
 /// identity for audit/restart recovery.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct CapabilityInvocationReceiptV1 {
   contract_id : String
   result_id : String
@@ -144,14 +152,15 @@ pub(all) struct CapabilityInvocationReceiptV1 {
   summary : String?
   metrics : Json
   logs : Array[String]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct CapabilityInvocationOutcomeV1 {
   receipt_ref : String
   receipt : CapabilityInvocationReceiptV1
   replayed : Bool
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 fn capability_safe_identifier(value : String) -> Bool {
@@ -590,7 +599,7 @@ async fn write_capability_receipt(
   let temporary = path + ".tmp"
   @fsx.write_to_file(
     temporary,
-    receipt.to_json().stringify(indent=2) + "\n",
+    ToJson::to_json(receipt).stringify(indent=2) + "\n",
     create=0o600,
   )
   @fsx.atomic_rename(temporary, path)

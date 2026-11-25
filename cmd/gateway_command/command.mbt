@@ -255,7 +255,7 @@ async fn list_runs(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.list_runs() {
     Err(error) => logger.error("Runs list failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -265,7 +265,7 @@ async fn list_jobs(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.list_jobs() {
     Err(error) => logger.error("Jobs list failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -282,7 +282,7 @@ async fn get_job(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.get_job(job_id~) {
     Err(error) => logger.error("Job lookup failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -305,7 +305,7 @@ async fn create_job(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.create_job(definition) {
     Err(error) => logger.error("Job create failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -328,7 +328,7 @@ async fn update_job(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.update_job(definition) {
     Err(error) => logger.error("Job update failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -345,7 +345,7 @@ async fn run_job(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.run_job(job_id~) {
     Err(error) => logger.error("Job run failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -374,7 +374,7 @@ async fn cancel_job(args : Array[String], force : Bool) -> Unit {
           "Job cancel failed: \{error}"
         },
       )
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -384,7 +384,7 @@ async fn list_job_runs(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.list_job_runs() {
     Err(error) => logger.error("Job runs list failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -405,7 +405,7 @@ async fn get_job_run(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.get_job_run(run_id~) {
     Err(error) => logger.error("Job run lookup failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -422,7 +422,7 @@ async fn get_run(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.get_run(run_id~) {
     Err(error) => logger.error("Run lookup failed: \{error}")
-    Ok(run) => println(run.to_json().stringify())
+    Ok(run) => println(ToJson::to_json(run).stringify())
   }
 }
 
@@ -472,7 +472,7 @@ async fn list_channels(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.list_channels() {
     Err(error) => logger.error("Channels list failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -489,7 +489,7 @@ async fn get_channel(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.get_channel(channel_id~) {
     Err(error) => logger.error("Channel lookup failed: \{error}")
-    Ok(channel) => println(channel.to_json().stringify())
+    Ok(channel) => println(ToJson::to_json(channel).stringify())
   }
 }
 
@@ -519,7 +519,7 @@ async fn configure_channel(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.configure_channel(channel_id~, config) {
     Err(error) => logger.error("Channel configure failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -550,7 +550,7 @@ async fn start_channel(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.start_channel(channel_id~, account_id~, config) {
     Err(error) => logger.error("Channel start failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
@@ -574,7 +574,7 @@ async fn stop_channel(args : Array[String]) -> Unit {
   let client = make_client(args, mode=Cli)
   match client.stop_channel(channel_id~, account_id~) {
     Err(error) => logger.error("Channel stop failed: \{error}")
-    Ok(payload) => println(payload.to_json().stringify())
+    Ok(payload) => println(ToJson::to_json(payload).stringify())
   }
 }
 
