@@ -1,5 +1,6 @@
 ///|
 /// Chat completion response metadata.
+#derive(Debug)
 pub struct ChatCompletion {
   id : String
   choices : Array[ChatCompletionChoice]
@@ -8,7 +9,7 @@ pub struct ChatCompletion {
   usage : CompletionUsage?
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
-} derive(Debug)
+}
 
 ///|
 pub fn ChatCompletion::new(

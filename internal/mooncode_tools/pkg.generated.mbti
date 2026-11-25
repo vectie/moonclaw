@@ -1,14 +1,18 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/mooncode_tools"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub const SHELL_BOUNDARY_TOKEN : String = "\x00mooncode-shell-boundary\x00"
 
-pub fn arguments_error(Json, Json, path? : String) -> String?
+pub fn arguments_error(@json.Json, @json.Json, path? : String) -> String?
 
-pub fn classify(String, Json) -> Policy
+pub fn classify(String, @json.Json) -> Policy
 
-pub fn moon_cmd_is_test_update(Json) -> Bool
+pub fn moon_cmd_is_test_update(@json.Json) -> Bool
 
 pub fn shell_has_git_commit(String) -> Bool
 
@@ -16,7 +20,7 @@ pub fn shell_has_git_workspace_mutation(String) -> Bool
 
 pub fn shell_pipeline_exit_ambiguous(String) -> Bool
 
-pub fn shell_segment_executable_index(Array[String]) -> Int
+pub fn shell_segment_executable_index(Array[String]) -> Int32
 
 pub fn shell_verifies_kind(String, String) -> Bool
 

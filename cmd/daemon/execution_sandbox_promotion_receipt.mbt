@@ -1,8 +1,9 @@
 ///|
+#derive(ToJson, @json.FromJson)
 priv struct MoonDeskPromotionCheckpoint {
   request : MoonDeskPromotionRequest
   response : MoonFortPromotionResponse
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
 fn moondesk_promotion_checkpoint_path(

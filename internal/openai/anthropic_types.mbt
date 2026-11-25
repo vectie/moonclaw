@@ -34,6 +34,7 @@ pub struct AnthropicTool {
 }
 
 ///|
+#derive(FromJson, Debug)
 pub struct AnthropicResponse {
   id : String
   type_ : String
@@ -43,38 +44,42 @@ pub struct AnthropicResponse {
   stop_reason : String?
   stop_sequence : String?
   usage : AnthropicUsage
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 pub struct AnthropicContentBlock {
   type_ : String
   text : String?
   name : String?
   input : Json?
   id : String?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 pub struct AnthropicUsage {
   input_tokens : Int32
   output_tokens : Int32
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 pub struct AnthropicStreamEvent {
   type_ : String
   index : Int32?
   delta : AnthropicDelta?
   content_block : AnthropicContentBlock?
   message : AnthropicResponse?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 pub struct AnthropicDelta {
   type_ : String?
   text : String?
   stop_reason : String?
-} derive(FromJson, Debug)
+}
 
 ///|
 pub extend AnthropicResponse with @moonbitlang/core/json.FromJson::{from_json}

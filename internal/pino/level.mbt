@@ -14,6 +14,7 @@
 /// - `Warn`: Warning messages for potentially problematic situations
 /// - `Error`: Error messages for failures that don't stop the application
 /// - `Fatal`: Critical errors that may cause application termination
+#derive(Debug, Eq, Compare, ToJson)
 pub(all) enum Level {
   Trace
   Debug
@@ -21,7 +22,7 @@ pub(all) enum Level {
   Warn
   Error
   Fatal
-} derive(Debug, Eq, Compare, ToJson)
+}
 
 ///|
 test {

@@ -321,11 +321,12 @@ pub fn chunk_choice_delta_tool_call(
 ///|
 pub fn chunk_choice_delta(
   content? : String,
+  reasoning_content? : String,
   refusal? : String,
   role? : ChatCompletionRole,
   tool_calls? : Array[ChatCompletionChunkChoiceDeltaToolCall],
 ) -> ChatCompletionChunkChoiceDelta {
-  { content, refusal, role, tool_calls, }
+  { content, reasoning_content, refusal, role, tool_calls, }
 }
 
 ///|

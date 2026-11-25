@@ -88,6 +88,69 @@ fn mooncode_build_native_tool_catalog() -> Array[
       },
     ),
     mooncode_runtime_turn_model_tool(
+      "glob",
+      "Find workspace file paths by glob pattern (supports *, ?, **). Use before read to locate candidate files quickly.",
+      {
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string" },
+          "path": { "type": "string" },
+          "max_results": { "type": "integer", "minimum": 1 },
+          "respect_gitignore": { "type": "boolean" },
+          "include_hidden": { "type": "boolean" },
+          "include_directories": { "type": "boolean" },
+        },
+        "required": ["pattern"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "grep",
+      "Search file contents across the workspace with regex or MoonBit symbol lookup. Returns matching paths, line numbers, and context.",
+      {
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string" },
+          "path": { "type": "string" },
+          "file_pattern": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["regex", "moonbit_definition", "moonbit_references"],
+          },
+          "context_lines": { "type": "integer", "minimum": 0 },
+          "respect_gitignore": { "type": "boolean" },
+        },
+        "required": ["pattern"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "web_search",
+      "Search the public web for up-to-date facts, documentation, and source URLs when local workspace files are insufficient.",
+      {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "max_results": { "type": "integer", "minimum": 1, "maximum": 10 },
+        },
+        "required": ["query"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "web_fetch",
+      "Fetch a public HTTP/HTTPS URL and return cleaned readable text content.",
+      {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "max_chars": { "type": "integer", "minimum": 200, "maximum": 20000 },
+        },
+        "required": ["url"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
       "view_image",
       "Inspect pixels of a MoonBook PNG, JPEG, WebP or GIF file.",
       {

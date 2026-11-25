@@ -142,7 +142,24 @@ fn mooncode_runtime_turn_tool_call_event(
     index~,
   )
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let path = mooncode_json_string(arguments, "path", default="")
+  let path = {
+    let direct = mooncode_json_string(arguments, "path", default="")
+    if direct != "" {
+      direct
+    } else {
+      let query = mooncode_json_string(arguments, "query", default="")
+      if query != "" {
+        query
+      } else {
+        let pattern = mooncode_json_string(arguments, "pattern", default="")
+        if pattern != "" {
+          pattern
+        } else {
+          mooncode_json_string(arguments, "url", default="")
+        }
+      }
+    }
+  }
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-tool-call-\{step}-\{index}-\{tool}-\{now}",
     "protocol": mooncode_protocol_version(),
@@ -191,8 +208,15 @@ fn mooncode_runtime_turn_tool_call_id(
 fn mooncode_runtime_turn_tool_call_lane(tool : String, path : String) -> String {
   match tool {
     "moon_cmd" => "test"
-    "write" | "edit" => "diff"
+    "write" | "edit" | "apply_patch" | "revert_patch" => "diff"
     "finish" => "review"
+    "read"
+    | "glob"
+    | "grep"
+    | "web_search"
+    | "web_fetch"
+    | "read_skill"
+    | "view_image" => "tool"
     _ if path != "" => "diff"
     _ => "tool"
   }

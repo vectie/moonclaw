@@ -1,12 +1,13 @@
 ///|
 /// Roles that may appear in streamed completion deltas.
+#derive(ToJson)
 pub(all) enum ChatCompletionRole {
   Developer
   System
   User
   Assistant
   Tool
-} derive(ToJson)
+}
 
 ///|
 impl @json.FromJson for ChatCompletionRole with fn from_json(

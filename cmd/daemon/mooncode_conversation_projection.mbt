@@ -6,6 +6,7 @@ priv struct MoonCodeConversationTurnDraft {
   mut user : Json
   work_steps : Array[Json]
   mut work_live : Json
+  mut reasoning_text : String
   mut assistant : Json
   mut assistant_delta : String
   mut status : String
@@ -349,6 +350,7 @@ fn mooncode_conversation_turn_draft(
     user: Json::object({}),
     work_steps: [],
     work_live: Json::object({}),
+    reasoning_text: "",
     assistant: Json::object({}),
     assistant_delta: "",
     status: "queued",
@@ -868,10 +870,12 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
     kind != "test" &&
     kind != "artifact" &&
     kind != "tool" &&
+    kind != "context" &&
     kind != "skill" &&
     kind != "approval" {
     return Json::object({})
   }
+  let evidence_kind = if kind == "context" { "tool" } else { kind }
   let tool_result = mooncode_json_object_field_or_empty(event, "tool_result")
   let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
   if kind == "skill" {
@@ -909,9 +913,19 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
       "sandbox_evidence": Json::object({}),
     }
   }
+  let tool_name = mooncode_json_string(event, "tool", default="")
   let path = mooncode_conversation_first_text(
     mooncode_json_string(event, "path", default=""),
-    mooncode_json_string(metadata, "path", default=""),
+    mooncode_conversation_first_text(
+      mooncode_json_string(metadata, "path", default=""),
+      mooncode_conversation_first_text(
+        mooncode_json_string(metadata, "query", default=""),
+        mooncode_conversation_first_text(
+          mooncode_json_string(metadata, "pattern", default=""),
+          mooncode_json_string(metadata, "url", default=""),
+        ),
+      ),
+    ),
   )
   let diff = mooncode_conversation_first_text(
     mooncode_json_string(event, "diff", default=""),
@@ -926,8 +940,9 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
     mooncode_json_string(event, "command", default=""),
   )
   {
-    "kind": kind,
-    "state": mooncode_conversation_evidence_state(event, kind, lane),
+    "kind": evidence_kind,
+    "tool": tool_name,
+    "state": mooncode_conversation_evidence_state(event, evidence_kind, lane),
     "path": path,
     "diff": diff,
     "command": command,
@@ -1005,13 +1020,47 @@ fn mooncode_conversation_apply_work_event(
     return
   }
   if kind == "reasoning_delta" {
-    turn.work_live = {
-      "item_id": mooncode_conversation_slot_id(turn.command_id, "work-live"),
-      "event_id": mooncode_json_string(event, "id", default=""),
-      "kind": "thought",
-      "title": "Reviewing the request",
-      "summary": "Thinking through the request.",
-      "status": "running",
+    let live_reasoning = mooncode_json_bool(
+      event,
+      "live_reasoning",
+      default=false,
+    )
+    if live_reasoning {
+      let chunk = mooncode_json_string(event, "content", default="")
+      if chunk != "" {
+        let combined = turn.reasoning_text + chunk
+        turn.reasoning_text = if combined.length() > 16000 {
+          combined[combined.length() - 16000:].to_string()
+        } else {
+          combined
+        }
+      }
+      let trimmed = turn.reasoning_text.trim().to_owned()
+      let preview = if trimmed == "" {
+        "Thinking through the request."
+      } else if trimmed.length() > 260 {
+        "…" + trimmed[trimmed.length() - 260:].to_string()
+      } else {
+        trimmed
+      }
+      turn.work_live = {
+        "item_id": mooncode_conversation_slot_id(turn.command_id, "work-live"),
+        "event_id": mooncode_json_string(event, "id", default=""),
+        "kind": "thought",
+        "title": "Thinking",
+        "summary": preview,
+        "reasoning": trimmed,
+        "status": "running",
+      }
+    } else if turn.reasoning_text.trim().to_owned() == "" {
+      turn.work_live = {
+        "item_id": mooncode_conversation_slot_id(turn.command_id, "work-live"),
+        "event_id": mooncode_json_string(event, "id", default=""),
+        "kind": "thought",
+        "title": "Reviewing the request",
+        "summary": "Thinking through the request.",
+        "status": "running",
+      }
     }
     turn.status = mooncode_conversation_merge_status(turn.status, "running")
     return
@@ -1091,6 +1140,8 @@ fn mooncode_conversation_work_step_kind(event : Json) -> String {
     "thought"
   } else if tool == "read" || tool == "grep" || tool == "glob" {
     "context"
+  } else if tool == "web_search" || tool == "web_fetch" {
+    "tool"
   } else if tool == "read_skill" {
     "skill"
   } else if lane == "diff" {
@@ -1122,7 +1173,8 @@ fn mooncode_conversation_work_json(
     turn.work_live.stringify() == "{}" {
     return Json::object({})
   }
-  {
+  let reasoning = turn.reasoning_text.trim().to_owned()
+  let work : Json = {
     "item_id": mooncode_conversation_slot_id(turn.command_id, "work"),
     "status": status,
     "summary": mooncode_conversation_work_summary(turn, status),
@@ -1133,6 +1185,11 @@ fn mooncode_conversation_work_json(
     } else {
       turn.work_live
     },
+  }
+  if reasoning == "" {
+    work
+  } else {
+    mooncode_json_object_with_field(work, "reasoning", Json(reasoning))
   }
 }
 
@@ -1382,7 +1439,39 @@ fn mooncode_conversation_tool_title(
   started~ : Bool,
   failed~ : Bool,
 ) -> String {
-  if tool == "read" || tool == "read_skill" || tool == "grep" || tool == "glob" {
+  if tool == "web_search" {
+    if failed {
+      "Web search failed"
+    } else if started {
+      "Searching web"
+    } else {
+      "Searched web"
+    }
+  } else if tool == "web_fetch" {
+    if failed {
+      "Could not fetch web page"
+    } else if started {
+      "Reading web page"
+    } else {
+      "Read web page"
+    }
+  } else if tool == "glob" {
+    if failed {
+      "Could not find files"
+    } else if started {
+      "Searching files"
+    } else {
+      "Found files"
+    }
+  } else if tool == "grep" {
+    if failed {
+      "Code search failed"
+    } else if started {
+      "Searching code"
+    } else {
+      "Searched code"
+    }
+  } else if tool == "read" || tool == "read_skill" {
     if failed {
       "Could not check context"
     } else if started {
@@ -1431,7 +1520,67 @@ fn mooncode_conversation_tool_detail(
   started~ : Bool,
   failed~ : Bool,
 ) -> String {
-  if tool == "read" || tool == "read_skill" || tool == "grep" || tool == "glob" {
+  if tool == "web_search" {
+    if failed {
+      "Could not search the web."
+    } else if started {
+      if path == "" {
+        "Searching the web."
+      } else {
+        "Searching the web for `\{path}`."
+      }
+    } else if path == "" {
+      "Searched the web."
+    } else {
+      "Searched the web for `\{path}`."
+    }
+  } else if tool == "web_fetch" {
+    if failed {
+      if path == "" {
+        "Could not fetch the web page."
+      } else {
+        "Could not fetch `\{path}`."
+      }
+    } else if started {
+      if path == "" {
+        "Fetching web page."
+      } else {
+        "Fetching `\{path}`."
+      }
+    } else if path == "" {
+      "Read web page."
+    } else {
+      "Read `\{path}`."
+    }
+  } else if tool == "glob" {
+    if failed {
+      "Could not search workspace files."
+    } else if started {
+      if path == "" {
+        "Searching workspace files."
+      } else {
+        "Finding files matching `\{path}`."
+      }
+    } else if path == "" {
+      "Found matching workspace files."
+    } else {
+      "Found files matching `\{path}`."
+    }
+  } else if tool == "grep" {
+    if failed {
+      "Could not search workspace content."
+    } else if started {
+      if path == "" {
+        "Searching workspace content."
+      } else {
+        "Searching code for `\{path}`."
+      }
+    } else if path == "" {
+      "Searched workspace content."
+    } else {
+      "Searched code for `\{path}`."
+    }
+  } else if tool == "read" || tool == "read_skill" {
     if failed {
       if path == "" {
         "Could not read project context."

@@ -18,17 +18,19 @@ The following example shows how to expose a simple JSON endpoint using
 
 ```moonbit check
 ///|
+#derive(ToJson, @json.FromJson)
 struct ExampleRequest {
   name : String
   description : String
-} derive(ToJson, @json.FromJson)
+}
 ```
 
 ```moonbit check
 ///|
+#derive(ToJson)
 enum ExampleResponse {
   Ok(ExampleRequest)
-} derive(ToJson)
+}
 ```
 
 ```mbt check

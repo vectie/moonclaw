@@ -1,5 +1,6 @@
 ///|
 /// Aggregated usage information for a completion response.
+#derive(Debug, ToJson)
 pub struct CompletionUsage {
   completion_tokens : Int32
   completion_tokens_details : CompletionTokensDetails?
@@ -8,7 +9,7 @@ pub struct CompletionUsage {
   prompt_tokens : Int32
   prompt_tokens_details : PromptTokensDetails?
   total_tokens : Int32
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn CompletionUsage::new(

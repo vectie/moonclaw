@@ -75,6 +75,10 @@ async fn mooncode_execute_tool_call_in_runtime(
             } else {
               mooncode_tool_read(book_root, arguments)
             }
+          "glob" => mooncode_tool_glob(book_root, arguments)
+          "grep" => mooncode_tool_grep(book_root, arguments)
+          "web_search" => mooncode_tool_web_search(arguments)
+          "web_fetch" => mooncode_tool_web_fetch(arguments)
           "ask_user" =>
             mooncode_task_ask_user(
               session_id, book_root, command_id, arguments, now,
@@ -249,6 +253,224 @@ async fn mooncode_tool_read(book_root : String, arguments : Json) -> Json {
       "truncated": mooncode_json_bool(capped, "truncated", default=false),
     },
   )
+}
+
+///|
+async fn mooncode_tool_glob(book_root : String, arguments : Json) -> Json {
+  let pattern = mooncode_json_string(arguments, "pattern", default="")
+    .trim()
+    .to_owned()
+  if pattern == "" {
+    return mooncode_tool_error_result("glob", message="pattern is required")
+  }
+  let raw_path = mooncode_json_string(arguments, "path", default=".")
+    .trim()
+    .to_owned()
+  let path = if raw_path == "" { "." } else { raw_path }
+  let scoped = mooncode_workspace_path(book_root, path)
+  if !mooncode_json_bool(scoped, "ok", default=false) {
+    return mooncode_tool_error_result(
+      "glob",
+      message=mooncode_json_string(scoped, "message", default="invalid path"),
+    )
+  }
+  let tool_args : Map[String, Json] = {
+    "pattern": Json(pattern),
+    "path": Json(mooncode_json_string(scoped, "relative_path", default=".")),
+  }
+  if arguments is Object(fields) {
+    for
+      key in [
+        "max_results", "respect_gitignore", "include_hidden", "include_directories",
+      ] {
+      match fields.get(key) {
+        Some(value) => tool_args[key] = value
+        None => ()
+      }
+    }
+  }
+  match @glob_files.new(book_root).call(Json::object(tool_args)) {
+    Ok(result) => {
+      let capped = mooncode_cap_tool_output(
+        result.to_string(),
+        MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+      )
+      mooncode_tool_ok_result(
+        "glob",
+        message="found \{result.total_matches} file(s) matching \{pattern}",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata={
+          "pattern": pattern,
+          "path": pattern,
+          "root": result.root,
+          "match_count": result.total_matches,
+          "truncated": result.truncated ||
+          mooncode_json_bool(capped, "truncated", default=false),
+        },
+      )
+    }
+    Error(_, message) => mooncode_tool_error_result("glob", message~)
+  }
+}
+
+///|
+async fn mooncode_tool_grep(book_root : String, arguments : Json) -> Json {
+  let pattern = mooncode_json_string(arguments, "pattern", default="")
+    .trim()
+    .to_owned()
+  if pattern == "" {
+    return mooncode_tool_error_result("grep", message="pattern is required")
+  }
+  let raw_path = mooncode_json_string(arguments, "path", default=".")
+    .trim()
+    .to_owned()
+  let path = if raw_path == "" { "." } else { raw_path }
+  let scoped = mooncode_workspace_path(book_root, path)
+  if !mooncode_json_bool(scoped, "ok", default=false) {
+    return mooncode_tool_error_result(
+      "grep",
+      message=mooncode_json_string(scoped, "message", default="invalid path"),
+    )
+  }
+  let search_kind = mooncode_json_string(arguments, "kind", default="regex")
+  let tool_args : Map[String, Json] = {
+    "regex": Json(pattern),
+    "kind": Json(search_kind),
+    "path": Json(mooncode_json_string(scoped, "relative_path", default=".")),
+  }
+  if arguments is Object(fields) {
+    for key in ["file_pattern", "context_lines", "respect_gitignore"] {
+      match fields.get(key) {
+        Some(value) => tool_args[key] = value
+        None => ()
+      }
+    }
+  }
+  match @search_files.new(book_root).call(Json::object(tool_args)) {
+    Ok(result) => {
+      let capped = mooncode_cap_tool_output(
+        result.to_string(),
+        MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+      )
+      mooncode_tool_ok_result(
+        "grep",
+        message="searched workspace for \{pattern}",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata={
+          "pattern": pattern,
+          "path": pattern,
+          "search_kind": search_kind,
+          "truncated": mooncode_json_bool(capped, "truncated", default=false),
+        },
+      )
+    }
+    Error(_, message) => mooncode_tool_error_result("grep", message~)
+  }
+}
+
+///|
+async fn mooncode_tool_web_search(arguments : Json) -> Json {
+  let query = mooncode_json_string(arguments, "query", default="")
+    .trim()
+    .to_owned()
+  if query == "" {
+    return mooncode_tool_error_result("web_search", message="query is required")
+  }
+  let tool_args : Map[String, Json] = { "query": Json(query) }
+  if arguments is Object(fields) {
+    match fields.get("max_results") {
+      Some(value) => tool_args["max_results"] = value
+      None => ()
+    }
+  }
+  match @web_search.new().call(Json::object(tool_args)) {
+    Ok(result) => {
+      let lines : Array[String] = []
+      match result.answer {
+        Some(answer) if !answer.trim().is_empty() => {
+          lines.push("Summary: " + answer.trim().to_owned())
+          lines.push("")
+        }
+        _ => ()
+      }
+      for item in result.results {
+        let title = if item.title.trim().is_empty() {
+          item.url
+        } else {
+          item.title.trim().to_owned()
+        }
+        lines.push("\{item.rank}. \{title}")
+        lines.push("   \{item.url}")
+        if !item.snippet.trim().is_empty() {
+          lines.push("   " + item.snippet.trim().to_owned())
+        }
+      }
+      let raw_output = if lines.is_empty() {
+        "No web search results found for `\{query}`."
+      } else {
+        lines.join("\n")
+      }
+      let capped = mooncode_cap_tool_output(
+        raw_output,
+        MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+      )
+      mooncode_tool_ok_result(
+        "web_search",
+        message="searched web for \{query} (\{result.results.length()} result(s))",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata={
+          "query": query,
+          "path": query,
+          "result_count": result.results.length(),
+          "search_url": result.search_url,
+          "truncated": mooncode_json_bool(capped, "truncated", default=false),
+        },
+      )
+    }
+    Error(_, message) => mooncode_tool_error_result("web_search", message~)
+  }
+}
+
+///|
+async fn mooncode_tool_web_fetch(arguments : Json) -> Json {
+  let url = mooncode_json_string(arguments, "url", default="").trim().to_owned()
+  if url == "" {
+    return mooncode_tool_error_result("web_fetch", message="url is required")
+  }
+  let tool_args : Map[String, Json] = { "url": Json(url) }
+  if arguments is Object(fields) {
+    match fields.get("max_chars") {
+      Some(value) => tool_args["max_chars"] = value
+      None => ()
+    }
+  }
+  match @web_fetch.new().call(Json::object(tool_args)) {
+    Ok(result) => {
+      let header = match result.title {
+        Some(title) if !title.trim().is_empty() =>
+          "Title: \{title.trim().to_owned()}\nURL: \{result.final_url}\n\n"
+        _ => "URL: \{result.final_url}\n\n"
+      }
+      let capped = mooncode_cap_tool_output(
+        header + result.text,
+        MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+      )
+      mooncode_tool_ok_result(
+        "web_fetch",
+        message="fetched \{result.final_url} (HTTP \{result.status_code})",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata={
+          "url": result.final_url,
+          "path": result.final_url,
+          "domain": result.domain,
+          "status_code": result.status_code,
+          "truncated": result.truncated ||
+          mooncode_json_bool(capped, "truncated", default=false),
+        },
+      )
+    }
+    Error(_, message) => mooncode_tool_error_result("web_fetch", message~)
+  }
 }
 
 ///|
@@ -1639,6 +1861,15 @@ fn mooncode_tool_event_lane(
     "finish" => "review"
     "apply_patch" | "revert_patch" => "review"
     "write" | "edit" => "diff"
+    "read"
+    | "glob"
+    | "grep"
+    | "web_search"
+    | "web_fetch"
+    | "read_skill"
+    | "view_image" => "tool"
+    "read" | "glob" | "grep" | "web_search" | "web_fetch" | "read_skill" | "view_image" =>
+      "tool"
     _ if diff != "" || path != "" => "diff"
     _ => "tool"
   }

@@ -1,8 +1,9 @@
 ///|
 /// Message author roles reflected in completion responses.
+#derive(Debug)
 pub enum ChatCompletionMessageRole {
   Assistant
-} derive(Debug)
+}
 
 ///|
 pub impl ToJson for ChatCompletionMessageRole with fn to_json(

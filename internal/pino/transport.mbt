@@ -1,16 +1,17 @@
 ///|
 enum Transport {
   Console
-  File(path~ : String, mut file~ : @fs.File?)
+  File(path~ : String, mut file~ : @fs.File?, lock~ : @semaphore.Semaphore)
   Channel(@aqueue.Queue[Json])
   Sink
   Callback((Json) -> Unit)
 }
 
 ///|
+#derive(Debug)
 priv suberror InvalidTransport {
   InvalidTransport(StringView)
-} derive(Debug)
+}
 
 ///|
 /// Parses a transport string and creates the corresponding Transport instance.
@@ -89,10 +90,12 @@ async fn mkdir(path : String) -> Unit {
 async fn Transport::write(self : Transport, content : Json) -> Unit {
   match self {
     Console => println(content.stringify())
-    File(path~, file~) as transport => {
-      let file = match file {
-        Some(file) => file
-        None => {
+    File(path~, lock~, ..) as transport => {
+      lock.acquire()
+      defer lock.release()
+      let file = match transport {
+        File(file=Some(file), ..) => file
+        _ => {
           let dir : String = [..@pathx.dirname(path)]
           if !@fs.exists(dir) {
             mkdir(dir)
@@ -108,7 +111,10 @@ async fn Transport::write(self : Transport, content : Json) -> Unit {
           } else {
             @fs.create(path, permission=0o644)
           }
-          transport.file = Some(file)
+          match transport {
+            File(..) as f => f.file = Some(file)
+            _ => ()
+          }
           file
         }
       }
@@ -162,7 +168,7 @@ pub fn Transport::console() -> Transport {
 /// # Returns
 /// A Transport configured for file output
 pub fn Transport::file(path : StringView) -> Transport {
-  File(path=path.to_owned(), file=None)
+  File(path=path.to_owned(), file=None, lock=@semaphore.Semaphore(1))
 }
 
 ///|

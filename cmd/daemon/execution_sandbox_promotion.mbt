@@ -2,12 +2,14 @@
 const MoonDeskPromotionRequestBytes : Int32 = 65_536
 
 ///|
+#derive(Eq, ToJson, @json.FromJson)
 priv struct MoonDeskPromotionItem {
   source_relative : String
   destination_relative : String
-} derive(Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Eq, ToJson, @json.FromJson)
 #warnings("-unused_value")
 priv struct MoonDeskPromotionRequest {
   protocol_version : Int32
@@ -18,15 +20,17 @@ priv struct MoonDeskPromotionRequest {
   approval_digest : String
   command_digest : String
   items : Array[MoonDeskPromotionItem]
-} derive(Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 priv struct MoonFortPromotionError {
   code : String
   message : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 #warnings("-unused_value")
 priv struct MoonFortPromotionResponse {
   protocol_version : Int32
@@ -39,7 +43,7 @@ priv struct MoonFortPromotionResponse {
   uncertain_paths : Array[String]
   completed : Bool
   error : MoonFortPromotionError?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 fn moondesk_promotion_safe_digest(value : String) -> Bool {

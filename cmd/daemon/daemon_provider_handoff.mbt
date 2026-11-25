@@ -5,13 +5,15 @@ const LUNANEXA_HANDOFF_REQUEST_BYTES : Int32 = 2_048
 const LUNANEXA_HANDOFF_RESPONSE_BYTES : Int32 = 65_536
 
 ///|
+#derive(FromJson)
 priv struct LunaProviderHandoffRequest {
   contract : String
   client_id : String
   handoff_code : String
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct LunaProviderHandoffRedemption {
   client_id : String
   api_secret : String
@@ -20,7 +22,7 @@ priv struct LunaProviderHandoffRedemption {
   expires_unix_ms : Int64
   maximum_requests : Int64
   one_time : Bool
-} derive(FromJson)
+}
 
 ///|
 fn lunanexa_identifier(value : String, maximum : Int32) -> Bool {

@@ -1,9 +1,10 @@
 ///|
 /// Tool function metadata returned from the API.
+#derive(Debug)
 pub struct ChatCompletionMessageToolCallFunction {
   arguments : String?
   name : String
-} derive(Debug)
+}
 
 ///|
 impl ToJson for ChatCompletionMessageToolCallFunction with fn to_json(

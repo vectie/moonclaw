@@ -8,6 +8,7 @@ const MoonDeskSandboxOutputBytes : Int32 = 160_000
 const MoonDeskSandboxTimeoutMs : Int32 = 60_000
 
 ///|
+#derive(@json.FromJson)
 priv struct MoonDeskMoonDiagnosticsRequest {
   protocol_version : Int32
   instance_id : String
@@ -15,9 +16,10 @@ priv struct MoonDeskMoonDiagnosticsRequest {
   workspace_id : String
   module_directory : String
   target : String
-} derive(@json.FromJson)
+}
 
 ///|
+#derive(@json.FromJson)
 priv struct MoonDeskMoonIdeRequest {
   protocol_version : Int32
   instance_id : String
@@ -29,7 +31,7 @@ priv struct MoonDeskMoonIdeRequest {
   symbol : String
   line : Int32
   column : Int32
-} derive(@json.FromJson)
+}
 
 ///|
 fn moondesk_sandbox_symbol_valid(value : String) -> Bool {

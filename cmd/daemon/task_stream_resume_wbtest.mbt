@@ -21,7 +21,7 @@ test "task stream exposes answers and hides internal events" {
         "kind": "answer_delta",
         "content": "hello",
         ..
-      }
+      },
     ),
   )
   assert_true(

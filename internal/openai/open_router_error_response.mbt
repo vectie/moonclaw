@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson)
 pub struct OpenRouterErrorResponse {
   code : Int32
   message : String
   metadata : Json
-} derive(ToJson)
+}
 
 ///|
 pub impl @json.FromJson for OpenRouterErrorResponse with fn from_json(
@@ -30,7 +31,7 @@ pub impl @json.FromJson for OpenRouterErrorResponse with fn from_json(
     Some(metadata) => metadata
     None => Json::object(json)
   }
-  { code, message, metadata }
+  { code, message, metadata, }
 }
 
 ///|

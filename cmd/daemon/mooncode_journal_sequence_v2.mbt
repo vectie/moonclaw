@@ -20,10 +20,11 @@ fn mooncode_sha256_hex(text : String) -> String {
 // Daemon-private arbitrary-precision journal sequence and v2 envelope helpers.
 
 ///|
+#derive(Eq)
 #warnings("-unused_value")
 priv struct MoonCodeJournalSequence {
   text : String
-} derive(Eq)
+}
 
 ///|
 priv struct MoonCodeJournalEnvelope {

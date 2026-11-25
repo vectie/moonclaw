@@ -61,7 +61,7 @@ pub async fn Server::serve(self : Server, handler : Handler) -> Unit {
       let method_ = Method::from_async_http(rh.meth)
       let headers : Map[String, String] = Map([])
       for k, v in rh.headers {
-        headers[k.0] = v
+        headers[k.0.to_lower()] = v
       }
       let r : RequestReader = {
         body: rb,

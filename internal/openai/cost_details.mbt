@@ -1,8 +1,9 @@
 ///|
 /// Detailed billing information for a request.
+#derive(Debug, ToJson)
 pub struct CostDetails {
   upstream_inference_cost : Double?
-} derive(Debug, ToJson)
+}
 
 ///|
 impl @json.FromJson for CostDetails with fn from_json(

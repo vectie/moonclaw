@@ -1,11 +1,13 @@
 ///|
 /// Delta payload for a streamed chat completion chunk.
+#derive(ToJson)
 pub struct ChatCompletionChunkChoiceDelta {
   content : String?
+  reasoning_content : String?
   refusal : String?
   role : ChatCompletionRole?
   tool_calls : Array[ChatCompletionChunkChoiceDeltaToolCall]?
-} derive(ToJson)
+}
 
 ///|
 impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
@@ -25,6 +27,15 @@ impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
       Some(content)
     }
     None => None
+  }
+  let reasoning_content = match json.get("reasoning_content") {
+    Some(Null) | None =>
+      match json.get("reasoning") {
+        Some(String(reasoning)) => Some(reasoning)
+        _ => None
+      }
+    Some(String(reasoning)) => Some(reasoning)
+    _ => None
   }
   let refusal = match json.get("refusal") {
     Some(Null) => None
@@ -57,7 +68,7 @@ impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
     }
     None => None
   }
-  { content, refusal, role, tool_calls, }
+  { content, reasoning_content, refusal, role, tool_calls, }
 }
 
 ///|

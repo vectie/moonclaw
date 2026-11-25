@@ -5,6 +5,7 @@ const MOONCODE_CONTEXT_PROVENANCE_FIELD : String = "_moonclaw_context"
 const MOONCODE_CONTEXT_PROVENANCE_CONTRACT : String = "moonclaw.context-fragment.v2"
 
 ///|
+#derive(Debug, Eq)
 #warnings("-unused_value")
 priv enum MoonCodeContextKind {
   SystemContext
@@ -15,7 +16,7 @@ priv enum MoonCodeContextKind {
   UserContext
   AssistantContext
   UnknownContext(String)
-} derive(Debug, Eq)
+}
 
 ///|
 priv struct MoonCodeContextFragment {

@@ -166,7 +166,7 @@ test "mooncode continuation stores one current planner transcript" {
   assert_true(
     mooncode_runtime_resume_point(after_step)
     is Some(
-      ResumeTools({ tool_index: 1, executing: false, approval: None, .. })
+      ResumeTools({ tool_index: 1, executing: false, approval: None, .. }),
     ),
   )
 }

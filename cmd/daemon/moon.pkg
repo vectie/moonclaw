@@ -51,6 +51,11 @@ import {
   "vectie/moonclaw/mooncode/core" @mooncode_core,
   "vectie/moonclaw/job",
   "vectie/moonclaw/plugin/moongate",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/tools/glob_files",
+  "vectie/moonclaw/tools/search_files",
+  "vectie/moonclaw/tools/web_search",
+  "vectie/moonclaw/tools/web_fetch",
   "vectie/moonlib/capability",
 }
 

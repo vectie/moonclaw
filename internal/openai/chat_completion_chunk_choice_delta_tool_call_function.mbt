@@ -1,9 +1,10 @@
 ///|
 /// Partial tool function payload emitted in streaming deltas.
+#derive(ToJson)
 pub struct ChatCompletionChunkChoiceDeltaToolCallFunction {
   arguments : String?
   name : String?
-} derive(ToJson)
+}
 
 ///|
 impl @json.FromJson for ChatCompletionChunkChoiceDeltaToolCallFunction with fn from_json(

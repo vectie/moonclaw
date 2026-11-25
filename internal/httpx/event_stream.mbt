@@ -121,10 +121,11 @@ pub fn EventStreamReader::new(r : &@io.Reader) -> EventStreamReader {
 ///
 /// * `event` : Optional event type identifier.
 /// * `data` : The data payload of the event.
+#derive(ToJson)
 pub struct Event {
   event : String?
   data : String
-} derive(ToJson)
+}
 
 ///|
 pub extend Event with ToJson::{to_json}

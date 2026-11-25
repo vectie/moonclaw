@@ -1,9 +1,10 @@
 ///|
 /// Tool call emitted from an assistant message.
+#derive(Debug)
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
-} derive(Debug)
+}
 
 ///|
 pub impl ToJson for ChatCompletionMessageToolCall with fn to_json(

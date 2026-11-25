@@ -63,7 +63,8 @@ pub fn classify(tool : String, arguments : Json) -> Policy {
     "read_skill" | "finish" | "checkpoint" => policy(replay=true)
     "mcp_list_tools" => policy(parallel_read=true, replay=true)
     "moon_ide" => policy(parallel_read=true)
-    "glob" | "grep" | "web_fetch" | "web_search" => policy(after_skill=true)
+    "glob" | "grep" | "web_fetch" | "web_search" =>
+      policy(parallel_read=true, after_skill=true, replay=true)
     "shell" => {
       let read_only = shell_is_demonstrably_read_only(
         string_field(arguments, "cmd"),

@@ -1,10 +1,11 @@
 ///|
 /// Token usage details for the prompt segment.
+#derive(Debug, ToJson)
 pub struct PromptTokensDetails {
   cached_tokens : Int32?
   cache_write_tokens : Int32?
   audio_tokens : Int32?
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn PromptTokensDetails::new(

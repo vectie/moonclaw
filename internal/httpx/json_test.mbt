@@ -1,13 +1,15 @@
 ///|
+#derive(ToJson, @json.FromJson)
 struct TaskRequest {
   name : String
   description : String
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
+#derive(ToJson)
 enum TaskResponse {
   Ok(TaskRequest)
-} derive(ToJson)
+}
 
 ///|
 async test "JsonRequestReader" (t : @test.Test) {

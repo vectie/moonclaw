@@ -173,15 +173,13 @@ async fn Daemon::mooncode_start_runtime_service(
     book_root, session_id,
   )
   {
-    errdefer @async.protect_from_cancel(
-      () => lifecycle_gate.close(),
-    )
+    errdefer @async.protect_from_cancel(() => lifecycle_gate.close())
     ignore(lifecycle_gate.lock(Shared))
   }
   if mooncode_session_suspension_requested(book_root, session_id) {
-    @async.protect_from_cancel(
-      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-    )
+    @async.protect_from_cancel(() => {
+      mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+    })
     raise json_error(409, "Conflict", {
       "error": {
         "code": -1,
@@ -191,9 +189,9 @@ async fn Daemon::mooncode_start_runtime_service(
     })
   }
   {
-    errdefer @async.protect_from_cancel(
-      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-    )
+    errdefer @async.protect_from_cancel(() => {
+      mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+    })
     mooncode_require_active_session_state_locked(
       book_root,
       session_id,
@@ -201,17 +199,17 @@ async fn Daemon::mooncode_start_runtime_service(
     )
   }
   let execution_lease = {
-    errdefer @async.protect_from_cancel(
-      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-    )
+    errdefer @async.protect_from_cancel(() => {
+      mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+    })
     mooncode_open_session_execution_lease(book_root, session_id)
   }
   let owns_execution = {
     errdefer {
       execution_lease.close()
-      @async.protect_from_cancel(
-        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-        )
+      @async.protect_from_cancel(() => {
+        mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+      })
     }
     execution_lease.try_lock(Exclusive)
   }
@@ -224,9 +222,9 @@ async fn Daemon::mooncode_start_runtime_service(
     )
     let service_running = mooncode_json_bool(observed, "running", default=false)
     execution_lease.close()
-    @async.protect_from_cancel(
-      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
-    )
+    @async.protect_from_cancel(() => {
+      mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+    })
     return {
       "kind": "mooncode-runtime-service",
       "protocol": mooncode_protocol_version(),
@@ -265,13 +263,9 @@ async fn Daemon::mooncode_start_runtime_service(
   {
     errdefer {
       binding.runtime.service_running = false
-      @async.protect_from_cancel(
-        () => {
-          mooncode_runtime_service_release_gates(
-            lifecycle_gate, execution_lease,
-          )
-        },
-        )
+      @async.protect_from_cancel(() => {
+        mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
+      })
     }
     ignore(
       mooncode_append_session_journal(
@@ -310,22 +304,20 @@ async fn Daemon::mooncode_start_runtime_service(
               "MoonCode runtime service failed: \{mooncode_runtime_service_error_detail(error)}",
             )
           }
-          @async.protect_from_cancel(
-            () => {
-              if cancelled {
-                self.mooncode_runtime_service_persist_cancelled(
-                  session_id, book_root, payload,
-                )
-              } else if !recovered_waiting_approval {
-                self.mooncode_runtime_service_persist_failed(
-                  session_id,
-                  book_root,
-                  payload,
-                  mooncode_runtime_service_error_detail(error),
-                )
-              }
-            },
-                )
+          @async.protect_from_cancel(() => {
+            if cancelled {
+              self.mooncode_runtime_service_persist_cancelled(
+                session_id, book_root, payload,
+              )
+            } else if !recovered_waiting_approval {
+              self.mooncode_runtime_service_persist_failed(
+                session_id,
+                book_root,
+                payload,
+                mooncode_runtime_service_error_detail(error),
+              )
+            }
+          })
           Json::object({})
         }
       }
@@ -595,18 +587,16 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
       ),
       rearm_count,
     )
-    @async.protect_from_cancel(
-      () => {
-        ignore(
-          mooncode_append_session_journal(
-            book_root,
-            session_id,
-            mooncode_journal_event(),
-            finished,
-          ),
-        )
-      },
-    )
+    @async.protect_from_cancel(() => {
+      ignore(
+        mooncode_append_session_journal(
+          book_root,
+          session_id,
+          mooncode_journal_event(),
+          finished,
+        ),
+      )
+    })
     if drains_queue &&
       !@async.is_being_cancelled() &&
       mooncode_runtime_service_rearm_requested(

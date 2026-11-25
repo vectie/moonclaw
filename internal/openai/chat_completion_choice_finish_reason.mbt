@@ -1,12 +1,13 @@
 ///|
 /// Reason why the model stopped generating tokens.
+#derive(Debug)
 pub(all) enum ChatCompletionChoiceFinishReason {
   Stop
   Length
   ToolCalls
   ContentFilter
   FunctionCall
-} derive(Debug)
+}
 
 ///|
 impl ToJson for ChatCompletionChoiceFinishReason with fn to_json(

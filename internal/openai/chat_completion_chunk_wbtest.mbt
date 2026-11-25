@@ -21,3 +21,33 @@ test "ChatCompletionChunk decodes in-band SSE error frames without id" {
     None => fail("expected decoded error")
   }
 }
+
+///|
+test "ChatCompletionChunk decodes reasoning_content and reasoning deltas" {
+  let raw1 : Json = {
+    "id": "chatcmpl-r1",
+    "created": 1700000000,
+    "model": "glm-5.3.flash",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "role": "assistant",
+          "reasoning_content": "Step 1: inspect.",
+        },
+      },
+    ],
+  }
+  let raw2 : Json = {
+    "id": "chatcmpl-r2",
+    "created": 1700000000,
+    "model": "glm-5.3.flash",
+    "choices": [{ "index": 0, "delta": { "reasoning": " Step 2: answer." } }],
+  }
+  let chunk1 : ChatCompletionChunk = @json.from_json(raw1)
+  let chunk2 : ChatCompletionChunk = @json.from_json(raw2)
+  let collected : Array[String] = []
+  emit_reasoning_deltas_from_chunk(chunk1, delta => collected.push(delta))
+  emit_reasoning_deltas_from_chunk(chunk2, delta => collected.push(delta))
+  assert_eq(collected, ["Step 1: inspect.", " Step 2: answer."])
+}

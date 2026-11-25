@@ -236,6 +236,7 @@ async fn mooncode_runtime_turn_model_chat(
   request : @openai.Request,
   command : Json,
   on_text_delta~ : (String) -> Unit = _ => (),
+  on_reasoning_delta~ : (String) -> Unit = _ => (),
 ) -> (@openai.ChatCompletion, String, Int32, Int32) {
   let started = @async.now()
   let mut retry_count = 0
@@ -249,6 +250,7 @@ async fn mooncode_runtime_turn_model_chat(
           model, command,
         ),
         on_text_delta~,
+        on_reasoning_delta~,
       ),
     ) catch {
       error => {
@@ -447,17 +449,27 @@ fn mooncode_runtime_turn_model_tools_for_command(
   if !allowed.is_empty() {
     return tools
   }
+  let web_search_allowed = mooncode_command_web_search(command)
   let tools = if mooncode_runtime_turn_task_intent(command) == Some("read_only") {
-    mooncode_runtime_turn_select_model_tools(tools, [
-      "read", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
-    ])
+    let read_only = [
+      "read", "glob", "grep", "view_image", "moon_ide", "finish", "read_skill", "mcp_list_tools",
+    ]
+    if web_search_allowed {
+      read_only.push("web_search")
+      read_only.push("web_fetch")
+    }
+    mooncode_runtime_turn_select_model_tools(tools, read_only[:])
   } else {
     tools
   }
   let selected = [
-    "ask_user", "read", "read_skill", "write", "edit", "shell", "mcp_list_tools",
+    "ask_user", "read", "glob", "grep", "read_skill", "write", "edit", "shell", "mcp_list_tools",
     "mcp_call_tool",
   ]
+  if web_search_allowed {
+    selected.push("web_search")
+    selected.push("web_fetch")
+  }
   for execution in skill_results {
     if mooncode_json_bool(execution, "accepted", default=false) &&
       mooncode_json_string(execution, "tool", default="") == "read_skill" {
@@ -1353,37 +1365,70 @@ async fn Daemon::mooncode_runtime_model_round(
         )
       }
       let (
-        (completion, model_transport, model_retry_count, planner_latency_ms),
-        streamed,
+        (
+          (completion, model_transport, model_retry_count, planner_latency_ms),
+          streamed,
+        ),
+        _reasoning_streamed,
       ) = with_mooncode_reply_stream(
-        on_delta => {
-          mooncode_runtime_turn_model_chat(
-            model,
-            request,
-            command,
-            on_text_delta=on_delta,
+        on_reasoning => {
+          with_mooncode_reply_stream(
+            on_delta => {
+              mooncode_runtime_turn_model_chat(
+                model,
+                request,
+                command,
+                on_text_delta=on_delta,
+                on_reasoning_delta=on_reasoning,
+              )
+            },
+            chunk => {
+              let binding = self.mooncode_binding_for_session(session_id)
+              if binding.bind_book_root(mooncode_book_root(command)) {
+                let event = mooncode_runtime_turn_assistant_event(
+                  session_id,
+                  command_id,
+                  step=0,
+                  content=chunk,
+                  now=self.clock.now(),
+                )
+                let event = mooncode_json_object_with_field(
+                  event,
+                  "id",
+                  Json("moonclaw-live-\{self.uuid.v4()}"),
+                )
+                binding.events.put(event)
+                self.mooncode_persist_event(binding, event)
+              }
+            },
+            enabled=model.acp_tools || model.text_only,
           )
         },
         chunk => {
           let binding = self.mooncode_binding_for_session(session_id)
           if binding.bind_book_root(mooncode_book_root(command)) {
-            let event = mooncode_runtime_turn_assistant_event(
-              session_id,
-              command_id,
-              step=0,
-              content=chunk,
-              now=self.clock.now(),
-            )
-            let event = mooncode_json_object_with_field(
-              event,
-              "id",
-              Json("moonclaw-live-\{self.uuid.v4()}"),
-            )
+            let event : Json = {
+              "id": "moonclaw-live-reasoning-\{self.uuid.v4()}",
+              "protocol": mooncode_protocol_version(),
+              "session_id": session_id,
+              "command_id": command_id,
+              "lane": "runtime",
+              "kind": "reasoning_delta",
+              "event": "reasoning_delta",
+              "title": "Thinking",
+              "status": "running",
+              "detail": chunk,
+              "content": chunk,
+              "live_reasoning": true,
+              "model": model_name,
+              "created_at": self.clock.now(),
+              "source": "moonclaw-native-runtime-turn",
+            }
             binding.events.put(event)
             self.mooncode_persist_event(binding, event)
           }
         },
-        enabled=model.acp_tools || model.text_only,
+        enabled=true,
       ) catch {
         error => {
           let failed = mooncode_runtime_turn_planner_error_result(

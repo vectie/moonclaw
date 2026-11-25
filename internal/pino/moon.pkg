@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/os_error",
   "vectie/moonlib/errno",
   "moonbitlang/async/aqueue",
+  "moonbitlang/async/semaphore",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
 }

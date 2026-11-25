@@ -1,11 +1,12 @@
 ///|
 /// Assistant message returned by chat completions.
+#derive(Debug, ToJson)
 pub struct ChatCompletionMessage {
   content : String?
   refusal : String?
   role : ChatCompletionMessageRole
   tool_calls : Array[ChatCompletionMessageToolCall]
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn ChatCompletionMessage::new(

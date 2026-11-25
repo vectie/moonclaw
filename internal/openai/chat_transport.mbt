@@ -21,6 +21,7 @@ async fn send_chat_request(
   model~ : @model.Model,
   logger~ : @pino.Logger,
   on_text_delta~ : (String) -> Unit,
+  on_reasoning_delta~ : (String) -> Unit = _ => (),
 ) -> ChatCompletion {
   let uri = Uri::parse(request.url)
   let client = @http.Client(
@@ -40,7 +41,13 @@ async fn send_chat_request(
     let reader = ChunkReader::new(client)
     let builder = ChatCompletionBuilder::new()
     while reader.read() is Some(chunk) {
-      receive_chat_stream_chunk(chunk, logger, on_text_delta, builder)
+      receive_chat_stream_chunk(
+        chunk,
+        logger,
+        on_text_delta,
+        builder,
+        on_reasoning_delta~,
+      )
     }
     builder.to_chat_completion()
   } else {
@@ -64,10 +71,12 @@ async fn receive_chat_stream_chunk(
   logger : @pino.Logger,
   on_text_delta : (String) -> Unit,
   builder : ChatCompletionBuilder,
+  on_reasoning_delta~ : (String) -> Unit = _ => (),
 ) -> Unit {
   if logger.is_enabled(Debug) {
     logger.debug("ChunkReceived", data={ "chunk": chunk })
   }
+  emit_reasoning_deltas_from_chunk(chunk, on_reasoning_delta)
   emit_text_deltas_from_chunk(chunk, on_text_delta)
   builder.add_chunk(chunk)
 }

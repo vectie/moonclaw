@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson)
 pub struct ChatCompletionChunk {
   id : String
   choices : Array[ChatCompletionChunkChoice]
@@ -8,7 +9,7 @@ pub struct ChatCompletionChunk {
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
   error : OpenRouterErrorResponse?
-} derive(ToJson)
+}
 
 ///|
 pub impl @json.FromJson for ChatCompletionChunk with fn from_json(

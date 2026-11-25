@@ -1,8 +1,9 @@
 ///|
+#derive(ToJson)
 priv enum DaemonEvent {
   TasksSynchronized(Array[@daemon.Task])
   TaskChanged(@daemon.Task)
-} derive(ToJson)
+}
 
 ///|
 impl @httpx.FromEvent for DaemonEvent with fn from_event(event : @httpx.Event) -> DaemonEvent raise {

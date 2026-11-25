@@ -1,5 +1,6 @@
 ///|
 /// Reasoning effort control for reasoning models.
+#derive(Debug)
 pub(all) enum ChatCompletionReasoningEffort {
   None_
   Minimal
@@ -7,7 +8,7 @@ pub(all) enum ChatCompletionReasoningEffort {
   Medium
   High
   Xhigh
-} derive(Debug)
+}
 
 ///|
 impl ToJson for ChatCompletionReasoningEffort with fn to_json(

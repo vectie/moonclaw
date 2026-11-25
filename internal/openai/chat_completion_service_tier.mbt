@@ -1,12 +1,13 @@
 ///|
 /// Service tier override for chat completion requests.
+#derive(Debug)
 pub(all) enum ChatCompletionServiceTier {
   Auto
   Default
   Flex
   Scale
   Priority
-} derive(Debug)
+}
 
 ///|
 impl @json.FromJson for ChatCompletionServiceTier with fn from_json(

@@ -1,15 +1,17 @@
 ///|
+#derive(Debug, ToJson)
 priv suberror HttpError {
   HttpError(code~ : Int32, body~ : String)
-} derive(Debug, ToJson)
+}
 
 ///|
 /// HTTP failure that retains the provider's explicit retry window. MoonGate
 /// forwards only safe retry/rate-limit headers, so callers can pace a durable
 /// retry loop without guessing or immediately bursting again.
+#derive(Debug, ToJson)
 priv suberror HttpRetryError {
   HttpRetryError(code~ : Int32, body~ : String, retry_after_ms~ : Int32?)
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn error_summary(error : Error) -> String {
@@ -149,6 +151,7 @@ pub async fn chat_with_text_deltas(
   logger~ : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body~ : Map[String, Json] = {},
   on_text_delta~ : (String) -> Unit = _ => (),
+  on_reasoning_delta~ : (String) -> Unit = _ => (),
   timeout_ms~ : Int32? = None,
   transport? : ChatTransport,
 ) -> ChatCompletion {
@@ -174,6 +177,7 @@ pub async fn chat_with_text_deltas(
           logger~,
           extra_body~,
           on_text_delta~,
+          on_reasoning_delta~,
           transport?,
         )
     }
@@ -294,6 +298,7 @@ async fn chat_openai(
   logger~ : @pino.Logger,
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
+  on_reasoning_delta~ : (String) -> Unit = _ => (),
   transport? : ChatTransport,
 ) -> ChatCompletion {
   let route = openai_chat_route_for_model(model)
@@ -336,7 +341,14 @@ async fn chat_openai(
       }
       match transport {
         Some(transport) => transport(serialized, on_text_delta)
-        None => send_chat_request(serialized, model~, logger~, on_text_delta~)
+        None =>
+          send_chat_request(
+            serialized,
+            model~,
+            logger~,
+            on_text_delta~,
+            on_reasoning_delta~,
+          )
       }
     },
   )
@@ -736,7 +748,7 @@ fn headers_from_ci(
 ) -> Map[String, String] {
   let out : Map[String, String] = Map([])
   for k, v in headers {
-    out[k.0] = v
+    out[k.0.to_lower()] = v
   }
   out
 }
@@ -921,6 +933,19 @@ async fn do_openai_responses_stream_request(
     )
   }
   { response_id, text_chunks, output_items, usage, }
+}
+
+///|
+fn emit_reasoning_deltas_from_chunk(
+  chunk : ChatCompletionChunk,
+  on_reasoning_delta : (String) -> Unit,
+) -> Unit {
+  for choice in chunk.choices {
+    match choice.delta.reasoning_content {
+      Some(reasoning) if !reasoning.is_empty() => on_reasoning_delta(reasoning)
+      _ => ()
+    }
+  }
 }
 
 ///|
