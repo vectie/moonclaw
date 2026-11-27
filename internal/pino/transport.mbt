@@ -67,7 +67,7 @@ pub fn Transport::parse(transport : StringView) -> Transport raise {
 ///|
 async fn mkdir(path : String) -> Unit {
   let dirs = []
-  let mut current = path.view()
+  let mut current = path[:]
   while true {
     let dir = current
     let dir = dir.to_owned()
@@ -120,7 +120,7 @@ async fn Transport::write(self : Transport, content : Json) -> Unit {
       }
       let content = @json.to_json(content).stringify()
       let buffer = Buffer()
-      buffer.write_bytes(@encoding/utf8.encode(content))
+      buffer.write_bytesview(@encoding/utf8.encode(content))
       buffer.write_byte(b'\n')
       file.write(buffer.to_bytes())
     }

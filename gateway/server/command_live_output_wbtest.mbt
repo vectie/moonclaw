@@ -98,7 +98,7 @@ async test "actual Fort live reader crosses authenticated gateway into shipped U
         "max_command_args": 16,
         "max_argument_bytes": 4096,
         "max_changed_paths": 32,
-        "retention_ms": 60000L.to_json(),
+        "retention_ms": ToJson::to_json(60000L),
       },
     }
     @fs.write_file(
@@ -191,7 +191,9 @@ async test "actual Fort live reader crosses authenticated gateway into shipped U
       "/v1/jobs/runs/run-1/command-outputs/" +
       plan.grant.request_id +
       "/live/"
-    let headers = { "authorization": "Bearer fixture-only-token" }
+    let headers : @http.Headers = Map([
+      (@http.CaseInsensitiveString("authorization"), "Bearer fixture-only-token"),
+    ])
     @async.with_task_group(group => {
       group.spawn_bg(
         () => {

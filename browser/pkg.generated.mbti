@@ -30,6 +30,7 @@ pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserAction {
   action_id : String
   session_id : String
@@ -48,16 +49,18 @@ pub struct BrowserAction {
   idempotency_key : String
   fresh_authority_nonce : String
   created_at : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserActionOutcome {
   Accepted
   NoOp
   Blocked(String)
   Diverged(String)
   Cancelled(String)
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserActionReceipt {
   action_id : String
   session_id : String
@@ -83,29 +86,33 @@ pub struct BrowserActionReceipt {
   idempotency_key : String
   fresh_authority_nonce : String
   completed_at : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn BrowserActionReceipt::accepted(Self) -> Bool
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserActor {
   User
   Agent
   Replay
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserDestinationClass {
   DestinationNotApplicable
   PublicInternetDestination
   LoopbackDestination
   PrivateNetworkDestination
   LinkLocalDestination
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) enum BrowserDispatch {
   Ready(BrowserHostCommand)
   Rejected(BrowserActionReceipt)
   Duplicate(BrowserActionReceipt)
-} derive(Eq, ToJson, @debug.Debug)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserEffectClass {
   RenderLocalArtifact
   InspectVisiblePage
@@ -116,8 +123,9 @@ pub(all) enum BrowserEffectClass {
   DownloadFile
   SubmitExternalMutation
   RequestPhysicalEffect
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserHostCommand {
   request_id : String
   session_id : String
@@ -146,8 +154,9 @@ pub struct BrowserHostCommand {
   mutation_authority_id : String
   fresh_authority_nonce : String
   mutation_authority_expires_at : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserHostResult {
   host_receipt_id : String
   request_id : String
@@ -170,20 +179,23 @@ pub struct BrowserHostResult {
   observations : Array[String]
   target_resolved : Bool
   completed_at : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserHostStatus {
   Completed
   CancelledByHost(String)
   RejectedByHost(String)
   Crashed(String)
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserNetworkPolicy {
   Offline
   ApprovedOriginsOnly
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserOperation {
   Navigate
   Reload
@@ -195,20 +207,23 @@ pub(all) enum BrowserOperation {
   SetViewport
   CaptureScreenshot
   CaptureDiagnostics
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserOriginClass {
   OpaqueLocalPreview
   IsolatedLoopback
   ExternalOrigin
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserPageTrust {
   TrustedLocalPage
   UntrustedExternalPage
   PromptInjectionSuspected
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserSessionScope {
   session_id : String
   workspace_id : String
@@ -229,42 +244,45 @@ pub struct BrowserSessionScope {
   mutation_authority_nonce : String
   mutation_authority_expires_at : String
   credential_handles : Array[String]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserSessionStatus {
   Ready
   AgentOperating
   Paused
   UserControl
   Stopped
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserStorageLifetime {
   Ephemeral
   RunScoped
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum BrowserTransferVerdict {
   TransferNotScanned
   TransferClean
   TransferRejected(String)
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub struct BrowserWorker {
   scope : BrowserSessionScope
   mut status : BrowserSessionStatus
-  mut remaining_actions : Int
+  mut remaining_actions : Int32
   receipts : Array[BrowserActionReceipt]
 }
 pub fn BrowserWorker::begin_agent_operation(Self) -> Bool
 pub fn BrowserWorker::complete(Self, BrowserAction, BrowserHostCommand, BrowserHostResult) -> BrowserActionReceipt
 pub fn BrowserWorker::complete_transport_error(Self, BrowserAction, BrowserHostCommand, String) -> BrowserActionReceipt
-pub fn BrowserWorker::new(BrowserSessionScope, action_budget? : Int) -> Self
+pub fn BrowserWorker::new(BrowserSessionScope, action_budget? : Int32) -> Self
 pub fn BrowserWorker::pause(Self) -> Bool
 pub fn BrowserWorker::prepare(Self, BrowserAction, expected_before_digest? : String) -> BrowserDispatch
 pub fn BrowserWorker::prepare_replay(Self, BrowserActionReceipt, BrowserAction) -> BrowserDispatch
 pub fn BrowserWorker::receipts(Self) -> Array[BrowserActionReceipt]
-pub fn BrowserWorker::remaining_actions(Self) -> Int
+pub fn BrowserWorker::remaining_actions(Self) -> Int32
 pub fn BrowserWorker::restore(BrowserWorkerSnapshot) -> Self
 pub fn BrowserWorker::return_to_agent(Self) -> Bool
 pub fn BrowserWorker::scope(Self) -> BrowserSessionScope
@@ -273,12 +291,13 @@ pub fn BrowserWorker::status(Self) -> BrowserSessionStatus
 pub fn BrowserWorker::stop(Self) -> Bool
 pub fn BrowserWorker::take_over(Self) -> Bool
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct BrowserWorkerSnapshot {
   scope : BrowserSessionScope
   status : BrowserSessionStatus
-  remaining_actions : Int
+  remaining_actions : Int32
   receipts : Array[BrowserActionReceipt]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
 // Type aliases
 

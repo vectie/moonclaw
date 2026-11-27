@@ -1,10 +1,11 @@
 ///|
+#derive(ToJson, FromJson)
 struct ReadFileToolResult {
   path : String
   content : String
   start_line : Int32
   end_line : Int32
-} derive(ToJson, FromJson)
+}
 
 ///|
 const MaxReadFileTokens : Int32 = 25000

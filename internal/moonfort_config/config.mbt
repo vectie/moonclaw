@@ -8,13 +8,14 @@ const SandboxExecutorConfigEnv : String = "MOONCLAW_MOONFORT_CONFIG"
 const MoonFortPromotionConfigEnv : String = "MOONCLAW_MOONFORT_PROMOTION_CONFIG"
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct PromotionAdapterConfig {
   protocol_version : Int32
   promotion_path : String
   promotion_args : Array[String]
   executor_config_path : String
   receipt_root : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 async fn read_bounded_canonical_file(path : String, limit : Int32) -> String {
@@ -34,7 +35,7 @@ async fn read_bounded_canonical_file(path : String, limit : Int32) -> String {
   guard initial_size >= 0L && initial_size <= limit.to_int64() else {
     fail("MoonFort configuration file exceeds the size limit")
   }
-  let output = @buffer.Buffer(size_hint=initial_size.to_int().min(8_192))
+  let output = @buffer.Buffer(capacity=initial_size.to_int().min(8_192))
   for ;; {
     guard file.read_some(max_len=(limit - output.length() + 1).min(8_192))
       is Some(chunk) else {
@@ -43,7 +44,7 @@ async fn read_bounded_canonical_file(path : String, limit : Int32) -> String {
     guard output.length() + chunk.length() <= limit else {
       fail("MoonFort configuration file exceeds the size limit")
     }
-    output.write_bytes(chunk)
+    output.write_bytesview(chunk)
   }
   guard file.size() == initial_size &&
     @fs.kind(path, follow_symlink=false) is Regular &&

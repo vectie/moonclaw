@@ -1,5 +1,6 @@
 ///|
 /// A policy-free tool binding projected from the shared pack contract.
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct ToolBinding {
   pack_id : String
   product_id : String
@@ -10,9 +11,10 @@ pub(all) struct ToolBinding {
   idempotent : Bool
   evidence_outputs : Array[String]
   review_required : Bool
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct InvocationRequest {
   tool_id : String
   input_schema_id : String
@@ -20,22 +22,24 @@ pub(all) struct InvocationRequest {
   evidence_path : String
   attempt : Int32
   estimated_cost_micros : Int32
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct InvocationPolicy {
   granted_authorities : Array[@pack.AuthorityClass]
   reviewed_tool_ids : Array[String]
   max_attempts : Int32
   timeout_ms : Int32
   remaining_budget_micros : Int32
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct InvocationDecision {
   allowed : Bool
   issues : Array[String]
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 pub fn bindings(

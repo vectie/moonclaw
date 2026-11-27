@@ -13,6 +13,7 @@ pub fn new(String, home? : String?) -> @tool.Tool[ReadResourceResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct ReadResourceResult {
   uri : String
   resolved_uri : String
@@ -20,22 +21,23 @@ pub struct ReadResourceResult {
   text : String
   truncated : Bool
   content_type : String
-  metadata : Json
-} derive(ToJson, @json.FromJson)
-pub fn ReadResourceResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+  metadata : @json.Json
+}
+pub fn ReadResourceResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ReadResourceResult::output(Self, &Logger) -> Unit
-pub fn ReadResourceResult::to_json(Self) -> Json
+pub fn ReadResourceResult::to_json(Self) -> @json.Json
 pub fn ReadResourceResult::to_string(Self) -> String
 pub impl Show for ReadResourceResult
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub enum ResourceKind {
   File
   Skill
   Worktree
   Provider
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn ResourceKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ResourceKind::to_json(Self) -> Json
+}
+pub fn ResourceKind::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ResourceKind::to_json(Self) -> @json.Json
 pub fn ResourceKind::to_repr(Self) -> @debug.Repr
 
 // Type aliases

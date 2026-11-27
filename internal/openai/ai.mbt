@@ -104,7 +104,7 @@ fn response_retry_after_ms(headers : Map[String, String]) -> Int32? {
     }
   }
   guard raw is Some(value) else { return None }
-  let seconds = @string.parse_int(value, base=10) catch { _ => return None }
+  let seconds = @string.parse_int(value, radix=10) catch { _ => return None }
   if seconds < 0 {
     None
   } else {

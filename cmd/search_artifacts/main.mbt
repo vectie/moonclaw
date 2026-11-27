@@ -15,7 +15,7 @@ async fn run(args : Array[String]) -> Unit {
   let mut destination : String? = None
   let mut format = "json"
   let mut limit = 32
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for i = 2; i < args.length(); i = i + 2 {
     guard i + 1 < args.length() else {
       fail("Missing option value\n" + usage())
@@ -60,7 +60,7 @@ async fn run(args : Array[String]) -> Unit {
   if format == "text" {
     @stdio.stdout.write(result.to_text())
     if destination is Some(path) {
-      println("Exported exact matches to " + path.to_json().stringify())
+      println("Exported exact matches to " + Json::string(path).stringify())
     }
   } else {
     let output : Json = {

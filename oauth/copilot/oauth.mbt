@@ -1,11 +1,12 @@
 ///|
+#derive(Debug)
 pub struct DeviceCodeResponse {
   device_code : String
   user_code : String
   verification_uri : String
   expires_in : Int32
   interval : Int32
-} derive(Debug)
+}
 
 ///|
 impl @json.FromJson for DeviceCodeResponse with fn from_json(
@@ -45,10 +46,11 @@ impl @json.FromJson for DeviceCodeResponse with fn from_json(
 }
 
 ///|
+#derive(Debug)
 struct AccessTokenResponse {
   access_token : String?
   error : String?
-} derive(Debug)
+}
 
 ///|
 impl @json.FromJson for AccessTokenResponse with fn from_json(
@@ -70,10 +72,11 @@ impl @json.FromJson for AccessTokenResponse with fn from_json(
 }
 
 ///|
+#derive(Debug)
 pub struct CopilotTokenResponse {
   token : String
   expires_at : Int64
-} derive(Debug)
+}
 
 ///|
 impl @json.FromJson for CopilotTokenResponse with fn from_json(

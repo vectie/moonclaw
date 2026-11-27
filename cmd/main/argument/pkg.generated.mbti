@@ -3,14 +3,16 @@ package "vectie/moonclaw/cmd/main/argument"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
 
 // Errors
+#derive(@debug.Debug, @json.ToJson)
 pub(all) suberror InvalidArgument {
   InvalidArgument(String)
-} derive(ToJson, @debug.Debug)
+}
 
 // Types and methods
 

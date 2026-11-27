@@ -5,7 +5,7 @@ fn fake_process(
   stdout~ : String = "",
   stderr~ : String = "",
   status~ : Int32 = 0,
-) -> CommandResult {
+) -> @pdf_ocr_markdown.CommandResult {
   {
     command: exec,
     arguments: args,
@@ -25,7 +25,7 @@ async test "convert_pdf_to_markdown rasterizes pages and renders markdown" {
     let pdf_path = @pathx.join(tmpdir, "parcel-brief.pdf")
     @fsx.write_to_file(pdf_path, "fake pdf bytes")
     let calls : Array[String] = []
-    let executor = CommandExecutor::new(run=async fn(request) {
+    let executor = @pdf_ocr_markdown.CommandExecutor::new(run=async fn(request) {
       let joined_arguments = request.arguments.join(" ")
       calls.push("\{request.command} \{joined_arguments}")
       match request.command {
@@ -58,10 +58,10 @@ async test "convert_pdf_to_markdown rasterizes pages and renders markdown" {
         _ => Err("unexpected command")
       }
     })
-    let document = convert_pdf_to_markdown(
+    let document = @pdf_ocr_markdown.convert_pdf_to_markdown(
       pdf_path,
       executor~,
-      options=OcrMarkdownOptions::new(language=Some("eng")),
+      options=@pdf_ocr_markdown.OcrMarkdownOptions::new(language=Some("eng")),
     )
     inspect(document.title, content="parcel-brief")
     inspect(document.pages.length(), content="2")
@@ -90,11 +90,11 @@ async test "convert_pdf_to_markdown raises when rasterization yields no pages" {
   ) {
     let pdf_path = @pathx.join(tmpdir, "empty.pdf")
     @fsx.write_to_file(pdf_path, "fake pdf bytes")
-    let executor = CommandExecutor::new(run=fn(request) {
+    let executor = @pdf_ocr_markdown.CommandExecutor::new(run=fn(request) {
       Ok(fake_process(request.command, request.arguments))
     })
     let result = try {
-      ignore(convert_pdf_to_markdown(pdf_path, executor~))
+      ignore(@pdf_ocr_markdown.convert_pdf_to_markdown(pdf_path, executor~))
       "completed"
     } catch {
       NoPagesGenerated(path) => "no-pages:\{path}"
@@ -107,7 +107,7 @@ async test "convert_pdf_to_markdown raises when rasterization yields no pages" {
 ///|
 async test "convert_pdf_to_markdown raises when input file is missing" {
   let result = try {
-    ignore(convert_pdf_to_markdown("/tmp/does-not-exist.pdf"))
+    ignore(@pdf_ocr_markdown.convert_pdf_to_markdown("/tmp/does-not-exist.pdf"))
     "completed"
   } catch {
     FileNotFound(path) => "missing:\{path}"
@@ -124,7 +124,7 @@ async test "default PDF markdown OCR route fails closed" {
     let pdf_path = @pathx.join(tmpdir, "sandbox-required.pdf")
     @fsx.write_to_file(pdf_path, "fake pdf bytes")
     let result = try {
-      ignore(convert_pdf_to_markdown(pdf_path))
+      ignore(@pdf_ocr_markdown.convert_pdf_to_markdown(pdf_path))
       "completed"
     } catch {
       RasterizationFailed(detail) => detail

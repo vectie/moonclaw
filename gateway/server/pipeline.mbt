@@ -1,13 +1,15 @@
 ///|
+#derive(ToJson, FromJson, Eq, Debug)
 pub enum PipelineStatus {
   Pending
   Running
   Completed
   Failed
   Cancelled
-} derive(ToJson, FromJson, Eq, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PipelineStage {
   name : String
   message : String
@@ -19,7 +21,7 @@ pub struct PipelineStage {
   error : String?
   started_at : Int32?
   completed_at : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn pipeline_stage(
@@ -110,6 +112,7 @@ pub fn PipelineStage::resolve_input(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct Pipeline {
   pipeline_id : String
   name : String
@@ -121,7 +124,7 @@ pub struct Pipeline {
   started_at : Int32?
   completed_at : Int32?
   metadata : Map[String, Json]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn pipeline(
@@ -287,8 +290,8 @@ pub fn Pipeline::total_stages(self : Pipeline) -> Int32 {
 
 ///|
 pub fn Pipeline::progress(self : Pipeline) -> Double {
-  let total = Double::from_int(self.total_stages())
-  let completed = Double::from_int(self.completed_stages())
+  let total = self.total_stages().to_double()
+  let completed = self.completed_stages().to_double()
   if total == 0.0 {
     0.0
   } else {

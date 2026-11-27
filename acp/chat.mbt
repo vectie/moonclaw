@@ -1,11 +1,12 @@
 ///|
+#derive(Debug)
 pub(all) enum AcpChatAction {
   Targets
   Status
   Attach(String)
   Detach(String)
   Run(String)
-} derive(Debug)
+}
 
 ///|
 fn chat_run_summary(run : AcpRun) -> String? {

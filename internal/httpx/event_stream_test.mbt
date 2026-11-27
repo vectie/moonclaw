@@ -32,7 +32,7 @@ async test "event-stream" (t : @test.Test) {
         es.push(event)
       }
       inspect(
-        es.map(Event::to_string).join(""),
+        es.map(@httpx.Event::to_string).join(""),
         content=(
           #|event: message
           #|data: {"count":0}
@@ -79,7 +79,7 @@ async test "event-stream comments are protocol-valid heartbeats" (
         events.push(event)
       }
       inspect(
-        events.map(Event::to_string).join(""),
+        events.map(@httpx.Event::to_string).join(""),
         content=(
           #|event: message
           #|data: {"ready":true}

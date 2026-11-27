@@ -36,6 +36,7 @@ fn installed_fixture_manifest() -> @pack.MoonPackManifest {
     provider_ports: [],
     schedules: [],
     app_entrypoints: [],
+    app_runtime_identity: None,
     migrations: [],
     evaluations: [
       @pack.contract_ref("fixture-tool", "1.0.0", "bin/fixture_tool"),
@@ -49,7 +50,7 @@ fn installed_fixture_manifest() -> @pack.MoonPackManifest {
 }
 
 ///|
-fn installed_fixture_workflow() -> PackWorkflowDeclaration {
+fn installed_fixture_workflow() -> @packtool.PackWorkflowDeclaration {
   {
     contract: "moonsuite.pack-workflow.v1",
     pack_id: "fixture-host",
@@ -104,7 +105,7 @@ async fn write_installed_fixture_source(root : String) -> Unit {
   }
   @fsx.write_to_file(
     @pathx.join(root, "workflows/daily.json"),
-    installed_fixture_workflow().to_json().stringify(),
+    ToJson::to_json(installed_fixture_workflow()).stringify(),
   )
   @fsx.write_to_file(
     @pathx.join(root, "bin/fixture_tool"),
@@ -140,7 +141,7 @@ async fn write_installed_fixture_source(root : String) -> Unit {
 }
 
 ///|
-fn installed_fixture_policy() -> InvocationPolicy {
+fn installed_fixture_policy() -> @packtool.InvocationPolicy {
   {
     granted_authorities: [Observe, SandboxExecution],
     reviewed_tool_ids: [],
@@ -171,7 +172,7 @@ async test "installed pack workflow refuses native execution without a sandbox a
       clock.val
     }
     try
-      run_installed_command_workflow(
+      @packtool.run_installed_command_workflow(
         workspace~,
         pack_id="fixture-host",
         workflow_id="daily",

@@ -1,9 +1,10 @@
 ///|
+#derive(Debug)
 pub struct TokenResponse {
   id_token : String
   access_token : String
   refresh_token : String
-} derive(Debug)
+}
 
 ///|
 impl @json.FromJson for TokenResponse with fn from_json(

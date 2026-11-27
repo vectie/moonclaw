@@ -14,27 +14,31 @@ priv struct Config {
 ///|
 /// TODO(upstream): false positive on missing_priv
 #warnings("-missing_priv")
+#derive(ToJson, FromJson, Eq)
 struct Items {
   todos : Array[Item]
   created_at : String
   mut updated_at : String
-} derive(ToJson, FromJson, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 priv enum Priority {
   High
   Medium
   Low
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 priv enum Status {
   Pending
   InProgress
   Completed
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Eq)
 priv struct Item {
   content : String
   created_at : String
@@ -43,7 +47,7 @@ priv struct Item {
   priority : Priority
   status : Status
   updated_at : String
-} derive(ToJson, FromJson, Eq)
+}
 
 ///|
 pub extend Items with ToJson::{to_json}

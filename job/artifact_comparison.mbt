@@ -1,19 +1,21 @@
 ///|
 /// Metadata comes from the exact retained record, and the digest from the bytes
 /// read for this comparison. Neither is a claim of historical immutability.
+#derive(ToJson)
 pub struct ComparedArtifact {
   record : ArtifactRecord
   content_sha256 : String
   content_bytes : Int32
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct ArtifactComparison {
   schema : String
   left : ComparedArtifact
   right : ComparedArtifact
   diff : @artifact_diff.TextDiff
-} derive(ToJson)
+}
 
 ///|
 fn comparison_id(id : String) -> Unit raise {

@@ -48,14 +48,14 @@ pub async fn handle(
     return
   }
   let request = try {
-    let bytes = @buffer.Buffer(size_hint=1024)
+    let bytes = @buffer.Buffer(capacity=1024)
     for ;; {
       guard r.body.read_some(max_len=(4097 - bytes.length()).min(2048))
         is Some(chunk) else {
         break
       }
       guard bytes.length() + chunk.length() <= 4096 else { fail("bound") }
-      bytes.write_bytes(chunk)
+      bytes.write_bytesview(chunk)
     }
     moondesk_recovery_parse_request(
       @json.parse(@encoding/utf8.decode(bytes.to_bytes())),

@@ -79,21 +79,21 @@ pub fn bold(String) -> String
 
 pub fn colorize(String, Color) -> String
 
-pub fn cursor_down(Int) -> String
+pub fn cursor_down(Int32) -> String
 
-pub fn cursor_left(Int) -> String
+pub fn cursor_left(Int32) -> String
 
-pub fn cursor_right(Int) -> String
+pub fn cursor_right(Int32) -> String
 
-pub fn cursor_to(Int, Int) -> String
+pub fn cursor_to(Int32, Int32) -> String
 
-pub fn cursor_to_col(Int) -> String
+pub fn cursor_to_col(Int32) -> String
 
-pub fn cursor_up(Int) -> String
+pub fn cursor_up(Int32) -> String
 
 pub fn dim(String) -> String
 
-pub fn erase_lines(Int) -> String
+pub fn erase_lines(Int32) -> String
 
 pub fn italic(String) -> String
 
@@ -103,19 +103,19 @@ pub fn parse_command(String) -> (String, String)
 
 pub fn parse_key(BytesView) -> Key
 
-pub fn scroll_down(Int) -> String
+pub fn scroll_down(Int32) -> String
 
-pub fn scroll_up(Int) -> String
+pub fn scroll_up(Int32) -> String
 
 pub fn styled(String, fg? : Color, bg? : Color, styles? : Array[StyleCode]) -> String
 
-pub fn truncate_styled(String, Int) -> String
+pub fn truncate_styled(String, Int32) -> String
 
 pub fn underline(String) -> String
 
-pub fn visible_width(String) -> Int
+pub fn visible_width(String) -> Int32
 
-pub fn wrap_text(String, Int) -> Array[String]
+pub fn wrap_text(String, Int32) -> Array[String]
 
 // Errors
 
@@ -124,10 +124,10 @@ pub(all) struct AssistantMessage {
   mut text : String
   mut is_streaming : Bool
 }
-pub fn AssistantMessage::get_preferred_height(Self, Int) -> Int
+pub fn AssistantMessage::get_preferred_height(Self, Int32) -> Int32
 pub fn AssistantMessage::is_streaming(Self) -> Bool
 pub fn AssistantMessage::new(String) -> Self
-pub fn AssistantMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn AssistantMessage::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn AssistantMessage::set_streaming(Self, Bool) -> Unit
 pub fn AssistantMessage::set_text(Self, String) -> Unit
 pub fn AssistantMessage::text(Self) -> String
@@ -139,43 +139,43 @@ pub(all) struct Box {
   content_style : TextStyle
   mut expanded : Bool
 }
-pub fn Box::get_preferred_height(Self, Int) -> Int
+pub fn Box::get_preferred_height(Self, Int32) -> Int32
 pub fn Box::new(String, String) -> Self
-pub fn Box::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn Box::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn Box::set_content(Self, String) -> Unit
 pub fn Box::set_expanded(Self, Bool) -> Unit
 
 pub(all) struct ChatLog {
   mut components : Array[MessageComponent]
-  mut tool_by_id : Map[String, Int]
-  mut streaming_by_id : Map[String, Int]
+  mut tool_by_id : Map[String, Int32]
+  mut streaming_by_id : Map[String, Int32]
   mut tools_expanded : Bool
   mut follow_output : Bool
-  mut scroll_offset : Int
-  max_components : Int
+  mut scroll_offset : Int32
+  max_components : Int32
 }
-pub fn ChatLog::add_system(Self, String, Int, Int) -> Unit
-pub fn ChatLog::add_user(Self, String, Int, Int) -> Unit
+pub fn ChatLog::add_system(Self, String, Int32, Int32) -> Unit
+pub fn ChatLog::add_user(Self, String, Int32, Int32) -> Unit
 pub fn ChatLog::clear_all(Self) -> Unit
 pub fn ChatLog::drop_assistant(Self, run_id? : String) -> Unit
 pub fn ChatLog::finalize_assistant(Self, String, run_id? : String) -> Unit
 pub fn ChatLog::finalize_current_assistant(Self, run_id? : String) -> Unit
-pub fn ChatLog::get_preferred_height(Self, Int) -> Int
-pub fn ChatLog::maybe_scroll_to_bottom(Self, Int, Int) -> Unit
+pub fn ChatLog::get_preferred_height(Self, Int32) -> Int32
+pub fn ChatLog::maybe_scroll_to_bottom(Self, Int32, Int32) -> Unit
 pub fn ChatLog::new() -> Self
-pub fn ChatLog::normalize_scroll(Self, Int, Int) -> Unit
-pub fn ChatLog::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
-pub fn ChatLog::scroll_down(Self, Int, Int, Int) -> Unit
-pub fn ChatLog::scroll_to_bottom(Self, Int, Int) -> Unit
-pub fn ChatLog::scroll_up(Self, Int) -> Unit
+pub fn ChatLog::normalize_scroll(Self, Int32, Int32) -> Unit
+pub fn ChatLog::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
+pub fn ChatLog::scroll_down(Self, Int32, Int32, Int32) -> Unit
+pub fn ChatLog::scroll_to_bottom(Self, Int32, Int32) -> Unit
+pub fn ChatLog::scroll_up(Self, Int32) -> Unit
 pub fn ChatLog::set_tools_expanded(Self, Bool) -> Unit
 pub fn ChatLog::start_assistant(Self, String, run_id? : String) -> AssistantMessage
 pub fn ChatLog::start_tool(Self, String, String, String) -> ToolExecution
 pub fn ChatLog::update_assistant(Self, String, run_id? : String) -> Unit
 pub fn ChatLog::update_tool_args(Self, String, String) -> Unit
 pub fn ChatLog::update_tool_result(Self, String, String, is_error? : Bool) -> Unit
-pub fn ChatLog::visible_lines(Self, Int, Int) -> Array[String]
-pub fn ChatLog::with_max_components(Int) -> Self
+pub fn ChatLog::visible_lines(Self, Int32, Int32) -> Array[String]
+pub fn ChatLog::with_max_components(Int32) -> Self
 
 pub(all) enum Color {
   Black
@@ -194,7 +194,7 @@ pub(all) enum Color {
   BrightMagenta
   BrightCyan
   BrightWhite
-  Rgb(Int, Int, Int)
+  Rgb(Int32, Int32, Int32)
 }
 pub fn Color::bg(Self) -> String
 pub fn Color::fg(Self) -> String
@@ -211,9 +211,9 @@ pub fn CommandRegistry::register(Self, SlashCommand) -> Unit
 
 pub(all) struct Editor {
   mut text : String
-  mut cursor : Int
+  mut cursor : Int32
   history : Array[String]
-  mut history_index : Int
+  mut history_index : Int32
   mut placeholder : String
   multiline : Bool
   mut on_submit : ((String) -> Unit)?
@@ -226,13 +226,13 @@ pub(all) struct Editor {
 }
 pub fn Editor::add_to_history(Self, String) -> Unit
 pub fn Editor::clear(Self) -> Unit
-pub fn Editor::cursor(Self) -> Int
-pub fn Editor::get_preferred_height(Self, Int) -> Int
+pub fn Editor::cursor(Self) -> Int32
+pub fn Editor::get_preferred_height(Self, Int32) -> Int32
 pub fn Editor::handle_key(Self, Key) -> Bool
 pub fn Editor::new() -> Self
 pub fn Editor::placeholder_text(Self) -> String
 pub fn Editor::prompt_text(Self) -> String
-pub fn Editor::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn Editor::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn Editor::set_on_change(Self, (String) -> Unit) -> Unit
 pub fn Editor::set_on_ctrl_c(Self, () -> Unit) -> Unit
 pub fn Editor::set_on_ctrl_d(Self, () -> Unit) -> Unit
@@ -285,17 +285,17 @@ pub fn Key::to_char(Self) -> Char?
 
 pub(all) struct Loader {
   frames : Array[String]
-  mut current : Int
+  mut current : Int32
   mut message : String
   mut running : Bool
   style : TextStyle
 }
-pub fn Loader::get_preferred_height(Self, Int) -> Int
+pub fn Loader::get_preferred_height(Self, Int32) -> Int32
 pub fn Loader::handle_key(Self, Key) -> Bool
 pub fn Loader::is_running(Self) -> Bool
 pub fn Loader::message(Self) -> String
 pub fn Loader::new() -> Self
-pub fn Loader::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn Loader::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn Loader::set_message(Self, String) -> Unit
 pub fn Loader::start(Self) -> Unit
 pub fn Loader::stop(Self) -> Unit
@@ -310,8 +310,8 @@ pub enum MessageComponent {
   ToolExec(ToolExecution)
   SpacerComp(Spacer)
 }
-pub fn MessageComponent::get_preferred_height(Self, Int) -> Int
-pub fn MessageComponent::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn MessageComponent::get_preferred_height(Self, Int32) -> Int32
+pub fn MessageComponent::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 
 pub(all) struct RenderOutput {
   buffer : @buffer.Buffer
@@ -333,11 +333,11 @@ pub fn SlashCommand::new(String, String) -> Self
 pub fn SlashCommand::with_handler(Self, (TUI, String) -> Unit) -> Self
 
 pub(all) struct Spacer {
-  height : Int
+  height : Int32
 }
-pub fn Spacer::get_preferred_height(Self, Int) -> Int
-pub fn Spacer::new(height? : Int) -> Self
-pub fn Spacer::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn Spacer::get_preferred_height(Self, Int32) -> Int32
+pub fn Spacer::new(height? : Int32) -> Self
+pub fn Spacer::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 
 pub enum StyleCode {
   StyleBold
@@ -347,9 +347,9 @@ pub fn StyleCode::code(Self) -> String
 pub(all) struct SystemMessage {
   mut text : String
 }
-pub fn SystemMessage::get_preferred_height(Self, Int) -> Int
+pub fn SystemMessage::get_preferred_height(Self, Int32) -> Int32
 pub fn SystemMessage::new(String) -> Self
-pub fn SystemMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn SystemMessage::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn SystemMessage::set_text(Self, String) -> Unit
 pub fn SystemMessage::text(Self) -> String
 
@@ -371,13 +371,13 @@ pub(all) struct TUI {
   mut on_ctrl_o : (() -> Unit)?
   mut render_needed : Bool
   mut last_render_at : Int64
-  mut last_width : Int
-  mut last_height : Int
+  mut last_width : Int32
+  mut last_height : Int32
   mut needs_full_redraw : Bool
   mut last_body_frame : String
   mut last_editor_line : String
-  mut last_cursor_col : Int
-  mut last_cursor_row : Int
+  mut last_cursor_col : Int32
+  mut last_cursor_row : Int32
 }
 pub fn TUI::chat_log(Self) -> ChatLog
 pub fn TUI::editor(Self) -> Editor
@@ -407,10 +407,10 @@ pub fn TUI::update_status(Self) -> Unit
 pub(all) struct Terminal {
   input : @stdio.Input
   output : @stdio.Output
-  mut width : Int
-  mut height : Int
-  mut cursor_x : Int
-  mut cursor_y : Int
+  mut width : Int32
+  mut height : Int32
+  mut cursor_x : Int32
+  mut cursor_y : Int32
   mut running : Bool
   mut in_alt_screen : Bool
 }
@@ -422,27 +422,27 @@ pub async fn Terminal::enable_bracketed_paste(Self) -> Unit
 pub async fn Terminal::enter_alt_screen(Self) -> Unit
 pub async fn Terminal::exit_alt_screen(Self) -> Unit
 pub async fn Terminal::flush(Self) -> Unit
-pub fn Terminal::height(Self) -> Int
+pub fn Terminal::height(Self) -> Int32
 pub async fn Terminal::hide_cursor(Self) -> Unit
 pub fn Terminal::is_running(Self) -> Bool
-pub async fn Terminal::move_down(Self, Int) -> Unit
-pub async fn Terminal::move_left(Self, Int) -> Unit
-pub async fn Terminal::move_right(Self, Int) -> Unit
-pub async fn Terminal::move_to(Self, Int, Int) -> Unit
-pub async fn Terminal::move_to_col(Self, Int) -> Unit
-pub async fn Terminal::move_up(Self, Int) -> Unit
+pub async fn Terminal::move_down(Self, Int32) -> Unit
+pub async fn Terminal::move_left(Self, Int32) -> Unit
+pub async fn Terminal::move_right(Self, Int32) -> Unit
+pub async fn Terminal::move_to(Self, Int32, Int32) -> Unit
+pub async fn Terminal::move_to_col(Self, Int32) -> Unit
+pub async fn Terminal::move_up(Self, Int32) -> Unit
 pub fn Terminal::new() -> Self raise
 pub async fn Terminal::restore_cursor(Self) -> Unit
 pub async fn Terminal::save_cursor(Self) -> Unit
 pub async fn Terminal::show_cursor(Self) -> Unit
-pub fn Terminal::size(Self) -> (Int, Int)
+pub fn Terminal::size(Self) -> (Int32, Int32)
 pub async fn Terminal::start(Self) -> Unit
 pub async fn Terminal::stop(Self) -> Unit
 pub fn Terminal::update_size(Self) -> Unit raise
-pub fn Terminal::width(Self) -> Int
+pub fn Terminal::width(Self) -> Int32
 pub fn Terminal::with_io(input~ : @stdio.Input, output~ : @stdio.Output) -> Self raise
 pub async fn Terminal::write(Self, String) -> Unit
-pub async fn Terminal::write_at(Self, Int, Int, String) -> Unit
+pub async fn Terminal::write_at(Self, Int32, Int32, String) -> Unit
 pub async fn Terminal::write_bytes(Self, Bytes) -> Unit
 pub async fn Terminal::write_line(Self, String) -> Unit
 
@@ -452,10 +452,10 @@ pub(all) struct Text {
   mut style : TextStyle
 }
 pub fn Text::apply_style(Self, String) -> String
-pub fn Text::get_preferred_height(Self, Int) -> Int
-pub fn Text::line_count(Self) -> Int
+pub fn Text::get_preferred_height(Self, Int32) -> Int32
+pub fn Text::line_count(Self) -> Int32
 pub fn Text::new(String) -> Self
-pub fn Text::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn Text::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn Text::set_style(Self, TextStyle) -> Unit
 pub fn Text::set_text(Self, String) -> Unit
 pub fn Text::text(Self) -> String
@@ -528,19 +528,19 @@ pub(all) struct ToolExecution {
   mut result : String
   mut status : ToolStatus
   mut expanded : Bool
-  mut start_time : Int
+  mut start_time : Int32
 }
 pub fn ToolExecution::args(Self) -> String
 pub fn ToolExecution::expanded(Self) -> Bool
-pub fn ToolExecution::get_preferred_height(Self, Int) -> Int
+pub fn ToolExecution::get_preferred_height(Self, Int32) -> Int32
 pub fn ToolExecution::new(String, String) -> Self
-pub fn ToolExecution::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn ToolExecution::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn ToolExecution::result(Self) -> String
 pub fn ToolExecution::set_args(Self, String) -> Unit
 pub fn ToolExecution::set_expanded(Self, Bool) -> Unit
 pub fn ToolExecution::set_partial_result(Self, String) -> Unit
 pub fn ToolExecution::set_result(Self, String, is_error? : Bool) -> Unit
-pub fn ToolExecution::set_start_time(Self, Int) -> Unit
+pub fn ToolExecution::set_start_time(Self, Int32) -> Unit
 pub fn ToolExecution::set_status(Self, ToolStatus) -> Unit
 pub fn ToolExecution::status(Self) -> ToolStatus
 pub fn ToolExecution::tool_name(Self) -> String
@@ -562,14 +562,14 @@ pub(all) struct TuiState {
   mut session_key : String
   mut tools_expanded : Bool
   mut show_thinking : Bool
-  mut last_ctrl_c_at : Int
+  mut last_ctrl_c_at : Int32
 }
 pub fn TuiState::activity_status(Self) -> String
 pub fn TuiState::agent_id(Self) -> String
 pub fn TuiState::agent_kind(Self) -> String
 pub fn TuiState::connection_status(Self) -> String
 pub fn TuiState::is_busy(Self) -> Bool
-pub fn TuiState::last_ctrl_c_at(Self) -> Int
+pub fn TuiState::last_ctrl_c_at(Self) -> Int32
 pub fn TuiState::model(Self) -> String
 pub fn TuiState::new() -> Self
 pub fn TuiState::session_key(Self) -> String
@@ -584,14 +584,14 @@ pub fn TuiState::show_thinking(Self) -> Bool
 pub fn TuiState::toggle_show_thinking(Self) -> Bool
 pub fn TuiState::toggle_tools_expanded(Self) -> Bool
 pub fn TuiState::tools_expanded(Self) -> Bool
-pub fn TuiState::update_last_ctrl_c(Self, Int) -> Unit
+pub fn TuiState::update_last_ctrl_c(Self, Int32) -> Unit
 
 pub(all) struct UserMessage {
   mut text : String
 }
-pub fn UserMessage::get_preferred_height(Self, Int) -> Int
+pub fn UserMessage::get_preferred_height(Self, Int32) -> Int32
 pub fn UserMessage::new(String) -> Self
-pub fn UserMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+pub fn UserMessage::render(Self, RenderOutput, Int32, Int32, Int32, Int32) -> Unit
 pub fn UserMessage::set_text(Self, String) -> Unit
 pub fn UserMessage::text(Self) -> String
 

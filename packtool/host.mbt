@@ -1,5 +1,6 @@
 ///|
 /// Verified installed workflow loaded from the active MoonPack version.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct InstalledPackWorkflow {
   pointer : @installer.ActivePackPointer
   receipt : @installer.InstallationReceipt
@@ -7,14 +8,15 @@ pub(all) struct InstalledPackWorkflow {
   workflow_contract : @pack.ContractRef
   projection : @host.HostActivationProjection
   declaration : PackWorkflowDeclaration
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Durable intake result for an installed workflow.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct InstalledPackWorkflowIntake {
   installed : InstalledPackWorkflow
   intake : PackJobIntake
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Completed host execution for an installed workflow.

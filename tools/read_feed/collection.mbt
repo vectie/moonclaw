@@ -37,13 +37,14 @@ pub impl ToJson for CollectionSource with fn to_json(self : CollectionSource) ->
 ///|
 /// article_index is the zero-based position in the supplied source document.
 /// Repeated publisher IDs and syndicated articles are deliberately retained.
+#derive(ToJson)
 pub struct CollectionArticle {
   source : String
   label : String
   source_title : String
   article_index : Int32
   article : FeedArticle
-} derive(ToJson)
+}
 
 ///|
 pub extend CollectionArticle with ToJson::{to_json}

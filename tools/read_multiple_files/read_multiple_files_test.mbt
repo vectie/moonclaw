@@ -272,7 +272,7 @@ async test "invalid-range" (t : @test.Test) {
         { "path": "bar.txt", "start_line": 3, "end_line": 2 },
       ],
     }
-    let result = new(manager).call(args)
+    let result = @read_multiple_files.new(manager).call(args)
     inspect(
       result,
       content=(
@@ -300,7 +300,7 @@ async test "invalid-range" (t : @test.Test) {
       ),
     )
     let args : Json = { "files": [{ "path": "test.txt", "start_line": 0 }] }
-    let result = new(manager).call(args)
+    let result = @read_multiple_files.new(manager).call(args)
     inspect(
       result,
       content=(
@@ -322,7 +322,7 @@ async test "invalid-range" (t : @test.Test) {
     let args : Json = {
       "files": [{ "path": "test.txt", "start_line": 2, "end_line": 1024 }],
     }
-    let tool = new(manager)
+    let tool = @read_multiple_files.new(manager)
     let result = tool.call(args)
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

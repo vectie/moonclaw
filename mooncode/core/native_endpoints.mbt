@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct NativeCapabilityEndpoints {
   capabilities : String
   session_list : String
@@ -18,7 +19,7 @@ pub(all) struct NativeCapabilityEndpoints {
   tool_exec : String
   eval_report : String
   package_result : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 pub fn native_capability_endpoints() -> NativeCapabilityEndpoints {

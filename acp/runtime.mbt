@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpTarget {
   id : String
   backend : String
@@ -10,9 +11,10 @@ pub struct AcpTarget {
   model : String?
   status : String
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpSession {
   id : String
   target_id : String
@@ -24,9 +26,10 @@ pub struct AcpSession {
   updated_at : Int32
   last_error : String?
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpRun {
   id : String
   session_id : String
@@ -40,13 +43,14 @@ pub struct AcpRun {
   plan : Json
   result : Json?
   error : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PersistedAcpState {
   sessions : Array[AcpSession]
   runs : Array[AcpRun]?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub struct AcpRuntime {

@@ -1,12 +1,14 @@
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserHostStatus {
   Completed
   CancelledByHost(String)
   RejectedByHost(String)
   Crashed(String)
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserHostCommand {
   request_id : String
   session_id : String
@@ -35,9 +37,10 @@ pub struct BrowserHostCommand {
   mutation_authority_id : String
   fresh_authority_nonce : String
   mutation_authority_expires_at : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserHostResult {
   host_receipt_id : String
   request_id : String
@@ -60,14 +63,15 @@ pub struct BrowserHostResult {
   observations : Array[String]
   target_resolved : Bool
   completed_at : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson)
 pub(all) enum BrowserDispatch {
   Ready(BrowserHostCommand)
   Rejected(BrowserActionReceipt)
   Duplicate(BrowserActionReceipt)
-} derive(Debug, Eq, ToJson)
+}
 
 ///|
 pub fn browser_host_result(

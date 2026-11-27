@@ -1,11 +1,13 @@
 ///|
+#derive(ToJson, @json.FromJson)
 pub struct CommandOutput {
   text : String
   truncated_lines : Int32
   original_lines : Int32
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
+#derive(@json.FromJson, ToJson)
 pub enum CommandResult {
   Simulated(assessment~ : @security.CommandAssessment)
   ApprovalRequired(
@@ -33,7 +35,7 @@ pub enum CommandResult {
     audit_id~ : String
   )
   Background(command~ : String, job_id~ : Int32)
-} derive(@json.FromJson, ToJson)
+}
 
 ///|
 fn render_output(

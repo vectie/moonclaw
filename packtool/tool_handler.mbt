@@ -1,5 +1,6 @@
 ///|
 /// Generic execution request passed from MoonClaw to a pack-owned executor.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolExecutionRequest {
   binding : ToolBinding
   config : Json
@@ -14,10 +15,11 @@ pub(all) struct PackToolExecutionRequest {
   evidence_path : String
   attempt : Int32
   estimated_cost_micros : Int32
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Generic result returned by a pack-owned executor.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolExecutionResult {
   status : String
   output : Json
@@ -27,7 +29,7 @@ pub(all) struct PackToolExecutionResult {
   output_artifacts : Array[String]
   external_job_id : String
   compensable : Bool
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 pub fn PackToolExecutionResult::new(
@@ -55,11 +57,12 @@ pub fn PackToolExecutionResult::new(
 ///|
 /// Result of asking a pack-owned adapter to reconcile a previously submitted
 /// idempotency key. A terminal success must carry the original tool result.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolReconciliation {
   status : String
   result : PackToolExecutionResult?
   error_kind : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Opaque pack execution boundary supplied by the host.

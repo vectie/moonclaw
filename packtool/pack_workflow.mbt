@@ -3,15 +3,17 @@
 ///
 /// `config` is opaque to MoonClaw. The pack tool handler receives it together
 /// with the validated tool binding in the compiled workflow step.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackWorkflowToolStep {
   id : String
   tool_id : String
   config : Json
   retry_policy : @job.RetryPolicy?
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Machine-readable workflow contract accepted by MoonClaw's pack bridge.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackWorkflowDeclaration {
   contract : String
   pack_id : String
@@ -20,22 +22,24 @@ pub(all) struct PackWorkflowDeclaration {
   version : String
   steps : Array[PackWorkflowToolStep]
   output_bindings : Array[String]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Native MoonClaw records produced from one pack workflow declaration.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackJobCompilation {
   definition : @job.JobDefinition
   workflow : @job.WorkflowDefinition
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Durable records created by `intake_workflow_run`.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackJobIntake {
   definition : @job.JobDefinition
   workflow : @job.WorkflowDefinition
   run : @job.JobRun
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 pub fn decode_workflow_declaration(

@@ -1,9 +1,10 @@
 ///|
+#derive(FromJson, ToJson)
 priv struct ReadFileInput {
   path : String
   start_line : Int32?
   end_line : Int32?
-} derive(FromJson, ToJson)
+}
 
 ///|
 /// The schema is derived from the types above

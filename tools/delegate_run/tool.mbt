@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct DelegateRunResult {
   title : String
   request_text : String
@@ -12,7 +13,7 @@ pub struct DelegateRunResult {
   step_kind : String
   step_config : Json
   summary : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub impl Show for DelegateRunResult with fn output(

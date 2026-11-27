@@ -9,7 +9,7 @@ async test "apply_patch rejects absolute path outside workspace" (
       #|*** Add File: /tmp/moonclaw-apply-patch-outside.txt
       #|+escaped
       #|*** End Patch
-    let tool = new(mock.cwd.path())
+    let tool = @apply_patch.new(mock.cwd.path())
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
       fail(
@@ -32,7 +32,7 @@ async test "apply_patch rejects parent path escape" (t : @test.Test) {
       #|*** Add File: ../escape.txt
       #|+escaped
       #|*** End Patch
-    let tool = new(mock.cwd.path())
+    let tool = @apply_patch.new(mock.cwd.path())
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
       fail(

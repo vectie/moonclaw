@@ -5,6 +5,7 @@
 /// and workspace-local extension providers. Keep them small and transport-safe:
 /// domain semantics belong in provider-owned skills and packets, not in the
 /// MoonClaw harness.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ProviderTaskSpec {
   id : String
   title : String
@@ -13,20 +14,22 @@ pub(all) struct ProviderTaskSpec {
   priority : Int32
   requires_review : Bool
   target_pages : Array[String]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ProviderTaskBatch {
   goal_id : String
   goal : String
   summary : String
   tasks : Array[ProviderTaskSpec]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Provider-owned context schema for generic extension task execution.
 /// Field names describe durable book/runtime concerns, not MoonClaw domain
 /// semantics.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ProviderTaskWorkerContext {
   book_id : String
   workspace_root : String
@@ -41,18 +44,20 @@ pub(all) struct ProviderTaskWorkerContext {
   working_memory : Array[String]
   memory_summary : String
   output_contract : Array[String]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct ProviderTaskMemoryCandidate {
   kind : String
   title : String
   detail : String
   durable : Bool
   target_page : String?
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ProviderTaskResult {
   task_id : String
   summary : String
@@ -60,25 +65,27 @@ pub(all) struct ProviderTaskResult {
   memory_candidates : Array[ProviderTaskMemoryCandidate]
   requires_review : Bool
   notify_town : Bool
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ProviderTaskPersistOutcome {
   log_path : String
   updated_pages : Array[String]
   review_queued : Bool
   notify_town : Bool
   evidence_id : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug)
 pub(all) struct ProviderTaskCommand {
   provider : @resource_providers.RegisteredResourceProvider
   command : String
   args : Array[String]
   cwd : String?
   workspace_root : String
-} derive(Debug)
+}
 
 ///|
 pub extend ProviderTaskSpec with @moonbitlang/core/debug.Debug::{to_repr}

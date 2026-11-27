@@ -26,7 +26,7 @@ async fn run_adapter_process_bytes(
     let (stdout_pipe, stdout_output) = @process.read_from_process()
     let stdout_task = group.spawn(() => {
       defer stdout_pipe.close()
-      let output = @buffer.Buffer(size_hint=stdout_limit.min(8_192))
+      let output = @buffer.Buffer(capacity=stdout_limit.min(8_192))
       for ;; {
         guard stdout_pipe.read_some(
             max_len=(stdout_limit - output.length() + 1).min(8_192),
@@ -37,7 +37,7 @@ async fn run_adapter_process_bytes(
         guard output.length() + chunk.length() <= stdout_limit else {
           fail("MoonFort adapter output exceeds the transport bound")
         }
-        output.write_bytes(chunk)
+        output.write_bytesview(chunk)
       }
       output.to_bytes()
     })

@@ -17,30 +17,32 @@ pub async fn load_sandbox_executor_config(workspace? : String) -> @execution_san
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct PromotionAdapterConfig {
-  protocol_version : Int
+  protocol_version : Int32
   promotion_path : String
   promotion_args : Array[String]
   executor_config_path : String
   receipt_root : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn PromotionAdapterConfig::equal(Self, Self) -> Bool
-pub fn PromotionAdapterConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PromotionAdapterConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PromotionAdapterConfig::not_equal(Self, Self) -> Bool
-pub fn PromotionAdapterConfig::to_json(Self) -> Json
+pub fn PromotionAdapterConfig::to_json(Self) -> @json.Json
 pub fn PromotionAdapterConfig::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct RecoveryInspectionConfig {
-  protocol_version : Int
+  protocol_version : Int32
   inspector_path : String
   inspector_args : Array[String]
   executor_config_path : String
   receipt_root : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn RecoveryInspectionConfig::equal(Self, Self) -> Bool
-pub fn RecoveryInspectionConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RecoveryInspectionConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn RecoveryInspectionConfig::not_equal(Self, Self) -> Bool
-pub fn RecoveryInspectionConfig::to_json(Self) -> Json
+pub fn RecoveryInspectionConfig::to_json(Self) -> @json.Json
 pub fn RecoveryInspectionConfig::to_repr(Self) -> @debug.Repr
 
 // Type aliases

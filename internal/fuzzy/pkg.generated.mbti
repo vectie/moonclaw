@@ -1,18 +1,23 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/fuzzy"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn find_match(String, String) -> MatchResult?
 
 // Errors
 
 // Types and methods
+#derive(@json.ToJson)
 pub struct MatchResult {
-  position : Int
-  length : Int
-  start_line : Int
-  end_line : Int
-} derive(ToJson)
+  position : Int32
+  length : Int32
+  start_line : Int32
+  end_line : Int32
+}
 
 // Type aliases
 

@@ -55,7 +55,7 @@ async test "load_resource_providers prefers workspace product manifest over home
         #|]
       ),
     )
-    let providers = load_resource_providers(
+    let providers = @resource_providers.load_resource_providers(
       mock.cwd.path(),
       home=Some(home_dir),
     )
@@ -109,7 +109,7 @@ async test "load_resource_providers ignores legacy home manifest" (
       ),
     )
 
-    let providers = load_resource_providers(
+    let providers = @resource_providers.load_resource_providers(
       mock.cwd.path(),
       home=Some(home_dir),
     )
@@ -153,7 +153,7 @@ async test "load_resource_providers discovers parent workspace manifests" (
         #|]
       ),
     )
-    let providers = load_resource_providers(run_dir, home=None)
+    let providers = @resource_providers.load_resource_providers(run_dir, home=None)
     inspect(providers.length().to_string(), content="1")
     inspect(providers[0].name, content="wiki-main")
   })
@@ -209,7 +209,7 @@ async test "load_resource_providers resolves suite book workspace provider home"
     ) catch {
       _ => ()
     }
-    let providers = load_resource_providers(code_dir, home=None)
+    let providers = @resource_providers.load_resource_providers(code_dir, home=None)
     inspect(providers.length().to_string(), content="1")
     inspect(providers[0].name, content="book-provider")
   })
@@ -267,7 +267,7 @@ async test "load_resource_providers separates book targets from model providers"
       .replace(old="BOOK_ROOT", new=book_root)
       .to_string(),
     )
-    let providers = load_resource_providers(book_root, home=Some(suite_root))
+    let providers = @resource_providers.load_resource_providers(book_root, home=Some(suite_root))
     assert_eq(providers.length(), 1)
     assert_eq(providers[0].name, "moonbook")
     assert_true(

@@ -1,9 +1,10 @@
 ///|
 // This projection belongs to Cowork, not to the separate native daemon.
 // `cwd` is the same explicit workspace used by Cowork session execution.
+#derive(FromJson)
 struct CoworkModelRouteParams {
   cwd : String
-} derive(FromJson)
+}
 
 ///|
 fn cowork_native_route_json(

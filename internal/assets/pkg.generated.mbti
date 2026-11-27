@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/assets"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "vectie/moonclaw/internal/pino",
 }
 
@@ -12,11 +13,12 @@ pub async fn install_assets(String, Array[Asset], String, String, @pino.Logger) 
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.ToJson)
 pub(all) struct Asset {
   path : String
   content : String
-} derive(ToJson, @debug.Debug)
-pub fn Asset::to_json(Self) -> Json
+}
+pub fn Asset::to_json(Self) -> @json.Json
 pub fn Asset::to_repr(Self) -> @debug.Repr
 
 // Type aliases

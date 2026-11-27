@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, ToJson)
 pub struct Skill {
   /// Stable installed folder identity; frontmatter name remains the display name.
   id : String
@@ -11,7 +12,7 @@ pub struct Skill {
   allowed_tools : Array[String]
   metadata : Json?
   location : String
-} derive(Debug, ToJson)
+}
 
 ///|
 fn validate_name(name : String) -> Unit raise SkillFormatError {
@@ -40,9 +41,10 @@ fn validate_description(desc : String) -> Unit raise SkillFormatError {
 }
 
 ///|
+#derive(Debug, ToJson)
 priv suberror SkillFormatError {
   SkillFormatError(String)
-} derive(Debug, ToJson)
+}
 
 ///|
 /// Parses a skill definition from YAML frontmatter content and creates a

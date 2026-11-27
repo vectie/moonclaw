@@ -69,7 +69,7 @@ fn[T] MethodMap::new() -> MethodMap[T] {
 ///|
 fn[T] MethodMap::keys(self : MethodMap[T]) -> Iter[Method] {
   let mut i = 0
-  Iter::new(() => {
+  Iter(() => {
     while i < methods.length() {
       let method_ = methods[i]
       i += 1

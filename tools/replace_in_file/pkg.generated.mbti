@@ -13,7 +13,8 @@ pub fn new(@file.Manager) -> @tool.Tool[WriteResult]
 // Errors
 
 // Types and methods
-type WriteResult derive(ToJson, @json.FromJson)
+#derive(@json.FromJson, @json.ToJson)
+type WriteResult
 pub impl Show for WriteResult
 
 // Type aliases

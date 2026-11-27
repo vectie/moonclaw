@@ -4,25 +4,28 @@ pub struct FeishuClient {
 }
 
 ///|
+#derive(Debug)
 pub struct FeishuStreamingCardSession {
   card_id : String
   message_id : String
   sequence : Int32
   current_text : String
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct FeishuTypingIndicatorState {
   message_id : String
   reaction_id : String
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct FeishuReactionIndicatorState {
   message_id : String
   reaction_id : String
   emoji_type : String
-} derive(Debug)
+}
 
 ///|
 pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {

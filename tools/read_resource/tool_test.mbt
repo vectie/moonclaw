@@ -2,7 +2,7 @@
 async test "read_resource reads file URIs" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "notes.txt": "hello from resource tool" })
-    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let tool = @read_resource.new(mock.cwd.path(), home=Some(mock.moon_home))
     let result = tool.call({ "uri": "file://notes.txt" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -33,7 +33,7 @@ async test "read_resource reads skill URIs" (t : @test.Test) {
         #|This is the demo skill body.
       ),
     )
-    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let tool = @read_resource.new(mock.cwd.path(), home=Some(mock.moon_home))
     let result = tool.call({ "uri": "skill://demo-skill" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -48,12 +48,12 @@ async test "read_resource reads skill URIs" (t : @test.Test) {
 async test "read_resource truncates text" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "long.txt": "abcdefghijklmnopqrstuvwxyz" })
-    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let tool = @read_resource.new(mock.cwd.path(), home=Some(mock.moon_home))
     let result = tool.call({ "uri": "file://long.txt", "max_chars": 100 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
     }
-    inspect(output.truncated.to_json().stringify(), content="false")
+    inspect(Json::boolean(output.truncated).stringify(), content="false")
     inspect(output.text, content="abcdefghijklmnopqrstuvwxyz")
   })
 }
@@ -67,7 +67,7 @@ async test "read_resource reads worktree URIs" (t : @test.Test) {
     @git.commit("init", ["README.md"], cwd=repo)
     let handle = @worktree.plan_worktree(repo, "Inspect docs")
     ignore(@worktree.create_worktree(handle))
-    let tool = new(repo)
+    let tool = @read_resource.new(repo)
     let result = tool.call({ "uri": "worktree://inspect-docs" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -109,7 +109,7 @@ async test "read_resource reads provider URIs" (t : @test.Test) {
         #|]
       ),
     )
-    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let tool = @read_resource.new(mock.cwd.path(), home=Some(mock.moon_home))
     let result = tool.call({ "uri": "provider://slides-main" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

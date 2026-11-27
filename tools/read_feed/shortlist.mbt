@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson)
 priv struct ShortlistSnapshot {
   source : String
   label : String
@@ -7,18 +8,19 @@ priv struct ShortlistSnapshot {
   body_sha256 : String
   article_index : Int32
   article : FeedArticle
-} derive(ToJson)
+}
 
 ///|
 extend ShortlistSnapshot with ToJson::{to_json}
 
 ///|
+#derive(ToJson)
 priv struct ShortlistEntry {
   entry_id : String
   snapshot : ShortlistSnapshot
   state : String
   note : String
-} derive(ToJson)
+}
 
 ///|
 extend ShortlistEntry with ToJson::{to_json}

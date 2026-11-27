@@ -15,8 +15,5 @@ import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/agent",
-  "vectie/moonclaw/model",
-  "vectie/moonclaw/event",
-  "vectie/moonclaw/ai",
   "moonbitlang/core/test",
 } for "test"

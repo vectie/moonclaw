@@ -43,6 +43,7 @@ fn ExecOptions::parse(args : ArrayView[String]) -> ExecOptions raise {
 }
 
 ///|
+#warnings("-92")
 async fn ExecOptions::run(self : ExecOptions, cwd~ : String) -> Unit {
   println("Executing prompt from \{self.prompt_file} with model \{self.model}")
   let model = @model.load(name=self.model)

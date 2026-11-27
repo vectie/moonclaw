@@ -12,21 +12,22 @@ pub fn new() -> @tool.Tool[WebFetchResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct WebFetchResult {
   url : String
   final_url : String
   domain : String
-  status_code : Int
+  status_code : Int32
   content_type : String?
   title : String?
   text : String
   truncated : Bool
   source : String
-  metadata : Json
-} derive(ToJson, @json.FromJson)
-pub fn WebFetchResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+  metadata : @json.Json
+}
+pub fn WebFetchResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn WebFetchResult::output(Self, &Logger) -> Unit
-pub fn WebFetchResult::to_json(Self) -> Json
+pub fn WebFetchResult::to_json(Self) -> @json.Json
 pub fn WebFetchResult::to_string(Self) -> String
 pub impl Show for WebFetchResult
 

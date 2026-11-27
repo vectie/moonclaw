@@ -42,23 +42,22 @@ test "comparison returns new changed absent and unchanged with exact old and new
     before_label="Monday",
     after_label="Tuesday",
   )
-  inspect(
+  assert_eq(
     [
       result.newly_listed,
       result.changed,
       result.no_longer_listed,
       result.unchanged,
     ],
-    content="[1, 1, 1, 1]",
+    [1, 1, 1, 1],
   )
-  inspect(
+  assert_eq(
     result.changes.map(c => c.kind),
-    content="[newly_listed, changed, no_longer_listed]",
+    ["newly_listed", "changed", "no_longer_listed"],
   )
-  inspect(
-    result.changes[1].changed_fields,
-    content="[title, date_published, summary, url]",
-  )
+  assert_eq(result.changes[1].changed_fields, [
+    "title", "date_published", "summary", "url",
+  ])
   assert_eq(result.changes[1].before.unwrap().title, "Old title")
   assert_eq(result.changes[1].after.unwrap().date_published, None)
   assert_eq(result.before.label, "Monday")

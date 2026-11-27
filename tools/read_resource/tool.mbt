@@ -1,12 +1,14 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub enum ResourceKind {
   File
   Skill
   Worktree
   Provider
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson)
 pub struct ReadResourceResult {
   uri : String
   resolved_uri : String
@@ -15,7 +17,7 @@ pub struct ReadResourceResult {
   truncated : Bool
   content_type : String
   metadata : Json
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for ReadResourceResult with fn output(
@@ -94,7 +96,7 @@ fn truncate_resource_text(text : String, max_chars : Int32) -> (String, Bool) {
 ///|
 fn resolve_file_resource(cwd : String, path : String) -> String raise {
   let resolved = if @pathx.is_absolute(path) {
-    path.view()
+    path[:]
   } else {
     @pathx.join(cwd, path)
   }

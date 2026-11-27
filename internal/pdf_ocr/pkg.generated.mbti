@@ -10,7 +10,7 @@ pub async fn run_process(String, Array[String], cwd? : String?) -> Result[PdfOcr
 
 // Types and methods
 pub(all) struct PdfOcrProcess {
-  status : Int
+  status : Int32
 }
 
 // Type aliases

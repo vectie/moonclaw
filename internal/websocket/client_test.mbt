@@ -20,8 +20,8 @@ async test "internal websocket client sends and receives text messages" {
     let addr = @socket.Addr::parse("127.0.0.1:10081")
     group.spawn_bg(() => websocket_echo_server(addr), no_wait=true)
     @async.sleep(50)
-    let client = Client::connect(
-      ClientConfig::new(url="ws://127.0.0.1:10081/ws"),
+    let client = @websocket.Client::connect(
+      @websocket.ClientConfig::new(url="ws://127.0.0.1:10081/ws"),
     )
     let received : Array[String] = []
     client.set_on_message(fn(msg) {
@@ -43,8 +43,8 @@ async test "internal websocket client close callback fires once" {
     let addr = @socket.Addr::parse("127.0.0.1:10082")
     group.spawn_bg(() => websocket_echo_server(addr), no_wait=true)
     @async.sleep(50)
-    let client = Client::connect(
-      ClientConfig::new(url="ws://127.0.0.1:10082/ws"),
+    let client = @websocket.Client::connect(
+      @websocket.ClientConfig::new(url="ws://127.0.0.1:10082/ws"),
     )
     let close_calls : Array[Int32] = []
     client.set_on_close(fn() { close_calls.push(1) })

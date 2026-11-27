@@ -11,6 +11,7 @@ let schema : @tool.JsonSchema = {
 }
 
 ///|
+#derive(FromJson)
 priv struct InputPath {
   path : String
-} derive(FromJson)
+}

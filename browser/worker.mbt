@@ -7,12 +7,13 @@ pub struct BrowserWorker {
 }
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserWorkerSnapshot {
   scope : BrowserSessionScope
   status : BrowserSessionStatus
   remaining_actions : Int32
   receipts : Array[BrowserActionReceipt]
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 pub fn BrowserWorker::new(

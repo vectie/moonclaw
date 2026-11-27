@@ -24,6 +24,6 @@ pub fn csi(command : Bytes) -> Bytes {
   let buffer = Buffer()
   buffer.write_byte(Escape)
   buffer.write_byte(b'[')
-  buffer.write_bytes(command)
+  buffer.write_bytesview(command)
   buffer.to_bytes()
 }

@@ -274,7 +274,7 @@ async test "MoonFort v3 invocation is opaque and grant-bound receipt is persiste
       assert_eq(executor_config_path, config.executor_config_path)
       assert_true(allowed.any(item => item is String("shell-compat")))
       assert_true(command.length() == 2)
-      assert_false(command.to_json().stringify().contains("cd --"))
+      assert_false(Json::array(command).stringify().contains("cd --"))
       let audit = @json.parse(@fsx.read_file(audit_path))
       assert_true(audit.stringify().contains(receipt.approval_digest))
       inspect(

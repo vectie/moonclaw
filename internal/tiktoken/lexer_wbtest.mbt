@@ -1,13 +1,15 @@
 ///|
+#derive(ToJson)
 priv struct LexerResult {
   text : String
   pieces : Array[String]
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct SnapshotData {
   data : Array[LexerResult]
-} derive(ToJson)
+}
 
 ///|
 let texts : ReadOnlyArray[String] = [

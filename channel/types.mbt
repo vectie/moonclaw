@@ -2,14 +2,16 @@
 pub type ChannelId = String
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum ChatType {
   Direct
   Group
   Channel
   Thread
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelCapabilities {
   chat_types : Array[ChatType]
   polls : Bool
@@ -23,7 +25,7 @@ pub(all) struct ChannelCapabilities {
   media : Bool
   native_commands : Bool
   block_streaming : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn default_capabilities() -> ChannelCapabilities {
@@ -44,6 +46,7 @@ pub fn default_capabilities() -> ChannelCapabilities {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelMeta {
   id : ChannelId
   label : String
@@ -53,18 +56,20 @@ pub(all) struct ChannelMeta {
   blurb : String
   order : Int32?
   aliases : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct Attachment {
   id : String
   mime_type : String
   url : String
   filename : String?
   size : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct Message {
   id : String
   channel : ChannelId
@@ -76,17 +81,19 @@ pub(all) struct Message {
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SendResult {
   channel : ChannelId
   message_id : String
   timestamp : Int32
   status : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum ChannelError {
   NotConfigured(message~ : String)
   ConnectionFailed(message~ : String)
@@ -94,7 +101,7 @@ pub(all) enum ChannelError {
   InvalidRecipient(message~ : String)
   RateLimited(message~ : String, retry_after_ms~ : Int32?)
   Unknown(message~ : String)
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub impl Show for ChannelError with fn output(
@@ -117,11 +124,12 @@ pub impl Show for ChannelError with fn output(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelConfig {
   enabled : Bool
   accounts : Map[String, Json]
   global_settings : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn default_config() -> ChannelConfig {
@@ -129,13 +137,14 @@ pub fn default_config() -> ChannelConfig {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelEvent {
   channel : ChannelId
   account_id : String
   event_type : String
   payload : Json
   timestamp : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub(all) enum ChannelEventType {
@@ -172,6 +181,7 @@ pub(open) trait Channel {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelDock {
   id : ChannelId
   meta : ChannelMeta
@@ -181,18 +191,20 @@ pub(all) struct ChannelDock {
   account_ids : Array[String]
   outbound : OutboundConfig?
   streaming : StreamingConfig?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
   text_chunk_limit : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct StreamingConfig {
   enabled : Bool
   chunk_size : Int32
   chunk_delay_ms : Int32
-} derive(ToJson, FromJson, Debug)
+}

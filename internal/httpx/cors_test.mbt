@@ -1,8 +1,17 @@
 ///|
-fn assert_cors_headers(headers : Map[String, String]) -> Unit raise {
-  assert_eq(headers["access-control-allow-origin"], "*")
-  assert_eq(headers["access-control-allow-methods"], "*")
-  assert_eq(headers["access-control-allow-headers"], "*")
+fn assert_cors_headers(headers : @http.Headers) -> Unit raise {
+  assert_eq(
+    headers[@http.CaseInsensitiveString("access-control-allow-origin")],
+    "*",
+  )
+  assert_eq(
+    headers[@http.CaseInsensitiveString("access-control-allow-methods")],
+    "*",
+  )
+  assert_eq(
+    headers[@http.CaseInsensitiveString("access-control-allow-headers")],
+    "*",
+  )
 }
 
 ///|

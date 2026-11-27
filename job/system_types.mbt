@@ -1,13 +1,15 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum TriggerSource {
   Manual
   Scheduled
   Webhook
   Recovery
   Custom(String)
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum RunStatus {
   Pending
   Running
@@ -15,38 +17,43 @@ pub(all) enum RunStatus {
   Succeeded
   Failed
   Cancelled
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct RetryPolicy {
   max_attempts : Int32
   backoff_ms : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SchedulePolicy {
   kind : String
   interval_minutes : Int32?
   timezone : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct WorkflowStepDefinition {
   id : String
   kind : String
   config : Json
   retry_policy : RetryPolicy?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct WorkflowDefinition {
   id : String
   kind : String
   steps : Array[WorkflowStepDefinition]
   output_bindings : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobDefinition {
   id : String
   kind : String
@@ -58,9 +65,10 @@ pub(all) struct JobDefinition {
   created_at : Int32
   updated_at : Int32
   tags : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobRun {
   id : String
   job_id : String
@@ -76,9 +84,10 @@ pub(all) struct JobRun {
   finished_at : Int32?
   summary : String?
   error : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobStepRun {
   id : String
   run_id : String
@@ -92,15 +101,17 @@ pub(all) struct JobStepRun {
   summary : String?
   output : Json?
   error : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum ArtifactStatus {
   Active
   Archived
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ArtifactRecord {
   id : String
   run_id : String
@@ -115,9 +126,10 @@ pub(all) struct ArtifactRecord {
   created_at : Int32
   archived_at : Int32?
   scope : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ArtifactQuery {
   job_id : String?
   run_id : String?
@@ -125,7 +137,7 @@ pub(all) struct ArtifactQuery {
   logical_key : String?
   scope : String?
   status : ArtifactStatus?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ArtifactQuery::new(
@@ -140,6 +152,7 @@ pub fn ArtifactQuery::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ArtifactWriteRequest {
   run_id : String
   job_id : String
@@ -151,7 +164,7 @@ pub(all) struct ArtifactWriteRequest {
   scope : Array[String]
   content : String
   append_only : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ArtifactWriteRequest::new(
@@ -181,13 +194,14 @@ pub fn ArtifactWriteRequest::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ArtifactRetentionPolicy {
   artifact_type : String?
   scope : String?
   keep_latest : Int32?
   max_age_ms : Int32?
   archive_before_delete : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ArtifactRetentionPolicy::new(
@@ -201,18 +215,21 @@ pub fn ArtifactRetentionPolicy::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ArtifactCleanupReport {
   archived_ids : Array[String]
   deleted_ids : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum MemoryStatus {
   Active
   Archived
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct MemoryRecord {
   id : String
   kind : String
@@ -232,9 +249,10 @@ pub(all) struct MemoryRecord {
   created_at : Int32
   updated_at : Int32
   archived_at : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct MemoryWriteRequest {
   kind : String
   title : String?
@@ -249,7 +267,7 @@ pub(all) struct MemoryWriteRequest {
   recipient : String?
   thread_id : String?
   source_artifact_id : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn MemoryWriteRequest::new(
@@ -285,6 +303,7 @@ pub fn MemoryWriteRequest::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct MemoryQuery {
   kind : String?
   tag : String?
@@ -297,7 +316,7 @@ pub(all) struct MemoryQuery {
   thread_id : String?
   source_artifact_id : String?
   status : MemoryStatus?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn MemoryQuery::new(
@@ -329,6 +348,7 @@ pub fn MemoryQuery::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct MemorySearchHit {
   memory_id : String
   kind : String
@@ -342,9 +362,10 @@ pub(all) struct MemorySearchHit {
   account_id : String?
   recipient : String?
   thread_id : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChatBinding {
   id : String
   title : String?
@@ -352,9 +373,10 @@ pub(all) struct ChatBinding {
   scope : Array[String]
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct RetrievalHit {
   artifact_id : String
   artifact_type : String
@@ -363,9 +385,10 @@ pub(all) struct RetrievalHit {
   snippet : String
   path : String
   scope : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChatCitation {
   artifact_id : String
   artifact_type : String
@@ -373,9 +396,10 @@ pub(all) struct ChatCitation {
   snippet : String
   path : String
   scope : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChatAnswer {
   binding_id : String?
   question : String
@@ -383,24 +407,27 @@ pub(all) struct ChatAnswer {
   citations : Array[ChatCitation]
   hits : Array[RetrievalHit]
   memory_hits : Array[MemorySearchHit]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobAskParams {
   question : String
   binding_id : String?
   artifact_query : ArtifactQuery?
   max_hits : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum NotificationVerbosity {
   Off
   Normal
   Verbose
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobNotificationPreference {
   id : String
   channel_id : String
@@ -412,16 +439,18 @@ pub(all) struct JobNotificationPreference {
   warn_after_ms : Int32?
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum JobProposalStatus {
   Draft
   Confirmed
   Rejected
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobProposalStep {
   id : String
   title : String
@@ -433,9 +462,10 @@ pub(all) struct JobProposalStep {
   execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobProposal {
   id : String
   title : String
@@ -459,9 +489,10 @@ pub(all) struct JobProposal {
   last_run_id : String?
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobControllerState {
   controller_job_id : String
   controller_run_id : String
@@ -476,9 +507,10 @@ pub(all) struct JobControllerState {
   metadata : Json
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobControllerIteration {
   id : String
   controller_job_id : String
@@ -493,9 +525,10 @@ pub(all) struct JobControllerIteration {
   metadata : Json
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobControllerLineageEdge {
   id : String
   controller_job_id : String
@@ -504,9 +537,10 @@ pub(all) struct JobControllerLineageEdge {
   edge_kind : String
   metadata : Json
   created_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobControllerDecision {
   id : String
   controller_job_id : String
@@ -519,9 +553,10 @@ pub(all) struct JobControllerDecision {
   metadata : Json
   created_at : Int32
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobRunEvent {
   run_id : String
   job_id : String
@@ -531,7 +566,7 @@ pub(all) struct JobRunEvent {
   status : RunStatus?
   message : String
   data : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub extend TriggerSource with ToJson::{to_json}

@@ -1,12 +1,14 @@
 ///|
+#derive(ToJson, Eq)
 pub struct JournalEventCount {
   event_type : String
   count : Int32
-} derive(ToJson, Eq)
+}
 
 ///|
 /// An observed interval, not execution duration. First/last and last status keep
 /// their complete original source records so callers can inspect the evidence.
+#derive(ToJson)
 pub struct JournalObservation {
   events : Int32
   first : JournalEntry
@@ -15,9 +17,10 @@ pub struct JournalObservation {
   event_counts : Array[JournalEventCount]
   last_status : Json?
   status_source : JournalEntry?
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct JournalStepComparison {
   step_id : String
   presence : String
@@ -28,9 +31,10 @@ pub struct JournalStepComparison {
   status_changed : Bool?
   event_counts_changed : Bool?
   last_message_changed : Bool?
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct JournalRunComparison {
   schema : String
   baseline_run : String
@@ -43,12 +47,12 @@ pub struct JournalRunComparison {
   steps : Array[JournalStepComparison]
   baseline_run_level_events : Int32
   candidate_run_level_events : Int32
-} derive(ToJson)
+}
 
 ///|
 fn observe_journal(entries : Array[JournalEntry]) -> JournalObservation raise {
   guard !entries.is_empty() else { fail("Cannot observe an empty selection") }
-  let counts : Map[String, Int32] = {}
+  let counts : Map[String, Int32] = Map([])
   let mut status : Json? = None
   let mut status_source : JournalEntry? = None
   for entry in entries {
@@ -106,7 +110,7 @@ fn journal_run_parts(
     }
   })
   let sorted = selected.map(item => item.0)
-  let steps : Map[String, Array[JournalEntry]] = {}
+  let steps : Map[String, Array[JournalEntry]] = Map([])
   let mut run_level = 0
   for entry in sorted {
     match event_fields(entry).step_id {

@@ -10,7 +10,7 @@ async fn run(args : Array[String]) -> Unit {
     return
   }
   let files : Array[String] = []
-  let options : Map[String, String] = Map::new()
+  let options : Map[String, String] = Map([])
   let mut markdown = false
   for index = 1; index < args.length(); {
     let arg = args[index]
@@ -58,7 +58,7 @@ async fn run(args : Array[String]) -> Unit {
   if markdown {
     @stdio.stdout.write(page.to_markdown())
   } else {
-    println(page.to_json().stringify())
+    println(ToJson::to_json(page).stringify())
   }
 }
 

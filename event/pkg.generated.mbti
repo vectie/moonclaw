@@ -14,23 +14,25 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq)
 pub struct Event {
   id : @uuid.Uuid
   created : @clock.Timestamp
   desc : EventDesc
-} derive(Eq)
+}
 pub fn Event::equal(Self, Self) -> Bool
-pub fn Event::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Event::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Event::is_cancellation(Self) -> Bool
 pub fn Event::is_incoming(Self) -> Bool
 pub fn Event::is_starting(Self) -> Bool
 pub fn Event::is_stopping(Self) -> Bool
 pub fn Event::new(id~ : @uuid.Uuid, created? : @clock.Timestamp, EventDesc) -> Self
 pub fn Event::not_equal(Self, Self) -> Bool
-pub fn Event::to_json(Self) -> Json
-pub impl ToJson for Event
+pub fn Event::to_json(Self) -> @json.Json
 pub impl @json.FromJson for Event
+pub impl @json.ToJson for Event
 
+#derive(Eq)
 pub(all) enum EventDesc {
   ModelLoaded(name~ : String)
   PreConversation
@@ -40,23 +42,23 @@ pub(all) enum EventDesc {
   MessageQueued(id~ : @uuid.Uuid)
   ToolAdded(@tool.ToolDesc)
   PreToolCall(@ai.ToolCall)
-  PostToolCall(@ai.ToolCall, result~ : Result[Json, Json], rendered~ : String)
-  TokenCounted(Int)
-  ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
+  PostToolCall(@ai.ToolCall, result~ : Result[@json.Json, @json.Json], rendered~ : String)
+  TokenCounted(Int32)
+  ContextPruned(origin_token_count~ : Int32, pruned_token_count~ : Int32)
   AssistantMessageDelta(String)
   SandboxOutputProgress(available_bytes~ : Int64, terminal~ : Bool)
   AssistantMessage(usage~ : @ai.Usage?, tool_calls~ : Array[@ai.ToolCall], String)
   UserMessage(String)
   Cancelled
-  Failed(Json)
+  Failed(@json.Json)
   Pruned(id~ : @uuid.Uuid)
-} derive(Eq)
+}
 pub fn EventDesc::equal(Self, Self) -> Bool
-pub fn EventDesc::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EventDesc::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn EventDesc::not_equal(Self, Self) -> Bool
-pub fn EventDesc::to_json(Self) -> Json
-pub impl ToJson for EventDesc
+pub fn EventDesc::to_json(Self) -> @json.Json
 pub impl @json.FromJson for EventDesc
+pub impl @json.ToJson for EventDesc
 
 type EventTarget
 pub fn EventTarget::add_listener(Self, async (Event) -> Unit) -> Unit

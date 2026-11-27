@@ -4,23 +4,25 @@
 /// Both paths are relative to the verified installed pack root. `arguments`
 /// are passed directly without a shell. `timeout_ms` may lower, but never
 /// raise, the host timeout.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolCommandConfig {
   contract : String
   executable : String
   input : String
   arguments : Array[String]
   timeout_ms : Int32?
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Stdin contract sent to an installed pack tool command.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolCommandInvocation {
   contract : String
   pack_id : String
   run_id : String
   tool_id : String
   input : Json
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 /// Stdout contract accepted from an installed pack tool command.
@@ -28,6 +30,7 @@ pub(all) struct PackToolCommandInvocation {
 /// Identity fields are optional for small commands, but when present they must
 /// match the invocation. A successful result may expose `output`; otherwise
 /// the complete result object becomes the workflow step output.
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackToolCommandResult {
   contract : String
   pack_id : String?
@@ -39,7 +42,7 @@ pub(all) struct PackToolCommandResult {
   summary : String?
   metrics : Json?
   logs : Array[String]?
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 fn require_installed_artifact(

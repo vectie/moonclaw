@@ -31,13 +31,14 @@ fn workflow_projection() -> @host.HostActivationProjection {
       ),
     ],
     app_entrypoints: [],
+    app_runtime_identity: None,
     provider_ports: [],
     policies: [],
   }
 }
 
 ///|
-fn workflow_declaration() -> PackWorkflowDeclaration {
+fn workflow_declaration() -> @packtool.PackWorkflowDeclaration {
   {
     contract: "moonsuite.pack-workflow.v1",
     pack_id: "fixture",
@@ -64,7 +65,7 @@ fn workflow_declaration() -> PackWorkflowDeclaration {
 
 ///|
 test "pack workflow compiler projects only declared generic tool bindings" {
-  let compilation = compile_workflow_job(
+  let compilation = @packtool.compile_workflow_job(
     workflow_projection(),
     workflow_declaration(),
     100,
@@ -105,8 +106,8 @@ test "pack workflow compiler projects only declared generic tool bindings" {
 
 ///|
 test "pack workflow declaration has a stable JSON intake boundary" {
-  let declaration = decode_workflow_declaration(
-    workflow_declaration().to_json().stringify(),
+  let declaration = @packtool.decode_workflow_declaration(
+    ToJson::to_json(workflow_declaration()).stringify(),
   )
   assert_eq(declaration.pack_id, "fixture")
   assert_eq(declaration.product_id, "fixture")
@@ -127,7 +128,7 @@ test "pack workflow compiler fails closed on undeclared tools" {
     ],
     output_bindings: ["unknown"],
   }
-  try compile_workflow_job(workflow_projection(), declaration, 100) catch {
+  try @packtool.compile_workflow_job(workflow_projection(), declaration, 100) catch {
     error =>
       assert_true(
         "\{error}".contains("references undeclared tool fixture.unknown"),
@@ -140,7 +141,7 @@ test "pack workflow compiler fails closed on undeclared tools" {
 ///|
 test "pack workflow compiler rejects a declaration from another pack" {
   let declaration = { ..workflow_declaration(), pack_id: "other", }
-  try compile_workflow_job(workflow_projection(), declaration, 100) catch {
+  try @packtool.compile_workflow_job(workflow_projection(), declaration, 100) catch {
     error =>
       assert_true(
         "\{error}".contains(
@@ -158,7 +159,7 @@ test "pack workflow compiler rejects an unknown output binding" {
     ..workflow_declaration(),
     output_bindings: ["missing-step"],
   }
-  try compile_workflow_job(workflow_projection(), declaration, 100) catch {
+  try @packtool.compile_workflow_job(workflow_projection(), declaration, 100) catch {
     error =>
       assert_true(
         "\{error}".contains(
@@ -176,7 +177,7 @@ async test "pack workflow intake persists definition workflow run and checkpoint
     let root = @pathx.join(dir, "jobs")
     let runtime = @job.RuntimeManager::new(root~)
     let intake = match
-      intake_workflow_run(
+      @packtool.intake_workflow_run(
         runtime,
         workflow_projection(),
         workflow_declaration(),
@@ -205,7 +206,7 @@ async test "pack workflow intake persists definition workflow run and checkpoint
 async test "pack workflow intake never overwrites an existing run id" {
   @fsx.with_temporary_directory("packtool-run-id-XXXXXX", dir => {
     let runtime = @job.RuntimeManager::new(root=@pathx.join(dir, "jobs"))
-    let first = intake_workflow_run(
+    let first = @packtool.intake_workflow_run(
       runtime,
       workflow_projection(),
       workflow_declaration(),
@@ -213,7 +214,7 @@ async test "pack workflow intake never overwrites an existing run id" {
       200,
     )
     assert_true(first is Ok(_))
-    let second = intake_workflow_run(
+    let second = @packtool.intake_workflow_run(
       runtime,
       workflow_projection(),
       workflow_declaration(),

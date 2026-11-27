@@ -10,12 +10,12 @@ async test "resolve_robot_target_config reads generic target from moonclaw confi
       "robots": Json::object({
         "targets": Json::object({
           "robot-main": Json::object({
-            "command": "/bin/sh".to_json(),
-            "args": [
+            "command": Json::string("/bin/sh"),
+            "args": ToJson::to_json([
               "-c", "cat >/dev/null; printf '{\"status\":\"completed\"}'",
-            ].to_json(),
-            "cwd": "/tmp/robot-bridge".to_json(),
-            "env": Json::object({ "ROBOT_DDS_DOMAIN": "17".to_json() }),
+            ]),
+            "cwd": Json::string("/tmp/robot-bridge"),
+            "env": Json::object({ "ROBOT_DDS_DOMAIN": Json::string("17") }),
           }),
         }),
       }),
@@ -46,10 +46,10 @@ async test "analysis executor refuses robot bridge without sandbox grant" {
       "robots": Json::object({
         "targets": Json::object({
           "robot-main": Json::object({
-            "command": "/bin/sh".to_json(),
-            "args": [
+            "command": Json::string("/bin/sh"),
+            "args": ToJson::to_json([
               "-c", "cat >/dev/null; printf '{\"status\":\"completed\",\"content\":\"Robot waved at the operator.\",\"metadata\":{\"action\":\"wave\"}}'",
-            ].to_json(),
+            ]),
           }),
         }),
       }),
@@ -131,10 +131,10 @@ async test "approved sandbox accepts robot.e1 compatibility alias" {
         "e1": Json::object({
           "targets": Json::object({
             "e1-main": Json::object({
-              "command": "robot-sh".to_json(),
-              "args": [
+              "command": Json::string("robot-sh"),
+              "args": ToJson::to_json([
                 "-c", "cat >/dev/null; printf '{\"status\":\"completed\",\"content\":\"Compatibility alias works.\"}'",
-              ].to_json(),
+              ]),
             }),
           }),
         }),
@@ -192,10 +192,10 @@ async test "approved sandbox forwards structured robot metadata" {
       "robots": Json::object({
         "targets": Json::object({
           "robot-main": Json::object({
-            "command": "robot-python".to_json(),
-            "args": [
+            "command": Json::string("robot-python"),
+            "args": ToJson::to_json([
               "-c", "import json,sys; payload=json.loads(sys.argv[1]); print(json.dumps({'status':'completed','content':'ok','metadata':payload.get('metadata', {})}))",
-            ].to_json(),
+            ]),
           }),
         }),
       }),

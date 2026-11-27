@@ -43,7 +43,7 @@ pub impl Show for Errno with fn output(self : Errno, logger : &Logger) -> Unit {
 
 ///|
 pub impl ToJson for Errno with fn to_json(self : Errno) -> Json {
-  self.to_string().to_json()
+  Json::string(Show::to_string(self))
 }
 
 ///|

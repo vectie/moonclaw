@@ -1,10 +1,11 @@
 ///|
+#derive(ToJson, Eq, Debug)
 pub enum Message {
   User(String)
   System(String)
   Assistant(String, tool_calls~ : Array[ToolCall])
   Tool(String, tool_call_id~ : String)
-} derive(ToJson, Eq, Debug)
+}
 
 ///|
 pub fn user_message(content~ : String) -> Message {
@@ -40,11 +41,12 @@ pub fn Message::content(self : Message) -> String {
 }
 
 ///|
+#derive(ToJson, Eq, Debug)
 pub struct ToolCall {
   id : String
   name : String
   arguments : String?
-} derive(ToJson, Eq, Debug)
+}
 
 ///|
 pub fn tool_call(id~ : String, name~ : String, arguments? : String) -> ToolCall {
@@ -52,12 +54,13 @@ pub fn tool_call(id~ : String, name~ : String, arguments? : String) -> ToolCall 
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct Usage {
   input_tokens : Int32
   output_tokens : Int32
   total_tokens : Int32
   cache_read_tokens : Int32?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn usage(

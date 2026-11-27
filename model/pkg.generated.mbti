@@ -87,14 +87,15 @@ pub fn CopilotModels::output(Self, &Logger) -> Unit
 pub fn CopilotModels::to_string(Self) -> String
 pub impl Show for CopilotModels
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct CostConfig {
   input : Double?
   output : Double?
   cacheRead : Double?
   cacheWrite : Double?
-} derive(ToJson, @debug.Debug)
-pub fn CostConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn CostConfig::to_json(Self) -> Json
+}
+pub fn CostConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn CostConfig::to_json(Self) -> @json.Json
 pub fn CostConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for CostConfig
 
@@ -123,6 +124,7 @@ pub async fn Loader::models(Self) -> ArrayView[Model]
 pub async fn Loader::new(home? : StringView, cwd? : StringView, resource_reader? : async (StringView) -> String?) -> Self
 pub async fn Loader::with_resource_reader(Self, async (StringView) -> String?) -> Self
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub struct Model {
   name : String
   description : String?
@@ -130,7 +132,7 @@ pub struct Model {
   model_type : Type
   api_key : String
   base_url : String
-  safe_zone_tokens : Int
+  safe_zone_tokens : Int32
   supports_anthropic_prompt_caching : Bool
   supports_apply_patch : Bool
   input_modalities : Array[String]
@@ -140,32 +142,34 @@ pub struct Model {
   account_id : String?
   refresh_token : String?
   id_token : String?
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn Model::equal(Self, Self) -> Bool
-pub fn Model::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Model::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 #as_free_fn
-pub fn Model::new(api_key~ : String, base_url~ : String, name~ : String, safe_zone_tokens~ : Int, model_name? : String, model_type? : Type, description? : String, supports_anthropic_prompt_caching? : Bool, input_modalities? : Array[String], text_only? : Bool, acp_tools? : Bool, access_token? : String, account_id? : String, refresh_token? : String, id_token? : String) -> Self
+pub fn Model::new(api_key~ : String, base_url~ : String, name~ : String, safe_zone_tokens~ : Int32, model_name? : String, model_type? : Type, description? : String, supports_anthropic_prompt_caching? : Bool, input_modalities? : Array[String], text_only? : Bool, acp_tools? : Bool, access_token? : String, account_id? : String, refresh_token? : String, id_token? : String) -> Self
 pub fn Model::not_equal(Self, Self) -> Bool
 pub fn Model::selector(Self) -> String
 pub fn Model::supports_image_input(Self) -> Bool
-pub fn Model::to_json(Self) -> Json
+pub fn Model::to_json(Self) -> @json.Json
 pub fn Model::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for Model
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct ModelConfig {
   id : String
   name : String?
   reasoning : Bool?
   input : Array[String]?
   cost : CostConfig?
-  contextWindow : Int?
-  maxTokens : Int?
-} derive(ToJson, @debug.Debug)
-pub fn ModelConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ModelConfig::to_json(Self) -> Json
+  contextWindow : Int32?
+  maxTokens : Int32?
+}
+pub fn ModelConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ModelConfig::to_json(Self) -> @json.Json
 pub fn ModelConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ModelConfig
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Provider {
   OpenAI
   Anthropic
@@ -174,27 +178,29 @@ pub(all) enum Provider {
   Qwen
   Kimi
   KimiCoding
-} derive(Eq, @debug.Debug)
+}
 pub fn Provider::equal(Self, Self) -> Bool
 pub fn Provider::not_equal(Self, Self) -> Bool
 pub fn Provider::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct ProviderConfig {
   baseUrl : String?
   api : String?
   models : Array[ModelConfig]
   apiKey : String?
-} derive(ToJson, @debug.Debug)
-pub fn ProviderConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ProviderConfig::to_json(Self) -> Json
+}
+pub fn ProviderConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ProviderConfig::to_json(Self) -> @json.Json
 pub fn ProviderConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ProviderConfig
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct ProvidersFile {
   providers : Map[String, ProviderConfig]
-} derive(ToJson, @debug.Debug)
-pub fn ProvidersFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ProvidersFile::to_json(Self) -> Json
+}
+pub fn ProvidersFile::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ProvidersFile::to_json(Self) -> @json.Json
 pub fn ProvidersFile::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ProvidersFile
 
@@ -212,19 +218,20 @@ pub fn QwenModels::output(Self, &Logger) -> Unit
 pub fn QwenModels::to_string(Self) -> String
 pub impl Show for QwenModels
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Type {
   SaaS(Provider)
-} derive(Eq, @debug.Debug)
+}
 pub fn Type::equal(Self, Self) -> Bool
-pub fn Type::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Type::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Type::not_equal(Self, Self) -> Bool
 pub fn Type::output(Self, &Logger) -> Unit
-pub fn Type::to_json(Self) -> Json
+pub fn Type::to_json(Self) -> @json.Json
 pub fn Type::to_repr(Self) -> @debug.Repr
 pub fn Type::to_string(Self) -> String
 pub impl Show for Type
-pub impl ToJson for Type
 pub impl @json.FromJson for Type
+pub impl @json.ToJson for Type
 
 // Type aliases
 

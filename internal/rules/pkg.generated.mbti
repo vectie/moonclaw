@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/rules"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",
 }
@@ -17,21 +18,23 @@ pub fn Loader::apply(Self, Array[@ai.Message]) -> Unit
 pub async fn Loader::load(Self) -> Unit
 pub fn Loader::new(String, logger~ : @pino.Logger) -> Self
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct Rule {
   description : String?
   globs : Array[String]
   always_apply : Bool
   content : String
   source : Source
-} derive(ToJson, @debug.Debug)
-pub fn Rule::to_json(Self) -> Json
+}
+pub fn Rule::to_json(Self) -> @json.Json
 pub fn Rule::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.ToJson)
 pub enum Source {
   Global
   Local
-} derive(ToJson, @debug.Debug)
-pub fn Source::to_json(Self) -> Json
+}
+pub fn Source::to_json(Self) -> @json.Json
 pub fn Source::to_repr(Self) -> @debug.Repr
 
 // Type aliases

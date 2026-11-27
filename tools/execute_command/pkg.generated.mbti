@@ -14,25 +14,27 @@ pub fn new(String, home? : String, approval_scope? : String, output_owner? : @ex
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct CommandOutput {
   text : String
-  truncated_lines : Int
-  original_lines : Int
-} derive(ToJson, @json.FromJson)
-pub fn CommandOutput::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn CommandOutput::to_json(Self) -> Json
+  truncated_lines : Int32
+  original_lines : Int32
+}
+pub fn CommandOutput::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn CommandOutput::to_json(Self) -> @json.Json
 
+#derive(@json.FromJson, @json.ToJson)
 pub enum CommandResult {
   Simulated(assessment~ : @security.CommandAssessment)
   ApprovalRequired(command~ : String, assessment~ : @security.CommandAssessment, token~ : String)
   Blocked(command~ : String, assessment~ : @security.CommandAssessment)
-  Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
-  TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
-  Background(command~ : String, job_id~ : Int)
-} derive(ToJson, @json.FromJson)
-pub fn CommandResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+  Completed(command~ : String, status~ : Int32, stdout~ : String, stderr~ : String, max_output_lines~ : Int32, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
+  TimedOut(command~ : String, timeout~ : Int32, stdout~ : String, stderr~ : String, max_output_lines~ : Int32, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
+  Background(command~ : String, job_id~ : Int32)
+}
+pub fn CommandResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn CommandResult::output(Self, &Logger) -> Unit
-pub fn CommandResult::to_json(Self) -> Json
+pub fn CommandResult::to_json(Self) -> @json.Json
 pub fn CommandResult::to_string(Self) -> String
 pub impl Show for CommandResult
 

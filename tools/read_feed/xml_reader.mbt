@@ -86,7 +86,7 @@ fn xml_entities(text : String) -> String raise {
           let hexadecimal = entity.has_prefix("#x")
           let value = @string.parse_int(
             entity[if hexadecimal { 2 } else { 1 }:],
-            base=if hexadecimal { 16 } else { 10 },
+            radix=if hexadecimal { 16 } else { 10 },
           )
           guard value == 9 ||
             value == 10 ||

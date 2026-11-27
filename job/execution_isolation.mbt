@@ -1,10 +1,12 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum ExecutionIsolationMode {
   SharedWorkspace
   GitWorktree
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ExecutionIsolationSpec {
   mode : ExecutionIsolationMode
   task_key : String
@@ -13,7 +15,7 @@ pub(all) struct ExecutionIsolationSpec {
   commit : String?
   cleanup_policy : String?
   force_new_branch : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ExecutionIsolationSpec::new(
@@ -37,10 +39,11 @@ pub fn ExecutionIsolationSpec::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ExecutionIsolationResolution {
   cwd : String
   metadata : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ExecutionIsolationResolution::new(

@@ -1,8 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/lru"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub fn[K : Eq + Hash, V] cache(max_size? : Int) -> Cache[K, V]
+pub fn[K : Eq + Hash, V] cache(max_size? : Int32) -> Cache[K, V]
 
 // Errors
 
@@ -13,8 +17,8 @@ pub fn[K : Eq + Hash, V] Cache::at(Self[K, V], K) -> V
 pub fn[K : Eq + Hash, V] Cache::get(Self[K, V], K) -> V?
 #alias("_[_]=_")
 pub fn[K : Eq + Hash, V] Cache::set(Self[K, V], K, V) -> Unit
-pub fn[K : Show, V : ToJson] Cache::to_json(Self[K, V]) -> Json
-pub impl[K : Show, V : ToJson] ToJson for Cache[K, V]
+pub fn[K : Show, V : @json.ToJson] Cache::to_json(Self[K, V]) -> @json.Json
+pub impl[K : Show, V : @json.ToJson] @json.ToJson for Cache[K, V]
 
 // Type aliases
 

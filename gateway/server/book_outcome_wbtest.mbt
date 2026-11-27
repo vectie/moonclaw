@@ -37,8 +37,8 @@ async test "Book source actual authenticated gateway uses shipped controls and n
       ),
     )
     store.load()
-    let before_runs = store.list_runs().to_json()
-    let before_artifacts = store.list_artifacts().to_json()
+    let before_runs = ToJson::to_json(store.list_runs())
+    let before_artifacts = ToJson::to_json(store.list_artifacts())
     let base = "http://127.0.0.1:\{gateway.httpx.port()}"
     @async.with_task_group(group => {
       group.spawn_bg(
@@ -63,8 +63,8 @@ async test "Book source actual authenticated gateway uses shipped controls and n
         output.text().contains("ACTUAL_BOOK_GATEWAY_UI_PASSED"),
         msg=output.text(),
       )
-      assert_eq(store.list_runs().to_json(), before_runs)
-      assert_eq(store.list_artifacts().to_json(), before_artifacts)
+      assert_eq(ToJson::to_json(store.list_runs()), before_runs)
+      assert_eq(ToJson::to_json(store.list_artifacts()), before_artifacts)
       println("ACTUAL_BOOK_GATEWAY_UI_PASSED")
       group.return_immediately(())
     })

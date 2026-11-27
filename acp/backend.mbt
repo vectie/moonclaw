@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpRunRequest {
   message : String
   run_id : String?
@@ -6,7 +7,7 @@ pub struct AcpRunRequest {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn new_run_request(
@@ -21,6 +22,7 @@ pub fn new_run_request(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpLaunchPlan {
   backend : String
   target_id : String
@@ -33,7 +35,7 @@ pub struct AcpLaunchPlan {
   model : String?
   env : Json
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn resolved_workspace(target : AcpTarget, session : AcpSession) -> String? {

@@ -13,14 +13,16 @@ pub fn new(String) -> @tool.Tool[PatchEditResult]
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub enum PatchEditMode {
   Preview
   Apply
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PatchEditMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn PatchEditMode::to_json(Self) -> Json
+}
+pub fn PatchEditMode::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn PatchEditMode::to_json(Self) -> @json.Json
 pub fn PatchEditMode::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct PatchEditResult {
   mode : PatchEditMode
   patch_valid : Bool
@@ -29,11 +31,11 @@ pub struct PatchEditResult {
   added : Array[String]
   modified : Array[String]
   deleted : Array[String]
-  file_count : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PatchEditResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+  file_count : Int32
+}
+pub fn PatchEditResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PatchEditResult::output(Self, &Logger) -> Unit
-pub fn PatchEditResult::to_json(Self) -> Json
+pub fn PatchEditResult::to_json(Self) -> @json.Json
 pub fn PatchEditResult::to_repr(Self) -> @debug.Repr
 pub fn PatchEditResult::to_string(Self) -> String
 pub impl Show for PatchEditResult

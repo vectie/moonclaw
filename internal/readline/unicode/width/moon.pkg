@@ -1,11 +1,11 @@
 import {
-  "moonbitlang/core/string",
   "moonbitlang/core/uint16",
 }
 
 import {
   "vectie/moonlib/fsx",
   "moonbitlang/async",
+  "moonbitlang/core/string",
 } for "test"
 
 supported_targets = "native"

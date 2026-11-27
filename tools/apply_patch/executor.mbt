@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 pub(all) suberror ApplyError {
   ApplyError(String)
-} derive(Debug)
+}
 
 ///|
 pub async fn apply_hunks(

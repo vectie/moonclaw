@@ -14,13 +14,15 @@ pub async fn validate_dossier_in_workspace(EvidenceDossier, String) -> EvidenceQ
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EvidenceClaim {
   claim_id : String
   statement : String
   source_ids : Array[String]
   confidence : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EvidenceDossier {
   contract_id : String
   task_id : String
@@ -30,33 +32,36 @@ pub(all) struct EvidenceDossier {
   claims : Array[EvidenceClaim]
   open_questions : Array[String]
   output_artifacts : Array[String]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EvidencePolicy {
-  minimum_sources : Int
-  minimum_primary_sources : Int
-  minimum_evidence_per_claim : Int
+  minimum_sources : Int32
+  minimum_primary_sources : Int32
+  minimum_evidence_per_claim : Int32
   require_open_questions : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EvidenceQualityReceipt {
   contract_id : String
   task_id : String
   accepted : Bool
-  source_count : Int
-  primary_source_count : Int
-  claim_count : Int
+  source_count : Int32
+  primary_source_count : Int32
+  claim_count : Int32
   blockers : Array[String]
   output_artifacts : Array[String]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EvidenceSource {
   source_id : String
   locator : String
   authority_class : String
   retrieved_at : String
   artifact_ref : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
 // Type aliases
 

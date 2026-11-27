@@ -25,10 +25,11 @@ pub struct PromotionClient {
 }
 
 ///|
+#derive(Debug, Eq)
 pub(all) struct ProcessResponse {
   status : Int32
   stdout : String
-} derive(Debug, Eq)
+}
 
 ///|
 fn canonical_absolute_path(path : String) -> Bool {

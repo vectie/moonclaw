@@ -228,7 +228,7 @@ const ContextLines = 1
 fn recover_diagnostics(content : String) -> String raise {
   let lines = content.split("\n").collect()
   // 1. Collect source
-  let source = StringBuilder::new()
+  let source = StringBuilder()
   // Matches lines like this
   //
   // `````

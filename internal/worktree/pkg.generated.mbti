@@ -22,23 +22,25 @@ pub async fn[T] with_worktree(String, String, base_dir? : String?, branch_name? 
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WorktreeHandle {
   repo_root : String
   path : String
   branch_name : String
   task_key : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn WorktreeHandle::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn WorktreeHandle::to_json(Self) -> Json
+}
+pub fn WorktreeHandle::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn WorktreeHandle::to_json(Self) -> @json.Json
 pub fn WorktreeHandle::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WorktreeList {
   repo_root : String
   base_dir : String
   worktrees : Array[WorktreeHandle]
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn WorktreeList::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn WorktreeList::to_json(Self) -> Json
+}
+pub fn WorktreeList::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn WorktreeList::to_json(Self) -> @json.Json
 pub fn WorktreeList::to_repr(Self) -> @debug.Repr
 
 // Type aliases

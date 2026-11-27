@@ -1,10 +1,12 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobProfileMatchRules {
   any : Array[String]?
   all : Array[String]?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobProfileStep {
   id : String
   title : String
@@ -17,9 +19,10 @@ pub(all) struct JobProfileStep {
   include_parent_outputs : Bool?
   max_depth : Int32?
   metadata : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct JobProfile {
   id : String
   family : String
@@ -30,9 +33,10 @@ pub(all) struct JobProfile {
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct JobProfileConfigPayload {
   family : String?
   label : String?
@@ -42,7 +46,7 @@ struct JobProfileConfigPayload {
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]?
   metadata : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn parse_string_array(value : Json) -> Array[String]? {

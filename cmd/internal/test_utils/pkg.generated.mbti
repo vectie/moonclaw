@@ -3,6 +3,7 @@ package "vectie/moonclaw/cmd/internal/test_utils"
 
 import {
   "moonbitlang/async/http",
+  "moonbitlang/core/json",
   "vectie/moonclaw/event",
   "vectie/moonclaw/internal/httpx",
 }
@@ -17,13 +18,14 @@ pub fn redact_events(Array[ServerEvent]) -> Array[ServerEvent]
 // Errors
 
 // Types and methods
+#derive(@json.ToJson)
 pub(all) enum ServerEvent {
-  MoonclawQueuedMessagesSynchronized(Array[Json])
+  MoonclawQueuedMessagesSynchronized(Array[@json.Json])
   Moonclaw(@event.Event)
-} derive(ToJson)
+}
 pub async fn ServerEvent::collect_events(@http.Client, stop_at_cancel? : Bool) -> Array[Self]
 pub fn ServerEvent::from_event(@httpx.Event) -> Self raise
-pub fn ServerEvent::to_json(Self) -> Json
+pub fn ServerEvent::to_json(Self) -> @json.Json
 pub impl @httpx.FromEvent for ServerEvent
 
 // Type aliases

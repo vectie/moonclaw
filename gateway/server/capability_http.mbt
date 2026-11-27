@@ -3,6 +3,7 @@
 ///
 /// Routes are operator configuration, never invocation input. This prevents a
 /// browser or domain pack from supplying an arbitrary provider or HTTP target.
+#derive(FromJson)
 priv struct CapabilityHttpRouteV1 {
   route_id : String
   operation_ref : String
@@ -13,11 +14,12 @@ priv struct CapabilityHttpRouteV1 {
   base_url : String?
   estimated_cost_micros : Int32
   provider_route_ref : String?
-} derive(FromJson)
+}
 
 ///|
 /// Host-owned policy loaded from MoonClaw's product home in the served
 /// workspace. It is deliberately not accepted in an HTTP request.
+#derive(FromJson)
 priv struct CapabilityHttpPolicyV1 {
   contract_id : String
   catalog_ref : String
@@ -28,7 +30,7 @@ priv struct CapabilityHttpPolicyV1 {
   remaining_budget_micros : Int32
   approved_provider_route_refs : Array[String]
   routes : Array[CapabilityHttpRouteV1]
-} derive(FromJson)
+}
 
 ///|
 fn capability_http_policy_path(workspace : String) -> String {

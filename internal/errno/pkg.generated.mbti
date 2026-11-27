@@ -1,33 +1,37 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/errno"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub let eacces : Int
+pub let eacces : Int32
 
-pub let eagain : Int
+pub let eagain : Int32
 
-pub let ebadf : Int
+pub let ebadf : Int32
 
-pub let eexist : Int
+pub let eexist : Int32
 
-pub let einval : Int
+pub let einval : Int32
 
-pub let enametoolong : Int
+pub let enametoolong : Int32
 
-pub let enoent : Int
+pub let enoent : Int32
 
-pub let enotty : Int
+pub let enotty : Int32
 
-pub let erange : Int
+pub let erange : Int32
 
-pub fn get() -> Int
+pub fn get() -> Int32
 
 // Errors
 pub(all) suberror Errno {
-  Errno(Int)
+  Errno(Int32)
 }
 pub impl Show for Errno
-pub impl ToJson for Errno
+pub impl @json.ToJson for Errno
 
 // Types and methods
 

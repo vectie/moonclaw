@@ -68,7 +68,7 @@ async test "bootstrap creates config and preserves existing settings" {
     json_inspect(result.onboarding.workspace_files.length(), content=5)
     json_inspect(
       result.onboarding.workspace_root,
-      content=(home + "/.moonsuite/products/moonclaw/workspace").to_json(),
+      content=Json::string(home + "/.moonsuite/products/moonclaw/workspace"),
     )
     json_inspect(result.preserved.contains("channels"), content=true)
   })
@@ -86,7 +86,7 @@ async test "bootstrap default workspace infers suite product home from book home
       |> @pathx.join(".moonsuite/products/moonclaw/workspace")
     json_inspect(
       result.onboarding.workspace_root,
-      content=expected_workspace.to_json(),
+      content=Json::string(expected_workspace),
     )
     json_inspect(
       result.onboarding.workspace_root.contains(
@@ -161,7 +161,7 @@ async test "bootstrap_with_options applies explicit model workspace and channel 
     json_inspect(result.onboarding.feishu_ready, content=true)
     json_inspect(
       result.onboarding.workspace_root,
-      content=custom_workspace.to_json(),
+      content=Json::string(custom_workspace),
     )
     json_inspect(json, content={
       "models": { "providers": {} },

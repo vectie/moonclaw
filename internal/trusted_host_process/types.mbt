@@ -2,6 +2,7 @@
 /// A deliberately closed set of Git operations used by MoonClaw's own
 /// bookkeeping. There is no escape hatch for a caller-supplied executable,
 /// argument vector, environment, or shell command.
+#derive(Debug)
 pub(all) enum GitOperation {
   Init
   CheckIgnore(Array[String])
@@ -37,7 +38,7 @@ pub(all) enum GitOperation {
   FmtUntrackedPaths
   FmtPathDiff(String)
   FmtReadHeadPath(String)
-} derive(Debug)
+}
 
 ///|
 pub struct GitResult {
@@ -68,12 +69,13 @@ pub fn GitResult::elapsed(self : GitResult) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub suberror TrustedHostProcessError {
   InvalidWorkspace(String)
   InvalidParameter(String)
   UnsafeRepositoryConfig(String)
   HostToolUnavailable(String)
-} derive(Debug)
+}
 
 ///|
 pub extend GitOperation with @moonbitlang/core/debug.Debug::{to_repr}

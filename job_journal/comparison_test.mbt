@@ -9,20 +9,20 @@ fn comparison_event(
   job~ : String = "job",
 ) -> String {
   let fields : Map[String, Json] = {
-    "run_id": run.to_json(),
-    "job_id": job.to_json(),
-    "timestamp": timestamp.to_json(),
-    "event_type": kind.to_json(),
-    "message": message.to_json(),
+    "run_id": Json::string(run),
+    "job_id": Json::string(job),
+    "timestamp": ToJson::to_json(timestamp),
+    "event_type": Json::string(kind),
+    "message": Json::string(message),
     "data": { "future": [1, 2] },
   }
   if step is Some(value) {
-    fields["step_id"] = value.to_json()
+    fields["step_id"] = Json::string(value)
   }
   if status is Some(value) {
     fields["status"] = value
   }
-  fields.to_json().stringify()
+  Json::object(fields).stringify()
 }
 
 ///|
@@ -121,7 +121,9 @@ test "interval arithmetic is wide and negative deltas remain negative" {
   assert_eq(result.baseline.span, 4294967295L)
   assert_eq(result.span_delta, -4294967295L)
   assert_true(
-    result.to_json().stringify().contains("\"span_delta\":\"-4294967295\""),
+    ToJson::to_json(result)
+    .stringify()
+    .contains("\"span_delta\":\"-4294967295\""),
   )
   assert_eq(result.steps[0].span_delta, Some(-4294967295L))
   assert_eq(result.baseline.last_status, None)

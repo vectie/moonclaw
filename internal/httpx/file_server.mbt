@@ -24,7 +24,7 @@ pub fn FileServer::middleware(self : FileServer) -> Middleware {
 ///|
 /// Returns the filesystem path that this file server is rooted at.
 pub fn FileServer::path(self : FileServer) -> StringView {
-  self.path.view()
+  self.path[:]
 }
 
 ///|

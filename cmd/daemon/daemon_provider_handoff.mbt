@@ -177,7 +177,7 @@ fn lunanexa_provider_handoff_success(
 async fn read_lunanexa_handoff_request(
   r : @httpx.RequestReader,
 ) -> LunaProviderHandoffRequest {
-  let output = @buffer.Buffer(size_hint=512)
+  let output = @buffer.Buffer(capacity=512)
   for ;; {
     guard r.body.read_some(
         max_len=(LUNANEXA_HANDOFF_REQUEST_BYTES - output.length() + 1).min(
@@ -195,7 +195,7 @@ async fn read_lunanexa_handoff_request(
         },
       })
     }
-    output.write_bytes(chunk)
+    output.write_bytesview(chunk)
   }
   let value : LunaProviderHandoffRequest = @json.from_json(
     @json.parse(@encoding/utf8.decode(output.to_bytes())),
@@ -215,7 +215,7 @@ async fn read_lunanexa_handoff_request(
 async fn read_lunanexa_handoff_response(
   client : @http.Client,
 ) -> Result[String, String] {
-  let output = @buffer.Buffer(size_hint=8_192)
+  let output = @buffer.Buffer(capacity=8_192)
   for ;; {
     let chunk = client.read_some(
       max_len=(LUNANEXA_HANDOFF_RESPONSE_BYTES - output.length() + 1).min(8_192),
@@ -226,7 +226,7 @@ async fn read_lunanexa_handoff_response(
     if output.length() + chunk.length() > LUNANEXA_HANDOFF_RESPONSE_BYTES {
       return Err("LunaNexa response exceeded the size limit")
     }
-    output.write_bytes(chunk)
+    output.write_bytesview(chunk)
   }
   Ok(@encoding/utf8.decode(output.to_bytes())) catch {
     _ => Err("LunaNexa response was not valid UTF-8")

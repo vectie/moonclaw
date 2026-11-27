@@ -1,7 +1,6 @@
 import {
   "vectie/moonclaw/job_journal" @journal,
   "vectie/moonlib/fsx",
-  "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/x/sys",
   "moonbitlang/core/env",

@@ -18,14 +18,16 @@ pub suberror ExtensionError {
 }
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Attachment {
   id : String
   mime_type : String
   url : String
   filename : String?
-  size : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  size : Int32?
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelCapabilities {
   chat_types : Array[ChatType]
   polls : Bool
@@ -39,14 +41,16 @@ pub(all) struct ChannelCapabilities {
   media : Bool
   native_commands : Bool
   block_streaming : Bool
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelConfig {
   enabled : Bool
-  accounts : Map[String, Json]
-  global_settings : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  accounts : Map[String, @json.Json]
+  global_settings : @json.Json
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelDock {
   id : String
   meta : ChannelMeta
@@ -56,37 +60,40 @@ pub(all) struct ChannelDock {
   account_ids : Array[String]
   outbound : OutboundConfig?
   streaming : StreamingConfig?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelDockConfig {
   outbound : OutboundAdapter?
   threading : ThreadingAdapter?
   mentions : MentionAdapter?
   streaming : StreamingAdapter?
   security : SecurityAdapter?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn ChannelDockConfig::default_for_channel(String) -> Self
 pub fn ChannelDockConfig::new(outbound? : OutboundAdapter?, threading? : ThreadingAdapter?, mentions? : MentionAdapter?, streaming? : StreamingAdapter?, security? : SecurityAdapter?) -> Self
 
 type ChannelEntry
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum ChannelError {
   NotConfigured(message~ : String)
   ConnectionFailed(message~ : String)
   SendMessageFailed(message~ : String)
   InvalidRecipient(message~ : String)
-  RateLimited(message~ : String, retry_after_ms~ : Int?)
+  RateLimited(message~ : String, retry_after_ms~ : Int32?)
   Unknown(message~ : String)
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 pub impl Show for ChannelError
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelEvent {
   channel : String
   account_id : String
   event_type : String
-  payload : Json
-  timestamp : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  payload : @json.Json
+  timestamp : Int32
+}
 
 pub(all) enum ChannelEventType {
   MessageReceived
@@ -102,6 +109,7 @@ pub(all) enum ChannelEventType {
   Custom(String)
 }
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelMeta {
   id : String
   label : String
@@ -109,9 +117,9 @@ pub(all) struct ChannelMeta {
   docs_path : String
   docs_label : String?
   blurb : String
-  order : Int?
+  order : Int32?
   aliases : Array[String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub struct ChannelRegistry {
   // private fields
@@ -123,15 +131,16 @@ pub fn ChannelRegistry::get_entry(Self, String) -> ChannelEntry?
 pub fn ChannelRegistry::list_channels(Self) -> Array[ChannelDock]
 pub fn ChannelRegistry::new() -> Self
 pub fn ChannelRegistry::register(Self, &Channel) -> Unit
-pub async fn ChannelRegistry::start(Self, String, String, Json) -> Result[Unit, ChannelError]
+pub async fn ChannelRegistry::start(Self, String, String, @json.Json) -> Result[Unit, ChannelError]
 pub async fn ChannelRegistry::stop(Self, String, String) -> Result[Unit, ChannelError]
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum ChatType {
   Direct
   Group
   Channel
   Thread
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub(all) struct ExtensionContext {
   gateway_url : String
@@ -206,14 +215,14 @@ pub fn ExtensionRequest::body(Self) -> Bytes
 pub fn ExtensionRequest::header(Self, String) -> String?
 pub fn ExtensionRequest::headers(Self) -> Map[String, String]
 pub fn ExtensionRequest::http_method(Self) -> String
-pub fn ExtensionRequest::json(Self) -> Json raise
+pub fn ExtensionRequest::json(Self) -> @json.Json raise
 pub fn ExtensionRequest::new(http_method~ : String, path~ : String, headers~ : Map[String, String], body~ : Bytes, query_params? : Map[String, String]) -> Self
 pub fn ExtensionRequest::path(Self) -> String
 pub fn ExtensionRequest::query_param(Self, String) -> String?
 pub fn ExtensionRequest::query_params(Self) -> Map[String, String]
 
 pub(all) struct ExtensionResponse {
-  status_code : Int
+  status_code : Int32
   headers : Map[String, String]
   body : Bytes
 }
@@ -221,13 +230,13 @@ pub fn ExtensionResponse::bad_request(message? : String) -> Self
 pub fn ExtensionResponse::body(Self) -> Bytes
 pub fn ExtensionResponse::headers(Self) -> Map[String, String]
 pub fn ExtensionResponse::internal_error(message? : String) -> Self
-pub fn ExtensionResponse::json(Json, status_code? : Int) -> Self
-pub fn ExtensionResponse::new(status_code? : Int, headers? : Map[String, String], body? : Bytes) -> Self
+pub fn ExtensionResponse::json(@json.Json, status_code? : Int32) -> Self
+pub fn ExtensionResponse::new(status_code? : Int32, headers? : Map[String, String], body? : Bytes) -> Self
 pub fn ExtensionResponse::no_content() -> Self
 pub fn ExtensionResponse::not_found() -> Self
 pub fn ExtensionResponse::ok() -> Self
-pub fn ExtensionResponse::status_code(Self) -> Int
-pub fn ExtensionResponse::text(String, status_code? : Int) -> Self
+pub fn ExtensionResponse::status_code(Self) -> Int32
+pub fn ExtensionResponse::text(String, status_code? : Int32) -> Self
 pub fn ExtensionResponse::unauthorized(message? : String) -> Self
 
 pub(all) struct LoggerFuncs {
@@ -238,13 +247,15 @@ pub(all) struct LoggerFuncs {
 }
 pub fn LoggerFuncs::new(info~ : (String) -> Unit, warn~ : (String) -> Unit, error~ : (String) -> Unit, debug~ : (String) -> Unit) -> Self
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct MentionAdapter {
   strip_patterns : Array[String]
   mention_prefix : String?
   mention_suffix : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn MentionAdapter::new(strip_patterns? : Array[String], mention_prefix? : String?, mention_suffix? : String?) -> Self
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Message {
   id : String
   channel : String
@@ -252,59 +263,66 @@ pub(all) struct Message {
   to : String
   content : String
   content_type : String
-  timestamp : Int
+  timestamp : Int32
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct OutboundAdapter {
-  text_chunk_limit : Int
+  text_chunk_limit : Int32
   delivery_mode : String
   chunker_mode : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn OutboundAdapter::new(text_chunk_limit? : Int, delivery_mode? : String, chunker_mode? : String) -> Self
+}
+pub fn OutboundAdapter::new(text_chunk_limit? : Int32, delivery_mode? : String, chunker_mode? : String) -> Self
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
-  text_chunk_limit : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  text_chunk_limit : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct SecurityAdapter {
   dm_policy : String
   allow_from : Array[String]
   require_mention_in_groups : Bool
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn SecurityAdapter::new(dm_policy? : String, allow_from? : Array[String], require_mention_in_groups? : Bool) -> Self
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct SendResult {
   channel : String
   message_id : String
-  timestamp : Int
+  timestamp : Int32
   status : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct StreamingAdapter {
   enabled : Bool
-  chunk_size : Int
-  chunk_delay_ms : Int
-  min_chars : Int?
-  idle_ms : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn StreamingAdapter::new(enabled? : Bool, chunk_size? : Int, chunk_delay_ms? : Int, min_chars? : Int?, idle_ms? : Int?) -> Self
+  chunk_size : Int32
+  chunk_delay_ms : Int32
+  min_chars : Int32?
+  idle_ms : Int32?
+}
+pub fn StreamingAdapter::new(enabled? : Bool, chunk_size? : Int32, chunk_delay_ms? : Int32, min_chars? : Int32?, idle_ms? : Int32?) -> Self
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct StreamingConfig {
   enabled : Bool
-  chunk_size : Int
-  chunk_delay_ms : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  chunk_size : Int32
+  chunk_delay_ms : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ThreadingAdapter {
   reply_to_mode : String
   supports_threads : Bool
   thread_id_key : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn ThreadingAdapter::new(reply_to_mode? : String, supports_threads? : Bool, thread_id_key? : String?) -> Self
 
 pub(all) struct WebSocketClientConnector {
@@ -340,12 +358,12 @@ pub async fn WebSocketClientRuntimeManager::start(Self) -> Unit
 pub(all) struct WebSocketClientSpec {
   client_id : String
   label : String
-  reconnect_delay_ms : Int
+  reconnect_delay_ms : Int32
 }
 pub fn WebSocketClientSpec::client_id(Self) -> String
 pub fn WebSocketClientSpec::label(Self) -> String
-pub fn WebSocketClientSpec::new(client_id~ : String, label? : String, reconnect_delay_ms? : Int) -> Self
-pub fn WebSocketClientSpec::reconnect_delay_ms(Self) -> Int
+pub fn WebSocketClientSpec::new(client_id~ : String, label? : String, reconnect_delay_ms? : Int32) -> Self
+pub fn WebSocketClientSpec::reconnect_delay_ms(Self) -> Int32
 
 pub(all) struct WebSocketConnection {
   id : String
@@ -364,11 +382,11 @@ pub fn WebSocketConnection::send(Self, Bytes) -> Unit
 pub(all) struct WebSocketDialRequest {
   client_id : String
   protocol : String
-  metadata : Json
+  metadata : @json.Json
 }
 pub fn WebSocketDialRequest::client_id(Self) -> String
-pub fn WebSocketDialRequest::metadata(Self) -> Json
-pub fn WebSocketDialRequest::new(client_id~ : String, protocol~ : String, metadata? : Json) -> Self
+pub fn WebSocketDialRequest::metadata(Self) -> @json.Json
+pub fn WebSocketDialRequest::new(client_id~ : String, protocol~ : String, metadata? : @json.Json) -> Self
 pub fn WebSocketDialRequest::protocol(Self) -> String
 
 pub(all) struct WebSocketManagedConnection {
@@ -388,7 +406,7 @@ pub(open) trait Channel {
   fn meta(Self) -> ChannelMeta
   fn capabilities(Self) -> ChannelCapabilities
   fn configure(Self, ChannelConfig) -> Unit
-  async fn start(Self, String, Json) -> Result[Unit, ChannelError]
+  async fn start(Self, String, @json.Json) -> Result[Unit, ChannelError]
   async fn stop(Self, String) -> Result[Unit, ChannelError]
   async fn send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
   fn handle_event(Self, ChannelEvent) -> Unit

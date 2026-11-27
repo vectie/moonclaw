@@ -20,28 +20,34 @@ import {
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpRunMutationPayload {
   status : String
   run : @acp.AcpRun
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpRunPayload {
   run : @acp.AcpRun
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpRunsPayload {
   runs : Array[@acp.AcpRun]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpSessionMutationPayload {
   status : String
   session : @acp.AcpSession
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpSessionPayload {
   session : @acp.AcpSession
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpSessionRunPayload {
   status : String
   session : @acp.AcpSession
@@ -49,37 +55,44 @@ pub(all) struct AcpSessionRunPayload {
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
   plan : @acp.AcpLaunchPlan
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpSessionsPayload {
   sessions : Array[@acp.AcpSession]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpTargetPayload {
   target : @acp.AcpTarget
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpTargetsPayload {
   targets : Array[@acp.AcpTarget]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpUiEventsPayload {
   timeline : Array[@acp.AcpUiTimelineEntry]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpUiSnapshotPayload {
   snapshot : @acp.AcpUiSnapshot
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelMutationPayload {
   status : String
   channel_id : String
   account_id : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChannelsListPayload {
   channels : Array[@channel.ChannelDock]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub struct Client {
   base_url : String
@@ -95,7 +108,7 @@ pub async fn Client::cancel_acp_run(Self, run_id~ : String) -> Result[AcpRunMuta
 pub async fn Client::cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
-pub async fn Client::create_acp_session(Self, target_id~ : String, session_key~ : String, session_id? : String, metadata? : Json) -> Result[AcpSessionMutationPayload, String]
+pub async fn Client::create_acp_session(Self, target_id~ : String, session_key~ : String, session_id? : String, metadata? : @json.Json) -> Result[AcpSessionMutationPayload, String]
 pub async fn Client::create_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
 pub async fn Client::create_memory(Self, @job.MemoryWriteRequest) -> Result[MemoryMutationPayload, String]
 pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
@@ -128,11 +141,11 @@ pub async fn Client::new(ClientConfig) -> Self
 pub async fn Client::reset_acp_session(Self, session_id~ : String) -> Result[AcpSessionMutationPayload, String]
 pub async fn Client::run_acp_session(Self, session_id~ : String, message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> Result[AcpSessionRunPayload, String]
 pub async fn Client::run_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
-pub async fn Client::search_memories(Self, question~ : String, query? : @job.MemoryQuery, max_hits? : Int) -> Result[MemorySearchPayload, String]
-pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]
+pub async fn Client::search_memories(Self, question~ : String, query? : @job.MemoryQuery, max_hits? : Int32) -> Result[MemorySearchPayload, String]
+pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, @json.Json) -> Result[ChannelMutationPayload, String]
 pub async fn Client::stop_channel(Self, channel_id~ : String, account_id~ : String) -> Result[ChannelMutationPayload, String]
 pub async fn Client::update_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
-pub async fn Client::wait_agent(Self, run_id~ : String, timeout_ms? : Int) -> Result[Json, String]
+pub async fn Client::wait_agent(Self, run_id~ : String, timeout_ms? : Int32) -> Result[@json.Json, String]
 
 pub(all) struct ClientConfig {
   base_url : String
@@ -141,72 +154,86 @@ pub(all) struct ClientConfig {
   client_mode : @protocol.ClientMode
 }
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobMutationPayload {
   status : String
   job : @job.JobDefinition?
   run : @job.JobRun?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobPayload {
   job : @job.JobDefinition
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobRunDetails {
   run : @job.JobRun
   steps : Array[@job.JobStepRun]
   artifacts : Array[@job.ArtifactRecord]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobRunsPayload {
   runs : Array[@job.JobRun]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobUiEventsPayload {
   timeline : Array[@job.JobUiTimelineEntry]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobUiSnapshotPayload {
   snapshot : @job.JobUiSnapshot
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct JobsListPayload {
   jobs : Array[@job.JobDefinition]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct MemoriesListPayload {
   memories : Array[@job.MemoryRecord]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct MemorySearchPayload {
   hits : Array[@job.MemorySearchHit]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct PluginsListPayload {
   plugins : Array[@plugin.PluginRecord]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct RunInfo {
   run_id : String
   session_key : String
   status : String
-  created_at : Int
-  finished_at : Int?
-  result : Json?
+  created_at : Int32
+  finished_at : Int32?
+  result : @json.Json?
   error : @protocol.ErrorShape?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct RunsListPayload {
   runs : Array[RunInfo]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct WorkspacePayload {
   workspace : @workspace.WorkspaceSnapshot
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 // Type aliases
 

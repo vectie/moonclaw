@@ -181,7 +181,7 @@ test "accepted receipt and duplicate guard survive worker restart" {
   let command = ready_command(worker.prepare(action))
   let accepted = worker.complete(action, command, completed_result(command))
   assert_true(accepted.accepted())
-  let encoded = worker.snapshot().to_json()
+  let encoded = ToJson::to_json(worker.snapshot())
   let decoded : @browser.BrowserWorkerSnapshot = @json.from_json(encoded)
   let restored = @browser.BrowserWorker::restore(decoded)
   assert_eq(restored.remaining_actions(), 1)

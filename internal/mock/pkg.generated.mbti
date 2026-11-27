@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/mock"
 
 import {
   "moonbitlang/async",
+  "moonbitlang/core/json",
   "moonbitlang/core/random",
   "moonbitlang/core/test",
   "vectie/moonclaw/clock",
@@ -12,7 +13,7 @@ import {
 }
 
 // Values
-pub async fn run(@test.Test, timeout? : Int, retry? : Int, async (Context) -> Unit) -> Unit
+pub async fn run(@test.Test, timeout? : Int32, retry? : Int32, async (Context) -> Unit) -> Unit
 
 pub async fn[T] with_home(Directory, async () -> T) -> T
 
@@ -32,10 +33,10 @@ pub struct Context {
 pub async fn Context::add_directory(Self, String) -> Directory
 pub async fn Context::add_file(Self, String, content? : String) -> File
 pub async fn Context::add_files(Self, Map[String, String]) -> Unit
-pub async fn Context::add_json_tree(Self, Map[String, Json]) -> Unit
+pub async fn Context::add_json_tree(Self, Map[String, @json.Json]) -> Unit
 pub async fn Context::add_symlink(Self, String, to~ : String) -> Unit
 pub fn Context::getenv(Self, String, allow_empty? : Bool) -> String raise
-pub fn[T : ToJson] Context::json(Self, T) -> Json
+pub fn[T : @json.ToJson] Context::json(Self, T) -> @json.Json
 pub fn Context::model(Self, name? : @model.CommonModels) -> @model.Model raise
 pub fn[T : Show] Context::show(Self, T) -> String
 
@@ -43,7 +44,7 @@ type Directory
 pub async fn Directory::add_directory(Self, String) -> Self
 pub async fn Directory::add_file(Self, String, content? : String) -> File
 pub async fn Directory::add_files(Self, Map[String, String]) -> Unit
-pub async fn Directory::add_json_tree(Self, Map[String, Json]) -> Unit
+pub async fn Directory::add_json_tree(Self, Map[String, @json.Json]) -> Unit
 pub async fn Directory::list(Self) -> Array[Entry]
 pub fn Directory::path(Self) -> String
 
@@ -57,7 +58,7 @@ type File
 pub fn File::path(Self) -> String
 pub async fn File::read(Self) -> String
 pub async fn File::write_bytes(Self, Bytes) -> Unit
-pub async fn File::write_json(Self, Json) -> Unit
+pub async fn File::write_json(Self, @json.Json) -> Unit
 pub async fn File::write_string(Self, String) -> Unit
 
 type Filter

@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct MaterializedStarterAttachment {
   id : String
   mime_type : String
@@ -9,7 +10,7 @@ pub struct MaterializedStarterAttachment {
   status : String
   note : String?
   size : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn MaterializedStarterAttachment::new(
@@ -62,7 +63,7 @@ pub fn starter_attachment_digest_path(workspace_dir : String) -> String {
 
 ///|
 fn sanitized_attachment_name(text : String) -> String {
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   for char in text {
     if char == '/' || char == '\\' || char == ':' {
       builder.write_char('_')

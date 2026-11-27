@@ -14,13 +14,14 @@ pub fn managed_workspace_file_names() -> Array[String]
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WorkspaceFile {
   name : String
   path : String
   content : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn WorkspaceFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn WorkspaceFile::to_json(Self) -> Json
+}
+pub fn WorkspaceFile::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn WorkspaceFile::to_json(Self) -> @json.Json
 pub fn WorkspaceFile::to_repr(Self) -> @debug.Repr
 
 pub struct WorkspaceRuntime {
@@ -35,14 +36,15 @@ pub fn WorkspaceRuntime::prompt_context(Self) -> String
 pub fn WorkspaceRuntime::root(Self) -> String
 pub fn WorkspaceRuntime::snapshot(Self) -> WorkspaceSnapshot
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WorkspaceSnapshot {
   root : String
   configured_from : String
   files : Array[WorkspaceFile]
   prompt_context : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn WorkspaceSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn WorkspaceSnapshot::to_json(Self) -> Json
+}
+pub fn WorkspaceSnapshot::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn WorkspaceSnapshot::to_json(Self) -> @json.Json
 pub fn WorkspaceSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases

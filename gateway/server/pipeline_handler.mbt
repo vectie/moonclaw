@@ -1,9 +1,10 @@
 ///|
+#derive(FromJson, ToJson)
 pub struct CreatePipelineParams {
   name : String
   stages : Array[PipelineStageParams]
   metadata : Map[String, Json]
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn create_pipeline_params(
@@ -15,13 +16,14 @@ pub fn create_pipeline_params(
 }
 
 ///|
+#derive(FromJson, ToJson)
 pub struct PipelineStageParams {
   name : String
   message : String
   model : String?
   cwd : String?
   input_template : String?
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn pipeline_stage_params(
@@ -35,10 +37,11 @@ pub fn pipeline_stage_params(
 }
 
 ///|
+#derive(FromJson, ToJson)
 pub struct AdvanceStageParams {
   stage_name : String
   result : Json
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn advance_stage_params(
@@ -49,10 +52,11 @@ pub fn advance_stage_params(
 }
 
 ///|
+#derive(FromJson, ToJson)
 pub struct FailStageParams {
   stage_name : String
   error : String
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn fail_stage_params(

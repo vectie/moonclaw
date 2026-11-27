@@ -13,6 +13,7 @@ pub fn new() -> @tool.Tool[DelegateRunResult]
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct DelegateRunResult {
   title : String
   request_text : String
@@ -21,15 +22,15 @@ pub struct DelegateRunResult {
   execution_mode : String?
   execution_target : String?
   include_parent_outputs : Bool
-  max_depth : Int
+  max_depth : Int32
   bounded : Bool
   step_kind : String
-  step_config : Json
+  step_config : @json.Json
   summary : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn DelegateRunResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn DelegateRunResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn DelegateRunResult::output(Self, &Logger) -> Unit
-pub fn DelegateRunResult::to_json(Self) -> Json
+pub fn DelegateRunResult::to_json(Self) -> @json.Json
 pub fn DelegateRunResult::to_repr(Self) -> @debug.Repr
 pub fn DelegateRunResult::to_string(Self) -> String
 pub impl Show for DelegateRunResult

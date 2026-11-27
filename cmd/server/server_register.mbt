@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct RegisterRequest {
   id : String
   port : Int32
@@ -6,10 +7,11 @@ pub struct RegisterRequest {
   cwd : String
   web_search : Bool
   model : String
-} derive(ToJson, FromJson)
+}
 
 ///|
-pub(all) struct RegisterResponse {} derive(ToJson, FromJson)
+#derive(ToJson, FromJson)
+pub(all) struct RegisterResponse {}
 
 ///|
 /// Notifies the daemon about the server's listening port via

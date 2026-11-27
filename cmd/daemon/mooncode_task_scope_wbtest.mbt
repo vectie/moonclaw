@@ -8,13 +8,14 @@ async test "whole workspace skips Git snapshots and narrow scope fails before ef
         mooncode_execute_tool_call(
           "scope-before-effect",
           root,
-          {
-            "command_id": id,
-            "tool": "shell",
-            "task_contract": { "scope": [scope] },
-            "arguments": { "cmd": "touch marker" },
-          }
-          |> mooncode_runtime_bind_sandbox_approval_plan(root, _),
+          (
+            {
+              "command_id": id,
+              "tool": "shell",
+              "task_contract": { "scope": [scope] },
+              "arguments": { "cmd": "touch marker" },
+            } : Json)
+          |> req => { mooncode_runtime_bind_sandbox_approval_plan(root, req) },
           now=@clock.Timestamp::from_ms(1L),
         )
       }

@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct ExitWorktreeResult {
   path : String
   repo_root : String
   removed : Bool
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for ExitWorktreeResult with fn output(

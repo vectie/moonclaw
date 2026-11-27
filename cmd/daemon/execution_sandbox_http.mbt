@@ -154,7 +154,7 @@ async fn moondesk_sandbox_read_request_bounded(
   r : @httpx.RequestReader,
   limit : Int32,
 ) -> Json {
-  let output = @buffer.Buffer(size_hint=1_024)
+  let output = @buffer.Buffer(capacity=1_024)
   for ;; {
     guard r.body.read_some(max_len=(limit - output.length() + 1).min(2_048))
       is Some(chunk) else {
@@ -168,7 +168,7 @@ async fn moondesk_sandbox_read_request_bounded(
         },
       })
     }
-    output.write_bytes(chunk)
+    output.write_bytesview(chunk)
   }
   @json.parse(@encoding/utf8.decode(output.to_bytes())) catch {
     _ =>

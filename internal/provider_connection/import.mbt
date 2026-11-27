@@ -8,6 +8,7 @@ pub(all) enum ImportError {
 }
 
 ///|
+#derive(@json.FromJson)
 priv struct Candidate {
   version : String
   api : String
@@ -15,7 +16,7 @@ priv struct Candidate {
   api_key : String
   model : String
   max_output_tokens : Int32
-} derive(@json.FromJson)
+}
 
 ///|
 priv struct GateControl {
@@ -140,13 +141,13 @@ async fn gate_request(
   guard response.code >= 200 && response.code < 300 else {
     raise Failure("MoonGate rejected the request")
   }
-  let bytes = @buffer.Buffer(size_hint=1024)
+  let bytes = @buffer.Buffer(capacity=1024)
   for ;; {
     guard client.read_some(max_len=(65537 - bytes.length()).min(8192))
       is Some(chunk) else {
       break
     }
-    bytes.write_bytes(chunk)
+    bytes.write_bytesview(chunk)
     if bytes.length() > 65536 {
       raise Failure("MoonGate response exceeded its limit")
     }

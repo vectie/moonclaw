@@ -1,13 +1,15 @@
 ///|
 /// An original export entry and its one-based position in the supplied manifest.
 /// Paths and checksums describe the export; no referenced file is read here.
+#derive(ToJson)
 pub struct ReviewArtifact {
   source : String
   index : Int32
   entry : Json
-} derive(ToJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct ReviewArtifactFields {
   record : ReviewRecordFields
   record_path : String
@@ -15,9 +17,10 @@ priv struct ReviewArtifactFields {
   content_path : String
   content_sha256 : String
   content_bytes : Int32
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct ReviewRecordFields {
   id : String
   run_id : String
@@ -32,11 +35,11 @@ priv struct ReviewRecordFields {
   created_at : Int32
   archived_at : Int32?
   scope : Array[String]
-} derive(FromJson)
+}
 
 ///|
 fn review_integer(json : Json, name : String, value : Int32) -> Unit raise {
-  guard json.as_object() is Some(fields) &&
+  guard json is Object(fields) &&
     fields.get(name) is Some(Number(number, ..)) &&
     number == value.to_double() else {
     fail("Expected exact artifact integer: \{name}")
@@ -108,7 +111,7 @@ fn parse_review_artifacts(
     fail("Export manifest must contain between 1 and 32 artifacts")
   }
   let result : Array[ReviewArtifact] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let mut bytes = 0
   for index, entry in entries {
     let artifact = ReviewArtifact::{ source, index: index + 1, entry, }

@@ -11,6 +11,7 @@ import {
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct PluginRecord {
   id : String
   enabled : Bool
@@ -19,8 +20,8 @@ pub struct PluginRecord {
   spec : String?
   version : String?
   install_path : String?
-  metadata : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  metadata : @json.Json
+}
 
 pub struct PluginRuntime {
   home : String

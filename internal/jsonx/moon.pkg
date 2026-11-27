@@ -2,3 +2,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/string",
 }
+
+import {
+  "moonbitlang/core/int64",
+} for "test"

@@ -1,20 +1,22 @@
 // URI parser implementation following RFC 3986
 
 ///|
+#derive(Eq, Debug)
 pub struct Authority {
   mut userinfo : StringView?
   mut host : StringView
   mut port : Int32?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct Uri {
   mut scheme : StringView
   mut authority : Authority?
   path : Array[StringView]
   mut query : StringView?
   mut fragment : StringView?
-} derive(Eq, Debug)
+}
 
 ///|
 suberror ParseError {
@@ -41,9 +43,9 @@ fn Uri::parse_scheme(
           [':', .. rest] as view => {
             uri.scheme = source
               .data()
-              .view(
-                start_offset=source.start_offset(),
-                end_offset=view.start_offset(),
+              .clamped_view(
+                start=source.start_offset(),
+                end=view.start_offset(),
               )
             return rest
           }
@@ -75,7 +77,7 @@ test {
 
 ///|
 fn StringView::slice_until(self : StringView, other : StringView) -> StringView {
-  self.view(end_offset=other.start_offset() - self.start_offset())
+  self.clamped_view(end=other.start_offset() - self.start_offset())
 }
 
 ///|

@@ -1,5 +1,6 @@
 ///|
-pub(all) struct JsonSchema(Json) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub(all) struct JsonSchema(Json)
 
 ///|
 pub fn JsonSchema::from_json(schema : Json) -> JsonSchema {

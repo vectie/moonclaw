@@ -12,14 +12,15 @@ pub fn new(String) -> @tool.Tool[ExitWorktreeResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct ExitWorktreeResult {
   path : String
   repo_root : String
   removed : Bool
-} derive(ToJson, @json.FromJson)
-pub fn ExitWorktreeResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn ExitWorktreeResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ExitWorktreeResult::output(Self, &Logger) -> Unit
-pub fn ExitWorktreeResult::to_json(Self) -> Json
+pub fn ExitWorktreeResult::to_json(Self) -> @json.Json
 pub fn ExitWorktreeResult::to_string(Self) -> String
 pub impl Show for ExitWorktreeResult
 

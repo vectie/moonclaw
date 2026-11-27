@@ -5,6 +5,7 @@
 /// request/stream item wire types.
 
 ///|
+#derive(Debug)
 pub struct ResponsesRequest {
   model : String
   input : Array[ResponseInputItem]
@@ -21,15 +22,16 @@ pub struct ResponsesRequest {
   prompt_cache_ttl : String?
   max_output_tokens : Int32?
   parallel_tool_calls : Bool?
-} derive(Debug)
+}
 
 ///|
 /// This is the minimal subset of Responses API content we currently need.
+#derive(Debug)
 pub(all) enum ContentType {
   InputText
   OutputText
   Text
-} derive(Debug)
+}
 
 ///|
 pub impl ToJson for ContentType with fn to_json(self : ContentType) -> Json {
@@ -57,10 +59,11 @@ pub impl @json.FromJson for ContentType with fn from_json(
 }
 
 ///|
+#derive(Debug)
 pub struct ContentPart {
   type_ : ContentType
   text : String
-} derive(Debug)
+}
 
 ///|
 pub fn ContentPart::new(type_~ : ContentType, text~ : String) -> ContentPart {
@@ -181,11 +184,12 @@ pub impl ToJson for ResponsesRequest with fn to_json(self : ResponsesRequest) ->
 }
 
 ///|
+#derive(Debug)
 pub(all) enum ResponseInputItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
   FunctionCallOutput(call_id~ : String, output~ : String)
-} derive(Debug)
+}
 
 ///|
 pub impl ToJson for ResponseInputItem with fn to_json(self : ResponseInputItem) -> Json {
@@ -205,10 +209,11 @@ pub impl ToJson for ResponseInputItem with fn to_json(self : ResponseInputItem) 
 }
 
 ///|
+#derive(Debug)
 pub(all) enum ResponseItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
-} derive(Debug)
+}
 
 ///|
 pub impl @json.FromJson for ResponseItem with fn from_json(

@@ -3,12 +3,12 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
 }
 
 import {
   "vectie/moonclaw/internal/mock",
   "moonbitlang/async",
+  "moonbitlang/core/test",
 } for "test"
 
 supported_targets = "native"

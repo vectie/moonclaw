@@ -2,11 +2,11 @@
 package "vectie/moonclaw/internal/readline/unicode/width"
 
 // Values
-pub fn char(Char, cjk? : Bool) -> Int?
+pub fn char(Char, cjk? : Bool) -> Int32?
 
-pub fn string(StringView, cjk? : Bool) -> Int
+pub fn string(StringView, cjk? : Bool) -> Int32
 
-pub let unicode_version : (Int, Int, Int)
+pub let unicode_version : (Int32, Int32, Int32)
 
 // Errors
 

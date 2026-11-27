@@ -1,19 +1,22 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PresentationRenderHandoff {
   renderer_target : String?
   theme : String?
   delivery_notes : String?
   asset_requests : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PresentationRenderArtifact {
   role : String
   path : String
   description : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PresentationRenderPackage {
   provider : String?
   renderer_target : String?
@@ -24,9 +27,10 @@ pub struct PresentationRenderPackage {
   produced_artifacts : Array[PresentationRenderArtifact]
   handoff_summary : String
   notes : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PresentationPageSpec {
   page_number : Int32
   page_type : String
@@ -39,9 +43,10 @@ pub struct PresentationPageSpec {
   layout_instruction : String
   look_and_feel : String
   speaker_notes : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PresentationDeckSpec {
   title : String
   audience : String?
@@ -52,7 +57,7 @@ pub struct PresentationDeckSpec {
   vendor_notes : String?
   pages : Array[PresentationPageSpec]
   render_handoff : PresentationRenderHandoff?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn presentation_contract_version() -> String {

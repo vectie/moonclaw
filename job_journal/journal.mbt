@@ -56,14 +56,16 @@ fn select_journal_entries(
 ///|
 /// One original job event, with its physical position in an explicit input.
 /// The record includes unknown fields unchanged and is never executed.
+#derive(ToJson)
 pub struct JournalEntry {
   source : String
   line : Int32
   record : Json
-} derive(ToJson)
+}
 
 ///|
 /// An offline view of saved observations, not a live runtime status projection.
+#derive(ToJson)
 pub struct JournalPage {
   schema : String
   total_events : Int32
@@ -72,11 +74,12 @@ pub struct JournalPage {
   offset : Int32
   next_offset : Int32?
   entries : Array[JournalEntry]
-} derive(ToJson)
+}
 
 ///|
 // This projection follows JobRunEvent's durable JSON shape. Keep the original
 // JSON alongside it so additional producer fields and status values survive.
+#derive(FromJson)
 priv struct EventFields {
   run_id : String
   job_id : String
@@ -86,7 +89,7 @@ priv struct EventFields {
   status : Json?
   message : String
   data : Json
-} derive(FromJson)
+}
 
 ///|
 fn event_fields(entry : JournalEntry) -> EventFields raise {
@@ -101,20 +104,20 @@ fn event_fields(entry : JournalEntry) -> EventFields raise {
         }
       }
     }
-    fields.to_json()
+    Json::object(fields)
   } else {
     entry.record
   }
   let fields : EventFields = @json.from_json(projection) catch {
     _ =>
       fail(
-        "Invalid job event at source \{entry.source.to_json().stringify()} line \{entry.line}",
+        "Invalid job event at source \{Json::string(entry.source).stringify()} line \{entry.line}",
       )
   }
   guard entry.record is { "timestamp": Number(number, ..), .. } &&
     number == fields.timestamp.to_double() else {
     fail(
-      "Invalid job timestamp at source \{entry.source.to_json().stringify()} line \{entry.line}",
+      "Invalid job timestamp at source \{Json::string(entry.source).stringify()} line \{entry.line}",
     )
   }
   fields
@@ -142,7 +145,7 @@ pub fn parse_journal(
     let record = @json.parse(line.to_owned()) catch {
       _ =>
         fail(
-          "Invalid JSON at source \{source.to_json().stringify()} line \{index + 1}",
+          "Invalid JSON at source \{Json::string(source).stringify()} line \{index + 1}",
         )
     }
     let entry = JournalEntry::{ source, line: index + 1, record, }

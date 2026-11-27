@@ -11,7 +11,7 @@ pub fn command_accept() -> String
 
 pub fn command_action_contract_id() -> String
 
-pub fn command_action_contract_json() -> Json
+pub fn command_action_contract_json() -> @json.Json
 
 pub fn command_advertised_actions() -> Array[String]
 
@@ -49,7 +49,7 @@ pub fn command_turn_actions() -> Array[String]
 
 pub fn conversation_contract_id() -> String
 
-pub fn conversation_contract_json() -> Json
+pub fn conversation_contract_json() -> @json.Json
 
 pub fn conversation_kind() -> String
 
@@ -57,7 +57,7 @@ pub fn conversation_message_roles() -> Array[String]
 
 pub fn conversation_ownership_contract_id() -> String
 
-pub fn conversation_ownership_contract_json() -> Json
+pub fn conversation_ownership_contract_json() -> @json.Json
 
 pub fn conversation_ownership_contract_kind() -> String
 
@@ -67,25 +67,25 @@ pub fn conversation_turn_required_fields() -> Array[String]
 
 pub fn conversation_watch_contract_id() -> String
 
-pub fn conversation_watch_contract_json() -> Json
+pub fn conversation_watch_contract_json() -> @json.Json
 
 pub fn conversation_watch_exact_contract_id() -> String
 
-pub fn conversation_watch_exact_contract_json() -> Json
+pub fn conversation_watch_exact_contract_json() -> @json.Json
 
 pub fn conversation_watch_kind() -> String
 
 pub fn conversation_watch_read_contract_ids() -> Array[String]
 
-pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_sequence~ : Int, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json
+pub fn conversation_watch_response(session_id~ : String, revision~ : Int32, next_sequence~ : Int32, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int32, snapshot~ : @json.Json) -> @json.Json
 
-pub fn conversation_watch_response_exact(session_id~ : String, revision~ : String, next_sequence~ : String, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json raise
+pub fn conversation_watch_response_exact(session_id~ : String, revision~ : String, next_sequence~ : String, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int32, snapshot~ : @json.Json) -> @json.Json raise
 
 pub fn event_lane_artifact() -> String
 
 pub fn event_lane_contract_id() -> String
 
-pub fn event_lane_contract_json() -> Json
+pub fn event_lane_contract_json() -> @json.Json
 
 pub fn event_lane_default() -> String
 
@@ -131,7 +131,7 @@ pub fn model_planner_event_is_planner_evidence(String, String) -> Bool
 
 pub fn model_planner_evidence_contract_id() -> String
 
-pub fn model_planner_evidence_contract_json() -> Json
+pub fn model_planner_evidence_contract_json() -> @json.Json
 
 pub fn model_planner_evidence_contract_kind() -> String
 
@@ -169,7 +169,7 @@ pub fn model_planner_terminal_event_kinds() -> Array[String]
 
 pub fn model_planner_working_evidence_rule() -> String
 
-pub fn moonclaw_event_mapping_json() -> Json
+pub fn moonclaw_event_mapping_json() -> @json.Json
 
 pub fn native_archived_session_listing_endpoint(String) -> String
 
@@ -183,13 +183,13 @@ pub fn native_capability_required_endpoints() -> Array[String]
 
 pub fn native_capability_required_tools() -> Array[String]
 
-pub fn native_capability_runtime_loop_options() -> Json
+pub fn native_capability_runtime_loop_options() -> @json.Json
 
-pub fn native_capability_stream_options() -> Json
+pub fn native_capability_stream_options() -> @json.Json
 
 pub fn native_capability_surface_fingerprint() -> String
 
-pub fn native_capability_surface_json() -> Json
+pub fn native_capability_surface_json() -> @json.Json
 
 pub fn native_capability_target_description() -> String
 
@@ -201,37 +201,37 @@ pub fn native_command_body_supported_fields() -> Array[String]
 
 pub fn native_command_contract_id() -> String
 
-pub fn native_command_execution_contract_json() -> Json
+pub fn native_command_execution_contract_json() -> @json.Json
 
 pub fn native_endpoint_component(String) -> String
 
 pub fn native_eval_report_endpoint(String, String) -> String
 
-pub fn native_event_has_command_scope(Json) -> Bool
+pub fn native_event_has_command_scope(@json.Json) -> Bool
 
-pub fn native_event_is_diagnostic_only(Json) -> Bool
+pub fn native_event_is_diagnostic_only(@json.Json) -> Bool
 
-pub fn native_event_is_progress(Json) -> Bool
+pub fn native_event_is_progress(@json.Json) -> Bool
 
-pub fn native_event_is_transcript(Json) -> Bool
+pub fn native_event_is_transcript(@json.Json) -> Bool
 
 pub fn native_event_projection_command_scope_keys() -> Array[String]
 
 pub fn native_event_projection_contract_id() -> String
 
-pub fn native_event_projection_contract_json() -> Json
+pub fn native_event_projection_contract_json() -> @json.Json
 
 pub fn native_event_projection_contract_kind() -> String
 
-pub fn native_event_projection_problem(Json, reason~ : String) -> Json
+pub fn native_event_projection_problem(@json.Json, reason~ : String) -> @json.Json
 
-pub fn native_event_projection_report(Json, session_id~ : String, observed_at~ : String) -> Json
+pub fn native_event_projection_report(@json.Json, session_id~ : String, observed_at~ : String) -> @json.Json
 
 pub fn native_event_projection_report_kind() -> String
 
-pub fn native_event_requires_command_scope(Json) -> Bool
+pub fn native_event_requires_command_scope(@json.Json) -> Bool
 
-pub fn native_events_for_canonical_projection(Json) -> Array[Json]
+pub fn native_events_for_canonical_projection(@json.Json) -> Array[@json.Json]
 
 pub fn native_package_result_endpoint(String, String) -> String
 
@@ -259,9 +259,9 @@ pub fn native_session_show_endpoint(String, String) -> String
 
 pub fn native_session_turns_endpoint(String) -> String
 
-pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_ms? : Int) -> String
+pub fn native_stream_endpoint(String, String, String, Int32, wait_ms? : Int32, poll_ms? : Int32) -> String
 
-pub fn native_stream_endpoint_exact(String, String, String, String, wait_ms? : Int, poll_ms? : Int) -> String raise
+pub fn native_stream_endpoint_exact(String, String, String, String, wait_ms? : Int32, poll_ms? : Int32) -> String raise
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
@@ -271,7 +271,7 @@ pub fn runtime_claim_authorization_rule() -> String
 
 pub fn runtime_claim_base_status(Bool, String, Bool, Bool) -> String
 
-pub fn runtime_claim_consumer_contract_json(String) -> Json
+pub fn runtime_claim_consumer_contract_json(String) -> @json.Json
 
 pub fn runtime_claim_consumer_ordering_rule() -> String
 
@@ -311,7 +311,7 @@ pub fn runtime_command_output_event_names() -> Array[String]
 
 pub fn runtime_consumer_contract_id() -> String
 
-pub fn runtime_consumer_contract_json(String) -> Json
+pub fn runtime_consumer_contract_json(String) -> @json.Json
 
 pub fn runtime_consumer_contract_kind() -> String
 
@@ -323,7 +323,7 @@ pub fn runtime_control_blocked_statuses() -> Array[String]
 
 pub fn runtime_control_contract_id() -> String
 
-pub fn runtime_control_contract_json() -> Json
+pub fn runtime_control_contract_json() -> @json.Json
 
 pub fn runtime_control_contract_kind() -> String
 
@@ -433,7 +433,7 @@ pub fn runtime_event_max_steps_exhausted() -> String
 
 pub fn runtime_event_name_contract_id() -> String
 
-pub fn runtime_event_name_contract_json() -> Json
+pub fn runtime_event_name_contract_json() -> @json.Json
 
 pub fn runtime_event_name_is_supported(String) -> Bool
 
@@ -561,7 +561,7 @@ pub fn runtime_replay_authorization_rule() -> String
 
 pub fn runtime_replay_base_status(Bool, String, Bool, Bool) -> String
 
-pub fn runtime_replay_consumer_contract_json(String) -> Json
+pub fn runtime_replay_consumer_contract_json(String) -> @json.Json
 
 pub fn runtime_replay_duplicate_guard() -> String
 
@@ -601,11 +601,11 @@ pub fn runtime_replay_status_with_order_blocker(String, String) -> String
 
 pub fn runtime_replay_statuses() -> Array[String]
 
-pub fn runtime_tool_alias_rows() -> Array[Json]
+pub fn runtime_tool_alias_rows() -> Array[@json.Json]
 
 pub fn runtime_tool_apply_patch() -> String
 
-pub fn runtime_tool_call_contract_json() -> Json
+pub fn runtime_tool_call_contract_json() -> @json.Json
 
 pub fn runtime_tool_call_contract_kind() -> String
 
@@ -613,7 +613,7 @@ pub fn runtime_tool_canonical_name(String) -> String
 
 pub fn runtime_tool_contract_id() -> String
 
-pub fn runtime_tool_contract_json() -> Json
+pub fn runtime_tool_contract_json() -> @json.Json
 
 pub fn runtime_tool_contract_kind() -> String
 
@@ -633,7 +633,7 @@ pub fn runtime_tool_moon_cmd() -> String
 
 pub fn runtime_tool_moon_ide() -> String
 
-pub fn runtime_tool_moonclaw_mapping_rows() -> Array[Json]
+pub fn runtime_tool_moonclaw_mapping_rows() -> Array[@json.Json]
 
 pub fn runtime_tool_names() -> Array[String]
 
@@ -667,11 +667,12 @@ pub fn session_record_contract_id() -> String
 
 pub fn session_snapshot_contract_id() -> String
 
-pub fn standalone_boundary_json() -> Json
+pub fn standalone_boundary_json() -> @json.Json
 
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct NativeCapabilityEndpoints {
   capabilities : String
   session_list : String
@@ -691,12 +692,12 @@ pub(all) struct NativeCapabilityEndpoints {
   tool_exec : String
   eval_report : String
   package_result : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn NativeCapabilityEndpoints::equal(Self, Self) -> Bool
-pub fn NativeCapabilityEndpoints::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn NativeCapabilityEndpoints::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn NativeCapabilityEndpoints::not_equal(Self, Self) -> Bool
 pub fn NativeCapabilityEndpoints::required_endpoints(Self) -> Array[String]
-pub fn NativeCapabilityEndpoints::to_json(Self) -> Json
+pub fn NativeCapabilityEndpoints::to_json(Self) -> @json.Json
 pub fn NativeCapabilityEndpoints::to_repr(Self) -> @debug.Repr
 
 // Type aliases

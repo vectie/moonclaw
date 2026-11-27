@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/skills"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",
 }
@@ -18,6 +19,7 @@ pub async fn Loader::load_and_apply(Self, Array[@ai.Message]) -> Unit
 pub fn Loader::new(home? : String, cwd~ : String, logger? : @pino.Logger) -> Self raise
 pub fn Loader::skills(Self) -> Map[String, Skill]
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct Skill {
   id : String
   name : String
@@ -25,10 +27,10 @@ pub struct Skill {
   license : String?
   compatibility : String?
   allowed_tools : Array[String]
-  metadata : Json?
+  metadata : @json.Json?
   location : String
-} derive(ToJson, @debug.Debug)
-pub fn Skill::to_json(Self) -> Json
+}
+pub fn Skill::to_json(Self) -> @json.Json
 pub fn Skill::to_repr(Self) -> @debug.Repr
 
 // Type aliases

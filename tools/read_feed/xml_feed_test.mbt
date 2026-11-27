@@ -25,7 +25,7 @@ fn atom_fixture() -> String {
 ///|
 test "RSS readable articles filter before pages and preserve publisher archive" {
   let source = "https://observatory.example.test/feeds/latest.xml"
-  let first = parse_feed(rss_fixture(), source, query=" TELESCOPE ", limit=1)
+  let first = @read_feed.parse_feed(rss_fixture(), source, query=" TELESCOPE ", limit=1)
   inspect(first.title, content="Observatory & Community 🔭")
   inspect(first.format, content="rss")
   inspect(first.total_items, content="3")
@@ -33,15 +33,13 @@ test "RSS readable articles filter before pages and preserve publisher archive" 
   inspect(first.query, content="TELESCOPE")
   inspect(first.articles[0].id, content="telescope-1")
   inspect(first.articles[0].summary, content="New telescope & instruments.")
-  inspect(
+  assert_eq(
     first.articles[0].url,
-    content=(
-      #|Some(https://observatory.example.test/news/first-light)
-    ),
+    Some("https://observatory.example.test/news/first-light"),
   )
-  inspect(first.next_offset, content="Some(1)")
-  inspect(first.next_url, content="None")
-  let second = parse_feed(
+  assert_eq(first.next_offset, Some(1))
+  assert_eq(first.next_url, None)
+  let second = @read_feed.parse_feed(
     rss_fixture(),
     source,
     query="telescope",
@@ -49,26 +47,19 @@ test "RSS readable articles filter before pages and preserve publisher archive" 
     offset=1,
   )
   inspect(second.articles[0].title, content="Telescope workshop")
-  inspect(second.next_offset, content="None")
-  inspect(
+  assert_eq(second.next_offset, None)
+  assert_eq(
     second.next_url,
-    content=(
-      #|Some(https://observatory.example.test/feeds/archive.xml?page=2&all=yes)
-    ),
+    Some("https://observatory.example.test/feeds/archive.xml?page=2&all=yes"),
   )
-  let calendar = parse_feed(rss_fixture(), source, query="phases")
+  let calendar = @read_feed.parse_feed(rss_fixture(), source, query="phases")
   inspect(calendar.articles[0].summary, content="Moon phases 🔭.")
-  inspect(
-    calendar.articles[0].date_published,
-    content=(
-      #|Some(2026-10-07)
-    ),
-  )
+  assert_eq(calendar.articles[0].date_published, Some("2026-10-07"))
   inspect(
     calendar.articles[0].id,
     content="https://observatory.example.test/calendar",
   )
-  let no_match = parse_feed(rss_fixture(), source, query="unmatched")
+  let no_match = @read_feed.parse_feed(rss_fixture(), source, query="unmatched")
   inspect(no_match.matched_items, content="0")
   inspect(no_match.articles.length(), content="0")
   assert_true(no_match.next_url is Some(_))
@@ -76,37 +67,23 @@ test "RSS readable articles filter before pages and preserve publisher archive" 
 
 ///|
 test "Atom namespace text content relative links and Markdown reading digest" {
-  let page = parse_feed(atom_fixture(), "file://research.atom", query="climate")
+  let page = @read_feed.parse_feed(atom_fixture(), "file://research.atom", query="climate")
   inspect(page.title, content="Research notes")
   inspect(page.format, content="atom")
   inspect(page.matched_items, content="2")
-  inspect(
-    page.articles[0].date_published,
-    content=(
-      #|Some(2026-10-08)
-    ),
-  )
+  assert_eq(page.articles[0].date_published, Some("2026-10-08"))
   inspect(page.articles[0].summary, content="New climate data & notebooks.")
-  inspect(
+  assert_eq(
     page.articles[0].url,
-    content=(
-      #|Some(https://research.example.test/papers/ocean?download=1&view=web)
-    ),
+    Some("https://research.example.test/papers/ocean?download=1&view=web"),
   )
-  inspect(
-    page.articles[1].date_published,
-    content=(
-      #|Some(2026-10-07)
-    ),
-  )
+  assert_eq(page.articles[1].date_published, Some("2026-10-07"))
   inspect(page.articles[1].summary, content="Climate map. Open code.")
-  inspect(
+  assert_eq(
     page.articles[1].url,
-    content=(
-      #|Some(https://research.example.test/papers/city)
-    ),
+    Some("https://research.example.test/papers/city"),
   )
-  let plain = parse_feed(
+  let plain = @read_feed.parse_feed(
     atom_fixture(),
     "file://research.atom",
     query="quantum",
@@ -129,7 +106,7 @@ test "Atom namespace text content relative links and Markdown reading digest" {
 test "XML feed failures are explicit and JSON filtering retains compatibility" {
   assert_true(
     (Ok(
-      parse_feed(
+      @read_feed.parse_feed(
         "<rss version='2.0'><channel><title>Bad</channel></rss>", "file://bad",
       ),
     ) catch {
@@ -139,7 +116,7 @@ test "XML feed failures are explicit and JSON filtering retains compatibility" {
   )
   assert_true(
     (Ok(
-      parse_feed(
+      @read_feed.parse_feed(
         "<!DOCTYPE rss SYSTEM 'file:///not-read'><rss version='2.0'/>", "file://bad",
       ),
     ) catch {
@@ -148,14 +125,14 @@ test "XML feed failures are explicit and JSON filtering retains compatibility" {
     is Err(_),
   )
   assert_true(
-    (Ok(parse_feed("<html><title>Not a feed</title></html>", "file://bad")) catch {
+    (Ok(@read_feed.parse_feed("<html><title>Not a feed</title></html>", "file://bad")) catch {
       error => Err(error)
     })
     is Err(_),
   )
   assert_true(
     (Ok(
-      parse_feed(
+      @read_feed.parse_feed(
         "<feed xmlns='urn:not-atom'><title>Wrong namespace</title></feed>", "file://bad",
       ),
     ) catch {
@@ -164,27 +141,27 @@ test "XML feed failures are explicit and JSON filtering retains compatibility" {
     is Err(_),
   )
   let json = "{\"version\":\"https://jsonfeed.org/version/1.1\",\"title\":\"News\",\"items\":[{\"id\":\"one\",\"title\":\"Research\",\"content_text\":\"Moon science\"},{\"id\":\"two\",\"title\":\"Weather\"}]}"
-  let page = parse_feed(json, "fixture", query="SCIENCE")
+  let page = @read_feed.parse_feed(json, "fixture", query="SCIENCE")
   inspect(page.format, content="json-feed")
   inspect(page.total_items, content="2")
   inspect(page.matched_items, content="1")
   inspect(page.articles[0].id, content="one")
-  let bom = parse_feed("\u{FEFF}" + json, "fixture", query="science")
+  let bom = @read_feed.parse_feed("\u{FEFF}" + json, "fixture", query="science")
   inspect(bom.articles.length(), content="1")
 }
 
 ///|
 test "RSS permalink GUID and ordinary inline markup remain useful" {
   let body = "<rss version='2.0'><channel><title>Lab</title><item><title>MoonBit lab</title><guid>https://lab.example.test/post</guid><description><![CDATA[<p><b title='1 > 0'>Moon</b>Bit &amp; a result.</p>]]></description></item></channel></rss>"
-  let page = parse_feed(body, "https://lab.example.test?feed=1")
-  inspect(page.articles[0].url, content="Some(https://lab.example.test/post)")
+  let page = @read_feed.parse_feed(body, "https://lab.example.test?feed=1")
+  assert_eq(page.articles[0].url, Some("https://lab.example.test/post"))
   inspect(page.articles[0].summary, content="MoonBit & a result.")
-  let fallback = parse_feed(
+  let fallback = @read_feed.parse_feed(
     "<rss version='2.0'><channel><title>Lab</title><item><title>Notes</title><description>A brief update.</description></item></channel></rss>",
     "file://notes.rss",
   )
   assert_true(fallback.articles[0].id.has_prefix("file://notes.rss#content-"))
-  inspect(fallback.articles[0].url, content="None")
+  assert_eq(fallback.articles[0].url, None)
 }
 
 ///|
@@ -203,7 +180,7 @@ async test "actual HTTP RSS filtering and registered Atom export journey" {
   })
   @async.with_task_group(group => {
     group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
-    let tool = new(".")
+    let tool = @read_feed.new(".")
     let result = tool.call({
       "source": "http://localhost:\{server.port()}/feed.xml",
       "query": "telescope",
@@ -237,17 +214,15 @@ async test "actual HTTP RSS filtering and registered Atom export journey" {
     @fsx.make_directory(dir + "/.moonsuite")
     @fsx.write_to_file(
       dir + "/.moonsuite/resource-providers.json",
-      [
+      ToJson::to_json([
         {
           "name": "research",
           "kind": "atom",
           "endpoint": "file://research.atom",
         },
-      ]
-      .to_json()
-      .stringify(),
+      ]).stringify(),
     )
-    let result = new(dir).call({
+    let result = @read_feed.new(dir).call({
       "source": "provider://research",
       "query": "climate",
       "offset": 1,
@@ -255,11 +230,11 @@ async test "actual HTTP RSS filtering and registered Atom export journey" {
     guard result is Ok(page) else { fail("Registered Atom failed: \{result}") }
     inspect(page.articles[0].id, content="urn:climate:2")
     assert_false(
-      new(dir, allow_files=false).call({ "source": "provider://research" })
+      @read_feed.new(dir, allow_files=false).call({ "source": "provider://research" })
       is Ok(_),
     )
     assert_false(
-      new(dir).call({ "source": "provider://research", "query": 12 }) is Ok(_),
+      @read_feed.new(dir).call({ "source": "provider://research", "query": 12 }) is Ok(_),
     )
   })
 }

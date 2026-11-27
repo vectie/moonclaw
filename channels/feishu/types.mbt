@@ -11,6 +11,7 @@ pub type FeishuDmPolicy = String
 pub type FeishuReactionNotifications = String
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuAccountConfig {
   app_id : String
   app_secret : String
@@ -25,9 +26,10 @@ pub struct FeishuAccountConfig {
   verify_token : String?
   encryption_key : String?
   enabled : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessage {
   message_id : String
   chat_type : String
@@ -39,17 +41,19 @@ pub struct FeishuMessage {
   msg_parent_id : String?
   from_user_id : String?
   tenant_key : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuEvent {
   schema : String
   header : FeishuEventHeader
   event : Json
   token : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuEventHeader {
   event_id : String
   event_type : String
@@ -59,40 +63,46 @@ pub struct FeishuEventHeader {
   tenant_key : String?
   resource_id : String?
   user_list : Array[String]?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
   content : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuSendMessageResponse {
   code : Int32
   msg : String
   data : FeishuMessageData?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageData {
   message_id : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageLookupResponse {
   code : Int32
   msg : String
   data : FeishuMessageLookupData?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageLookupData {
   items : Array[FeishuMessageLookupItem]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageLookupItem {
   message_id : String
   chat_id : String
@@ -103,78 +113,89 @@ pub struct FeishuMessageLookupItem {
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageLookupBody {
   content : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuMessageLookupSender {
   id : String?
   sender_type : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuUserLookupResponse {
   code : Int32
   msg : String
   data : FeishuUserLookupData?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuUserLookupData {
   user : FeishuUser?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuUserBatchLookupResponse {
   code : Int32
   msg : String
   data : FeishuUserBatchLookupData?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuUserBatchLookupData {
   items : Array[FeishuUser]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuUser {
   open_id : String?
   name : String?
   display_name : String?
   nickname : String?
   en_name : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuAccessTokenResponse {
   code : Int32
   msg : String
   tenant_access_token : String?
   app_access_token : String?
   expire : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct FeishuWebSocketEndpointResponse {
   code : Int32
   msg : String
   data : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 pub struct FeishuWebSocketEndpointData {
   url : String
   client_config : FeishuWebSocketClientConfig?
-} derive(ToJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 pub struct FeishuWebSocketClientConfig {
   ping_interval : Int32?
   reconnect_count : Int32?
   reconnect_interval : Int32?
   reconnect_nonce : Int32?
-} derive(ToJson, Debug)
+}

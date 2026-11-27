@@ -156,7 +156,7 @@ async test "stream spool projects physical journal positions in JSONL and SSE" {
           session_id,
           mooncode_journal_cursor_parse(cursor),
         )
-        defer spool.cleanup()
+        defer @async.protect_from_cancel(() => spool.cleanup())
         let body = @fsx.read_file(spool.path)
         let records = body
           .split("\n")

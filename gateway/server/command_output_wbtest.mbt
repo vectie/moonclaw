@@ -188,7 +188,9 @@ async test "Fort retained receipt crosses Claw trusted binding gateway and shipp
       "/v1/jobs/runs/run-1/command-outputs/" +
       receipt.run_id +
       "/download"
-    let headers = { "authorization": "Bearer fixture-only-token" }
+    let headers : @http.Headers = Map([
+      (@http.CaseInsensitiveString("authorization"), "Bearer fixture-only-token"),
+    ])
     @async.with_task_group(group => {
       group.spawn_bg(
         () => {

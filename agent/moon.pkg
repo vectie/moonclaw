@@ -43,4 +43,5 @@ import {
 
 import {
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "wbtest"

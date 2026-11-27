@@ -1,10 +1,11 @@
 ///|
+#derive(ToJson)
 pub struct Version {
   major : Int32
   minor : Int32
   patch : Int32
   build : Build?
-} derive(ToJson)
+}
 
 ///|
 pub impl Show for Version with fn output(self : Version, logger : &Logger) -> Unit {
@@ -17,10 +18,11 @@ pub impl Show for Version with fn output(self : Version, logger : &Logger) -> Un
 }
 
 ///|
+#derive(ToJson)
 pub struct Build {
   number : Int32
   commit : String
-} derive(ToJson)
+}
 
 ///|
 pub let version : Version = try! Version::parse(version_string)

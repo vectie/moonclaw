@@ -49,6 +49,7 @@ pub struct Gateway {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct AgentRun {
   run_id : String
   session_key : String
@@ -57,7 +58,7 @@ struct AgentRun {
   completed_at : Int32?
   result : Json?
   error : @protocol.ErrorShape?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub(all) struct AuthConfig {
@@ -72,6 +73,7 @@ struct SessionManager {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct SessionMessage {
   id : String
   role : String
@@ -79,9 +81,10 @@ pub struct SessionMessage {
   content : String
   timestamp : Int32
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 struct SessionEntry {
   session_id : String
   title : String?
@@ -94,7 +97,7 @@ struct SessionEntry {
   messages : Array[SessionMessage]
   linked_proposal_id : String?
   linked_run_id : String?
-} derive(ToJson, Debug)
+}
 
 ///|
 impl @json.FromJson for SessionEntry with fn from_json(
@@ -180,12 +183,13 @@ impl @json.FromJson for SessionEntry with fn from_json(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PlanModeState {
   request_text : String
   notes : Array[String]
   latest_candidate : @job.JobProposal
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 struct DedupeCache {
@@ -208,18 +212,20 @@ priv struct RemoteUiResolution {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PersistedChannelAccount {
   account_id : String
   config : Json
   auto_start : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PersistedChannelState {
   channel_id : String
   config : @channel.ChannelConfig
   accounts : Array[PersistedChannelAccount]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 struct ChannelStateStore {

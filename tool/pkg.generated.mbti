@@ -3,6 +3,7 @@ package "vectie/moonclaw/tool"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "vectie/moonclaw/internal/openai",
 }
 
@@ -13,50 +14,53 @@ pub fn tool_desc(description~ : String, name~ : String, schema~ : JsonSchema) ->
 
 // Types and methods
 type AgentTool
-pub async fn AgentTool::call(Self, Json) -> ToolResult[(Json, String)] noraise
+pub async fn AgentTool::call(Self, @json.Json) -> ToolResult[(@json.Json, String)] noraise
 pub fn AgentTool::desc(Self) -> ToolDesc
 
-pub(all) struct JsonSchema(Json) derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+pub(all) struct JsonSchema(@json.Json)
 pub fn JsonSchema::equal(Self, Self) -> Bool
-pub fn JsonSchema::from_json(Json) -> Self
+pub fn JsonSchema::from_json(@json.Json) -> Self
 pub fn JsonSchema::not_equal(Self, Self) -> Bool
-pub fn JsonSchema::to_json(Self) -> Json
+pub fn JsonSchema::to_json(Self) -> @json.Json
 pub fn JsonSchema::to_repr(Self) -> @debug.Repr
-pub impl ToJson for JsonSchema
+pub impl @json.ToJson for JsonSchema
 
 pub struct Tool[Output] {
   desc : ToolDesc
   // private fields
 }
 #as_free_fn
-pub async fn[Output] Tool::call(Self[Output], Json) -> ToolResult[Output] noraise
+pub async fn[Output] Tool::call(Self[Output], @json.Json) -> ToolResult[Output] noraise
 #as_free_fn
 pub fn[Output] Tool::new(description~ : String, name~ : String, schema~ : JsonSchema, ToolFn[Output]) -> Self[Output]
-pub fn[Output : ToJson] Tool::to_agent_tool(Self[Output]) -> AgentTool
+pub fn[Output : @json.ToJson] Tool::to_agent_tool(Self[Output]) -> AgentTool
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub struct ToolDesc {
   description : String
   name : String
   schema : JsonSchema
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn ToolDesc::equal(Self, Self) -> Bool
 pub fn ToolDesc::not_equal(Self, Self) -> Bool
-pub fn ToolDesc::to_json(Self) -> Json
+pub fn ToolDesc::to_json(Self) -> @json.Json
 pub fn ToolDesc::to_openai(Self) -> @openai.ChatCompletionToolParam
 pub fn ToolDesc::to_repr(Self) -> @debug.Repr
 
-pub(all) struct ToolFn[Output](async (Json) -> ToolResult[Output] noraise)
+pub(all) struct ToolFn[Output](async (@json.Json) -> ToolResult[Output] noraise)
 
+#derive(@json.ToJson)
 pub enum ToolResult[Output] {
   Ok(Output)
   Error(Error, String)
-} derive(ToJson)
+}
 #as_free_fn
 pub fn[Output] ToolResult::error(String, error? : Error) -> Self[Output]
 #as_free_fn
 pub fn[Output] ToolResult::ok(Output) -> Self[Output]
 pub fn[Output : Show] ToolResult::output(Self[Output], &Logger) -> Unit
-pub fn[Output : ToJson] ToolResult::to_json(Self[Output]) -> Json
+pub fn[Output : @json.ToJson] ToolResult::to_json(Self[Output]) -> @json.Json
 pub fn[Output : Show] ToolResult::to_string(Self[Output]) -> String
 pub impl[Output : Show] Show for ToolResult[Output]
 

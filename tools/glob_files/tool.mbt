@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct GlobFilesResult {
   root : String
   pattern : String
@@ -6,7 +7,7 @@ pub struct GlobFilesResult {
   total_matches : Int32
   truncated : Bool
   respect_gitignore : Bool
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for GlobFilesResult with fn output(
@@ -43,7 +44,7 @@ fn resolve_glob_path(cwd : String, path : String) -> String raise {
     path
   }
   let resolved = if @pathx.is_absolute(path) {
-    path.view()
+    path[:]
   } else {
     @pathx.join(cwd, path)
   }

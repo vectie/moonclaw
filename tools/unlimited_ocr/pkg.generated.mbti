@@ -12,19 +12,20 @@ pub fn new(String) -> @tool.Tool[UnlimitedOcrResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct UnlimitedOcrResult {
   ocr_engine : String
   pdf_path : String
   output_dir : String
   infer_script : String
   command : String
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
-} derive(ToJson, @json.FromJson)
-pub fn UnlimitedOcrResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn UnlimitedOcrResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn UnlimitedOcrResult::output(Self, &Logger) -> Unit
-pub fn UnlimitedOcrResult::to_json(Self) -> Json
+pub fn UnlimitedOcrResult::to_json(Self) -> @json.Json
 pub fn UnlimitedOcrResult::to_string(Self) -> String
 pub impl Show for UnlimitedOcrResult
 

@@ -1,18 +1,20 @@
 ///|
+#derive(FromJson, ToJson, Debug)
 pub(all) struct AdaptiveSubstepPayload {
   title : String
   prompt : String
   kind : String?
-} derive(FromJson, ToJson, Debug)
+}
 
 ///|
+#derive(FromJson, ToJson, Debug)
 pub(all) struct AdaptiveAnalysisEnvelope {
   verdict : String
   summary : String?
   missing_inputs : Array[String]?
   suggested_substeps : Array[AdaptiveSubstepPayload]?
   substeps : Array[AdaptiveSubstepPayload]?
-} derive(FromJson, ToJson, Debug)
+}
 
 ///|
 fn adaptive_json_string_field(

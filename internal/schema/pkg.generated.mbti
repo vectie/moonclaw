@@ -1,10 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/schema"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn array(Schema) -> Schema
 
-pub fn enums(Array[Json]) -> Schema
+pub fn enums(Array[@json.Json]) -> Schema
 
 pub fn integer() -> Schema
 
@@ -16,9 +20,9 @@ pub fn string() -> Schema
 
 // Types and methods
 type Schema
-pub fn Schema::to_json(Self) -> Map[String, Json]
-pub fn Schema::verify(Self, Json) -> Bool
-pub impl ToJson for Schema
+pub fn Schema::to_json(Self) -> Map[String, @json.Json]
+pub fn Schema::verify(Self, @json.Json) -> Bool
+pub impl @json.ToJson for Schema
 
 // Type aliases
 

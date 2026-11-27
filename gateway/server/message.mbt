@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AgentMessage {
   message_id : String
   from_agent : String
@@ -6,7 +7,7 @@ pub struct AgentMessage {
   topic : String
   payload : Json
   timestamp : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn agent_message(
@@ -44,10 +45,11 @@ pub fn AgentMessage::is_directed(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AgentMailboxConfig {
   max_size : Int32
   timeout_ms : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn agent_mailbox_config(

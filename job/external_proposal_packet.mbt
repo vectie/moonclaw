@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, Debug)
 pub struct ExternalProposalPacket {
   packet_id : String?
   title : String?
@@ -14,7 +15,7 @@ pub struct ExternalProposalPacket {
   notes : Array[String]
   tags : Array[String]
   metadata : Json
-} derive(ToJson, Debug)
+}
 
 ///|
 pub struct ExternalProposalImportResult {

@@ -1,7 +1,8 @@
 ///|
 /// Exact epoch milliseconds. The wire form is a canonical non-negative decimal
 /// string so JavaScript and cross-product transports cannot round it.
-pub struct SupervisorEpochMsV1(Int64) derive(Eq, Compare, Debug)
+#derive(Eq, Compare, Debug)
+pub struct SupervisorEpochMsV1(Int64)
 
 ///|
 pub fn supervisor_epoch_ms_v1(value : Int64) -> SupervisorEpochMsV1 raise {
@@ -46,6 +47,7 @@ pub impl @json.FromJson for SupervisorEpochMsV1 with fn from_json(
 ///|
 /// Opaque, externally-owned activation input. The source product owns profile
 /// authoring; MoonClaw only binds its exact version and digest to execution.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorProfileActivationV1 {
   contract_id : String
   supervisor_id : String
@@ -56,11 +58,12 @@ pub(all) struct SupervisorProfileActivationV1 {
   runtime_profile : Json
   runtime_binding : Json
   activated_at : SupervisorEpochMsV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Common idempotency, cursor, and authority envelope for every mutation.
 /// `authority` is the MoonLib `moonsuite.authority-decision-ref.v1` wire form.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorCommandEnvelopeV1 {
   contract_id : String
   command_id : String
@@ -69,15 +72,16 @@ pub(all) struct SupervisorCommandEnvelopeV1 {
   evaluated_at : String
   expected_cursor : Int32?
   authority : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorAuthorityVerificationV1 {
   operation_ref : String
   operation_digest : String
   capability_resolution : Json
   verified_at : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Host verification port. The daemon implementation resolves the exact live
@@ -100,14 +104,16 @@ pub fn SupervisorAuthorityVerifierV1::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum SupervisorLifecycleV1 {
   Dormant
   Running
   Stopped
   Failed
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorStateV1 {
   contract_id : String
   supervisor_id : String
@@ -117,9 +123,10 @@ pub(all) struct SupervisorStateV1 {
   cursor : Int32
   updated_at : SupervisorEpochMsV1
   last_error : String?
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorCommandReceiptV1 {
   contract_id : String
   command_id : String
@@ -130,22 +137,25 @@ pub(all) struct SupervisorCommandReceiptV1 {
   status : String
   duplicate : Bool
   response : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorActivateRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   profile : SupervisorProfileActivationV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWakeRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   run_id : String?
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorMessageV1 {
   message_id : String
   conversation_id : String
@@ -156,62 +166,70 @@ pub(all) struct SupervisorMessageV1 {
   reply_to_message_id : String?
   created_at : SupervisorEpochMsV1
   metadata : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorSendMessageRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   message : SupervisorMessageV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorSteerRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   message : SupervisorMessageV1
   target_run_id : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorMailboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
   max_messages : Int32
   lease_expires_at : SupervisorEpochMsV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorMailboxAckRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
   message_ids : Array[String]
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorStopRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   reason : String
   force : Bool
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum SupervisorRecoveryActionV1 {
   Resume
   Retry(new_run_id~ : String)
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorRetryResumeRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   action : SupervisorRecoveryActionV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerLineageV1 {
   supervisor_id : String
   parent_run_id : String
@@ -221,7 +239,7 @@ pub(all) struct SupervisorWorkerLineageV1 {
   depth : Int32
   delegation_ref : Json
   recorded_at : SupervisorEpochMsV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Internal executor port for the existing `job.delegate` path. It cannot be
@@ -248,40 +266,45 @@ pub struct SupervisorDelegateResponseV1 {
 ///|
 /// HTTP adapter for a real child already created by MoonClaw's established
 /// `job.delegate` scheduler. The runtime verifies that run before journaling.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorDelegateExistingRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   worker_run_id : String
   worker_job_id : String
   delegation : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorVersionedRecordRefV1 {
   record_id : String
   record_version : String
   record_digest : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorEvidenceRefV1 {
   reference_id : String
   reference_version : String
   digest : String
   provenance_ref : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorGapStatementV1 {
   present : Bool
   severity : Int32
   summary : String
   evidence_refs : Array[String]
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Exact, lossless projection into MoonBook's existing ProductOutcomeSubmission.
 /// It is evidence only and can never represent review, acceptance, or closure.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorBookkeeperOutcomeEvidenceV1 {
   contract_version : String
   submission : SupervisorVersionedRecordRefV1
@@ -302,35 +325,39 @@ pub(all) struct SupervisorBookkeeperOutcomeEvidenceV1 {
   capability_version : String
   capability_change_digest : String
   capability_summary : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorOutcomeEvidenceRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   source_event_ids : Array[String]
   projection : SupervisorBookkeeperOutcomeEvidenceV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorOutcomeOutboxClaimRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
   max_items : Int32
   lease_expires_at : SupervisorEpochMsV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorOutcomeOutboxAckRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   claim_id : String
   submission_ids : Array[String]
   bookkeeper_receipts : Array[Json]
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorJournalEventV1 {
   contract_id : String
   event_id : String
@@ -350,9 +377,10 @@ pub(all) struct SupervisorJournalEventV1 {
   lineage : SupervisorWorkerLineageV1?
   outcome_evidence : SupervisorBookkeeperOutcomeEvidenceV1?
   authority_verification : SupervisorAuthorityVerificationV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SupervisorStatusProjectionV1 {
   contract_id : String
   state : SupervisorStateV1
@@ -360,9 +388,10 @@ pub(all) struct SupervisorStatusProjectionV1 {
   worker_lineage : Array[SupervisorWorkerLineageV1]
   workers : Array[SupervisorWorkerStatusV1]
   latest_event : SupervisorJournalEventV1?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorReplayResponseV1 {
   contract_id : String
   supervisor_id : String
@@ -370,7 +399,7 @@ pub(all) struct SupervisorReplayResponseV1 {
   next_cursor : Int32
   has_more : Bool
   events : Array[SupervisorJournalEventV1]
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Canonical operation payloads. Callers hash exactly the returned JSON; the

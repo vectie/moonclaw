@@ -13,14 +13,15 @@ pub fn new(String) -> @tool.Tool[EnterWorktreeResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct EnterWorktreeResult {
   handle : @worktree.WorktreeHandle
   created : Bool
   note : String
-} derive(ToJson, @json.FromJson)
-pub fn EnterWorktreeResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn EnterWorktreeResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn EnterWorktreeResult::output(Self, &Logger) -> Unit
-pub fn EnterWorktreeResult::to_json(Self) -> Json
+pub fn EnterWorktreeResult::to_json(Self) -> @json.Json
 pub fn EnterWorktreeResult::to_string(Self) -> String
 pub impl Show for EnterWorktreeResult
 

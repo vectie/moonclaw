@@ -2,7 +2,6 @@ import {
   "vectie/moonclaw/internal/fsx",
   "vectie/moonclaw/internal/pathx",
   "moonbitlang/core/cmp",
-  "moonbitlang/core/test",
 }
 
 import {

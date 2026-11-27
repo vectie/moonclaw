@@ -1,32 +1,37 @@
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum RolePlanningLayer {
   Strategic
   Domain
   Execution
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum RoleRuntimeMode {
   PlannerOnly
   Executor
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum RoleToolAccess {
   Disabled
   Limited
   Full
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum RoleMemoryScope {
   Step
   Workspace
   Domain
   Global
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct RoleRuntimeContract {
   role_id : String
   planning_layer : RolePlanningLayer
@@ -38,17 +43,19 @@ pub(all) struct RoleRuntimeContract {
   allow_execution_tools : Bool
   output_contract : String?
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) enum RoleHandoffKind {
   StrategicToDomain
   DomainToExecution
   ExecutionToDomain
   DomainToStrategic
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct RoleHandoffPacket {
   kind : RoleHandoffKind
   objective : String
@@ -57,7 +64,7 @@ pub(all) struct RoleHandoffPacket {
   output_contract : String?
   review_required : Bool
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn RoleRuntimeContract::new(

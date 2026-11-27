@@ -16,48 +16,54 @@ pub fn parse_patch(String) -> ParsedPatch raise ParseError
 pub let tool_instructions : String
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror ApplyError {
   ApplyError(String)
-} derive(@debug.Debug)
+}
 pub fn ApplyError::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) suberror ParseError {
   InvalidPatch(String)
-  InvalidHunk(message~ : String, line_number~ : Int)
-} derive(@debug.Debug)
+  InvalidHunk(message~ : String, line_number~ : Int32)
+}
 pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(@debug.Debug)
 pub struct ApplyResult {
   added : Array[String]
   modified : Array[String]
   deleted : Array[String]
-} derive(@debug.Debug)
+}
 pub fn ApplyResult::new() -> Self
 pub fn ApplyResult::summary(Self) -> String
 pub fn ApplyResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Hunk {
   AddFile(path~ : String, contents~ : String)
   DeleteFile(path~ : String)
   UpdateFile(path~ : String, move_path~ : String?, chunks~ : Array[UpdateFileChunk])
-} derive(Eq, @debug.Debug)
+}
 pub fn Hunk::equal(Self, Self) -> Bool
 pub fn Hunk::not_equal(Self, Self) -> Bool
 pub fn Hunk::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub struct ParsedPatch {
   patch : String
   hunks : Array[Hunk]
-} derive(@debug.Debug)
+}
 pub fn ParsedPatch::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct UpdateFileChunk {
   change_context : String?
   old_lines : Array[String]
   new_lines : Array[String]
   is_end_of_file : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn UpdateFileChunk::equal(Self, Self) -> Bool
 pub fn UpdateFileChunk::not_equal(Self, Self) -> Bool
 pub fn UpdateFileChunk::to_repr(Self) -> @debug.Repr

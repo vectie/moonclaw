@@ -1,12 +1,14 @@
 ///|
+#derive(ToJson, FromJson)
 priv enum WriteResultOperation {
   Created
   Updated
   Replaced
-} derive(ToJson, FromJson)
+}
 
 ///|
 /// Write operation result for structured JSON output
+#derive(ToJson, FromJson)
 struct WriteResult {
   path : String
   operation : WriteResultOperation
@@ -14,7 +16,7 @@ struct WriteResult {
   search_used : Bool
   message : String
   content : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for WriteResult with fn output(

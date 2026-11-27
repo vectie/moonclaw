@@ -1,6 +1,6 @@
 ///|
 test "nested OPML collection becomes a deduplicated usable registry" {
-  let collection = parse_opml(
+  let collection = @read_feed.parse_opml(
     "<?xml version='1.0'?><opml version='2.0'><head><title>Research &amp; news</title></head><body><outline text='Science'><outline text='Space'><outline text='Old title' title='Observatory 🔭' xmlUrl='https://example.test/rss?a=1&amp;b=2'/></outline><outline text='Duplicate' xmlUrl='https://example.test/rss?a=1&amp;b=2'/><outline text='Notes' type='link' url='https://example.test'/><outline text='Unsafe' xmlUrl='file:///private'/><outline xmlUrl='https://example.test/atom'/></outline></body></opml>",
     prefix="research",
   )
@@ -23,7 +23,7 @@ test "nested OPML collection becomes a deduplicated usable registry" {
   })
   inspect(collection.warnings.length(), content="1")
   for version in ["1.0", "1.1", "2.0"] {
-    let empty = parse_opml("\u{FEFF}<opml version='\{version}'><body/></opml>")
+    let empty = @read_feed.parse_opml("\u{FEFF}<opml version='\{version}'><body/></opml>")
     assert_eq(empty.providers.length(), 0)
   }
 }
@@ -36,22 +36,22 @@ test "OPML refuses malformed input and reports unsupported subscriptions" {
       "<opml version='2.0'><body></opml>", "<!DOCTYPE opml SYSTEM 'file:///not-read'><opml version='2.0'><body/></opml>",
       "<opml version='2.0'><body><outline xmlUrl='&custom;'/></body></opml>",
     ] {
-    assert_true((Ok(parse_opml(body)) catch { error => Err(error) }) is Err(_))
+    assert_true((Ok(@read_feed.parse_opml(body)) catch { error => Err(error) }) is Err(_))
   }
   let body = "<opml version='2.0'><body/></opml>"
   assert_true(
-    (Ok(parse_opml(body, prefix="bad/name")) catch { error => Err(error) })
+    (Ok(@read_feed.parse_opml(body, prefix="bad/name")) catch { error => Err(error) })
     is Err(_),
   )
   assert_true(
-    (Ok(parse_opml(body, prefix="")) catch { error => Err(error) }) is Err(_),
+    (Ok(@read_feed.parse_opml(body, prefix="")) catch { error => Err(error) }) is Err(_),
   )
   for
     url in [
       "file:///feed", "javascript:alert(1)", "relative.xml", "https:///feed", "http://",
       "https://example.test/a b", "https://user:secret@example.test/rss",
     ] {
-    let collection = parse_opml(
+    let collection = @read_feed.parse_opml(
       "<opml version='2.0'><body><outline xmlUrl='\{url}'/></body></opml>",
     )
     assert_eq(collection.providers.length(), 0)
@@ -73,7 +73,7 @@ async test "import OPML then read registered HTTP feed and export digest" {
   @async.with_task_group(group => {
     group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
     @fsx.with_temporary_directory("moonclaw-opml-XXXXXX", async fn(dir) {
-      let collection = parse_opml(
+      let collection = @read_feed.parse_opml(
         "<opml version='2.0'><body><outline text='Research'><outline text='Observatory' xmlUrl='http://localhost:\{server.port()}/rss'/></outline></body></opml>",
       )
       @fsx.make_directory(dir + "/.moonsuite")
@@ -81,7 +81,7 @@ async test "import OPML then read registered HTTP feed and export digest" {
         dir + "/.moonsuite/resource-providers.json",
         collection.to_json().stringify(),
       )
-      let result = new(dir).call({
+      let result = @read_feed.new(dir).call({
         "source": "provider://opml-1",
         "query": "telescope",
       })

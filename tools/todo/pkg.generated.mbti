@@ -14,31 +14,35 @@ pub fn new(uuid~ : @uuid.Generator, clock? : &@clock.Clock, cwd~ : StringView) -
 
 pub fn new_tool(Todo) -> @tool.Tool[TodoResult]
 
-pub fn parse_todo_args(Json) -> TodoArgs raise TodoArgsError
+pub fn parse_todo_args(@json.Json) -> TodoArgs raise TodoArgsError
 
 pub let prompt : String
 
 // Errors
-type TodoArgsError derive(@debug.Debug)
+#derive(@debug.Debug)
+type TodoArgsError
 pub fn TodoArgsError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
-type Items derive(Eq, ToJson, @json.FromJson)
+#derive(Eq, @json.FromJson, @json.ToJson)
+type Items
 pub fn Items::equal(Self, Self) -> Bool
-pub fn Items::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Items::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Items::not_equal(Self, Self) -> Bool
-pub fn Items::to_json(Self) -> Json
+pub fn Items::to_json(Self) -> @json.Json
 
 type Todo
 
-type TodoArgs derive(ToJson, @debug.Debug)
-pub fn TodoArgs::to_json(Self) -> Json
+#derive(@debug.Debug, @json.ToJson)
+type TodoArgs
+pub fn TodoArgs::to_json(Self) -> @json.Json
 pub fn TodoArgs::to_repr(Self) -> @debug.Repr
 
-type TodoResult derive(ToJson, @json.FromJson)
-pub fn TodoResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+#derive(@json.FromJson, @json.ToJson)
+type TodoResult
+pub fn TodoResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn TodoResult::output(Self, &Logger) -> Unit
-pub fn TodoResult::to_json(Self) -> Json
+pub fn TodoResult::to_json(Self) -> @json.Json
 pub fn TodoResult::to_string(Self) -> String
 pub impl Show for TodoResult
 

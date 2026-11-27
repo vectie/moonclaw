@@ -770,7 +770,7 @@ fn parse_int_arg(
 ) -> Int32 {
   match parse_string_arg(args, name) {
     Some(s) =>
-      try @string.parse_int(s[:], base=10) catch {
+      try @string.parse_int(s[:], radix=10) catch {
         _ => default
       } noraise {
         n => n

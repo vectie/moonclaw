@@ -1,6 +1,7 @@
 ///|
 /// One portable copy, with paths relative to the export directory. The original
 /// record remains provenance; its original absolute path is not an export path.
+#derive(ToJson, FromJson)
 pub struct ExportedArtifact {
   record : ArtifactRecord
   record_path : String
@@ -8,14 +9,15 @@ pub struct ExportedArtifact {
   content_path : String
   content_sha256 : String
   content_bytes : Int32
-} derive(ToJson, FromJson)
+}
 
 ///|
+#derive(ToJson, FromJson)
 pub struct ArtifactExport {
   schema : String
   artifacts : Array[ExportedArtifact]
   total_content_bytes : Int32
-} derive(ToJson, FromJson)
+}
 
 ///|
 priv struct ArtifactExportSource {

@@ -1,6 +1,6 @@
 ///|
 fn markdown_text(text : String) -> String {
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   for character in text {
     match character {
       '&' => output.write_string("&amp;")

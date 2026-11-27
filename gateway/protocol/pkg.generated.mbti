@@ -7,35 +7,38 @@ import {
 }
 
 // Values
-pub const DEFAULT_PORT : Int = 18123
+pub const DEFAULT_PORT : Int32 = 18123
 
-pub const HANDSHAKE_TIMEOUT_MS : Int = 30000
+pub const HANDSHAKE_TIMEOUT_MS : Int32 = 30000
 
-pub const MAX_BUFFERED_BYTES : Int = 16777216
+pub const MAX_BUFFERED_BYTES : Int32 = 16777216
 
-pub const MAX_PAYLOAD_BYTES : Int = 10485760
+pub const MAX_PAYLOAD_BYTES : Int32 = 10485760
 
-pub const PROTOCOL_VERSION : Int = 1
+pub const PROTOCOL_VERSION : Int32 = 1
 
-pub const TICK_INTERVAL_MS : Int = 30000
+pub const TICK_INTERVAL_MS : Int32 = 30000
 
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AgentAcceptedPayload {
   run_id : String
   status : String
-  accepted_at : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  accepted_at : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AgentEventPayload {
   run_id : String
   kind : String
   delta : String?
   content : String?
-  usage : Json?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  usage : @json.Json?
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AgentParams {
   message : String
   session_key : String?
@@ -44,151 +47,174 @@ pub(all) struct AgentParams {
   provider : String?
   run_id : String?
   idempotency_key : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AgentResultPayload {
   run_id : String
   status : String
-  result : Json?
+  result : @json.Json?
   error : ErrorShape?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AuthCredentials {
   token : String?
   password : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ChallengePayload {
   nonce : String
-  ts : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  ts : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ClientInfo {
   id : String
   display_name : String?
   version : String?
   platform : String?
   mode : ClientMode
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum ClientMode {
   Cli
   Backend
   Webchat
   Probe
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum ClientRole {
   Operator
   Node
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ConfigGetPayload {
-  config : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  config : @json.Json
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ConfigSetParams {
-  config : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  config : @json.Json
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ConnectParams {
-  min_protocol : Int
-  max_protocol : Int
+  min_protocol : Int32
+  max_protocol : Int32
   client : ClientInfo
   auth : AuthCredentials
   role : ClientRole
   scopes : Array[String]?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ErrorShape {
   code : String
   message : String
-  details : Json?
+  details : @json.Json?
   retryable : Bool?
-  retry_after_ms : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  retry_after_ms : Int32?
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct EventFrame {
   event : String
-  payload : Json?
-  seq : Int?
+  payload : @json.Json?
+  seq : Int32?
   state_version : StateVersion?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Features {
   methods : Array[String]
   events : Array[String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum Frame {
   Req(Request)
   Res(Response)
   Event(EventFrame)
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct HealthPayload {
   status : String
-  uptime_ms : Int
-  active_sessions : Int
-  pending_requests : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  uptime_ms : Int32
+  active_sessions : Int32
+  pending_requests : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct HelloOk {
-  protocol : Int
+  protocol : Int32
   server : ServerInfo
   features : Features
   snapshot : Snapshot
   policy : Policy
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Policy {
-  max_payload : Int
-  max_buffered_bytes : Int
-  tick_interval_ms : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  max_payload : Int32
+  max_buffered_bytes : Int32
+  tick_interval_ms : Int32
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Request {
   id : String
   rpc_method : String
-  params : Json?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  params : @json.Json?
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Response {
   id : String
   ok : Bool
-  payload : Json?
+  payload : @json.Json?
   error : ErrorShape?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct ServerInfo {
   version : String
   commit : String?
   host : String?
   conn_id : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct SessionInfo {
   session_id : String
-  updated_at : Int
+  updated_at : Int32
   channel : String?
   model_override : String?
   provider_override : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct SessionsListPayload {
   sessions : Array[SessionInfo]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Snapshot {
-  presence : Json?
-  health : Json?
+  presence : @json.Json?
+  health : @json.Json?
   state_version : StateVersion?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct StateVersion {
-  presence : Int?
-  health : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  presence : Int32?
+  health : Int32?
+}
 
 // Type aliases
 

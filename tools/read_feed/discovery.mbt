@@ -1,6 +1,7 @@
 ///|
 /// Feed candidates discovered in a saved HTML head. JSON can be reviewed and
 /// installed as a resource-provider manifest; discovery never fetches a URL.
+#derive(ToJson)
 pub struct FeedDiscovery {
   page_url : String
   base_url : String?
@@ -8,7 +9,7 @@ pub struct FeedDiscovery {
   duplicate_links : Int32
   rejected_links : Int32
   warnings : Array[String]
-} derive(ToJson)
+}
 
 ///|
 /// Discover alternate RSS, Atom and JSON Feed links from a saved HTML head.

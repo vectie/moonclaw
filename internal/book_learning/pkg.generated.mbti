@@ -7,69 +7,72 @@ import {
 }
 
 // Values
-pub async fn capture(Binding, Int) -> Snapshot
+pub async fn capture(Binding, Int32) -> Snapshot
 
 pub fn digest(Bytes) -> String
 
-pub fn empty(Binding, String, Int) -> Snapshot
+pub fn empty(Binding, String, Int32) -> Snapshot
 
 pub fn render(Snapshot) -> String
 
 pub fn review_status(String) -> String
 
-pub fn summary(Snapshot) -> Json
+pub fn summary(Snapshot) -> @json.Json
 
 pub fn validate(Snapshot, Binding) -> Result[Unit, String]
 
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Binding {
   workspace_id : String
   book_id : String
   source_root : String
   request_digest : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn Binding::equal(Self, Self) -> Bool
-pub fn Binding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Binding::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Binding::not_equal(Self, Self) -> Bool
-pub fn Binding::to_json(Self) -> Json
+pub fn Binding::to_json(Self) -> @json.Json
 pub fn Binding::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct Record {
   path : String
   category : String
   format : String
-  size_bytes : Int
+  size_bytes : Int32
   sha256 : String
   content_utf8 : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn Record::equal(Self, Self) -> Bool
-pub fn Record::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Record::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Record::not_equal(Self, Self) -> Bool
-pub fn Record::to_json(Self) -> Json
+pub fn Record::to_json(Self) -> @json.Json
 pub fn Record::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson, @json.ToJson)
 pub struct Snapshot {
   contract : String
   reader_contract : String
   status : String
   source_binding : Binding
-  installation_lineage : Json
+  installation_lineage : @json.Json
   records : Array[Record]
-  observed_entries : Int
-  admitted_records : Int
-  excluded_records : Int
+  observed_entries : Int32
+  admitted_records : Int32
+  excluded_records : Int32
   reasons : Array[String]
-  limits : Json
-  captured_at : Int
+  limits : @json.Json
+  captured_at : Int32
   content_digest : String
   binding_digest : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+}
 pub fn Snapshot::equal(Self, Self) -> Bool
-pub fn Snapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Snapshot::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn Snapshot::not_equal(Self, Self) -> Bool
-pub fn Snapshot::to_json(Self) -> Json
+pub fn Snapshot::to_json(Self) -> @json.Json
 pub fn Snapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases

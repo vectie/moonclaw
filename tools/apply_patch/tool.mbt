@@ -1,7 +1,8 @@
 ///|
+#derive(FromJson)
 priv struct Params {
   patch : String
-} derive(FromJson)
+}
 
 ///|
 fn format_result(result : ApplyResult) -> String {

@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson)
 pub struct Model {
   id : String
   canonical_slug : String
@@ -11,7 +12,7 @@ pub struct Model {
   top_provider : TopProvider
   per_request_limits : Json?
   supported_parameters : Array[String]
-} derive(ToJson)
+}
 
 ///|
 const PackageName = "@vectie/moonclaw/internal/openrouter"
@@ -184,12 +185,13 @@ pub impl @json.FromJson for Model with fn from_json(
 }
 
 ///|
+#derive(ToJson)
 pub struct Architecture {
   input_modalities : Array[String]
   output_modalities : Array[String]
   tokenizer : String
   instruct_type : String?
-} derive(ToJson)
+}
 
 ///|
 pub impl @json.FromJson for Architecture with fn from_json(
@@ -252,6 +254,7 @@ pub impl @json.FromJson for Architecture with fn from_json(
 }
 
 ///|
+#derive(ToJson)
 pub struct Pricing {
   prompt : String
   completion : String
@@ -261,7 +264,7 @@ pub struct Pricing {
   internal_reasoning : String?
   input_cache_read : String?
   input_cache_write : String?
-} derive(ToJson)
+}
 
 ///|
 pub impl @json.FromJson for Pricing with fn from_json(
@@ -359,11 +362,12 @@ pub impl @json.FromJson for Pricing with fn from_json(
 }
 
 ///|
+#derive(ToJson)
 pub struct TopProvider {
   context_length : Int32?
   max_completion_tokens : Int32?
   is_moderated : Bool
-} derive(ToJson)
+}
 
 ///|
 pub impl @json.FromJson for TopProvider with fn from_json(

@@ -1,13 +1,14 @@
 ///|
 /// A portable reading-list import. Its JSON is accepted directly by the
 /// existing resource-provider registry; importing never fetches subscriptions.
+#derive(ToJson)
 pub struct FeedCollection {
   title : String
   providers : Array[Json]
   duplicate_feeds : Int32
   skipped_outlines : Int32
   warnings : Array[String]
-} derive(ToJson)
+}
 
 ///|
 priv struct OpmlImport {

@@ -1,7 +1,8 @@
 ///|
 /// Unix timestamp represented as **milliseconds** since the Unix epoch (January
 /// 1, 1970, 00:00:00 UTC).
-struct Timestamp(Int64) derive(Eq)
+#derive(Eq)
+struct Timestamp(Int64)
 
 ///|
 pub impl Show for Timestamp with fn output(self : Timestamp, logger : &Logger) -> Unit {

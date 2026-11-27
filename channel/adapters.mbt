@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct OutboundAdapter {
   text_chunk_limit : Int32
   delivery_mode : String
   chunker_mode : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn OutboundAdapter::new(
@@ -15,11 +16,12 @@ pub fn OutboundAdapter::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ThreadingAdapter {
   reply_to_mode : String
   supports_threads : Bool
   thread_id_key : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ThreadingAdapter::new(
@@ -31,11 +33,12 @@ pub fn ThreadingAdapter::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct MentionAdapter {
   strip_patterns : Array[String]
   mention_prefix : String?
   mention_suffix : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn MentionAdapter::new(
@@ -47,13 +50,14 @@ pub fn MentionAdapter::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct StreamingAdapter {
   enabled : Bool
   chunk_size : Int32
   chunk_delay_ms : Int32
   min_chars : Int32?
   idle_ms : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn StreamingAdapter::new(
@@ -67,11 +71,12 @@ pub fn StreamingAdapter::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SecurityAdapter {
   dm_policy : String
   allow_from : Array[String]
   require_mention_in_groups : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn SecurityAdapter::new(
@@ -83,13 +88,14 @@ pub fn SecurityAdapter::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct ChannelDockConfig {
   outbound : OutboundAdapter?
   threading : ThreadingAdapter?
   mentions : MentionAdapter?
   streaming : StreamingAdapter?
   security : SecurityAdapter?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn ChannelDockConfig::new(

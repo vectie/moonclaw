@@ -1,9 +1,10 @@
 ///|
 /// Generic embedded asset representation.
+#derive(Debug, ToJson)
 pub(all) struct Asset {
   path : String
   content : String
-} derive(Debug, ToJson)
+}
 
 ///|
 /// Installs embedded assets into `root`, guarded by a marker fingerprint.

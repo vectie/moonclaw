@@ -47,7 +47,7 @@ async fn moondesk_promotion_load_checkpoint(
   guard file.kind() is Regular && file.size() <= 131_072L else {
     fail("Return receipt is unavailable")
   }
-  let bytes = @buffer.Buffer(size_hint=2_048)
+  let bytes = @buffer.Buffer(capacity=2_048)
   for ;; {
     guard file.read_some(max_len=(131_073 - bytes.length()).min(4_096))
       is Some(chunk) else {
@@ -56,7 +56,7 @@ async fn moondesk_promotion_load_checkpoint(
     guard bytes.length() + chunk.length() <= 131_072 else {
       fail("Return receipt is unavailable")
     }
-    bytes.write_bytes(chunk)
+    bytes.write_bytesview(chunk)
   }
   let value = @json.parse(@encoding/utf8.decode(bytes.to_bytes()))
   if value is { "pending_attempt": true, .. } {

@@ -5,7 +5,7 @@ async test "add_worktree" (t : @test.Test) {
     mock.add_json_tree({ "file.txt": "Hello, Moonbit!" })
     @git.commit("Initial commit", ["file.txt"], cwd=mock.cwd.path())
     @git.add_worktree("worktree", cwd=mock.cwd.path())
-    mock.group.add_defer(() => {
+    defer @async.protect_from_cancel(() => {
       @git.remove_worktree("worktree", force=true, cwd=mock.cwd.path())
     })
     json_inspect(
@@ -25,7 +25,7 @@ async test "add_worktree/new-branch" (t : @test.Test) {
     mock.add_json_tree({ "file.txt": "Hello, Moonbit!" })
     @git.commit("Initial commit", ["file.txt"], cwd=mock.cwd.path())
     @git.add_worktree("worktree", new_branch="new-branch", cwd=mock.cwd.path())
-    mock.group.add_defer(() => {
+    defer @async.protect_from_cancel(() => {
       @git.remove_worktree("worktree", force=true, cwd=mock.cwd.path())
     })
     json_inspect(
@@ -70,7 +70,7 @@ async test "add_worktree/new-branch-with-commit" (t : @test.Test) {
       commit~,
       cwd=mock.cwd.path(),
     )
-    mock.group.add_defer(() => {
+    defer @async.protect_from_cancel(() => {
       @git.remove_worktree("worktree", force=true, cwd=mock.cwd.path())
     })
     json_inspect(

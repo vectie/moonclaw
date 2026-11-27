@@ -44,7 +44,7 @@ pub fn Logger::close(self : Logger) -> Unit {
 ///
 /// ```mbt check
 /// test {
-///   let log = logger("example", Transport::sink())
+///   let log = @pino.logger("example", @pino.Transport::sink())
 ///   assert_false(log.is_enabled(Debug))
 ///   assert_true(log.is_enabled(Error))
 /// }

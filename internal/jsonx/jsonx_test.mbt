@@ -1,11 +1,12 @@
 ///|
+#derive(ToJson)
 priv struct People {
   name : String
   age : Int32
   active : Bool
   /// Optional field for testing purposes
   nickname : String?
-} derive(ToJson)
+}
 
 ///|
 impl @json.FromJson for People with fn from_json(

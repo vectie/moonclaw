@@ -166,7 +166,9 @@ async fn[T] mooncode_with_fixture_moonfort(
       ],
     }
     mooncode_install_fixture_sandbox_config(book_root, config)
-    defer mooncode_remove_fixture_sandbox_config(book_root)
+    defer @async.protect_from_cancel(() => {
+      mooncode_remove_fixture_sandbox_config(book_root)
+    })
     body(config)
   })
 }

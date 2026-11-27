@@ -1,4 +1,5 @@
 ///|
+#warnings("-92")
 async fn generate(
   prompt_file~ : String,
   log_file~ : String,

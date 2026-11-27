@@ -15,7 +15,7 @@ async test "truncate" (t : @test.Test) {
     {
       let file = @fs.open(file_path, mode=ReadWrite)
       defer file.close()
-      truncate(file, 5)
+      @fsx.truncate(file, 5)
       inspect(file.read_all().text(), content="Hello")
     }
     let file = @fs.open(file_path, mode=ReadOnly)

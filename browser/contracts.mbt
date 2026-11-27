@@ -1,11 +1,13 @@
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserActor {
   User
   Agent
   Replay
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserOperation {
   Navigate
   Reload
@@ -17,9 +19,10 @@ pub(all) enum BrowserOperation {
   SetViewport
   CaptureScreenshot
   CaptureDiagnostics
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserEffectClass {
   RenderLocalArtifact
   InspectVisiblePage
@@ -30,69 +33,78 @@ pub(all) enum BrowserEffectClass {
   DownloadFile
   SubmitExternalMutation
   RequestPhysicalEffect
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserOriginClass {
   OpaqueLocalPreview
   IsolatedLoopback
   ExternalOrigin
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserNetworkPolicy {
   Offline
   ApprovedOriginsOnly
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserStorageLifetime {
   Ephemeral
   RunScoped
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserPageTrust {
   TrustedLocalPage
   UntrustedExternalPage
   PromptInjectionSuspected
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserDestinationClass {
   DestinationNotApplicable
   PublicInternetDestination
   LoopbackDestination
   PrivateNetworkDestination
   LinkLocalDestination
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserTransferVerdict {
   TransferNotScanned
   TransferClean
   TransferRejected(String)
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserSessionStatus {
   Ready
   AgentOperating
   Paused
   UserControl
   Stopped
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) enum BrowserActionOutcome {
   Accepted
   NoOp
   Blocked(String)
   Diverged(String)
   Cancelled(String)
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserSessionScope {
   session_id : String
   workspace_id : String
@@ -113,9 +125,10 @@ pub struct BrowserSessionScope {
   mutation_authority_nonce : String
   mutation_authority_expires_at : String
   credential_handles : Array[String]
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserAction {
   action_id : String
   session_id : String
@@ -134,9 +147,10 @@ pub struct BrowserAction {
   idempotency_key : String
   fresh_authority_nonce : String
   created_at : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, FromJson)
 pub struct BrowserActionReceipt {
   action_id : String
   session_id : String
@@ -162,7 +176,7 @@ pub struct BrowserActionReceipt {
   idempotency_key : String
   fresh_authority_nonce : String
   completed_at : String
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 pub fn browser_session_scope(

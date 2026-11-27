@@ -2,13 +2,14 @@
 /// Opt-in one-off imports have stable proposal/run identities. Ordinary external
 /// imports retain their historical behavior. The exact packet, profile and
 /// workspace binding is durable before the runtime is allowed to start.
+#derive(Debug, Eq, ToJson, FromJson)
 pub(all) struct ExternalOneoffReceipt {
   packet_id : String
   proposal_id : String
   run_id : String
   status : String
   workspace_dir : String?
-} derive(Debug, Eq, ToJson, FromJson)
+}
 
 ///|
 fn oneoff_safe_id(value : String) -> Bool {

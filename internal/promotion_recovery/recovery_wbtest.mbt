@@ -104,7 +104,7 @@ async fn recovery_test_pending(root : String) -> String {
   )
   @fs.write_file(
     path,
-    ({ "request": pending.to_json(), "pending_attempt": true } : Json).stringify(),
+    ({ "request": ToJson::to_json(pending), "pending_attempt": true } : Json).stringify(),
     create_mode=CreateNew,
     permission=0o600,
   )
@@ -123,9 +123,9 @@ async test "read-only recovery projects all five observations without confirming
       outcome in [
         "desired-applied", "reviewed-prestate", "diverged", "unavailable", "manual-recovery",
       ] {
-      let value = moondesk_recovery_inspect(recovery_test_request(), root, async fn(
+      let value = moondesk_recovery_inspect(recovery_test_request(), root, (
         retention,
-      ) {
+      ) => {
         assert_eq(retention, "retained-55")
         recovery_test_response(outcome)
       })
@@ -148,7 +148,7 @@ async test "recovery refuses wrong pending attempt missing lock active return an
     let root = @fs.realpath(root)
     let path = recovery_test_pending(root)
     let invoked = Ref(0)
-    let invoke = async fn(_retention) {
+    let invoke : async (String) -> MoonFortRecoveryResponse = fn(_retention) {
       invoked.val += 1
       recovery_test_response("desired-applied")
     }
@@ -188,7 +188,7 @@ async test "recovery refuses wrong pending attempt missing lock active return an
           }
           @fs.write_file(
             path,
-            ({ "request": changed.to_json(), "pending_attempt": true } : Json).stringify(),
+            ({ "request": ToJson::to_json(changed), "pending_attempt": true } : Json).stringify(),
           )
           recovery_test_response("desired-applied")
         }),

@@ -44,6 +44,7 @@ async fn Gateway::handle_save_human_revision(
       "save_id": String(save_id),
       "expected_parent_digest": String(expected),
       "content": String(content),
+      ..
     } else {
     raise json_error(400, "BadRequest", {
       "error": {

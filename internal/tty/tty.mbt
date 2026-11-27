@@ -23,10 +23,11 @@ pub fn isatty(fd : Int32, loc~ : SourceLoc) -> Bool raise {
 extern "c" fn tty_get_win_size(size : FixedArray[Int32]) -> Int32 = "moonbit_moonclaw_tty_get_win_size"
 
 ///|
+#derive(ToJson)
 pub struct Size {
   row : Int32
   col : Int32
-} derive(ToJson)
+}
 
 ///|
 pub fn window_size() -> Size raise {

@@ -1,11 +1,13 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) enum AcpUiNodeKind {
   Target
   Session
   Run
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AcpUiNode {
   id : String
   parent_id : String?
@@ -20,9 +22,10 @@ pub(all) struct AcpUiNode {
   created_at : Int32?
   updated_at : Int32?
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AcpUiTimelineEntry {
   id : String
   event_type : String
@@ -34,16 +37,17 @@ pub(all) struct AcpUiTimelineEntry {
   run_id : String?
   status : String?
   data : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AcpUiSnapshot {
   targets : Array[AcpTarget]
   sessions : Array[AcpSession]
   runs : Array[AcpRun]
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub extend AcpUiNodeKind with ToJson::{to_json}

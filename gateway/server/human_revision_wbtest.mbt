@@ -64,8 +64,8 @@ async test "human revisions actual authenticated editor durable store fresh proc
         151,
       ),
     )
-    let runs = store.list_runs().to_json()
-    let events = store.list_run_events("run-human").to_json()
+    let runs = ToJson::to_json(store.list_runs())
+    let events = ToJson::to_json(store.list_run_events("run-human"))
     let base = "http://127.0.0.1:\{gateway.httpx.port()}"
     @async.with_task_group(group => {
       group.spawn_bg(
@@ -126,11 +126,11 @@ async test "human revisions actual authenticated editor durable store fresh proc
         output.text().contains("ACTUAL_HUMAN_GATEWAY_UI_PASSED"),
         msg=output.text(),
       )
-      assert_eq(store.list_runs().to_json(), runs)
-      assert_eq(store.list_run_events("run-human").to_json(), events)
+      assert_eq(ToJson::to_json(store.list_runs()), runs)
+      assert_eq(ToJson::to_json(store.list_run_events("run-human")), events)
       assert_eq(
-        artifacts.get("source-human").unwrap().to_json(),
-        original.to_json(),
+        ToJson::to_json(artifacts.get("source-human").unwrap()),
+        ToJson::to_json(original),
       )
       assert_eq(artifacts.list().length(), 3)
       let saved = artifacts
@@ -192,8 +192,8 @@ async test "fresh process reopens retained human revision and downloads exact by
   })
   defer gateway.httpx.close()
   let store = gateway.job_runtime().store()
-  let runs = store.list_runs().to_json()
-  let events = store.list_run_events("run-human").to_json()
+  let runs = ToJson::to_json(store.list_runs())
+  let events = ToJson::to_json(store.list_run_events("run-human"))
   assert_eq(store.get_artifact(id).unwrap().artifact_type, "human_revision")
   @async.with_task_group(group => {
     group.spawn_bg(
@@ -206,15 +206,20 @@ async test "fresh process reopens retained human revision and downloads exact by
     )
     let (response, body) = @http.get(
       "http://127.0.0.1:\{gateway.httpx.port()}/v1/jobs/runs/run-human/artifacts/\{id}/download",
-      headers={ "authorization": "Bearer fixture-only-token" },
+      headers=Map([
+        (
+          @http.CaseInsensitiveString("authorization"),
+          "Bearer fixture-only-token",
+        ),
+      ]),
     )
     assert_eq(response.code, 200)
     assert_eq(
       body.binary(),
       @encoding/utf8.encode("Human revised 世界\u0000\n"),
     )
-    assert_eq(store.list_runs().to_json(), runs)
-    assert_eq(store.list_run_events("run-human").to_json(), events)
+    assert_eq(ToJson::to_json(store.list_runs()), runs)
+    assert_eq(ToJson::to_json(store.list_run_events("run-human")), events)
     println("FRESH_PROCESS_HUMAN_DOWNLOAD_PASSED")
     group.return_immediately(())
   })

@@ -43,7 +43,7 @@ test "merge adds captured articles keeps annotations and unions selections in re
     } else {
     fail("Lost reader edits")
   }
-  assert_eq(order, [a.to_json(), b.to_json()])
+  assert_eq(order, [Json::string(a), Json::string(b)])
   assert_true(merged.to_markdown().contains("## 2. Second"))
   assert_eq(
     @read_feed.parse_reading_shortlist(merged.to_archive()).to_archive(),
@@ -73,7 +73,11 @@ test "merge exact overlap appends selected existing entries without duplicates" 
   guard merged.to_json() is { "order": Array(order), .. } else {
     fail("Missing order")
   }
-  assert_eq(order, [ids[1].to_json(), ids[2].to_json(), ids[0].to_json()])
+  assert_eq(order, [
+    Json::string(ids[1]),
+    Json::string(ids[2]),
+    Json::string(ids[0]),
+  ])
   assert_eq(saved.merge(saved).to_archive(), saved.to_archive())
 }
 
@@ -91,8 +95,8 @@ test "merge preview and explicit conflict choices preserve both originals" {
       "added_ids": [],
       "annotation_conflicts": [
         {
-          "existing": { "state": "read", "note": "Keep this" },
-          "incoming": { "state": "unread", "note": "" },
+          "existing": { "state": "read", "note": "Keep this", .. },
+          "incoming": { "state": "unread", "note": "", .. },
           ..
         },
       ],

@@ -1,6 +1,5 @@
 import {
   "vectie/moonclaw/internal/backtrace",
-  "moonbitlang/async",
   "vectie/moonlib/os",
   "vectie/moonclaw/cmd/main/conversation",
   "vectie/moonclaw/cmd/main/interactive",

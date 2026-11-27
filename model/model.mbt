@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, Eq, Debug)
 pub struct Model {
   name : String
   description : String?
@@ -18,9 +19,10 @@ pub struct Model {
   account_id : String?
   refresh_token : String?
   id_token : String?
-} derive(ToJson, Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Provider {
   OpenAI
   Anthropic
@@ -29,12 +31,13 @@ pub(all) enum Provider {
   Qwen
   Kimi
   KimiCoding
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Type {
   SaaS(Provider)
-} derive(Eq, Debug)
+}
 
 ///|
 pub impl Show for Type with fn output(self : Type, logger : &Logger) -> Unit {

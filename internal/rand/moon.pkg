@@ -1,6 +1,5 @@
 import {
   "vectie/moonlib/errno",
-  "moonbitlang/core/json",
   "moonbitlang/core/random",
 }
 

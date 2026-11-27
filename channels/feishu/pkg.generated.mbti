@@ -8,21 +8,23 @@ import {
 }
 
 // Values
-pub fn account_config_from_json(Json) -> FeishuAccountConfig
+pub fn account_config_from_json(@json.Json) -> FeishuAccountConfig
 
 pub async fn resolve_websocket_endpoint(String, String, String) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError]
 
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuAccessTokenResponse {
-  code : Int
+  code : Int32
   msg : String
   tenant_access_token : String?
   app_access_token : String?
-  expire : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  expire : Int32?
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuAccountConfig {
   app_id : String
   app_secret : String
@@ -37,7 +39,7 @@ pub struct FeishuAccountConfig {
   verify_token : String?
   encryption_key : String?
   enabled : Bool
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub struct FeishuChannel {
   // private fields
@@ -67,13 +69,15 @@ pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : S
 pub async fn FeishuClient::start_streaming_card(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[FeishuStreamingCardSession, @channel.ChannelError]
 pub async fn FeishuClient::update_streaming_card(Self, FeishuStreamingCardSession, String) -> Result[FeishuStreamingCardSession, @channel.ChannelError]
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuEvent {
   schema : String
   header : FeishuEventHeader
-  event : Json
+  event : @json.Json
   token : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuEventHeader {
   event_id : String
   event_type : String
@@ -83,8 +87,9 @@ pub struct FeishuEventHeader {
   tenant_key : String?
   resource_id : String?
   user_list : Array[String]?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessage {
   message_id : String
   chat_type : String
@@ -96,20 +101,24 @@ pub struct FeishuMessage {
   msg_parent_id : String?
   from_user_id : String?
   tenant_key : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageData {
   message_id : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageLookupBody {
   content : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageLookupData {
   items : Array[FeishuMessageLookupItem]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageLookupItem {
   message_id : String
   chat_id : String
@@ -120,94 +129,109 @@ pub struct FeishuMessageLookupItem {
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuMessageLookupData?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuMessageLookupSender {
   id : String?
   sender_type : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug)
 pub struct FeishuReactionIndicatorState {
   message_id : String
   reaction_id : String
   emoji_type : String
-} derive(@debug.Debug)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
   content : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuSendMessageResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuMessageData?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug)
 pub struct FeishuStreamingCardSession {
   card_id : String
   message_id : String
-  sequence : Int
+  sequence : Int32
   current_text : String
-} derive(@debug.Debug)
+}
 
+#derive(@debug.Debug)
 pub struct FeishuTypingIndicatorState {
   message_id : String
   reaction_id : String
-} derive(@debug.Debug)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuUser {
   open_id : String?
   name : String?
   display_name : String?
   nickname : String?
   en_name : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuUserBatchLookupData {
   items : Array[FeishuUser]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuUserBatchLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuUserBatchLookupData?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuUserLookupData {
   user : FeishuUser?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuUserLookupResponse {
-  code : Int
+  code : Int32
   msg : String
   data : FeishuUserLookupData?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct FeishuWebSocketClientConfig {
-  ping_interval : Int?
-  reconnect_count : Int?
-  reconnect_interval : Int?
-  reconnect_nonce : Int?
-} derive(ToJson, @debug.Debug)
+  ping_interval : Int32?
+  reconnect_count : Int32?
+  reconnect_interval : Int32?
+  reconnect_nonce : Int32?
+}
 
+#derive(@debug.Debug, @json.ToJson)
 pub struct FeishuWebSocketEndpointData {
   url : String
   client_config : FeishuWebSocketClientConfig?
-} derive(ToJson, @debug.Debug)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct FeishuWebSocketEndpointResponse {
-  code : Int
+  code : Int32
   msg : String
-  data : Json?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+  data : @json.Json?
+}
 
 // Type aliases
 pub type FeishuConnectionMode = String

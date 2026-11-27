@@ -1,12 +1,14 @@
 ///|
+#derive(FromJson, Debug)
 pub(all) struct AcpSessionCreateParams {
   target_id : String
   session_key : String
   session_id : String?
   metadata : Json?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, ToJson, Debug)
 pub(all) struct AcpSessionRunParams {
   session_id : String
   message : String
@@ -15,7 +17,7 @@ pub(all) struct AcpSessionRunParams {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-} derive(FromJson, ToJson, Debug)
+}
 
 ///|
 fn acp_session_run_payload_with_session_id(
@@ -391,9 +393,10 @@ async fn Gateway::execute_acp_agent_async(
 }
 
 ///|
+#derive(FromJson, ToJson, Debug)
 pub(all) struct AcpRunCancelParams {
   run_id : String
-} derive(FromJson, ToJson, Debug)
+}
 
 ///|
 async fn Gateway::handle_acp_runs_cancel_method(

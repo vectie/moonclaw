@@ -46,7 +46,7 @@ test "decode_ok_payload parses run and channel payloads" {
   let channels_response : Result[@protocol.Response, String] = Ok({
     id: "req-channels",
     ok: true,
-    payload: Some({ "channels": [channel_dock.to_json()] }),
+    payload: Some({ "channels": [ToJson::to_json(channel_dock)] }),
     error: None,
   })
   let ask_response : Result[@protocol.Response, String] = Ok({

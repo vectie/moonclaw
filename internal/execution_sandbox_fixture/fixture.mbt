@@ -30,7 +30,7 @@ pub async fn[T] with_fixture_moonfort(
       guard @fsx.exists_as_file(canonical_executable) else {
         fail("fixture MoonFort executable must be a canonical regular file")
       }
-      capability_json[capability] = canonical_executable.to_json()
+      capability_json[capability] = Json::string(canonical_executable)
     }
     @fsx.write_to_file(
       capability_file,

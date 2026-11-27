@@ -29,6 +29,7 @@ fn capability_fixture_manifest() -> @pack.MoonPackManifest {
     provider_ports: [],
     schedules: [],
     app_entrypoints: [],
+    app_runtime_identity: None,
     migrations: [],
     evaluations: [],
     uninstall_contract: Some(

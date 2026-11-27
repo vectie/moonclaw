@@ -12,7 +12,7 @@ async fn run(args : Array[String]) -> Unit {
   guard args.length() >= 4 else { fail(usage()) }
   let result = @job.export_retained_artifacts(
     args[1],
-    args[3:].to_array(),
+    args[3:].to_owned(),
     args[2],
   )
   println(result.to_json().stringify())

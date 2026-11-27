@@ -10,7 +10,7 @@ async fn run(args : Array[String]) -> Unit {
     return
   }
   let files : Array[String] = []
-  let options : Map[String, String] = {}
+  let options : Map[String, String] = Map([])
   let mut markdown = false
   for index = 1; index < args.length(); {
     let arg = args[index]
@@ -51,7 +51,7 @@ async fn run(args : Array[String]) -> Unit {
   let output = if markdown {
     directory.to_markdown()
   } else {
-    directory.to_json().stringify(indent=2) + "\n"
+    ToJson::to_json(directory).stringify(indent=2) + "\n"
   }
   guard output.length() <= 16777216 else {
     fail("Output exceeds 16 Mi code units; reduce --limit")

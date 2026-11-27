@@ -2,6 +2,7 @@
 /// Human-authored metadata for one generic MoonClaw worker. `cwd` and
 /// `web_search` are explicit so the runtime never silently broadens the
 /// worker's filesystem or network posture.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerTaskV1 {
   task_id : String
   conversation_id : String
@@ -10,75 +11,83 @@ pub(all) struct SupervisorWorkerTaskV1 {
   model : String?
   web_search : Bool
   metadata : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// All metered dimensions are required and finite at the HTTP boundary.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerBudgetV1 {
   max_cost_micro_usd : Int64
   max_runtime_ms : Int64
   max_tokens : Int64
   max_artifacts : Int32
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Explicit authority attenuation for a delegated worker.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerScopeV1 {
   claim_ceiling : String
   budget : SupervisorWorkerBudgetV1
   artifact_prefixes : Array[String]
   expires_at : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// High-level delegation surface. Worker identity, delegation references, and
 /// provider details are deliberately runtime-owned.
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorDelegateIntentRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   instruction : String
   task : SupervisorWorkerTaskV1
   scope : SupervisorWorkerScopeV1
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
 /// Internal daemon binding returned after the intent has created or restored
 /// its one durable child run.
+#derive(ToJson, Debug, Eq)
 pub(all) struct SupervisorDelegateIntentPreparedV1 {
   receipt : SupervisorCommandReceiptV1
   worker_run_id : String
   worker_job_id : String
   execution_status : String
   delegation : Json
-} derive(ToJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerSteerRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   worker_run_id : String
   instruction : String
   metadata : Json
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerStopRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   worker_run_id : String
   reason : String
   force : Bool
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug, Eq)
 pub(all) struct SupervisorWorkerRetryRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String
   worker_run_id : String
   reason : String
-} derive(ToJson, FromJson, Debug, Eq)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SupervisorWorkerStatusV1 {
   contract_id : String
   supervisor_id : String
@@ -103,7 +112,7 @@ pub(all) struct SupervisorWorkerStatusV1 {
   outcome_evidence_status : String
   outcome_source_event_id : String?
   outcome_evidence_candidate : SupervisorBookkeeperOutcomeEvidenceV1?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn supervisor_delegate_intent_payload_v1(

@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AnalysisPolicy {
   timeout_ms : Int32?
   max_total_tokens : Int32?
   skip_if_artifact_exists : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn AnalysisPolicy::new(
@@ -15,6 +16,7 @@ pub fn AnalysisPolicy::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AnalysisArtifactConfig {
   report_artifact_type : String
   result_artifact_type : String
@@ -23,7 +25,7 @@ pub(all) struct AnalysisArtifactConfig {
   result_file_name : String?
   scope : Array[String]
   append_only : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn AnalysisArtifactConfig::new(
@@ -47,6 +49,7 @@ pub fn AnalysisArtifactConfig::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AnalysisStepConfig {
   prompt : String
   model : String?
@@ -62,7 +65,7 @@ pub(all) struct AnalysisStepConfig {
   policy : AnalysisPolicy
   artifacts : AnalysisArtifactConfig
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn AnalysisStepConfig::new(
@@ -100,6 +103,7 @@ pub fn AnalysisStepConfig::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AnalysisRequest {
   job_id : String
   run_id : String
@@ -119,16 +123,17 @@ pub(all) struct AnalysisRequest {
   step_metadata : Json
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) struct AnalysisExecution {
   model_name : String
   content : String
   conversation_id : String?
   usage : @ai.Usage?
   metadata : Json
-} derive(Debug)
+}
 
 ///|
 pub(all) struct AnalysisExecutor {

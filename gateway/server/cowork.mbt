@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 struct CoworkSessionSummary {
   session_key : String
   session_id : String
@@ -13,9 +14,10 @@ struct CoworkSessionSummary {
   has_plan_mode : Bool
   linked_proposal_id : String?
   linked_run_id : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct CoworkProposalRef {
   id : String
   title : String
@@ -23,9 +25,10 @@ struct CoworkProposalRef {
   status : String
   request_text : String
   updated_at : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct CoworkRunRef {
   id : String
   job_id : String
@@ -34,50 +37,56 @@ struct CoworkRunRef {
   error : String?
   current_step_id : String?
   workspace_dir : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct CoworkSessionDetail {
   session : CoworkSessionSummary
   messages : Array[SessionMessage]
   plan_preview : String?
   linked_proposal : CoworkProposalRef?
   linked_run : CoworkRunRef?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 struct CoworkSessionCreateParams {
   cwd : String?
   title : String?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 struct CoworkMessageParams {
   content : String
   cwd : String?
   model : String?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 struct CoworkConfigParams {
   title : String?
   cwd : String?
   model : String?
   provider : String?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 struct CoworkPlanParams {
   request_text : String?
   guidance : String?
   cwd : String?
-} derive(FromJson, Debug)
+}
 
 ///|
+#derive(FromJson, Debug)
 struct CoworkResumeParams {
   content : String
   expected_checkpoint : String?
-} derive(FromJson, Debug)
+}
 
 ///|
 async fn read_json_request_body(

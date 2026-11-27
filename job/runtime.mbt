@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct CheckpointRecord {
   job_id : String
   last_triggered_at : Int32?
@@ -9,7 +10,7 @@ pub(all) struct CheckpointRecord {
   retry_attempts : Int32
   next_retry_at : Int32?
   retry_source_run_id : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub struct CheckpointStore {

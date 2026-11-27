@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, Debug)
 pub struct RegisteredResourceProvider {
   name : String
   title : String
@@ -8,7 +9,7 @@ pub struct RegisteredResourceProvider {
   docs_uri : String?
   capabilities : Array[String]
   metadata : Json
-} derive(ToJson, Debug)
+}
 
 ///|
 pub fn RegisteredResourceProvider::new(

@@ -1,13 +1,11 @@
 import {
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
   "vectie/moonlib/fsx",
   "vectie/moonlib/moonsuite",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/core/test",
   "vectie/moonlib/pathx",
 } for "wbtest"
 

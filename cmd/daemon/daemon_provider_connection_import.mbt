@@ -9,13 +9,13 @@ async fn Daemon::import_provider_connection(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   ignore(self)
-  let bytes = @buffer.Buffer(size_hint=1024)
+  let bytes = @buffer.Buffer(capacity=1024)
   for ;; {
     guard r.body.read_some(max_len=(8193 - bytes.length()).min(1024))
       is Some(chunk) else {
       break
     }
-    bytes.write_bytes(chunk)
+    bytes.write_bytesview(chunk)
     if bytes.length() > 8192 {
       raise json_error(413, "Payload Too Large", {
         "error": {

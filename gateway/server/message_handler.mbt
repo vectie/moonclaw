@@ -1,15 +1,17 @@
 ///|
+#derive(FromJson, ToJson)
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?
   topic : String
   payload : Json
-} derive(FromJson, ToJson)
+}
 
 ///|
+#derive(FromJson, ToJson)
 pub struct CreateMailboxParams {
   agent_id : String
-} derive(FromJson, ToJson)
+}
 
 ///|
 async fn Gateway::handle_agent_message(

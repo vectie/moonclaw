@@ -1,6 +1,7 @@
 ///|
 /// One exact (job, run) pair discovered in saved journals. A status belongs only
 /// to the last status-bearing run-level event; step status never becomes run status.
+#derive(ToJson)
 pub struct JournalRunCard {
   job_id : String
   run_id : String
@@ -13,9 +14,10 @@ pub struct JournalRunCard {
   last_event : JournalEntry
   last_run_status : Json?
   status_source : JournalEntry?
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct JournalRunDirectory {
   schema : String
   total_events : Int32
@@ -24,7 +26,7 @@ pub struct JournalRunDirectory {
   offset : Int32
   next_offset : Int32?
   runs : Array[JournalRunCard]
-} derive(ToJson)
+}
 
 ///|
 /// Discover runs before choosing an existing journal inspection command. Filters
@@ -42,11 +44,11 @@ pub fn journal_run_directory(
     fail("Limit must be between 1 and 100")
   }
   let sorted = select_journal_entries(entries)
-  let groups : Map[String, Array[JournalEntry]] = {}
-  let run_jobs : Map[String, Map[String, Bool]] = {}
+  let groups : Map[String, Array[JournalEntry]] = Map([])
+  let run_jobs : Map[String, Map[String, Bool]] = Map([])
   for entry in sorted {
     let event = event_fields(entry)
-    let key = [event.job_id, event.run_id].to_json().stringify()
+    let key = ToJson::to_json([event.job_id, event.run_id]).stringify()
     let group = groups
       .get(key)
       .unwrap_or_else(() => {
@@ -58,7 +60,7 @@ pub fn journal_run_directory(
     let jobs = run_jobs
       .get(event.run_id)
       .unwrap_or_else(() => {
-        let jobs : Map[String, Bool] = {}
+        let jobs : Map[String, Bool] = Map([])
         run_jobs[event.run_id] = jobs
         jobs
       })
@@ -71,7 +73,7 @@ pub fn journal_run_directory(
     if job_id is Some(job) && first.job_id != job {
       continue
     }
-    let steps : Map[String, Bool] = {}
+    let steps : Map[String, Bool] = Map([])
     let sources : Array[String] = []
     let mut status : Json? = None
     let mut status_source : JournalEntry? = None

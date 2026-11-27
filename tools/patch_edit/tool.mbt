@@ -1,10 +1,12 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub enum PatchEditMode {
   Preview
   Apply
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PatchEditResult {
   mode : PatchEditMode
   patch_valid : Bool
@@ -14,7 +16,7 @@ pub struct PatchEditResult {
   modified : Array[String]
   deleted : Array[String]
   file_count : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub impl Show for PatchEditResult with fn output(
@@ -25,10 +27,11 @@ pub impl Show for PatchEditResult with fn output(
 }
 
 ///|
+#derive(FromJson)
 priv struct Params {
   patch : String
   mode : String?
-} derive(FromJson)
+}
 
 ///|
 fn preview_patch_edit_result(

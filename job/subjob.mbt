@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct SubjobStepConfig {
   request_text : String
   cwd : String?
@@ -8,7 +9,7 @@ pub(all) struct SubjobStepConfig {
   execution_target : String?
   include_parent_outputs : Bool
   max_depth : Int32
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn SubjobStepConfig::new(

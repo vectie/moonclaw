@@ -32,6 +32,7 @@ let schema : @tool.JsonSchema = {
 }
 
 ///|
+#derive(FromJson)
 priv struct GlobFilesInput {
   path : String?
   pattern : String
@@ -39,4 +40,4 @@ priv struct GlobFilesInput {
   respect_gitignore : Bool?
   include_hidden : Bool?
   include_directories : Bool?
-} derive(FromJson)
+}

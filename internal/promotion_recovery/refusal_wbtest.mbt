@@ -5,7 +5,7 @@ async test "recovery never follows a checkpoint symlink or inspects terminal cor
     let original = @fs.read_file(path).binary()
     let request = recovery_test_request()
     let calls = Ref(0)
-    let invoke = async fn(_retention) {
+    let invoke : async (String) -> MoonFortRecoveryResponse = fn(_retention) {
       calls.val += 1
       recovery_test_response("desired-applied")
     }
@@ -15,7 +15,7 @@ async test "recovery never follows a checkpoint symlink or inspects terminal cor
         "x".repeat(131_073),
         (
           {
-            "request": recovery_test_selection().to_json(),
+            "request": ToJson::to_json(recovery_test_selection()),
             "pending_attempt": false,
           } : Json).stringify(),
       ] {

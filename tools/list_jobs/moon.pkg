@@ -1,7 +1,6 @@
 import {
   "vectie/moonclaw/tool",
   "vectie/moonclaw/job",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -9,4 +8,5 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"

@@ -10,12 +10,12 @@ pub fn RenderOutput::new() -> RenderOutput {
 
 ///|
 pub fn RenderOutput::write(self : RenderOutput, text : String) -> Unit {
-  self.buffer.write_bytes(@encoding/utf8.encode(text))
+  self.buffer.write_bytesview(@encoding/utf8.encode(text))
 }
 
 ///|
 pub fn RenderOutput::write_bytes(self : RenderOutput, bytes : Bytes) -> Unit {
-  self.buffer.write_bytes(bytes)
+  self.buffer.write_bytesview(bytes)
 }
 
 ///|

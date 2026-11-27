@@ -10,7 +10,7 @@ async fn run(args : Array[String]) -> Unit {
     return
   }
   let files : Array[String] = []
-  let options : Map[String, String] = Map::new()
+  let options : Map[String, String] = Map([])
   for index = 1; index < args.length(); {
     let arg = args[index]
     if ["--job", "--run"].contains(arg) {

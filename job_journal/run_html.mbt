@@ -109,9 +109,9 @@ pub fn journal_run_html(
     parts,
     units,
     "<dl><dt>Job</dt><dd><code>" +
-    report_escape(job_id.to_json().stringify()) +
+    report_escape(Json::string(job_id).stringify()) +
     "</code></dd><dt>Run</dt><dd><code>" +
-    report_escape(run_id.to_json().stringify()) +
+    report_escape(Json::string(run_id).stringify()) +
     "</code></dd></dl>\n",
   )
   report_append(
@@ -135,7 +135,11 @@ pub fn journal_run_html(
     report_append(
       parts,
       units,
-      report_group_row("Step " + step.to_json().stringify(), indices, selected),
+      report_group_row(
+        "Step " + Json::string(step).stringify(),
+        indices,
+        selected,
+      ),
     )
   }
   report_append(
@@ -147,7 +151,7 @@ pub fn journal_run_html(
   for index, entry in selected {
     let event = event_fields(entry)
     let scope = event.step_id
-      .map(step => "Step " + step.to_json().stringify())
+      .map(step => "Step " + Json::string(step).stringify())
       .unwrap_or("Run-level")
     report_append(
       parts,

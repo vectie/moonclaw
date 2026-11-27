@@ -66,19 +66,21 @@ pub fn Loader::apply(self : Loader, messages : Array[@ai.Message]) -> Unit {
 }
 
 ///|
+#derive(Debug, ToJson)
 pub enum Source {
   Global
   Local
-} derive(Debug, ToJson)
+}
 
 ///|
+#derive(Debug, ToJson)
 pub struct Rule {
   description : String?
   globs : Array[String]
   always_apply : Bool
   content : String
   source : Source
-} derive(Debug, ToJson)
+}
 
 ///|
 fn Rule::parse(content : String, source~ : Source) -> Rule raise {

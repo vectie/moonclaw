@@ -1,11 +1,13 @@
 ///|
+#derive(Eq, ToJson, @json.FromJson)
 priv struct MoonDeskPromotionItem {
   source_relative : String
   destination_relative : String
-} derive(Eq, ToJson, @json.FromJson)
+}
 
 ///|
 #warnings("-unused_value")
+#derive(Eq, ToJson, @json.FromJson)
 priv struct MoonDeskPromotionRequest {
   protocol_version : Int32
   instance_id : String
@@ -15,7 +17,7 @@ priv struct MoonDeskPromotionRequest {
   approval_digest : String
   command_digest : String
   items : Array[MoonDeskPromotionItem]
-} derive(Eq, ToJson, @json.FromJson)
+}
 
 ///|
 priv struct MoonFortPromotionError {

@@ -19,6 +19,7 @@ pub fn parse_pack_workflow_runner_args(ArrayView[String]) -> Result[PackWorkflow
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct PackWorkflowRunnerOptions {
   workspace : String
   pack_id : String
@@ -26,9 +27,10 @@ pub(all) struct PackWorkflowRunnerOptions {
   run_id : String
   policy : RunnerJsonSource
   input : RunnerJsonSource?
-} derive(Eq, @debug.Debug)
+}
 pub fn PackWorkflowRunnerOptions::uses_stdin(Self) -> Bool
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct PackWorkflowRunnerResult {
   contract : String
   ok : Bool
@@ -38,14 +40,15 @@ pub(all) struct PackWorkflowRunnerResult {
   job_id : String?
   durable_workflow_id : String?
   status : @job.RunStatus?
-  outputs : Map[String, Json]
+  outputs : Map[String, @json.Json]
   error : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(Eq, @debug.Debug)
 pub(all) enum RunnerJsonSource {
   JsonFile(String)
   JsonStdin
-} derive(Eq, @debug.Debug)
+}
 
 // Type aliases
 

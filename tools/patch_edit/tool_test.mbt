@@ -1,6 +1,6 @@
 ///|
 async test "patch_edit previews patch changes" {
-  let tool = new("/tmp")
+  let tool = @patch_edit.new("/tmp")
   let patch =
     #|*** Begin Patch
     #|*** Add File: hello.txt
@@ -16,7 +16,7 @@ async test "patch_edit previews patch changes" {
 ///|
 async test "patch_edit applies patch changes" (t : @test.Test) {
   @mock.run(t, mock => {
-    let tool = new(mock.cwd.path())
+    let tool = @patch_edit.new(mock.cwd.path())
     let patch =
       #|*** Begin Patch
       #|*** Add File: hello.txt

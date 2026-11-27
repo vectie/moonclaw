@@ -1,12 +1,14 @@
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct Binding {
   workspace_id : String
   book_id : String
   source_root : String
   request_digest : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub struct Record {
   path : String
   category : String
@@ -14,9 +16,10 @@ pub struct Record {
   size_bytes : Int32
   sha256 : String
   content_utf8 : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub struct Snapshot {
   contract : String
   reader_contract : String
@@ -32,7 +35,7 @@ pub struct Snapshot {
   captured_at : Int32
   content_digest : String
   binding_digest : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub fn digest(bytes : Bytes) -> String {

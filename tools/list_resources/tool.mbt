@@ -1,26 +1,29 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub enum ResourceSummaryKind {
   File
   Skill
   Worktree
   Provider
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson)
 pub struct ResourceSummary {
   uri : String
   kind : ResourceSummaryKind
   title : String
   description : String
   metadata : Json
-} derive(ToJson, FromJson)
+}
 
 ///|
+#derive(ToJson, FromJson)
 pub struct ListResourcesResult {
   resources : Array[ResourceSummary]
   total_resources : Int32
   truncated : Bool
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for ListResourcesResult with fn output(

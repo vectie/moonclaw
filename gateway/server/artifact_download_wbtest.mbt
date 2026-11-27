@@ -74,11 +74,13 @@ async test "artifact download actual authenticated gateway preserves binary and 
     // Reload durable metadata rather than trusting the in-memory write result.
     store.load()
     let index_before = @fs.read_file(store.root_dir() + "/index/artifacts.json").binary()
-    let before_records = store.list_artifacts().to_json()
+    let before_records = ToJson::to_json(store.list_artifacts())
     let base = "http://127.0.0.1:\{gateway.httpx.port()}"
     let endpoint = base +
       "/v1/jobs/runs/run-owned/artifacts/artifact-exact/download"
-    let headers = { "authorization": "Bearer fixture-only-token" }
+    let headers : @http.Headers = Map([
+      (@http.CaseInsensitiveString("authorization"), "Bearer fixture-only-token"),
+    ])
     @async.with_task_group(group => {
       group.spawn_bg(
         () => {
@@ -182,7 +184,7 @@ async test "artifact download actual authenticated gateway preserves binary and 
       let (response, body) = @http.get(endpoint, headers~)
       assert_eq(response.code, 200)
       assert_eq(body.binary(), binary)
-      assert_eq(store.list_artifacts().to_json(), before_records)
+      assert_eq(ToJson::to_json(store.list_artifacts()), before_records)
       assert_eq(
         @fs.read_file(store.root_dir() + "/index/artifacts.json").binary(),
         index_before,

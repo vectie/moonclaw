@@ -52,13 +52,15 @@ pub impl[T] Eq for Pointer[T] with fn equal(
 
 ///|
 /// Indexing helper that loads the `index`-th element via `Load`.
-pub fn[T : Load] Pointer::op_get(self : Pointer[T], index : Int32) -> T {
+#alias("_[_]")
+pub fn[T : Load] Pointer::get(self : Pointer[T], index : Int32) -> T {
   T::load(self, index)
 }
 
 ///|
 /// Indexing helper that stores into the `index`-th element via `Store`.
-pub fn[T : Store] Pointer::op_set(
+#alias("_[_]=_")
+pub fn[T : Store] Pointer::set(
   self : Pointer[T],
   index : Int32,
   value : T,

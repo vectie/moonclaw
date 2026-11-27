@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, Eq)
 pub(all) enum Hunk {
   AddFile(path~ : String, contents~ : String)
   DeleteFile(path~ : String)
@@ -7,34 +8,38 @@ pub(all) enum Hunk {
     move_path~ : String?,
     chunks~ : Array[UpdateFileChunk]
   )
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub struct UpdateFileChunk {
   change_context : String?
   old_lines : Array[String]
   new_lines : Array[String]
   is_end_of_file : Bool
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug)
 pub struct ParsedPatch {
   patch : String
   hunks : Array[Hunk]
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) suberror ParseError {
   InvalidPatch(String)
   InvalidHunk(message~ : String, line_number~ : Int32)
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct ApplyResult {
   added : Array[String]
   modified : Array[String]
   deleted : Array[String]
-} derive(Debug)
+}
 
 ///|
 pub fn ApplyResult::new() -> ApplyResult {

@@ -1,15 +1,17 @@
 ///|
 /// A line edit with one-based positions. Ending is exactly LF, CRLF, or empty.
 /// Text excludes that ending; a bare CR remains part of text.
+#derive(ToJson)
 pub struct LineEdit {
   kind : String
   left_line : Int32?
   right_line : Int32?
   text : String
   ending : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct TextDiff {
   identical : Bool
   left_lines : Int32
@@ -18,7 +20,7 @@ pub struct TextDiff {
   removed_lines : Int32
   unchanged_lines : Int32
   edits : Array[LineEdit]
-} derive(ToJson)
+}
 
 ///|
 fn split_lines(text : String) -> Array[String] raise {

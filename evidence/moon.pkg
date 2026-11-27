@@ -1,11 +1,9 @@
 import {
-  "moonbitlang/core/json",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
 }
 
 import {
-  "moonbitlang/core/test",
 } for "test"
 
 import {

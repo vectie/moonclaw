@@ -1,4 +1,5 @@
 ///|
+#warnings("-78")
 fn parse_skill_from_content_result(
   content : String,
   directory~ : String,

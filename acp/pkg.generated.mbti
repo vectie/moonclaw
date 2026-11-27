@@ -12,13 +12,13 @@ pub fn build_acp_ui_snapshot(AcpRuntime) -> AcpUiSnapshot
 
 pub fn build_acp_ui_timeline(AcpRuntime) -> Array[AcpUiTimelineEntry]
 
-pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[@json.Json, String]
 
-pub async fn execute_launch_plan_with_approved_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+pub async fn execute_launch_plan_with_approved_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[@json.Json, String]
 
-pub async fn execute_launch_plan_with_fixture_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+pub async fn execute_launch_plan_with_fixture_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[@json.Json, String]
 
-pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String, metadata? : Json) -> AcpRunRequest
+pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String, metadata? : @json.Json) -> AcpRunRequest
 
 pub fn parse_acp_chat_action(String) -> AcpChatAction?
 
@@ -26,7 +26,7 @@ pub fn prepare_launch_command(AcpLaunchPlan, AcpRunRequest) -> Result[AcpLaunchC
 
 pub fn prepare_launch_plan(AcpTarget, AcpSession, AcpRunRequest) -> Result[AcpLaunchPlan, String]
 
-pub fn process_output_summary(String, String, Int) -> String
+pub fn process_output_summary(String, String, Int32) -> String
 
 pub fn render_acp_ambiguous_sessions(Array[AcpSession]) -> String
 
@@ -49,24 +49,27 @@ pub fn render_acp_targets(Array[AcpTarget]) -> String
 // Errors
 
 // Types and methods
+#derive(@debug.Debug)
 pub(all) enum AcpChatAction {
   Targets
   Status
   Attach(String)
   Detach(String)
   Run(String)
-} derive(@debug.Debug)
+}
 pub fn AcpChatAction::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpLaunchCommand {
   command : String
   args : Array[String]
   env : Map[String, String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpLaunchCommand::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpLaunchCommand::to_json(Self) -> Json
+}
+pub fn AcpLaunchCommand::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpLaunchCommand::to_json(Self) -> @json.Json
 pub fn AcpLaunchCommand::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpLaunchPlan {
   backend : String
   target_id : String
@@ -77,13 +80,14 @@ pub struct AcpLaunchPlan {
   command : String?
   args : Array[String]
   model : String?
-  env : Json
-  metadata : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpLaunchPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpLaunchPlan::to_json(Self) -> Json
+  env : @json.Json
+  metadata : @json.Json
+}
+pub fn AcpLaunchPlan::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpLaunchPlan::to_json(Self) -> @json.Json
 pub fn AcpLaunchPlan::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpRun {
   id : String
   session_id : String
@@ -91,27 +95,28 @@ pub struct AcpRun {
   target_id : String
   backend : String
   status : String
-  created_at : Int
-  updated_at : Int
-  request : Json
-  plan : Json
-  result : Json?
+  created_at : Int32
+  updated_at : Int32
+  request : @json.Json
+  plan : @json.Json
+  result : @json.Json?
   error : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpRun::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpRun::to_json(Self) -> Json
+}
+pub fn AcpRun::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpRun::to_json(Self) -> @json.Json
 pub fn AcpRun::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpRunRequest {
   message : String
   run_id : String?
   model : String?
   cwd : String?
   idempotency_key : String?
-  metadata : Json?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpRunRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpRunRequest::to_json(Self) -> Json
+  metadata : @json.Json?
+}
+pub fn AcpRunRequest::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpRunRequest::to_json(Self) -> @json.Json
 pub fn AcpRunRequest::to_repr(Self) -> @debug.Repr
 
 pub struct AcpRuntime {
@@ -122,7 +127,7 @@ pub struct AcpRuntime {
   runs : Map[String, AcpRun]
 }
 pub async fn AcpRuntime::delete_session(Self, String) -> AcpSession?
-pub async fn AcpRuntime::finish_run(Self, String, String, Int, result? : Json?, error? : String?) -> Result[AcpRun, String]
+pub async fn AcpRuntime::finish_run(Self, String, String, Int32, result? : @json.Json?, error? : String?) -> Result[AcpRun, String]
 pub fn AcpRuntime::get_run(Self, String) -> AcpRun?
 pub fn AcpRuntime::get_session(Self, String) -> AcpSession?
 pub fn AcpRuntime::get_target(Self, String) -> AcpTarget?
@@ -134,11 +139,12 @@ pub fn AcpRuntime::list_sessions_for_key(Self, String) -> Array[AcpSession]
 pub fn AcpRuntime::list_targets(Self) -> Array[AcpTarget]
 pub async fn AcpRuntime::load(Self) -> Unit
 pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> Self
-pub async fn AcpRuntime::open_session(Self, String, String, String, Int, metadata? : Json) -> Result[AcpSession, String]
-pub async fn AcpRuntime::reset_session(Self, String, Int) -> Result[AcpSession, String]
-pub async fn AcpRuntime::set_session_status(Self, String, String, Int, last_error? : String?) -> Result[AcpSession, String]
-pub async fn AcpRuntime::start_run(Self, String, AcpSession, AcpTarget, Json, Json, Int) -> AcpRun
+pub async fn AcpRuntime::open_session(Self, String, String, String, Int32, metadata? : @json.Json) -> Result[AcpSession, String]
+pub async fn AcpRuntime::reset_session(Self, String, Int32) -> Result[AcpSession, String]
+pub async fn AcpRuntime::set_session_status(Self, String, String, Int32, last_error? : String?) -> Result[AcpSession, String]
+pub async fn AcpRuntime::start_run(Self, String, AcpSession, AcpTarget, @json.Json, @json.Json, Int32) -> AcpRun
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpSession {
   id : String
   target_id : String
@@ -146,15 +152,16 @@ pub struct AcpSession {
   status : String
   cwd : String?
   workspace : String?
-  created_at : Int
-  updated_at : Int
+  created_at : Int32
+  updated_at : Int32
   last_error : String?
-  metadata : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpSession::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpSession::to_json(Self) -> Json
+  metadata : @json.Json
+}
+pub fn AcpSession::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpSession::to_json(Self) -> @json.Json
 pub fn AcpSession::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct AcpTarget {
   id : String
   backend : String
@@ -165,12 +172,13 @@ pub struct AcpTarget {
   args : Array[String]
   model : String?
   status : String
-  metadata : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpTarget::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpTarget::to_json(Self) -> Json
+  metadata : @json.Json
+}
+pub fn AcpTarget::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpTarget::to_json(Self) -> @json.Json
 pub fn AcpTarget::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpUiNode {
   id : String
   parent_id : String?
@@ -182,53 +190,57 @@ pub(all) struct AcpUiNode {
   target_id : String?
   session_id : String?
   run_id : String?
-  created_at : Int?
-  updated_at : Int?
-  metadata : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpUiNode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpUiNode::to_json(Self) -> Json
+  created_at : Int32?
+  updated_at : Int32?
+  metadata : @json.Json
+}
+pub fn AcpUiNode::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpUiNode::to_json(Self) -> @json.Json
 pub fn AcpUiNode::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) enum AcpUiNodeKind {
   Target
   Session
   Run
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpUiNodeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpUiNodeKind::to_json(Self) -> Json
+}
+pub fn AcpUiNodeKind::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpUiNodeKind::to_json(Self) -> @json.Json
 pub fn AcpUiNodeKind::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpUiSnapshot {
   targets : Array[AcpTarget]
   sessions : Array[AcpSession]
   runs : Array[AcpRun]
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpUiSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpUiSnapshot::to_json(Self) -> Json
+}
+pub fn AcpUiSnapshot::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpUiSnapshot::to_json(Self) -> @json.Json
 pub fn AcpUiSnapshot::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct AcpUiTimelineEntry {
   id : String
   event_type : String
   title : String
   detail : String
-  timestamp : Int
+  timestamp : Int32
   target_id : String?
   session_id : String?
   run_id : String?
   status : String?
-  data : Json
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AcpUiTimelineEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn AcpUiTimelineEntry::to_json(Self) -> Json
+  data : @json.Json
+}
+pub fn AcpUiTimelineEntry::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn AcpUiTimelineEntry::to_json(Self) -> @json.Json
 pub fn AcpUiTimelineEntry::to_repr(Self) -> @debug.Repr
 
-type PersistedAcpState derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PersistedAcpState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn PersistedAcpState::to_json(Self) -> Json
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
+type PersistedAcpState
+pub fn PersistedAcpState::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn PersistedAcpState::to_json(Self) -> @json.Json
 pub fn PersistedAcpState::to_repr(Self) -> @debug.Repr
 
 // Type aliases

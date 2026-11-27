@@ -1,6 +1,6 @@
 ///|
 async test "Broadcast::spawn_in" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   broadcast.put(10)
   let results0 = []
   broadcast.add_listener((value : Int32) => results0.push(value))
@@ -34,7 +34,7 @@ async test "Broadcast::spawn_in" {
 
 ///|
 async test "Broadcast::add_listener" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   broadcast.put(0)
   let results0 = []
   broadcast.add_listener((value : Int32) => results0.push(value))
@@ -66,7 +66,7 @@ async test "Broadcast::add_listener" {
 
 ///|
 async test "Broadcast::stop" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   let results0 = []
   broadcast.add_listener((value : Int32) => results0.push(value))
   let results1 = []
@@ -84,7 +84,7 @@ async test "Broadcast::stop" {
 
 ///|
 async test "Broadcast::stop exits idle readers" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   let results = []
   broadcast.add_listener((value : Int32) => results.push(value))
   @async.with_task_group(group => {
@@ -99,7 +99,7 @@ async test "Broadcast::stop exits idle readers" {
 ///|
 async test "Broadcast::flush" (t : @test.Test) {
   @mock.run(t, _ => {
-    let broadcast : Broadcast[Int32] = Broadcast::new()
+    let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
     let results0 = []
     broadcast.add_listener((value : Int32) => results0.push(value))
     broadcast.put(1)
@@ -119,7 +119,7 @@ async test "Broadcast::flush" (t : @test.Test) {
 
 ///|
 async test "Broadcast::listen_forever" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   let results0 = []
   let results1 = []
   let results2 = []
@@ -161,7 +161,7 @@ async test "Broadcast::listen_forever" {
 
 ///|
 async test "Broadcast::listen_from closes the snapshot/live race" {
-  let broadcast : Broadcast[Int32] = Broadcast::new()
+  let broadcast : @broadcast.Broadcast[Int32] = @broadcast.Broadcast::new()
   broadcast.put(1)
   broadcast.put(2)
   let boundary = broadcast.values().length()

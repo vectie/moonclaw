@@ -2,72 +2,82 @@
 /// These types mirror MoonFort protocol v3. MoonClaw publishes a single-use grant
 /// into the trusted pending store, while the executor accepts only an opaque
 /// approval ID over stdin.
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortBackendKind {
   LocalOs
   MicroVm
   Unavailable
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortNetworkMode {
   Deny
   AllowList
   Unrestricted
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortEnforcementRequirement {
   RequireEnforced
   AllowDegraded
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortEnforcement {
   Enforced
   Degraded
   Refused
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortRunStatus {
   Created
   Running
   Exited
   Killed
   Failed
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortScratchEntryKind {
   RegularFile
   DirectoryEntry
   SymbolicLink
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortScratchChangeKind {
   Added
   Modified
   Removed
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortScratchEntry {
   relative_path : String
   kind : MoonFortScratchEntryKind
   size_bytes : Int64
   fingerprint : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortScratchChange {
   relative_path : String
   change : MoonFortScratchChangeKind
   before : MoonFortScratchEntry?
   after : MoonFortScratchEntry?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortLimits {
   wall_clock_ms : Int32
   cpu_seconds : Int32
@@ -75,15 +85,17 @@ pub(all) struct MoonFortLimits {
   disk_mib : Int32
   processes : Int32
   output_bytes : Int32
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) enum MoonFortCommand {
   Exec(tool~ : String, args~ : Array[String])
   Shell(script~ : String)
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortExecutionGrant {
   protocol_version : Int32
   approval_id : String
@@ -99,34 +111,38 @@ pub(all) struct MoonFortExecutionGrant {
   command : MoonFortCommand
   backend_config_id : String
   expires_at_ms : Int64
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortInvocation {
   protocol_version : Int32
   approval_id : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortGrantPublicationRequest {
   protocol_version : Int32
   grant : MoonFortExecutionGrant
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortGrantPublicationResponse {
   protocol_version : Int32
   approval_id : String
   approval_digest : String
   published : Bool
   error : MoonFortProtocolError?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 /// Opaque executor-owned reference to the complete merged command output.
 /// MoonClaw validates the public metadata but never interprets `artifact_id`
 /// as a path. Content and signature verification remain the responsibility of
 /// MoonFort's fixed artifact-reader capability.
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortCommandOutputArtifactRef {
   artifact_id : String
   run_id : String
@@ -136,9 +152,10 @@ pub(all) struct MoonFortCommandOutputArtifactRef {
   expires_at_ms : Int64
   key_id : String
   signature : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortReceipt {
   run_id : String
   approval_id : String
@@ -167,24 +184,27 @@ pub(all) struct MoonFortReceipt {
   denial_reason : String?
   cleanup_verified : Bool
   retention_id : String?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortProtocolError {
   code : String
   message : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortExecutorResponse {
   protocol_version : Int32
   approval_id : String
   receipt : MoonFortReceipt?
   error : MoonFortProtocolError?
   live_output : MoonFortLiveOutputReference?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct MoonFortLiveOutputReference {
   stream_id : String
   run_id : String
@@ -194,9 +214,10 @@ pub(all) struct MoonFortLiveOutputReference {
   expires_at_ms : Int64
   key_id : String
   signature : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct MoonFortLiveOutputReadResponse {
   protocol_version : Int32
   approval_id : String
@@ -210,9 +231,10 @@ struct MoonFortLiveOutputReadResponse {
   terminal : Bool
   retry_after_ms : Int32
   error : MoonFortProtocolError?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct SandboxExecutorConfig {
   /// Canonical absolute path to the trusted MoonFort grant publisher.
   grant_publisher_path : String
@@ -240,7 +262,7 @@ pub(all) struct SandboxExecutorConfig {
   allowed_commands : Array[String]
   limits : MoonFortLimits
   grant_ttl_ms : Int64
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 pub fn local_sandbox_executor_config(
@@ -287,18 +309,20 @@ pub fn local_sandbox_executor_config(
 }
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct SandboxApprovalPlan {
   grant : MoonFortExecutionGrant
   expected_approval_digest : String
   runtime_binding_digest : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct SandboxAuditRecord {
   protocol_version : Int32
   plan : SandboxApprovalPlan
   receipt : MoonFortReceipt
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 fn sha256_text(text : String) -> String {
@@ -971,11 +995,12 @@ pub async fn persist_sandbox_audit(
 }
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct SandboxExecution {
   plan : SandboxApprovalPlan
   receipt : MoonFortReceipt
   audit_path : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 /// Run only the fixed structured-diagnostics form of `moon check` through

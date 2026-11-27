@@ -1,31 +1,32 @@
 ///|
+#derive(ToJson, @json.FromJson)
 priv struct ReadFileResult {
   path : String
   content : String
   start_line : Int32
   end_line : Int32
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
+#derive(ToJson, @json.FromJson)
 priv struct ReadDirectoryResult {
   path : String
   entries : Array[String]
   display : String
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
+#derive(ToJson, @json.FromJson)
 priv enum ReadFileToolResult {
   ReadFileResult(ReadFileResult)
   ReadDirectoryResult(ReadDirectoryResult)
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
 /// 
 /// wrapper type in order to override the Show trait result 
-struct ReadMultipleFilesResult(Array[ReadFileToolResult]) derive (
-  ToJson,
-  @json.FromJson,
-)
+#derive(ToJson, @json.FromJson)
+struct ReadMultipleFilesResult(Array[ReadFileToolResult])
 
 ///|
 pub impl Show for ReadMultipleFilesResult with fn output(self, logger) {
@@ -73,7 +74,7 @@ async fn execute_read_file_tool(
   try {
     // Resolve file path
     let resolved_path = if @pathx.is_absolute(path) {
-      path.view()
+      path[:]
     } else {
       @pathx.join(manager.cwd, path)
     }
@@ -134,9 +135,10 @@ async fn execute_read_file_tool(
 }
 
 ///|
+#derive(Debug, ToJson)
 priv suberror MultipleErrors {
   MultipleErrors(Array[(Error, String)])
-} derive(Debug, ToJson)
+}
 
 ///|
 fn to_path(rdr : ReadFileToolResult) -> String {

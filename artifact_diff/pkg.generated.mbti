@@ -1,31 +1,37 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/artifact_diff"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn compare_text(String, String) -> TextDiff raise
 
 // Errors
 
 // Types and methods
+#derive(@json.ToJson)
 pub struct LineEdit {
   kind : String
-  left_line : Int?
-  right_line : Int?
+  left_line : Int32?
+  right_line : Int32?
   text : String
   ending : String
-} derive(ToJson)
-pub fn LineEdit::to_json(Self) -> Json
+}
+pub fn LineEdit::to_json(Self) -> @json.Json
 
+#derive(@json.ToJson)
 pub struct TextDiff {
   identical : Bool
-  left_lines : Int
-  right_lines : Int
-  added_lines : Int
-  removed_lines : Int
-  unchanged_lines : Int
+  left_lines : Int32
+  right_lines : Int32
+  added_lines : Int32
+  removed_lines : Int32
+  unchanged_lines : Int32
   edits : Array[LineEdit]
-} derive(ToJson)
-pub fn TextDiff::to_json(Self) -> Json
+}
+pub fn TextDiff::to_json(Self) -> @json.Json
 
 // Type aliases
 

@@ -4,11 +4,11 @@ import {
   "moonbitlang/async",
   "vectie/moonlib/fsx",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
 
 import {
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
 } for "test"

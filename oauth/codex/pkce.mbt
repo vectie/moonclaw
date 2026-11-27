@@ -1,8 +1,9 @@
 ///|
+#derive(Debug)
 pub struct PkceCodes {
   code_verifier : String
   code_challenge : String
-} derive(Debug)
+}
 
 ///|
 pub fn PkceCodes::new(

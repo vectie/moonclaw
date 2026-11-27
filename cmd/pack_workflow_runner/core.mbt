@@ -1,10 +1,12 @@
 ///|
+#derive(Debug, Eq)
 pub(all) enum RunnerJsonSource {
   JsonFile(String)
   JsonStdin
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub(all) struct PackWorkflowRunnerOptions {
   workspace : String
   pack_id : String
@@ -12,9 +14,10 @@ pub(all) struct PackWorkflowRunnerOptions {
   run_id : String
   policy : RunnerJsonSource
   input : RunnerJsonSource?
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct PackWorkflowRunnerResult {
   contract : String
   ok : Bool
@@ -26,7 +29,7 @@ pub(all) struct PackWorkflowRunnerResult {
   status : @job.RunStatus?
   outputs : Map[String, Json]
   error : String?
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 pub fn pack_workflow_runner_usage() -> String {

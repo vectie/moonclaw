@@ -6,7 +6,7 @@ async test "enter_worktree creates a checkout and returns the handle" (
     @git.init_(mock.cwd.path())
     mock.add_json_tree({ "README.md": "hello" })
     @git.commit("init", ["README.md"], cwd=mock.cwd.path())
-    let tool = new(mock.cwd.path())
+    let tool = @enter_worktree.new(mock.cwd.path())
     let result = tool.call({ "task_key": "Review docs" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -29,7 +29,7 @@ async test "enter_worktree reuses an existing path" (t : @test.Test) {
     @git.commit("init", ["README.md"], cwd=mock.cwd.path())
     let handle = @worktree.plan_worktree(mock.cwd.path(), "Review docs")
     ignore(@worktree.create_worktree(handle))
-    let tool = new(mock.cwd.path())
+    let tool = @enter_worktree.new(mock.cwd.path())
     let result = tool.call({ "task_key": "Review docs" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

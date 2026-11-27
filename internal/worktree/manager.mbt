@@ -1,17 +1,19 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct WorktreeHandle {
   repo_root : String
   path : String
   branch_name : String
   task_key : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct WorktreeList {
   repo_root : String
   base_dir : String
   worktrees : Array[WorktreeHandle]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn worktree_slug(text : String) -> String {

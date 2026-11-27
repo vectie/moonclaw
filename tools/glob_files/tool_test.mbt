@@ -7,7 +7,7 @@ async test "glob_files matches recursive paths" (t : @test.Test) {
         "lib": { "util.mbt": "fn util { () }", "util.txt": "note" },
       },
     })
-    let tool = new(mock.cwd.path())
+    let tool = @glob_files.new(mock.cwd.path())
     let result = tool.call({ "path": "src", "pattern": "**/*.mbt" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -32,7 +32,7 @@ async test "glob_files respects gitignore when available" (t : @test.Test) {
       "visible": { "keep.mbt": "fn keep { () }" },
       "ignored": { "skip.mbt": "fn skip { () }" },
     })
-    let tool = new(mock.cwd.path())
+    let tool = @glob_files.new(mock.cwd.path())
     let result = tool.call({ "pattern": "**/*.mbt" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -45,7 +45,7 @@ async test "glob_files respects gitignore when available" (t : @test.Test) {
 async test "glob_files can include directories" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "docs": { "guide": { "index.md": "# Guide" } } })
-    let tool = new(mock.cwd.path())
+    let tool = @glob_files.new(mock.cwd.path())
     let result = tool.call({
       "pattern": "**/guide",
       "include_directories": true,

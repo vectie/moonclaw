@@ -191,7 +191,7 @@ async fn Daemon::mooncode_stream(
     wait_elapsed_ms=wait.wait_elapsed_ms,
     wait_attempt_count=wait.wait_attempt_count,
   )
-  defer spool.cleanup()
+  defer @async.protect_from_cancel(() => spool.cleanup())
   mooncode_stream_deliver_spool(w, format, spool, meta, done)
 }
 

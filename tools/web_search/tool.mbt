@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct WebSearchItem {
   title : String
   url : String
@@ -6,16 +7,17 @@ pub struct WebSearchItem {
   source : String
   domain : String?
   rank : Int32
-} derive(ToJson, FromJson)
+}
 
 ///|
+#derive(ToJson, FromJson)
 pub struct WebSearchResult {
   query : String
   search_url : String
   answer : String?
   results : Array[WebSearchItem]
   source : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for WebSearchResult with fn output(

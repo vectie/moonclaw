@@ -21,11 +21,12 @@ let schema : @tool.JsonSchema = {
 }
 
 ///|
+#derive(FromJson, ToJson)
 priv struct Input {
   path : String
   replace : String
   search : String?
-} derive(FromJson, ToJson)
+}
 
 ///|
 test "Input FromJson/ToJson" {

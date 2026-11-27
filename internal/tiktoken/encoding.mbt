@@ -218,10 +218,11 @@ pub fn Encoding::encode(self : Encoding, piece : StringView) -> Array[Int32] {
 }
 
 ///|
+#derive(Debug)
 suberror DecodingError {
   InvalidToken(Int32)
   MalformedUtf8(Bytes)
-} derive(Debug)
+}
 
 ///|
 pub fn Encoding::decode(
@@ -233,12 +234,12 @@ pub fn Encoding::decode(
     if token >= 0 && token < self.decoder.length() {
       let piece = self.decoder[token]
       if piece.length() > 0 {
-        buffer.write_bytes(piece)
+        buffer.write_bytesview(piece)
         continue
       }
     }
     if self.special_decoder.get(token) is Some(piece) {
-      buffer.write_bytes(piece)
+      buffer.write_bytesview(piece)
       continue
     }
     raise InvalidToken(token)

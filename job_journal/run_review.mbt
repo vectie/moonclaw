@@ -1,6 +1,7 @@
 ///|
 /// A selected run's saved observations and exported output revisions together.
 /// This joins supplied metadata, without deriving live state or verifying bytes.
+#derive(ToJson)
 pub struct RunReview {
   schema : String
   run_id : String
@@ -15,7 +16,7 @@ pub struct RunReview {
   notes : Array[String]
   events : Array[JournalEntry]
   artifacts : Array[ReviewArtifact]
-} derive(ToJson)
+}
 
 ///|
 fn review_job(current : String?, incoming : String) -> String raise {

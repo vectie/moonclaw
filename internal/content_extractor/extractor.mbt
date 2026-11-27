@@ -38,7 +38,7 @@ fn split_content_with_sliding_window(
   overlap~ : Int32,
 ) -> Array[String] {
   let lines = content.split("\n").collect()
-  let chunks = Array::new()
+  let chunks = Array()
   let mut start = 0
   while start < lines.length() {
     let end = if start + window_size > lines.length() {
@@ -119,7 +119,7 @@ async fn Extractor::extract_code_snippets_from_chunk(
   prompts.push("2. Conversation history:")
   prompts.push("<conversation_history>")
   fn content(parts : Array[@openai.ChatCompletionContentPartParam]) -> String {
-    let builder = StringBuilder::new()
+    let builder = StringBuilder()
     for part in parts {
       match part {
         Text(text) => builder.write_string(text.text)
@@ -181,7 +181,7 @@ fn merge_overlapping_snippets(snippets : Array[Range]) -> Array[Range] {
     return snippets
   }
   snippets.sort_by((a, b) => a.start_line - b.start_line)
-  let merged = Array::new()
+  let merged = Array()
   let mut current = snippets[0]
   for i in 1..<snippets.length() {
     let snippet = snippets[i]
@@ -203,7 +203,7 @@ fn merge_overlapping_snippets(snippets : Array[Range]) -> Array[Range] {
 /// Renders the chosen line ranges back into a human-readable snippet block.
 fn build_snippet_content(content : String, snippets : Array[Range]) -> String {
   let lines = content.split("\n").collect()
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   builder.write_string("Snippets:\n")
   for snippet in snippets {
     let start = @cmp.maximum(0, snippet.start_line - 1)

@@ -1,6 +1,5 @@
 import {
   "vectie/moonclaw/tools/read_feed" @feed,
-  "moonbitlang/async",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }

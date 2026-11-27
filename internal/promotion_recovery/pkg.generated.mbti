@@ -2,13 +2,14 @@
 package "vectie/moonclaw/internal/promotion_recovery"
 
 import {
+  "moonbitlang/core/json",
   "vectie/moonclaw/internal/httpx",
 }
 
 // Values
 pub async fn handle(@httpx.RequestReader, @httpx.ResponseWriter) -> Unit
 
-pub async fn pending_reference(Json) -> Json?
+pub async fn pending_reference(@json.Json) -> @json.Json?
 
 // Errors
 

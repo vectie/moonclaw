@@ -13,10 +13,11 @@ pub fn new(@file.Manager) -> @tool.Tool[ListFilesResult]
 // Errors
 
 // Types and methods
-type ListFilesResult derive(ToJson, @json.FromJson)
-pub fn ListFilesResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+#derive(@json.FromJson, @json.ToJson)
+type ListFilesResult
+pub fn ListFilesResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ListFilesResult::output(Self, &Logger) -> Unit
-pub fn ListFilesResult::to_json(Self) -> Json
+pub fn ListFilesResult::to_json(Self) -> @json.Json
 pub fn ListFilesResult::to_string(Self) -> String
 pub impl Show for ListFilesResult
 

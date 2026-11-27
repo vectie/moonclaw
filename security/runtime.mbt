@@ -1,12 +1,14 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct CommandPolicy {
   native : String
   native_skills : String
   restart : Bool
   owner_display : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PairingRecord {
   key : String
   channel_id : String
@@ -15,9 +17,10 @@ pub struct PairingRecord {
   status : String
   created_at : Int32
   approved_at : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct ApprovalRecord {
   token : String
   action_kind : String
@@ -30,13 +33,14 @@ pub struct ApprovalRecord {
   /// round-trip. Command execution uses this to bind an approval to the exact
   /// MoonFort profile and command that were presented before approval.
   context : Json?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PersistedSecurityState {
   pairings : Array[PairingRecord]
   approvals : Array[ApprovalRecord]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub enum SecurityChatAction {

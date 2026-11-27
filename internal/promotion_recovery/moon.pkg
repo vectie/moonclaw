@@ -14,7 +14,6 @@ import {
 
 import {
   "vectie/moonlib/fsx",
-  "vectie/moonlib/os",
 } for "wbtest"
 
 supported_targets = "native"

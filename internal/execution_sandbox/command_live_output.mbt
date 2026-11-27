@@ -1,6 +1,7 @@
 ///|
 // This record is created by the trusted command owner after approval validation,
 // before dispatch. It is never inferred from tool results or supplied by HTTP.
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct CommandLiveBinding {
   contract_version : Int32
   owner : CommandOutputOwner
@@ -9,16 +10,18 @@ struct CommandLiveBinding {
   approval_digest : String
   runtime_digest : String
   output_limit : Int32
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct BoundCommandLiveOutput {
   output_id : String
   run_id : String
   step_id : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct CommandLiveChunk {
   protocol_version : Int32
   output_id : String
@@ -33,7 +36,7 @@ pub(all) struct CommandLiveChunk {
   terminal : Bool
   retry_after_ms : Int32
   next_cursor : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 fn command_live_root(config : SandboxExecutorConfig, run_id : String) -> String {

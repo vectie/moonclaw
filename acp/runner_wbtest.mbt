@@ -119,7 +119,7 @@ fn acp_changed_file_from_status_line(line : String) -> String? {
   } else {
     return None
   }
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   for index in path_start..<chars.length() {
     builder.write_char(chars[index])
   }

@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 pub(all) suberror HarnessReplayError {
   InvalidFixture(String)
-} derive(Debug)
+}
 
 ///|
 const HARNESS_REPLAY_FIXTURE_CONTRACT : String = "moonclaw.harness-replay-fixture.v1"

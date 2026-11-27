@@ -18,6 +18,7 @@ fn projection() -> @host.HostActivationProjection {
     ],
     schedules: [],
     app_entrypoints: [],
+    app_runtime_identity: None,
     provider_ports: [],
     policies: [],
   }
@@ -25,9 +26,9 @@ fn projection() -> @host.HostActivationProjection {
 
 ///|
 test "projection binds tools without product-specific routing" {
-  let projected = bindings(projection())
+  let projected = @packtool.bindings(projection())
   assert_eq(projected.length(), 1)
-  guard resolve(projected, "fixture.observe") is Some(binding) else {
+  guard @packtool.resolve(projected, "fixture.observe") is Some(binding) else {
     fail("tool should resolve")
   }
   assert_eq(binding.pack_id, "fixture")
@@ -36,7 +37,7 @@ test "projection binds tools without product-specific routing" {
 
 ///|
 test "external effects require authority review evidence and budget" {
-  let binding : ToolBinding = {
+  let binding : @packtool.ToolBinding = {
     pack_id: "fixture",
     product_id: "fixture",
     tool_id: "fixture.publish",
@@ -47,7 +48,7 @@ test "external effects require authority review evidence and budget" {
     evidence_outputs: ["records/publications"],
     review_required: true,
   }
-  let request : InvocationRequest = {
+  let request : @packtool.InvocationRequest = {
     tool_id: "fixture.publish",
     input_schema_id: "request",
     output_schema_id: "response",
@@ -55,7 +56,7 @@ test "external effects require authority review evidence and budget" {
     attempt: 1,
     estimated_cost_micros: 100,
   }
-  let denied = authorize(binding, request, {
+  let denied = @packtool.authorize(binding, request, {
     granted_authorities: [],
     reviewed_tool_ids: [],
     max_attempts: 1,
@@ -64,7 +65,7 @@ test "external effects require authority review evidence and budget" {
   })
   assert_false(denied.allowed)
   assert_eq(denied.issues.length(), 3)
-  let allowed = authorize(binding, request, {
+  let allowed = @packtool.authorize(binding, request, {
     granted_authorities: [ExternalEffect],
     reviewed_tool_ids: ["fixture.publish"],
     max_attempts: 1,

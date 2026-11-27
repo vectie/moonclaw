@@ -10,7 +10,7 @@ async fn main {
     Ok(options) => options
     Err(error) => {
       let result = pack_workflow_runner_argument_error(error)
-      @stdio.stdout.write(result.to_json().stringify() + "\n")
+      @stdio.stdout.write(ToJson::to_json(result).stringify() + "\n")
       @os.exit(2)
     }
   }
@@ -20,7 +20,7 @@ async fn main {
     ""
   }
   let result = execute_pack_workflow_runner(options, stdin_text~)
-  @stdio.stdout.write(result.to_json().stringify() + "\n")
+  @stdio.stdout.write(ToJson::to_json(result).stringify() + "\n")
   if !result.ok {
     @os.exit(1)
   }

@@ -124,7 +124,7 @@ fn harness_replay_observation_summary(observations : ArrayView[Json]) -> Json {
   }
   let outcome_json : Map[String, Json] = Map([])
   for outcome, count in outcomes {
-    outcome_json[outcome] = count.to_json()
+    outcome_json[outcome] = ToJson::to_json(count)
   }
   {
     "sample_count": observations.length(),

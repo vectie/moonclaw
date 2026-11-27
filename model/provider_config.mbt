@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, Debug)
 pub struct ModelConfig {
   id : String
   name : String?
@@ -7,28 +8,31 @@ pub struct ModelConfig {
   cost : CostConfig?
   contextWindow : Int32?
   maxTokens : Int32?
-} derive(ToJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 pub struct CostConfig {
   input : Double?
   output : Double?
   cacheRead : Double?
   cacheWrite : Double?
-} derive(ToJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 pub struct ProviderConfig {
   baseUrl : String?
   api : String?
   models : Array[ModelConfig]
   apiKey : String?
-} derive(ToJson, Debug)
+}
 
 ///|
+#derive(ToJson, Debug)
 pub struct ProvidersFile {
   providers : Map[String, ProviderConfig]
-} derive(ToJson, Debug)
+}
 
 ///|
 pub extend ModelConfig with ToJson::{to_json}

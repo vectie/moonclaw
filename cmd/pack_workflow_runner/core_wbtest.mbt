@@ -54,7 +54,7 @@ test "runner result exposes durable status and outputs" {
   assert_true(
     result.outputs.get("final") is Some({ "value": Number(42, ..), .. }),
   )
-  guard result.to_json() is { "contract": String(contract), .. } else {
+  guard ToJson::to_json(result) is { "contract": String(contract), .. } else {
     fail("expected runner result contract")
   }
   assert_eq(contract, "moonsuite.pack-workflow-runner-result.v1")

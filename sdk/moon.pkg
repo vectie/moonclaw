@@ -1,15 +1,10 @@
 import {
-  "moonbitlang/async",
   "moonbitlang/async/io",
   "moonbitlang/async/stdio",
   "vectie/moonclaw",
-  "vectie/moonclaw/agent",
-  "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/backtrace",
-  "vectie/moonclaw/tool",
   "vectie/moonlib/os",
-  "vectie/moonclaw/event",
   "vectie/moonclaw/model",
 }
 

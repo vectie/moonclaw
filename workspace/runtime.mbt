@@ -1,17 +1,19 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct WorkspaceFile {
   name : String
   path : String
   content : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct WorkspaceSnapshot {
   root : String
   configured_from : String
   files : Array[WorkspaceFile]
   prompt_context : String
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub struct WorkspaceRuntime {

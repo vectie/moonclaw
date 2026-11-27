@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 priv suberror CopilotOAuthError {
   CopilotOAuthError(String)
-} derive(Debug)
+}
 
 ///|
 priv suberror ParseError {

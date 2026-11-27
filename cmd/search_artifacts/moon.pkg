@@ -1,6 +1,5 @@
 import {
   "vectie/moonclaw/job",
-  "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/x/sys",
   "moonbitlang/core/env",

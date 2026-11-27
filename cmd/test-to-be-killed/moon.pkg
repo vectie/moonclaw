@@ -1,7 +1,5 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/async/fs",
-  "moonbitlang/async/io",
   "vectie/moonlib/os",
   "vectie/moonclaw/cmd/daemon",
   "vectie/moonlib/spawn",

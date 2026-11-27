@@ -3,15 +3,17 @@ package "vectie/moonclaw/internal/harness_replay"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
-pub fn evaluate_harness_replay(Json) -> Json raise HarnessReplayError
+pub fn evaluate_harness_replay(@json.Json) -> @json.Json raise HarnessReplayError
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror HarnessReplayError {
   InvalidFixture(String)
-} derive(@debug.Debug)
+}
 
 // Types and methods
 

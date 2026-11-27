@@ -13,14 +13,9 @@ supported_targets = "native"
 
 import {
   "moonbitlang/async",
-  "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/file",
   "vectie/moonclaw/agent",
-  "vectie/moonclaw/model",
-  "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/tools/replace_in_file",
-  "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/event",
   "moonbitlang/core/test",
 } for "test"

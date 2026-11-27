@@ -7,7 +7,7 @@ async test "list_worktrees returns created MoonClaw worktrees" (t : @test.Test) 
     @git.commit("init", ["README.md"], cwd=repo)
     let handle = @worktree.plan_worktree(repo, "Inspect docs")
     ignore(@worktree.create_worktree(handle))
-    let tool = new(repo)
+    let tool = @list_worktrees.new(repo)
     let result = tool.call({})
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

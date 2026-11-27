@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, Eq, Debug)
 pub struct ToolDesc {
   description : String
   name : String
   schema : JsonSchema
-} derive(ToJson, Eq, Debug)
+}
 
 ///|
 pub fn ToolDesc::to_openai(
@@ -35,10 +36,11 @@ pub struct Tool[Output] {
 pub(all) struct ToolFn[Output](async (Json) -> ToolResult[Output] noraise)
 
 ///|
+#derive(ToJson)
 pub enum ToolResult[Output] {
   Ok(Output)
   Error(Error, String)
-} derive(ToJson)
+}
 
 ///|
 #as_free_fn
@@ -60,9 +62,10 @@ pub impl[Output : Show] Show for ToolResult[Output] with fn output(
 }
 
 ///|
+#derive(ToJson)
 priv suberror ToolFailure {
   ToolFailure(String)
-} derive(ToJson)
+}
 
 ///|
 #as_free_fn

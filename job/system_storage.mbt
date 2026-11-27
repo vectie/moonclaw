@@ -1,59 +1,70 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 struct DefinitionsIndexFile {
   definitions : Array[JobDefinition]
   workflows : Array[WorkflowDefinition]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct RunsIndexFile {
   runs : Array[JobRun]
   steps : Array[JobStepRun]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ArtifactsIndexFile {
   artifacts : Array[ArtifactRecord]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct MemoriesFile {
   memories : Array[MemoryRecord]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ChatBindingsFile {
   bindings : Array[ChatBinding]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct NotificationPreferencesFile {
   preferences : Array[JobNotificationPreference]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct JobProposalsFile {
   proposals : Array[JobProposal]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ControllerStateFile {
   states : Array[JobControllerState]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ControllerIterationsFile {
   iterations : Array[JobControllerIteration]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ControllerLineageFile {
   edges : Array[JobControllerLineageEdge]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 struct ControllerDecisionsFile {
   decisions : Array[JobControllerDecision]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub struct SystemStore {

@@ -90,7 +90,11 @@ async fn mooncode_workspace_replace(
   let temporary = absolute +
     ".mooncode-" +
     @crypto.bytes_to_hex_string(@rand.bytes(16))
-  defer (if @fsx.exists(temporary) { @fsx.remove(temporary) })
+  defer @async.protect_from_cancel(() => {
+    if @fsx.exists(temporary) {
+      @fsx.remove(temporary)
+    }
+  })
   let permission = if current is Some(_) {
     @moonclaw_fsx.stat(absolute).mode()
   } else {

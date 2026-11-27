@@ -1868,8 +1868,6 @@ fn mooncode_tool_event_lane(
     | "web_fetch"
     | "read_skill"
     | "view_image" => "tool"
-    "read" | "glob" | "grep" | "web_search" | "web_fetch" | "read_skill" | "view_image" =>
-      "tool"
     _ if diff != "" || path != "" => "diff"
     _ => "tool"
   }

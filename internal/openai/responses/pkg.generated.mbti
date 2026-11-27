@@ -14,50 +14,55 @@ pub fn message_input(role~ : String, content~ : String) -> ResponseInputItem
 // Errors
 
 // Types and methods
+#derive(@debug.Debug)
 pub struct ContentPart {
   type_ : ContentType
   text : String
-} derive(@debug.Debug)
-pub fn ContentPart::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn ContentPart::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ContentPart::new(type_~ : ContentType, text~ : String) -> Self
-pub fn ContentPart::to_json(Self) -> Json
+pub fn ContentPart::to_json(Self) -> @json.Json
 pub fn ContentPart::to_repr(Self) -> @debug.Repr
-pub impl ToJson for ContentPart
 pub impl @json.FromJson for ContentPart
+pub impl @json.ToJson for ContentPart
 
+#derive(@debug.Debug)
 pub(all) enum ContentType {
   InputText
   OutputText
   Text
-} derive(@debug.Debug)
-pub fn ContentType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ContentType::to_json(Self) -> Json
+}
+pub fn ContentType::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ContentType::to_json(Self) -> @json.Json
 pub fn ContentType::to_repr(Self) -> @debug.Repr
-pub impl ToJson for ContentType
 pub impl @json.FromJson for ContentType
+pub impl @json.ToJson for ContentType
 
+#derive(@debug.Debug)
 pub(all) enum ResponseInputItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
   FunctionCallOutput(call_id~ : String, output~ : String)
-} derive(@debug.Debug)
-pub fn ResponseInputItem::to_json(Self) -> Json
+}
+pub fn ResponseInputItem::to_json(Self) -> @json.Json
 pub fn ResponseInputItem::to_repr(Self) -> @debug.Repr
-pub impl ToJson for ResponseInputItem
+pub impl @json.ToJson for ResponseInputItem
 
+#derive(@debug.Debug)
 pub(all) enum ResponseItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
-} derive(@debug.Debug)
-pub fn ResponseItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn ResponseItem::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ResponseItem::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for ResponseItem
 
+#derive(@debug.Debug)
 pub struct ResponsesRequest {
   model : String
   input : Array[ResponseInputItem]
   instructions : String
-  tools : Array[Json]
+  tools : Array[@json.Json]
   tool_choice : String
   reasoning_effort : String?
   reasoning_context : String?
@@ -67,13 +72,13 @@ pub struct ResponsesRequest {
   prompt_cache_key : String?
   prompt_cache_mode : String?
   prompt_cache_ttl : String?
-  max_output_tokens : Int?
+  max_output_tokens : Int32?
   parallel_tool_calls : Bool?
-} derive(@debug.Debug)
-pub fn ResponsesRequest::new(model~ : String, input~ : Array[ResponseInputItem], instructions~ : String, tools? : Array[Json], tool_choice? : String, reasoning_effort? : String, reasoning_context? : String, stream? : Bool, store? : Bool, previous_response_id? : String, prompt_cache_key? : String, prompt_cache_mode? : String, prompt_cache_ttl? : String, max_output_tokens? : Int, parallel_tool_calls? : Bool) -> Self
-pub fn ResponsesRequest::to_json(Self) -> Json
+}
+pub fn ResponsesRequest::new(model~ : String, input~ : Array[ResponseInputItem], instructions~ : String, tools? : Array[@json.Json], tool_choice? : String, reasoning_effort? : String, reasoning_context? : String, stream? : Bool, store? : Bool, previous_response_id? : String, prompt_cache_key? : String, prompt_cache_mode? : String, prompt_cache_ttl? : String, max_output_tokens? : Int32, parallel_tool_calls? : Bool) -> Self
+pub fn ResponsesRequest::to_json(Self) -> @json.Json
 pub fn ResponsesRequest::to_repr(Self) -> @debug.Repr
-pub impl ToJson for ResponsesRequest
+pub impl @json.ToJson for ResponsesRequest
 
 // Type aliases
 

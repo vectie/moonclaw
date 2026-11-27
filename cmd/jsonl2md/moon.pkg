@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/async",
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/backtrace",
   "vectie/moonlib/fsx",
@@ -13,7 +12,6 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -21,6 +19,8 @@ supported_targets = "native"
 import {
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/internal/pino",
+  "moonbitlang/async",
+  "moonbitlang/core/test",
 } for "wbtest"
 
 pkgtype(kind: "executable")

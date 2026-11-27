@@ -1,8 +1,9 @@
 ///|
+#derive(Debug, Eq)
 pub struct ClientConfig {
   url : String
   headers : Map[String, String]
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn ClientConfig::new(
@@ -13,16 +14,18 @@ pub fn ClientConfig::new(
 }
 
 ///|
+#derive(Debug, Eq)
 pub(all) enum MessageKind {
   Text
   Binary
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub struct Message {
   kind : MessageKind
   data : Bytes
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Message {
@@ -45,11 +48,12 @@ pub fn Message::text(self : Message) -> String raise {
 }
 
 ///|
+#derive(Debug)
 pub suberror WebSocketClientError {
   ConnectFailed(String)
   SendFailed(String)
   ReceiveFailed(String)
-} derive(Debug)
+}
 
 ///|
 enum ClientCommand {

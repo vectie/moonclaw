@@ -12,27 +12,29 @@ pub fn new() -> @tool.Tool[WebSearchResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct WebSearchItem {
   title : String
   url : String
   snippet : String
   source : String
   domain : String?
-  rank : Int
-} derive(ToJson, @json.FromJson)
-pub fn WebSearchItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn WebSearchItem::to_json(Self) -> Json
+  rank : Int32
+}
+pub fn WebSearchItem::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn WebSearchItem::to_json(Self) -> @json.Json
 
+#derive(@json.FromJson, @json.ToJson)
 pub struct WebSearchResult {
   query : String
   search_url : String
   answer : String?
   results : Array[WebSearchItem]
   source : String
-} derive(ToJson, @json.FromJson)
-pub fn WebSearchResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn WebSearchResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn WebSearchResult::output(Self, &Logger) -> Unit
-pub fn WebSearchResult::to_json(Self) -> Json
+pub fn WebSearchResult::to_json(Self) -> @json.Json
 pub fn WebSearchResult::to_string(Self) -> String
 pub impl Show for WebSearchResult
 

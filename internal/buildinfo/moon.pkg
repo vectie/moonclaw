@@ -3,7 +3,6 @@ import {
 }
 
 options(
-  is_main: false,
   "pre-build": [
     {
       "command": "python3 scripts/buildinfo.py",

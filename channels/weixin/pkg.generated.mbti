@@ -12,13 +12,15 @@ import {
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WeixinAccessTokenResponse {
   access_token : String?
-  expires_in : Int?
-  errcode : Int?
+  expires_in : Int32?
+  errcode : Int32?
   errmsg : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct WeixinAccountConfig {
   app_id : String
   app_secret : String
@@ -26,7 +28,7 @@ pub struct WeixinAccountConfig {
   original_id : String?
   api_base_url : String?
   enabled : Bool
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 pub struct WeixinChannel {
   // private fields
@@ -40,13 +42,13 @@ type WeixinChannelState
 pub struct WeixinClient {
   config : WeixinAccountConfig
   mut test_access_token : String?
-  test_sent_messages : Array[Json]
+  test_sent_messages : Array[@json.Json]
 }
 pub async fn WeixinClient::load_access_token(Self) -> Result[String, @channel.ChannelError]
 pub fn WeixinClient::new(WeixinAccountConfig) -> Self
 pub async fn WeixinClient::send_text_message(Self, String, String) -> Result[@channel.SendResult, @channel.ChannelError]
 pub fn WeixinClient::set_test_access_token(Self, String) -> Unit
-pub fn WeixinClient::test_sent_messages(Self) -> Array[Json]
+pub fn WeixinClient::test_sent_messages(Self) -> Array[@json.Json]
 
 // Type aliases
 pub type WeixinOriginalId = String

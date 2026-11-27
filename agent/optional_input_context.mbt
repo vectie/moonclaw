@@ -2,12 +2,13 @@
 /// A host-supplied optional context block. Only the complete exact block in its
 /// originating user message may be omitted. Task instructions, other messages
 /// and the durable input remain unchanged. This is not a generic pruner rule.
+#derive(ToJson, @json.FromJson)
 pub struct OptionalInputContext {
   block : String
   omission : String
   digest : String
   integrity_digest : String
-} derive(ToJson, @json.FromJson)
+}
 
 ///|
 pub fn OptionalInputContext::new(
@@ -62,11 +63,12 @@ priv struct OptionalContextProjection {
 }
 
 ///|
+#derive(ToJson)
 pub struct OptionalInputContextStatus {
   message_id : @uuid.Uuid
   digest : String
   status : String
-} derive(ToJson)
+}
 
 ///|
 pub fn Agent::optional_context_statuses(

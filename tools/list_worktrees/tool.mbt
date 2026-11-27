@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct ListWorktreesResult {
   repo_root : String
   current_cwd : String
   worktrees : Array[@worktree.WorktreeHandle]
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for ListWorktreesResult with fn output(

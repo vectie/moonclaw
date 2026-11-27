@@ -6,11 +6,11 @@ fn review_event(
   message : String,
 ) -> Json {
   {
-    "run_id": run.to_json(),
-    "job_id": job.to_json(),
-    "timestamp": time.to_json(),
+    "run_id": Json::string(run),
+    "job_id": Json::string(job),
+    "timestamp": ToJson::to_json(time),
     "event_type": "step.observed",
-    "message": message.to_json(),
+    "message": Json::string(message),
     "data": { "future": true },
     "status": { "unknown": true },
     "producer_extra": [1, 2],
@@ -28,12 +28,12 @@ fn review_export_entry(
   let digest = "sha256:" + "a".repeat(64)
   {
     "record": {
-      "id": id.to_json(),
-      "run_id": run.to_json(),
-      "job_id": job.to_json(),
+      "id": Json::string(id),
+      "run_id": Json::string(run),
+      "job_id": Json::string(job),
       "artifact_type": "report",
       "logical_key": "result",
-      "version": version.to_json(),
+      "version": ToJson::to_json(version),
       "status": "Archived",
       "path": "/old/source.txt",
       "content_type": "text/plain",
@@ -43,10 +43,10 @@ fn review_export_entry(
       "scope": [],
       "record_extra": { "kept": true },
     },
-    "record_path": "records/\{index}.json".to_json(),
-    "content_path": "files/\{index}-source.txt".to_json(),
-    "record_sha256": digest.to_json(),
-    "content_sha256": digest.to_json(),
+    "record_path": Json::string("records/\{index}.json"),
+    "content_path": Json::string("files/\{index}-source.txt"),
+    "record_sha256": Json::string(digest),
+    "content_sha256": Json::string(digest),
     "content_bytes": 3,
     "entry_extra": 42,
   }
@@ -56,8 +56,8 @@ fn review_export_entry(
 fn review_manifest(entries : Array[Json]) -> String {
   let json : Json = {
     "schema": "moonclaw.artifact-export.v1",
-    "artifacts": entries.to_json(),
-    "total_content_bytes": (entries.length() * 3).to_json(),
+    "artifacts": Json::array(entries),
+    "total_content_bytes": ToJson::to_json(entries.length() * 3),
   }
   json.stringify()
 }
@@ -85,15 +85,15 @@ test "run review joins exact output revisions and chronological journal with ori
     manifest_source="packet/manifest.json",
     run_id="run",
   )
-  inspect(review.events.map(e => e.line), content="[4, 5, 2]")
-  inspect(review.artifacts.map(a => a.index), content="[1, 3]")
-  inspect(
+  assert_eq(review.events.map(e => e.line), [4, 5, 2])
+  assert_eq(review.artifacts.map(a => a.index), [1, 3])
+  assert_eq(
     (
       review.excluded_events,
       review.excluded_artifacts,
       review.selected_content_bytes,
     ),
-    content="(1, 1, 6)",
+    (1, 1, 6),
   )
   assert_eq(review.events[0].record, events[2])
   assert_eq(review.artifacts[1].entry, artifacts[2])
@@ -199,13 +199,13 @@ test "run review rejects ambiguous run jobs both within journals and across expo
 test "run review checks all export entries including unselected entries and refuses unsafe links" {
   let good = review_export_entry("a", "run", "job", 1, 1)
   let other = review_export_entry("b", "other", "job", 2, 1)
-  guard other.as_object() is Some(fields) else { fail("fixture") }
+  guard other is Object(fields) else { fail("fixture") }
   for
     (key, value) in [
-      ("content_path", "files/2-../<bad>".to_json()),
-      ("content_bytes", 0.5.to_json()),
-      ("content_sha256", "sha256:invalid".to_json()),
-      ("record_path", "https://bad.invalid/record".to_json()),
+      ("content_path", Json::string("files/2-../<bad>")),
+      ("content_bytes", Json::number(0.5)),
+      ("content_sha256", Json::string("sha256:invalid")),
+      ("record_path", Json::string("https://bad.invalid/record")),
     ] {
     let changed = fields.copy()
     changed[key] = value
@@ -213,7 +213,7 @@ test "run review checks all export entries including unselected entries and refu
       (Ok(
         @job_journal.review_run(
           [],
-          review_manifest([good, changed.to_json()]),
+          review_manifest([good, Json::object(changed)]),
           manifest_source="manifest",
           run_id="run",
         ),

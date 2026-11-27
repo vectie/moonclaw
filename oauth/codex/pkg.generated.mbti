@@ -46,38 +46,43 @@ pub async fn start_oauth_flow_for_workspace_root(root~ : String) -> Credentials
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub(all) struct Credentials {
   idToken : String
   accessToken : String
   refreshToken : String
   accountId : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn Credentials::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn Credentials::to_json(Self) -> Json
+}
+pub fn Credentials::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn Credentials::to_json(Self) -> @json.Json
 pub fn Credentials::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub struct IdTokenClaims {
   email : String
   chatgptAccountId : String
   chatgptPlanType : String
-} derive(@debug.Debug)
+}
 pub fn IdTokenClaims::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub struct PkceCodes {
   code_verifier : String
   code_challenge : String
-} derive(@debug.Debug)
+}
 pub fn PkceCodes::new(code_verifier~ : String, code_challenge~ : String) -> Self
 pub fn PkceCodes::to_repr(Self) -> @debug.Repr
 
-type RefreshResponse derive(@debug.Debug)
+#derive(@debug.Debug)
+type RefreshResponse
 pub fn RefreshResponse::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub struct TokenResponse {
   id_token : String
   access_token : String
   refresh_token : String
-} derive(@debug.Debug)
+}
 pub fn TokenResponse::to_repr(Self) -> @debug.Repr
 
 // Type aliases

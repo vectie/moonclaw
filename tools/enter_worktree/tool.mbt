@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct EnterWorktreeResult {
   handle : @worktree.WorktreeHandle
   created : Bool
   note : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for EnterWorktreeResult with fn output(

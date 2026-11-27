@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct OnboardingOptions {
   primary_model : String?
   working_directory : String?
@@ -8,9 +9,10 @@ pub struct OnboardingOptions {
   feishu_enabled : Bool?
   feishu_app_id : String?
   feishu_app_secret : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct OnboardingAuthProviderStatus {
   provider : String
   authenticated : Bool
@@ -18,16 +20,18 @@ pub struct OnboardingAuthProviderStatus {
   detail : String?
   default_model : String?
   available_models : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct OnboardingAuthStatus {
   providers : Array[OnboardingAuthProviderStatus]
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct OnboardingStatus {
   home : String
   cwd : String
@@ -47,9 +51,10 @@ pub struct OnboardingStatus {
   plugin_count : Int32
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct OnboardingApplyResult {
   status : String
   config_path : String
@@ -57,7 +62,7 @@ pub struct OnboardingApplyResult {
   created : Array[String]
   preserved : Array[String]
   onboarding : OnboardingStatus
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn default_onboarding_options() -> OnboardingOptions {

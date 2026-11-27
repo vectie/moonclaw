@@ -27,11 +27,12 @@
 /// // conversation ended
 /// PostConversation
 /// ```
+#derive(Eq)
 pub struct Event {
   id : @uuid.Uuid
   created : @clock.Timestamp
   desc : EventDesc
-} derive(Eq)
+}
 
 ///|
 /// Creates a new `Event` with the specified parameters.
@@ -54,6 +55,7 @@ pub fn Event::new(
 }
 
 ///|
+#derive(Eq)
 pub(all) enum EventDesc {
   /// Event triggered when a model is loaded.
   ModelLoaded(name~ : String)
@@ -118,7 +120,7 @@ pub(all) enum EventDesc {
   /// Event triggered when a PostToolCall event is pruned from context.
   /// The `id` field references the pruned PostToolCall event's id.
   Pruned(id~ : @uuid.Uuid)
-} derive(Eq)
+}
 
 ///|
 pub impl ToJson for EventDesc with fn to_json(self : EventDesc) -> Json {

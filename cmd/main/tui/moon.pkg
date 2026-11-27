@@ -6,7 +6,6 @@ import {
   "vectie/moonclaw/agent",
   "vectie/moonclaw/cmd/main/argument",
   "vectie/moonclaw/cmd/internal/moongate_startup",
-  "vectie/moonclaw/event",
   "vectie/moonclaw/model",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",

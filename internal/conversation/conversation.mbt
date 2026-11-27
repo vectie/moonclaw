@@ -96,7 +96,7 @@ pub fn Conversation::messages(
   let pruned_ids : Set[@uuid.Uuid] = Set([])
   for e in self.events() {
     match e.desc {
-      Pruned(id~) => pruned_ids.add(id)
+      Pruned(id~) => pruned_ids.insert(id)
       _ => ()
     }
   }

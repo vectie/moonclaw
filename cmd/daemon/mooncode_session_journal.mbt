@@ -1,5 +1,5 @@
 ///|
-#derive(Show)
+#derive(Debug)
 priv suberror MoonCodeJournalError {
   InvalidJournal(String)
 }

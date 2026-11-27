@@ -7,7 +7,7 @@ async test "list_resources lists file URIs" (t : @test.Test) {
         "lib": { "util.mbt": "fn util { () }" },
       },
     })
-    let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
+    let tool = @list_resources.new(mock.cwd.path(), home=Some(mock.cwd.path()))
     let result = tool.call({
       "kind": "file",
       "path": "src",
@@ -44,7 +44,7 @@ async test "list_resources lists skill URIs" (t : @test.Test) {
         },
       },
     })
-    let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
+    let tool = @list_resources.new(mock.cwd.path(), home=Some(mock.cwd.path()))
     let result = tool.call({ "kind": "skill", "max_results": 20 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -60,7 +60,7 @@ async test "list_resources lists skill URIs" (t : @test.Test) {
 async test "list_resources truncates file resource listings" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "a.txt": "a", "b.txt": "b", "c.txt": "c" })
-    let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
+    let tool = @list_resources.new(mock.cwd.path(), home=Some(mock.cwd.path()))
     let result = tool.call({
       "kind": "file",
       "pattern": "*.txt",
@@ -69,7 +69,7 @@ async test "list_resources truncates file resource listings" (t : @test.Test) {
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
     }
-    inspect(output.truncated.to_json().stringify(), content="true")
+    inspect(Json::boolean(output.truncated).stringify(), content="true")
     inspect(output.resources.length().to_string(), content="2")
   })
 }
@@ -83,7 +83,7 @@ async test "list_resources lists worktree URIs" (t : @test.Test) {
     @git.commit("init", ["README.md"], cwd=repo)
     let handle = @worktree.plan_worktree(repo, "Inspect docs")
     ignore(@worktree.create_worktree(handle))
-    let tool = new(repo)
+    let tool = @list_resources.new(repo)
     let result = tool.call({ "kind": "worktree" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -118,7 +118,7 @@ async test "list_resources lists provider URIs" (t : @test.Test) {
       exists_ok=true,
     )
     @fsx.write_to_file(manifest_path, manifest)
-    let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
+    let tool = @list_resources.new(mock.cwd.path(), home=Some(mock.cwd.path()))
     let result = tool.call({ "kind": "provider" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

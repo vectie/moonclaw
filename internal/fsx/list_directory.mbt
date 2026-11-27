@@ -3,6 +3,7 @@
 ///
 /// This mirrors `@fs.FileKind` but is serializable and comparable inside
 /// the `fsx` module.
+#derive(Debug, Hash, Eq, Compare, ToJson)
 pub enum FileKind {
   Unknown
   Regular
@@ -12,7 +13,7 @@ pub enum FileKind {
   Pipe
   BlockDevice
   CharDevice
-} derive(Debug, Hash, Eq, Compare, ToJson)
+}
 
 ///|
 fn FileKind::of_fs_file_kind(file_kind : @fs.FileKind) -> FileKind {
@@ -34,6 +35,7 @@ fn FileKind::of_fs_file_kind(file_kind : @fs.FileKind) -> FileKind {
 /// - `path` is the full path to the entry.
 /// - `name` is the basename of the entry.
 /// - `kind` describes the file-system kind of the entry.
+#derive(Debug, Hash, Eq, Compare, ToJson)
 pub struct DirectoryEntry {
   /// Full path to the entry.
   path : String
@@ -41,7 +43,7 @@ pub struct DirectoryEntry {
   name : String
   /// File-system kind of the entry.
   kind : FileKind
-} derive(Debug, Hash, Eq, Compare, ToJson)
+}
 
 ///|
 /// List all entries in the directory at `path`.

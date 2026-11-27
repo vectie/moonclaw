@@ -1,9 +1,10 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct AcpLaunchCommand {
   command : String
   args : Array[String]
   env : Map[String, String]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn launch_arguments(

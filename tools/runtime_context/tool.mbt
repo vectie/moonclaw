@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct RuntimeContextResult {
   cwd : String
   home : String?
@@ -11,7 +12,7 @@ pub struct RuntimeContextResult {
   workspace_dir : String?
   execution_isolation : Json?
   enabled_tools : Array[String]
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub fn RuntimeContextResult::new(

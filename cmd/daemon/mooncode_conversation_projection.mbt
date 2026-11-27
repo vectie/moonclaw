@@ -1030,7 +1030,7 @@ fn mooncode_conversation_apply_work_event(
       if chunk != "" {
         let combined = turn.reasoning_text + chunk
         turn.reasoning_text = if combined.length() > 16000 {
-          combined[combined.length() - 16000:].to_string()
+          combined[combined.length() - 16000:].to_owned()
         } else {
           combined
         }
@@ -1039,7 +1039,7 @@ fn mooncode_conversation_apply_work_event(
       let preview = if trimmed == "" {
         "Thinking through the request."
       } else if trimmed.length() > 260 {
-        "…" + trimmed[trimmed.length() - 260:].to_string()
+        "…" + trimmed[trimmed.length() - 260:].to_owned()
       } else {
         trimmed
       }

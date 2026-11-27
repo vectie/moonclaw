@@ -13,7 +13,7 @@ pub fn attachment_is_text_like(String, filename? : String?) -> Bool
 
 pub fn render_materialized_attachment_manifest(Array[MaterializedStarterAttachment]) -> String
 
-pub fn starter_attachment_digest_excerpt(String, limit? : Int) -> String
+pub fn starter_attachment_digest_excerpt(String, limit? : Int32) -> String
 
 pub fn starter_attachment_digest_markdown(Array[MaterializedStarterAttachment], Array[(String, String)]) -> String
 
@@ -38,6 +38,7 @@ pub fn starter_attachment_summary_markdown(MaterializedStarterAttachment, String
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct MaterializedStarterAttachment {
   id : String
   mime_type : String
@@ -47,9 +48,9 @@ pub struct MaterializedStarterAttachment {
   extracted_text_path : String?
   status : String
   note : String?
-  size : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn MaterializedStarterAttachment::new(id~ : String, mime_type~ : String, source_url~ : String, filename? : String?, saved_path? : String?, extracted_text_path? : String?, status? : String, note? : String?, size? : Int?) -> Self
+  size : Int32?
+}
+pub fn MaterializedStarterAttachment::new(id~ : String, mime_type~ : String, source_url~ : String, filename? : String?, saved_path? : String?, extracted_text_path? : String?, status? : String, note? : String?, size? : Int32?) -> Self
 
 // Type aliases
 

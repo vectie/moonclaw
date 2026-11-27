@@ -1,6 +1,6 @@
 ///|
 async test "delegate_run returns bounded child-run config" {
-  let tool = new()
+  let tool = @delegate_run.new()
   let result = tool.call({
     "title": "Review docs",
     "request_text": "Review the docs and propose edits.",

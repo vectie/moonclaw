@@ -5,6 +5,7 @@ const MaxMoonDeskSandboxConfigBytes : Int32 = 65_536
 const MoonDeskSandboxConfigEnv : String = "MOONDESK_EXECUTION_SANDBOX_CONFIG"
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct Config {
   protocol_version : Int32
   instance_id : String
@@ -12,7 +13,7 @@ pub(all) struct Config {
   workspace_id : String
   workspace_root : String
   trusted_book_roots : Array[String]?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 fn safe_hex(value : String, length : Int32) -> Bool {
@@ -66,7 +67,7 @@ async fn read_bounded_file(path : String) -> String {
     initial_size <= MaxMoonDeskSandboxConfigBytes.to_int64() else {
     fail("sandbox config exceeds the size limit")
   }
-  let output = @buffer.Buffer(size_hint=initial_size.to_int().min(8_192))
+  let output = @buffer.Buffer(capacity=initial_size.to_int().min(8_192))
   for ;; {
     guard file.read_some(
         max_len=(MaxMoonDeskSandboxConfigBytes - output.length() + 1).min(8_192),
@@ -77,7 +78,7 @@ async fn read_bounded_file(path : String) -> String {
     guard output.length() + chunk.length() <= MaxMoonDeskSandboxConfigBytes else {
       fail("sandbox config exceeds the size limit")
     }
-    output.write_bytes(chunk)
+    output.write_bytesview(chunk)
   }
   guard file.size() == initial_size else {
     fail("sandbox config changed while it was read")

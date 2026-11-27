@@ -165,7 +165,9 @@ async test "recovery HTTP reads exact linked checkpoint and refuses stale unrela
     })
     let base = "http://127.0.0.1:\{gateway.httpx.port()}"
     let path = base + "/v1/cowork/sessions/work%3Afixture/runs/recovery-run"
-    let headers = { "authorization": "Bearer fixture-only" }
+    let headers : @http.Headers = Map([
+      (@http.CaseInsensitiveString("authorization"), "Bearer fixture-only"),
+    ])
     @async.with_task_group(group => {
       group.spawn_bg(
         () => {
@@ -364,7 +366,9 @@ async test "conditional resume records exact input and launches only the origina
       linked_run_id: Some("recovery-run"),
     })
     let path = "http://127.0.0.1:\{gateway.httpx.port()}/v1/cowork/sessions/work%3Afixture/runs/recovery-run"
-    let headers = { "authorization": "Bearer fixture-only" }
+    let headers : @http.Headers = Map([
+      (@http.CaseInsensitiveString("authorization"), "Bearer fixture-only"),
+    ])
     @async.with_task_group(group => {
       gateway_root_groups[gateway.port] = group
       defer gateway_root_groups.remove(gateway.port) |> ignore()

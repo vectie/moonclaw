@@ -1,25 +1,28 @@
 ///|
 /// Search result structure matching Python version
+#derive(ToJson, FromJson)
 priv struct SearchResult {
   context : String
   line_number : Int32
   match_line : String
   path : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 /// Error types for search operations
+#derive(ToJson, Debug)
 priv suberror SearchError {
   FileReadError(path~ : String, error~ : String)
-} derive(ToJson, Debug)
+}
 
 ///|
 /// Search kind enumeration
+#derive(ToJson, FromJson)
 priv enum SearchKind {
   Regex
   MoonbitDefinition
   MoonbitReferences
-} derive(ToJson, FromJson)
+}
 
 ///|
 /// Parse search kind from string
@@ -220,6 +223,7 @@ async fn check_path(path : String) -> (Bool, Bool) { // (exists, is_file)
 
 ///|
 /// Structured search result for JSON output
+#derive(ToJson, FromJson)
 priv struct SearchResultData {
   kind : SearchKind
   query : String
@@ -230,10 +234,11 @@ priv struct SearchResultData {
   results : Array[SearchResult]
   truncated : Bool
   message : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 /// Structured MoonBit tool result for JSON output
+#derive(ToJson, FromJson)
 priv struct MoonbitToolResult {
   kind : SearchKind
   query : String
@@ -241,13 +246,14 @@ priv struct MoonbitToolResult {
   working_directory : String
   output : String
   message : String
-} derive(ToJson, FromJson)
+}
 
 ///|
+#derive(ToJson, FromJson)
 enum SearchFilesResult {
   SearchResultData(SearchResultData)
   MoonbitToolResult(MoonbitToolResult)
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for SearchFilesResult with fn output(

@@ -52,7 +52,11 @@ test "shortlist captures all pages and keeps duplicate publisher IDs and cross-s
   guard selected.to_json() is { "order": Array(order), .. } else {
     fail("Missing selection")
   }
-  assert_eq(order, [ids[53].to_json(), ids[52].to_json(), ids[0].to_json()])
+  assert_eq(order, [
+    Json::string(ids[53]),
+    Json::string(ids[52]),
+    Json::string(ids[0]),
+  ])
   assert_true(selected.to_markdown().contains("## 2. Article 52"))
 }
 
@@ -188,14 +192,14 @@ test "shortlist archive rejects malformed versions duplicate entries invalid sta
   let id = shortlist_ids(saved)[0]
   for
     (key, value) in [
-      ("schema", "other".to_json()),
-      ("schema_version", (2).to_json()),
-      ("schema_version", 1.5.to_json()),
+      ("schema", Json::string("other")),
+      ("schema_version", Json::number(2)),
+      ("schema_version", Json::number(1.5)),
       ("title", Json::null()),
-      ("order", ["missing"].to_json()),
-      ("order", [id, id].to_json()),
+      ("order", ToJson::to_json(["missing"])),
+      ("order", ToJson::to_json([id, id])),
       ("entries", Json::null()),
-      ("unexpected", true.to_json()),
+      ("unexpected", Json::boolean(true)),
     ] {
     guard saved.to_json() is Object(fields) else { fail("Missing root") }
     fields[key] = value

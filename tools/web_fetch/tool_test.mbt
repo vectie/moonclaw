@@ -12,7 +12,7 @@ async test "web_fetch tool fetches and cleans html" (t : @test.Test) {
     let server = @httpx.Server::new("[::1]", 0)
     @async.with_task_group(group => {
       group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
-      let tool = new()
+      let tool = @web_fetch.new()
       let result = tool.call({
         "url": "http://localhost:\{server.port()}/page",
         "max_chars": 500,
@@ -39,7 +39,7 @@ async test "web_fetch tool truncates plain text response" (t : @test.Test) {
     let server = @httpx.Server::new("[::1]", 0)
     @async.with_task_group(group => {
       group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
-      let tool = new()
+      let tool = @web_fetch.new()
       let result = tool.call({
         "url": "http://localhost:\{server.port()}/plain",
         "max_chars": 200,
@@ -47,7 +47,7 @@ async test "web_fetch tool truncates plain text response" (t : @test.Test) {
       guard result is Ok(output) else {
         fail("Expected Ok result but got: \{result}")
       }
-      inspect(output.truncated.to_json().stringify(), content="false")
+      inspect(Json::boolean(output.truncated).stringify(), content="false")
       inspect(output.text, content="abcdefghijklmnopqrstuvwxyz")
     })
   })
@@ -56,7 +56,7 @@ async test "web_fetch tool truncates plain text response" (t : @test.Test) {
 ///|
 async test "web_fetch live PDF uses bounded extraction when configured" {
   guard @os.getenv("MOONCLAW_LIVE_PDF_URL") is Some(url) else { return }
-  let result = new().call({ "url": url, "max_chars": 2000 })
+  let result = @web_fetch.new().call({ "url": url, "max_chars": 2000 })
   guard result is Ok(output) else {
     fail("Expected live PDF fetch to succeed but got: \{result}")
   }

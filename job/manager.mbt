@@ -50,7 +50,8 @@ pub struct Manager {
 }
 
 ///|
-pub(all) struct Id(Int32) derive(Hash, Eq)
+#derive(Hash, Eq)
+pub(all) struct Id(Int32)
 
 ///|
 pub impl Show for Id with fn output(self : Id, logger : &Logger) -> Unit {

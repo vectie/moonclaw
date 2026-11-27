@@ -1,11 +1,12 @@
 ///|
 /// A child runtime may produce evidence, a draft, or a reviewable result. It
 /// can never delegate final acceptance or publication authority.
+#derive(Debug, Eq)
 pub(all) enum DelegationClaimCeilingV1 {
   EvidenceOnly
   Draft
   Reviewable
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn DelegationClaimCeilingV1::id(self : DelegationClaimCeilingV1) -> String {
@@ -38,6 +39,7 @@ fn delegation_claim_rank(value : DelegationClaimCeilingV1) -> Int32 {
 }
 
 ///|
+#derive(Debug, Eq)
 pub struct ChildDelegationV1 {
   reference : @capability.DelegationRefV1
   parent_run_id : String
@@ -52,7 +54,7 @@ pub struct ChildDelegationV1 {
   issued_at : String
   expires_at : String
   parent_delegation : @capability.DelegationRefV1?
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn ChildDelegationV1::reference(
@@ -95,6 +97,7 @@ pub fn ChildDelegationV1::expires_at(self : ChildDelegationV1) -> String {
 }
 
 ///|
+#derive(ToJson, FromJson)
 priv struct ChildDelegationPayloadWireV1 {
   contract_id : String
   delegation_id : String
@@ -113,13 +116,14 @@ priv struct ChildDelegationPayloadWireV1 {
   issued_at : String
   expires_at : String
   parent_delegation : Json?
-} derive(ToJson, FromJson)
+}
 
 ///|
+#derive(ToJson, FromJson)
 priv struct ChildDelegationWireV1 {
   payload : Json
   delegation_ref : Json
-} derive(ToJson, FromJson)
+}
 
 ///|
 fn child_runtime_ref_is_canonical(value : String) -> Bool {
@@ -236,6 +240,7 @@ fn validate_child_delegation_scope_v1(
 /// Metered consumption presented at the exact authorization boundary. A
 /// budgeted dimension must carry both prior and requested usage; omitting that
 /// evidence fails closed rather than turning a ceiling into documentation.
+#derive(Debug, Eq)
 pub struct ChildDelegationConsumptionV1 {
   accumulated_cost_micro_usd : Int64?
   requested_cost_micro_usd : Int64?
@@ -246,7 +251,7 @@ pub struct ChildDelegationConsumptionV1 {
   accumulated_artifacts : Int32?
   requested_artifacts : Int32?
   evidence : @capability.ContentAddressedEvidenceRefV1
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn child_delegation_consumption_v1(
@@ -478,6 +483,7 @@ pub fn narrow_child_delegation_v1(
 }
 
 ///|
+#derive(Debug, Eq)
 pub struct ChildDelegationUseReceiptV1 {
   delegation_ref : @capability.DelegationRefV1
   child_run_id : String
@@ -487,7 +493,7 @@ pub struct ChildDelegationUseReceiptV1 {
   consumption : ChildDelegationConsumptionV1
   evaluated_at : String
   receipt_digest : @capability.DigestRefV1
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn authorize_child_delegation_use_v1(

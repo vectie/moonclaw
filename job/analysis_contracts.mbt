@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub(all) struct AnalysisToolContract {
   shell : Bool
   list_files : Bool
@@ -18,7 +19,7 @@ pub(all) struct AnalysisToolContract {
   unlimited_ocr : Bool
   web_fetch : Bool
   web_search : Bool
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn AnalysisToolContract::new(

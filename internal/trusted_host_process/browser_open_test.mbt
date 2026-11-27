@@ -1,6 +1,6 @@
 ///|
 async test "browser open rejects non-web schemes before host execution" {
-  let result = Ok(open_browser_url("file:///etc/passwd")) catch {
+  let result = Ok(@trusted_host_process.open_browser_url("file:///etc/passwd")) catch {
     error => Err(error)
   }
   guard result is Err(InvalidParameter(message)) else {
@@ -12,7 +12,7 @@ async test "browser open rejects non-web schemes before host execution" {
 ///|
 async test "browser open rejects excessive timeout before host execution" {
   let result = Ok(
-    open_browser_url("https://example.invalid/", timeout_ms=30001),
+    @trusted_host_process.open_browser_url("https://example.invalid/", timeout_ms=30001),
   ) catch {
     error => Err(error)
   }

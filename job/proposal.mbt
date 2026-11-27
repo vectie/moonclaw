@@ -146,6 +146,7 @@ fn proposal_starter_file_labels(proposal : JobProposal) -> Array[String] {
 }
 
 ///|
+#derive(ToJson, Debug)
 struct ProposalPlanStepPayload {
   id : String?
   title : String
@@ -157,7 +158,7 @@ struct ProposalPlanStepPayload {
   execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int32?
-} derive(ToJson, Debug)
+}
 
 ///|
 impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
@@ -262,12 +263,13 @@ impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
 }
 
 ///|
+#derive(ToJson, Debug)
 struct ProposalPlanPayload {
   title : String?
   summary : String?
   tags : Array[String]?
   steps : Array[ProposalPlanStepPayload]?
-} derive(ToJson, Debug)
+}
 
 ///|
 impl @json.FromJson for ProposalPlanPayload with fn from_json(
@@ -929,12 +931,14 @@ async fn plan_job_proposal_with_mode(
 }
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub struct JobPlanPreviewStep {
   id : String
   title : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub struct JobPlanPreview {
   title : String
   request_text : String
@@ -943,7 +947,7 @@ pub struct JobPlanPreview {
   requested_output_format : String?
   starter_files : Array[String]
   source : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 fn proposal_to_plan_preview(

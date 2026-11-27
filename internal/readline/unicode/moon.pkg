@@ -1,11 +1,9 @@
 import {
   "vectie/moonclaw/internal/readline/unicode/width" @unicode/width,
-  "moonbitlang/core/json",
 }
 
 import {
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
-  "moonbitlang/core/buffer",
 } for "test"
 
 supported_targets = "native"

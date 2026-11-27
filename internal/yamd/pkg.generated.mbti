@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/yamd"
 
 import {
   "moonbit-community/yaml",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -12,7 +13,7 @@ pub fn parse(String) -> Document raise @yaml.YamlError
 
 // Types and methods
 pub struct Document {
-  meta : Map[String, Json]
+  meta : Map[String, @json.Json]
   text : String
 }
 

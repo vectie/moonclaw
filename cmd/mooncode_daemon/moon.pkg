@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/async",
   "vectie/moonclaw/cmd/daemon",
   "vectie/moonclaw/cmd/server",
   "vectie/moonclaw/internal/backtrace",

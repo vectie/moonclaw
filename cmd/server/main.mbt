@@ -1,7 +1,8 @@
 ///|
+#derive(Debug, ToJson)
 priv suberror HttpError {
   HttpError(code~ : Int32, reason~ : String, body~ : String)
-} derive(Debug, ToJson)
+}
 
 ///|
 fn json_error(code : Int32, reason : String, body : Json) -> HttpError {

@@ -1,11 +1,12 @@
 ///|
 #warnings("-20-27")
+#derive(ToJson, FromJson, Show)
 struct RobotBridgeTargetConfig {
   command : String
   args : Array[String]
   cwd : String?
   env : Map[String, String]
-} derive(ToJson, FromJson, Show)
+}
 
 ///|
 async fn robot_bridge_config_json(home : String, cwd : String) -> Json? {

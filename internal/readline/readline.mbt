@@ -177,23 +177,23 @@ async fn Interface::write_move_cursor(
   if dx < 0 {
     buffer.write_byte(@csi.Escape)
     buffer.write_byte(b'[')
-    buffer.write_bytes(@encoding/utf8.encode((-dx).to_string()))
+    buffer.write_bytesview(@encoding/utf8.encode((-dx).to_string()))
     buffer.write_byte(b'D')
   } else if dx > 0 {
     buffer.write_byte(@csi.Escape)
     buffer.write_byte(b'[')
-    buffer.write_bytes(@encoding/utf8.encode(dx.to_string()))
+    buffer.write_bytesview(@encoding/utf8.encode(dx.to_string()))
     buffer.write_byte(b'C')
   }
   if dy < 0 {
     buffer.write_byte(@csi.Escape)
     buffer.write_byte(b'[')
-    buffer.write_bytes(@encoding/utf8.encode((-dy).to_string()))
+    buffer.write_bytesview(@encoding/utf8.encode((-dy).to_string()))
     buffer.write_byte(b'A')
   } else if dy > 0 {
     buffer.write_byte(@csi.Escape)
     buffer.write_byte(b'[')
-    buffer.write_bytes(@encoding/utf8.encode(dy.to_string()))
+    buffer.write_bytesview(@encoding/utf8.encode(dy.to_string()))
     buffer.write_byte(b'B')
   }
   self.output.write(buffer.to_bytes())
@@ -210,7 +210,7 @@ async fn @stdio.Output::cursor_to(
       let buffer = Buffer()
       buffer.write_byte(@csi.Escape)
       buffer.write_byte(b'[')
-      buffer.write_bytes(@encoding/utf8.encode((col + 1).to_string()))
+      buffer.write_bytesview(@encoding/utf8.encode((col + 1).to_string()))
       buffer.write_byte(b'G')
       self.write(buffer.to_bytes())
     }
@@ -218,9 +218,9 @@ async fn @stdio.Output::cursor_to(
       let buffer = Buffer()
       buffer.write_byte(@csi.Escape)
       buffer.write_byte(b'[')
-      buffer.write_bytes(@encoding/utf8.encode((row + 1).to_string()))
+      buffer.write_bytesview(@encoding/utf8.encode((row + 1).to_string()))
       buffer.write_byte(b';')
-      buffer.write_bytes(@encoding/utf8.encode((col + 1).to_string()))
+      buffer.write_bytesview(@encoding/utf8.encode((col + 1).to_string()))
       buffer.write_byte(b'H')
       self.write(buffer.to_bytes())
     }
@@ -383,7 +383,7 @@ fn display_position(
 ///|
 fn Interface::get_cursor_pos(self : Interface) -> Position raise {
   let string_before_cursor = Buffer()
-  string_before_cursor.write_bytes(self.prompt)
+  string_before_cursor.write_bytesview(self.prompt)
   string_before_cursor.write_bytesview(self.line[:self.cursor])
   self.get_display_position(string_before_cursor.to_bytes())
 }
@@ -1261,7 +1261,7 @@ fn common_prefix(array : Array[StringView]) -> StringView {
     [] => ""
     [string] => string
     [min, .., max] => {
-      let prefix = StringBuilder::new()
+      let prefix = StringBuilder()
       for min = min, max = max {
         match (min, max) {
           ([min_c, .. min], [max_c, .. max]) if min_c == max_c => {
@@ -1312,27 +1312,27 @@ async fn Interface::tab_completer(
   width = width + 2
   let max_columns = @cmp.maximum(1, self.columns() / width)
   let output = Buffer()
-  output.write_bytes(b"\r\n")
+  output.write_bytesview(b"\r\n")
   let mut line_index = 0
   let mut whitespace = 0
   for i, completion in completions {
     if completion is "" || line_index == max_columns {
-      output.write_bytes(b"\r\n")
+      output.write_bytesview(b"\r\n")
       line_index = 0
       whitespace = 0
     } else {
       output.write_bytesview(Bytes::make(whitespace, b' '))
     }
     if completion.length() > 0 {
-      output.write_bytes(@encoding/utf8.encode(completion))
+      output.write_bytesview(@encoding/utf8.encode(completion))
       whitespace = width - completion_widths[i]
       line_index += 1
     } else {
-      output.write_bytes(b"\r\n")
+      output.write_bytesview(b"\r\n")
     }
   }
   if line_index != 0 {
-    output.write_bytes(b"\r\n\r\n")
+    output.write_bytesview(b"\r\n\r\n")
   }
   self.output.write(output.to_bytes())
   self.refresh_line()

@@ -20,11 +20,12 @@ let schema : @tool.JsonSchema = {
 }
 
 ///|
+#derive(ToJson, FromJson)
 priv struct Params {
   content : String // required
   path : String // required
   separator : String?
-} derive(ToJson, FromJson)
+}
 
 ///|
 fn params(content~ : String, path~ : String, separator? : String) -> Params {
@@ -84,9 +85,10 @@ test {
 }
 
 ///|
+#derive(FromJson, ToJson)
 struct Result {
   path : String
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub impl Show for Result with fn output(self : Result, logger : &Logger) -> Unit {

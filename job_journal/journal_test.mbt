@@ -6,19 +6,19 @@ fn fixture(
   step? : String,
 ) -> Json {
   let fields : Map[String, Json] = {
-    "run_id": run.to_json(),
+    "run_id": Json::string(run),
     "job_id": "job-1",
     "event_type": "step.progress",
-    "timestamp": timestamp.to_json(),
+    "timestamp": ToJson::to_json(timestamp),
     "status": "Running",
-    "message": message.to_json(),
+    "message": Json::string(message),
     "data": { "attempt": 2, "receipt": "local-receipt" },
     "future_field": ["retained", 42],
   }
   if step is Some(value) {
-    fields["step_id"] = value.to_json()
+    fields["step_id"] = Json::string(value)
   }
-  fields.to_json()
+  Json::object(fields)
 }
 
 ///|
@@ -57,12 +57,15 @@ test "journal merges timestamps and retains deterministic source order for ties 
     ),
   )
   let page = @job_journal.explore_journal(entries)
-  inspect(
+  assert_eq(
     page.entries.map(e => e.source + ":" + e.line.to_string()),
-    content="[first:2, first:1, first:3, second:1]",
+    ["first:2", "first:1", "first:3", "second:1"],
   )
   inspect(page.total_events, content="4")
-  assert_eq(@job_journal.explore_journal(entries).to_json(), page.to_json())
+  assert_eq(
+    ToJson::to_json(@job_journal.explore_journal(entries)),
+    ToJson::to_json(page),
+  )
 }
 
 ///|
@@ -91,7 +94,7 @@ test "journal filters before paging with inclusive time bounds" {
   inspect(page.total_events, content="4")
   inspect(page.matched_events, content="2")
   inspect(page.returned_events, content="1")
-  inspect(page.next_offset, content="Some(1)")
+  assert_eq(page.next_offset, Some(1))
   inspect(page.entries[0].line, content="1")
   let second = @job_journal.explore_journal(
     entries,
@@ -102,7 +105,7 @@ test "journal filters before paging with inclusive time bounds" {
     limit=1,
   )
   inspect(second.entries[0].line, content="3")
-  inspect(second.next_offset, content="None")
+  assert_eq(second.next_offset, None)
   inspect(
     @job_journal.explore_journal(entries, run_id="missing").matched_events,
     content="0",
@@ -123,7 +126,7 @@ test "journal empty inputs and exhausted pages are explicit" {
     @job_journal.parse_journal("\n\r\n", source="empty"),
   )
   inspect(empty.total_events, content="0")
-  inspect(empty.next_offset, content="None")
+  assert_eq(empty.next_offset, None)
   assert_true(empty.to_markdown().contains("No events on this page."))
   let entries = @job_journal.parse_journal(
     fixture("run", 1, "x").stringify(),
@@ -132,7 +135,7 @@ test "journal empty inputs and exhausted pages are explicit" {
   let page = @job_journal.explore_journal(entries, offset=1)
   inspect(page.matched_events, content="1")
   inspect(page.returned_events, content="0")
-  inspect(page.next_offset, content="None")
+  assert_eq(page.next_offset, None)
 }
 
 ///|

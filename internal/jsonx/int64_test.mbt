@@ -35,9 +35,10 @@ test "int64/max" {
 }
 
 ///|
+#derive(ToJson)
 priv struct Int64Data {
   value : Int64
-} derive(ToJson)
+}
 
 ///|
 impl @json.FromJson for Int64Data with fn from_json(json, path) {

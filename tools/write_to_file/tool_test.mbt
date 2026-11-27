@@ -7,8 +7,8 @@ let original =
 async test "write_to_file" (t : @test.Test) {
   @mock.run(t, mock => {
     @fsx.write_to_file(@pathx.join(mock.cwd.path(), "file.txt"), original)
-    let args = json_input(path="file.txt", content="Line 3", separator="\n")
-    let tool = new(mock.cwd.path())
+    let args = @write_to_file.json_input(path="file.txt", content="Line 3", separator="\n")
+    let tool = @write_to_file.new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -30,12 +30,12 @@ async test "write_to_file" (t : @test.Test) {
 async test "write_to_file creates nested parent directories" (t : @test.Test) {
   @mock.run(t, mock => {
     let relative_path = "books/robot/flow/drafts/research.json"
-    let args = json_input(
+    let args = @write_to_file.json_input(
       path=relative_path,
       content="{\"accepted\":true}",
       separator="\n",
     )
-    let tool = new(mock.cwd.path())
+    let tool = @write_to_file.new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Ok(_) else {
       fail("Expected nested write to succeed but got: \{mock.show(result)}")
@@ -54,8 +54,8 @@ async test "write_to_file/no-write-permission" (t : @test.Test) {
     @fsx.write_to_file(file_path, original)
     // Change file to read-only
     @fs.chmod(file_path, 0o444)
-    let args = json_input(path="file.txt", content="Line 3", separator="\n")
-    let tool = new(mock.cwd.path())
+    let args = @write_to_file.json_input(path="file.txt", content="Line 3", separator="\n")
+    let tool = @write_to_file.new(mock.cwd.path())
     let result = tool.call(args)
     // Verify that an error is returned
     guard result is Error(_) else {
@@ -75,12 +75,12 @@ async test "write_to_file rejects absolute path outside workspace" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
-    let args = json_input(
+    let args = @write_to_file.json_input(
       path="/tmp/moonclaw-write-to-file-outside.txt",
       content="escaped",
       separator="\n",
     )
-    let tool = new(mock.cwd.path())
+    let tool = @write_to_file.new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
       fail("Expected error result but got: \{mock.show(result)}")
@@ -95,12 +95,12 @@ async test "write_to_file rejects absolute path outside workspace" (
 ///|
 async test "write_to_file rejects parent path escape" (t : @test.Test) {
   @mock.run(t, mock => {
-    let args = json_input(
+    let args = @write_to_file.json_input(
       path="../escape.txt",
       content="escaped",
       separator="\n",
     )
-    let tool = new(mock.cwd.path())
+    let tool = @write_to_file.new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
       fail("Expected error result but got: \{mock.show(result)}")

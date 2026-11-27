@@ -8,7 +8,6 @@ import {
 }
 
 import {
-  "moonbitlang/core/test",
 } for "test"
 
 supported_targets = "native"

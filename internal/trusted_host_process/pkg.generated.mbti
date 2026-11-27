@@ -6,29 +6,30 @@ import {
 }
 
 // Values
-pub fn current_process_id() -> Int
+pub fn current_process_id() -> Int32
 
 pub fn daemon_child_model_arguments(String?, String?) -> Array[String] raise TrustedHostProcessError
 
-pub async fn open_browser_url(String, timeout_ms? : Int) -> Bool raise TrustedHostProcessError
+pub async fn open_browser_url(String, timeout_ms? : Int32) -> Bool raise TrustedHostProcessError
 
-pub async fn run_git(String, GitOperation, timeout_ms? : Int) -> GitResult
+pub async fn run_git(String, GitOperation, timeout_ms? : Int32) -> GitResult
 
-pub async fn spawn_detached_daemon(server_exec_path? : String, port? : Int, serve? : String) -> Int
+pub async fn spawn_detached_daemon(server_exec_path? : String, port? : Int32, serve? : String) -> Int32
 
-pub async fn spawn_detached_proposal_run(run_id~ : String, home~ : String, cwd~ : String, initial_input_path? : String) -> Int
+pub async fn spawn_detached_proposal_run(run_id~ : String, home~ : String, cwd~ : String, initial_input_path? : String) -> Int32
 
 pub fn suspend_parent_process() -> Unit raise TrustedHostProcessError
 
-pub fn terminate_stale_daemon(Int) -> Unit raise TrustedHostProcessError
+pub fn terminate_stale_daemon(Int32) -> Unit raise TrustedHostProcessError
 
 // Errors
+#derive(@debug.Debug)
 pub suberror TrustedHostProcessError {
   InvalidWorkspace(String)
   InvalidParameter(String)
   UnsafeRepositoryConfig(String)
   HostToolUnavailable(String)
-} derive(@debug.Debug)
+}
 pub fn TrustedHostProcessError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
@@ -39,15 +40,16 @@ pub struct DaemonChildManager {
   // private fields
 }
 pub fn DaemonChildManager::new(cwd~ : String, executable? : String, home? : String) -> Self
-pub async fn DaemonChildManager::spawn_server(Self, cwd~ : String, name? : String, model_selector? : String, model_workspace? : String, web_search? : Bool, resume_id? : String, register_id~ : String, register_port~ : Int, register_token~ : String, source_kind? : String, workspace_trust? : String) -> DaemonChildProcess
+pub async fn DaemonChildManager::spawn_server(Self, cwd~ : String, name? : String, model_selector? : String, model_workspace? : String, web_search? : Bool, resume_id? : String, register_id~ : String, register_port~ : Int32, register_token~ : String, source_kind? : String, workspace_trust? : String) -> DaemonChildProcess
 pub async fn DaemonChildManager::start(Self) -> Unit
 
 pub struct DaemonChildProcess {
   // private fields
 }
 pub fn DaemonChildProcess::pid_string(Self) -> String
-pub async fn DaemonChildProcess::wait(Self) -> Int
+pub async fn DaemonChildProcess::wait(Self) -> Int32
 
+#derive(@debug.Debug)
 pub(all) enum GitOperation {
   Init
   CheckIgnore(Array[String])
@@ -58,7 +60,7 @@ pub(all) enum GitOperation {
   StatusPorcelain
   StatusProductPorcelain
   StatusShort
-  RecentLog(Int)
+  RecentLog(Int32)
   RevListCount
   Head
   HeadTree
@@ -78,17 +80,17 @@ pub(all) enum GitOperation {
   FmtUntrackedPaths
   FmtPathDiff(String)
   FmtReadHeadPath(String)
-} derive(@debug.Debug)
+}
 pub fn GitOperation::to_repr(Self) -> @debug.Repr
 
 pub struct GitResult {
-  status : Int
+  status : Int32
   stdout : String
   stderr : String
-  elapsed : Int
+  elapsed : Int32
 }
-pub fn GitResult::elapsed(Self) -> Int
-pub fn GitResult::status(Self) -> Int
+pub fn GitResult::elapsed(Self) -> Int32
+pub fn GitResult::status(Self) -> Int32
 pub fn GitResult::stderr(Self) -> String
 pub fn GitResult::stdout(Self) -> String
 

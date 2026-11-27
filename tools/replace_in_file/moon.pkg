@@ -6,7 +6,6 @@ import {
   "vectie/moonclaw/internal/fuzzy",
   "moonbitlang/async/os_error",
   "moonbitlang/core/json",
-  "moonbitlang/core/test",
 }
 
 supported_targets = "native"
@@ -16,9 +15,6 @@ import {
   "vectie/moonclaw/tools/read_file",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/agent",
-  "vectie/moonclaw/model",
-  "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/event",
-  "vectie/moonclaw/ai",
   "moonbitlang/async/fs",
+  "moonbitlang/core/test",
 } for "test"

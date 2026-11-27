@@ -12,17 +12,18 @@ pub fn new(String) -> @tool.Tool[GlobFilesResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct GlobFilesResult {
   root : String
   pattern : String
   matches : Array[String]
-  total_matches : Int
+  total_matches : Int32
   truncated : Bool
   respect_gitignore : Bool
-} derive(ToJson, @json.FromJson)
-pub fn GlobFilesResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn GlobFilesResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn GlobFilesResult::output(Self, &Logger) -> Unit
-pub fn GlobFilesResult::to_json(Self) -> Json
+pub fn GlobFilesResult::to_json(Self) -> @json.Json
 pub fn GlobFilesResult::to_string(Self) -> String
 pub impl Show for GlobFilesResult
 

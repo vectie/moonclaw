@@ -1,19 +1,22 @@
 ///|
 /// Installed by the trusted analysis runner, never decoded from tool arguments.
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct CommandOutputOwner {
   run_id : String
   step_id : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 struct CommandOutputBinding {
   contract_version : Int32
   owner : CommandOutputOwner
   audit_id : String
   audit_sha256 : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
+#derive(Debug, Eq, ToJson, @json.FromJson)
 pub(all) struct BoundCommandOutput {
   output_id : String
   run_id : String
@@ -27,7 +30,7 @@ pub(all) struct BoundCommandOutput {
   exit_code : Int32?
   output_truncated : Bool
   limit_reason : String?
-} derive(Debug, Eq, ToJson, @json.FromJson)
+}
 
 ///|
 fn command_output_owner_valid(owner : CommandOutputOwner) -> Bool {
@@ -57,13 +60,13 @@ async fn command_output_read_file(path : String, limit : Int32) -> String {
   guard file.kind() is Regular && file.size() <= limit.to_int64() else {
     fail("Output record exceeds its bound")
   }
-  let out = @buffer.Buffer(size_hint=4096)
+  let out = @buffer.Buffer(capacity=4096)
   while file.read_some(max_len=(limit - out.length() + 1).min(8192))
         is Some(chunk) {
     guard out.length() + chunk.length() <= limit else {
       fail("Output record exceeds its bound")
     }
-    out.write_bytes(chunk)
+    out.write_bytesview(chunk)
   }
   guard @fs.realpath(path) == path &&
     @fs.kind(path, follow_symlink=false) is Regular else {

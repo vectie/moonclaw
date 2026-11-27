@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct UnlimitedOcrResult {
   ocr_engine : String
   pdf_path : String
@@ -8,7 +9,7 @@ pub struct UnlimitedOcrResult {
   status : Int32
   stdout : String
   stderr : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for UnlimitedOcrResult with fn output(

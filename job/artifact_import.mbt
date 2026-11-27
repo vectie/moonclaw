@@ -1,6 +1,7 @@
 ///|
 /// A relocated inspection record plus the exact original-record provenance.
 /// The artifact ID, producing job/run, revision, state and content are unchanged.
+#derive(ToJson)
 pub struct ImportedArtifact {
   record : ArtifactRecord
   record_sha256 : String
@@ -8,15 +9,16 @@ pub struct ImportedArtifact {
   original_record_sha256 : String
   content_sha256 : String
   content_bytes : Int32
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct ArtifactImport {
   schema : String
   source_manifest_sha256 : String
   artifacts : Array[ImportedArtifact]
   total_content_bytes : Int32
-} derive(ToJson)
+}
 
 ///|
 priv struct ArtifactImportSource {

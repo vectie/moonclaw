@@ -1930,7 +1930,7 @@ fn FeishuChannel::merge_platform_event_chunks(
   let merged = Buffer()
   for index in 0..<total {
     match chunk_state.chunks.get(index) {
-      Some(chunk) => merged.write_bytes(chunk)
+      Some(chunk) => merged.write_bytesview(chunk)
       None => return None
     }
   }

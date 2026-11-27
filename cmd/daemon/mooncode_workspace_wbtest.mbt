@@ -90,8 +90,8 @@ async test "workspace aliases share scope identity and escaping symlinks cannot 
     @fsx.write_to_file(root + "/actual/file.txt", "old")
     @fs.symlink(target=root + "/actual", root + "/alias")
     let real = mooncode_workspace_path(root, "actual/file.txt")
-    let alias = mooncode_workspace_path(root, "alias/file.txt")
-    assert_eq(real, alias)
+    let aliased = mooncode_workspace_path(root, "alias/file.txt")
+    assert_eq(real, aliased)
     assert_true(
       mooncode_moon_fmt_path_is_requested(
         root,

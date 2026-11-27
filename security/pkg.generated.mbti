@@ -13,7 +13,7 @@ pub fn assess_shell_command(String, String, String?) -> CommandAssessment
 
 pub fn command_approval_target(CommandAssessment) -> String
 
-pub fn command_approval_token(CommandAssessment, Int) -> String
+pub fn command_approval_token(CommandAssessment, Int32) -> String
 
 pub fn parse_security_chat_action(String) -> SecurityChatAction?
 
@@ -34,20 +34,22 @@ pub fn render_pending_approval(ApprovalRecord) -> String
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct ApprovalRecord {
   token : String
   action_kind : String
   action_target : String
   scope_key : String
   status : String
-  created_at : Int
-  approved_at : Int?
-  context : Json?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn ApprovalRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ApprovalRecord::to_json(Self) -> Json
+  created_at : Int32
+  approved_at : Int32?
+  context : @json.Json?
+}
+pub fn ApprovalRecord::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ApprovalRecord::to_json(Self) -> @json.Json
 pub fn ApprovalRecord::to_repr(Self) -> @debug.Repr
 
+#derive(Show, @json.FromJson, @json.ToJson)
 pub struct CommandAssessment {
   command : String
   cwd : String
@@ -58,65 +60,70 @@ pub struct CommandAssessment {
   predicted_effects : Array[String]
   requires_approval : Bool
   allowed_by_policy : Bool
-} derive(Show, ToJson, @json.FromJson)
-pub fn CommandAssessment::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn CommandAssessment::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn CommandAssessment::output(Self, &Logger) -> Unit
-pub fn CommandAssessment::to_json(Self) -> Json
+pub fn CommandAssessment::to_json(Self) -> @json.Json
 pub fn CommandAssessment::to_string(Self) -> String
 
+#derive(Eq, Show, @json.FromJson, @json.ToJson)
 pub enum CommandIntent {
   Binary
   Shell
   PackageManager
   Vcs
   Unknown
-} derive(Eq, Show, ToJson, @json.FromJson)
+}
 pub fn CommandIntent::equal(Self, Self) -> Bool
-pub fn CommandIntent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandIntent::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn CommandIntent::not_equal(Self, Self) -> Bool
 pub fn CommandIntent::output(Self, &Logger) -> Unit
-pub fn CommandIntent::to_json(Self) -> Json
+pub fn CommandIntent::to_json(Self) -> @json.Json
 pub fn CommandIntent::to_string(Self) -> String
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct CommandPolicy {
   native : String
   native_skills : String
   restart : Bool
   owner_display : String
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn CommandPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn CommandPolicy::to_json(Self) -> Json
+}
+pub fn CommandPolicy::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn CommandPolicy::to_json(Self) -> @json.Json
 pub fn CommandPolicy::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, Show, @json.FromJson, @json.ToJson)
 pub enum CommandRiskLevel {
   Low
   Medium
   High
   Blocked
-} derive(Eq, Show, ToJson, @json.FromJson)
+}
 pub fn CommandRiskLevel::equal(Self, Self) -> Bool
-pub fn CommandRiskLevel::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandRiskLevel::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn CommandRiskLevel::not_equal(Self, Self) -> Bool
 pub fn CommandRiskLevel::output(Self, &Logger) -> Unit
-pub fn CommandRiskLevel::to_json(Self) -> Json
+pub fn CommandRiskLevel::to_json(Self) -> @json.Json
 pub fn CommandRiskLevel::to_string(Self) -> String
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct PairingRecord {
   key : String
   channel_id : String
   account_id : String
   recipient : String
   status : String
-  created_at : Int
-  approved_at : Int?
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PairingRecord::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn PairingRecord::to_json(Self) -> Json
+  created_at : Int32
+  approved_at : Int32?
+}
+pub fn PairingRecord::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn PairingRecord::to_json(Self) -> @json.Json
 pub fn PairingRecord::to_repr(Self) -> @debug.Repr
 
-type PersistedSecurityState derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PersistedSecurityState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn PersistedSecurityState::to_json(Self) -> Json
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
+type PersistedSecurityState
+pub fn PersistedSecurityState::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn PersistedSecurityState::to_json(Self) -> @json.Json
 pub fn PersistedSecurityState::to_repr(Self) -> @debug.Repr
 
 pub enum SecurityChatAction {
@@ -137,8 +144,8 @@ pub struct SecurityRuntime {
 }
 pub fn SecurityRuntime::allows_native_commands(Self, Bool) -> Bool
 pub fn SecurityRuntime::allows_skill_commands(Self) -> Bool
-pub async fn SecurityRuntime::approve_pairing(Self, String, String, String, Int) -> PairingRecord
-pub async fn SecurityRuntime::approve_token(Self, String, Int) -> ApprovalRecord?
+pub async fn SecurityRuntime::approve_pairing(Self, String, String, String, Int32) -> PairingRecord
+pub async fn SecurityRuntime::approve_token(Self, String, Int32) -> ApprovalRecord?
 pub fn SecurityRuntime::command_policy(Self) -> CommandPolicy
 pub async fn SecurityRuntime::consume_approval(Self, String, String, String) -> Bool
 pub async fn SecurityRuntime::consume_approval_record(Self, String, String, String) -> ApprovalRecord?
@@ -148,7 +155,7 @@ pub async fn SecurityRuntime::load(Self) -> Unit
 pub fn SecurityRuntime::matching_pending_approval(Self, String, String, String) -> ApprovalRecord?
 pub async fn SecurityRuntime::new(home~ : String, cwd~ : String) -> Self
 pub fn SecurityRuntime::pairing_status_text(Self, String, String, String) -> String
-pub async fn SecurityRuntime::request_approval(Self, String, String, String, String, Int, context? : Json) -> ApprovalRecord
+pub async fn SecurityRuntime::request_approval(Self, String, String, String, String, Int32, context? : @json.Json) -> ApprovalRecord
 pub async fn SecurityRuntime::revoke_pairing(Self, String, String, String) -> Bool
 pub async fn SecurityRuntime::save(Self) -> Unit
 pub fn SecurityRuntime::session_dm_scope(Self) -> String

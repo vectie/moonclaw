@@ -78,7 +78,7 @@ async test "load" (t : @test.Test) {
     loader.load_and_apply(messages)
     guard messages is [System(content), ..] else {
       fail(
-        "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
+        "Messages have wrong structure, expecting [System(content), ..], got \{ToJson::to_json(messages).stringify(indent=2)}",
       )
     }
     assert_true(content.has_prefix("You are an AI assistant."))
@@ -109,7 +109,7 @@ async test "load/empty" (t : @test.Test) {
     loader.load_and_apply(messages)
     guard messages is [System(content), ..] else {
       fail(
-        "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
+        "Messages have wrong structure, expecting [System(content), ..], got \{ToJson::to_json(messages).stringify(indent=2)}",
       )
     }
     assert_true(content.has_prefix("You are an AI assistant."))
@@ -155,7 +155,7 @@ async test "load/lowercase" (t : @test.Test) {
     loader.load_and_apply(messages)
     guard messages is [System(content), ..] else {
       fail(
-        "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
+        "Messages have wrong structure, expecting [System(content), ..], got \{ToJson::to_json(messages).stringify(indent=2)}",
       )
     }
     assert_true(content.has_prefix("You are an AI assistant."))
@@ -198,7 +198,7 @@ async test "load/invalid-skill" (t : @test.Test) {
     loader.load_and_apply(messages)
     guard messages is [System(content), ..] else {
       fail(
-        "Messages have wrong structure, expecting [System(content), ..], got \{messages.to_json().stringify(indent=2)}",
+        "Messages have wrong structure, expecting [System(content), ..], got \{ToJson::to_json(messages).stringify(indent=2)}",
       )
     }
     assert_true(content.has_prefix("You are an AI assistant."))

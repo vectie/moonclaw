@@ -1,13 +1,15 @@
 ///|
+#derive(ToJson, FromJson, Eq, Debug)
 pub enum CoordinationStatus {
   Pending
   Running
   Completed
   Failed
   Cancelled
-} derive(ToJson, FromJson, Eq, Debug)
+}
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct SubTask {
   task_id : String
   message : String
@@ -19,7 +21,7 @@ pub struct SubTask {
   created_at : Int32
   started_at : Int32?
   completed_at : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn sub_task(
@@ -78,6 +80,7 @@ pub fn SubTask::is_done(self : SubTask) -> Bool {
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct CoordinationTask {
   coordination_id : String
   parent_agent : String
@@ -88,7 +91,7 @@ pub struct CoordinationTask {
   started_at : Int32?
   completed_at : Int32?
   metadata : Map[String, Json]
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn coordination_task(

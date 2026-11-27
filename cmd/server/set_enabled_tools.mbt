@@ -39,7 +39,7 @@ async fn Server::set_enabled_tools(
         },
       })
     }
-    tools.add(tool_name)
+    tools.insert(tool_name)
   }
   self.moonclaw.agent.set_enabled_tools(tools)
   w.send_json(code=200, {})

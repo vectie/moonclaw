@@ -117,6 +117,6 @@ test "compare" {
 test "hash" {
   let uuid = @uuid.generator(TestSource::new())
   let v4 = uuid.v4()
-  json_inspect(v4.hash() == v4.hash(), content=true)
-  json_inspect(uuid.v4().hash() != uuid.v4().hash(), content=true)
+  json_inspect(Hash::hash(v4) == Hash::hash(v4), content=true)
+  json_inspect(Hash::hash(uuid.v4()) != Hash::hash(uuid.v4()), content=true)
 }

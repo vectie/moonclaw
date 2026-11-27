@@ -14,14 +14,15 @@
 
 ///|
 #valtype
+#derive(Eq, Compare, Hash)
 struct Uuid {
   hi : UInt64
   lo : UInt64
-} derive(Eq, Compare, Hash)
+}
 
 ///|
 pub impl ToJson for Uuid with fn to_json(self : Uuid) -> Json {
-  self.to_string().to_json()
+  Json::string(self.to_string())
 }
 
 ///|
@@ -116,16 +117,17 @@ pub fn Uuid::to_bytes(self : Uuid) -> Bytes {
 }
 
 ///|
+#derive(Debug, ToJson)
 suberror ParseError {
   UnexpectedEnd
   InvalidOctet(StringView)
   MissingDash(StringView)
   ExtraContent(StringView)
-} derive(Debug, ToJson)
+}
 
 ///|
 pub fn parse(hex : StringView) -> Uuid raise ParseError {
-  let mut view = hex.view()
+  let mut view = hex
   fn parse_hex_octet(count : Int32, value : UInt64) -> UInt64 raise ParseError {
     let mut value = value
     for _ in 0..<(count * 2) {
@@ -177,7 +179,7 @@ let hex_table : Bytes = b"0123456789abcdef"
 
 ///|
 pub fn Uuid::to_string(self : Uuid) -> String {
-  let builder = StringBuilder::new(size_hint=36)
+  let builder = StringBuilder(capacity=36)
   let mut hi = self.hi
   for _ in 0..<8 {
     builder.write_char(hex_table[(hi >> 60).to_int()].to_char())
@@ -218,14 +220,16 @@ pub impl Show for Uuid with fn output(self : Uuid, logger : &Logger) -> Unit {
 }
 
 ///|
+#derive(Debug, ToJson)
 pub enum Variant {
   ReservedNCS
   RFC9562(Version)
   ReservedMicrosoft
   ReservedFuture
-} derive(Debug, ToJson)
+}
 
 ///|
+#derive(Debug, ToJson)
 pub(all) enum Version {
   V0 = 0
   V1 = 1
@@ -243,7 +247,7 @@ pub(all) enum Version {
   V13 = 13
   V14 = 14
   V15 = 15
-} derive(Debug, ToJson)
+}
 
 ///|
 fn Version::from_uint64(value : UInt64) -> Version {

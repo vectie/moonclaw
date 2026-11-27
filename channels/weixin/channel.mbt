@@ -95,7 +95,7 @@ fn weixin_hex_char(n : Int32) -> Char {
 
 ///|
 fn lowercase_hex(bytes : FixedArray[Byte]) -> String {
-  let builder = StringBuilder::new()
+  let builder = StringBuilder()
   for byte in bytes {
     let value = byte.to_int()
     builder.write_char(weixin_hex_char((value >> 4) & 0xF))

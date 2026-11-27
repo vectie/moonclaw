@@ -1,9 +1,10 @@
 ///|
+#derive(FromJson, ToJson)
 pub struct CreateCoordinationParams {
   parent_agent : String
   subtasks : Array[SubTaskParams]
   metadata : Map[String, Json]
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn create_coordination_params(
@@ -15,12 +16,13 @@ pub fn create_coordination_params(
 }
 
 ///|
+#derive(FromJson, ToJson)
 pub struct SubTaskParams {
   task_id : String
   message : String
   model : String?
   cwd : String?
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn sub_task_params(
@@ -33,11 +35,12 @@ pub fn sub_task_params(
 }
 
 ///|
+#derive(FromJson, ToJson)
 pub struct UpdateSubTaskParams {
   status : CoordinationStatus
   result : Json?
   error : String?
-} derive(FromJson, ToJson)
+}
 
 ///|
 pub fn update_subtask_params(

@@ -1,7 +1,7 @@
 ///|
 async test "runtime_context returns the provided context" {
-  let tool = new(
-    RuntimeContextResult::new(
+  let tool = @runtime_context.new(
+    @runtime_context.RuntimeContextResult::new(
       cwd="/tmp/demo",
       home=Some("/tmp/home"),
       run_id=Some("run-1"),

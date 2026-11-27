@@ -13,35 +13,38 @@ pub fn new(String, home? : String?) -> @tool.Tool[ListResourcesResult]
 // Errors
 
 // Types and methods
+#derive(@json.FromJson, @json.ToJson)
 pub struct ListResourcesResult {
   resources : Array[ResourceSummary]
-  total_resources : Int
+  total_resources : Int32
   truncated : Bool
-} derive(ToJson, @json.FromJson)
-pub fn ListResourcesResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+}
+pub fn ListResourcesResult::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ListResourcesResult::output(Self, &Logger) -> Unit
-pub fn ListResourcesResult::to_json(Self) -> Json
+pub fn ListResourcesResult::to_json(Self) -> @json.Json
 pub fn ListResourcesResult::to_string(Self) -> String
 pub impl Show for ListResourcesResult
 
+#derive(@json.FromJson, @json.ToJson)
 pub struct ResourceSummary {
   uri : String
   kind : ResourceSummaryKind
   title : String
   description : String
-  metadata : Json
-} derive(ToJson, @json.FromJson)
-pub fn ResourceSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ResourceSummary::to_json(Self) -> Json
+  metadata : @json.Json
+}
+pub fn ResourceSummary::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ResourceSummary::to_json(Self) -> @json.Json
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub enum ResourceSummaryKind {
   File
   Skill
   Worktree
   Provider
-} derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn ResourceSummaryKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
-pub fn ResourceSummaryKind::to_json(Self) -> Json
+}
+pub fn ResourceSummaryKind::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
+pub fn ResourceSummaryKind::to_json(Self) -> @json.Json
 pub fn ResourceSummaryKind::to_repr(Self) -> @debug.Repr
 
 // Type aliases

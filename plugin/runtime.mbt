@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct PluginRecord {
   id : String
   enabled : Bool
@@ -8,7 +9,7 @@ pub struct PluginRecord {
   version : String?
   install_path : String?
   metadata : Json
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub struct PluginRuntime {

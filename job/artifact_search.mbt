@@ -1,12 +1,14 @@
 ///|
 /// A one-based line number and bounded Unicode-safe excerpt. Excerpts are
 /// evidence for inspection, never rendered as commands or markup.
+#derive(ToJson)
 pub struct ArtifactSearchLine {
   line : Int32
   excerpt : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct ArtifactSearchMatch {
   record : ArtifactRecord
   record_sha256 : String
@@ -14,15 +16,17 @@ pub struct ArtifactSearchMatch {
   content_bytes : Int32
   matching_lines : Int32
   lines : Array[ArtifactSearchLine]
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct ArtifactSearchIssue {
   artifact_id : String
   reason : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 pub struct ArtifactSearch {
   schema : String
   store_root : String
@@ -35,7 +39,7 @@ pub struct ArtifactSearch {
   truncated : Bool
   matches : Array[ArtifactSearchMatch]
   issues : Array[ArtifactSearchIssue]
-} derive(ToJson)
+}
 
 ///|
 fn search_lines(

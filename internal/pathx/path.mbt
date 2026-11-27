@@ -30,11 +30,11 @@ pub fn dirname(path : StringView) -> StringView {
   match path.rev_find("/") {
     None => "."
     Some(index) => {
-      let prefix = path.view(end_offset=index)
+      let prefix = path.clamped_view(end=index)
       if path_has_non_slash(prefix) {
         path_without_nonroot_trailing_slashes(prefix)
       } else {
-        path.view(end_offset=index + 1)
+        path.clamped_view(end=index + 1)
       }
     }
   }
@@ -53,10 +53,10 @@ pub fn basename(path : StringView) -> StringView {
     [.. path, '/'] => path
     path => path
   }
-  for view = path.view() {
+  for view = path {
     match view {
       [] => break path
-      [.., '/'] as view => break path.view(start_offset=view.end_offset())
+      [.., '/'] as view => break path.clamped_view(start=view.end_offset())
       [.. view, _] => continue view
     }
   }
@@ -97,12 +97,12 @@ pub fn replace_ext(path : StringView, ext : StringView) -> String {
         None => 0
         Some(idx) => basename.length() - idx
       }
-      let directory_stem = path.view(
-        start_offset=0,
-        end_offset=path.length() - old_ext_len,
+      let directory_stem = path.clamped_view(
+        start=0,
+        end=path.length() - old_ext_len,
       )
-      let buffer = StringBuilder::new(
-        size_hint=(directory_stem.length() + ext.length()) << 1,
+      let buffer = StringBuilder(
+        capacity=(directory_stem.length() + ext.length()) << 1,
       )
       buffer.write_stringview(directory_stem)
       buffer.write_stringview(ext)
@@ -118,7 +118,7 @@ pub fn replace_ext(path : StringView, ext : StringView) -> String {
 pub fn stem(path : StringView) -> StringView {
   let base = basename(path)
   let ext = ext(path)
-  base.view(start_offset=0, end_offset=base.length() - ext.length())
+  base.clamped_view(start=0, end=base.length() - ext.length())
 }
 
 ///|
@@ -142,7 +142,7 @@ fn skip_redundant_slashes(view : StringView) -> StringView {
 pub fn split(view : StringView) -> Iter[StringView] {
   let mut state : SplitState = Root
   let mut last = view
-  Iter::new(() => {
+  Iter(() => {
     for current = state {
       match current {
         Root =>
@@ -170,15 +170,15 @@ pub fn split(view : StringView) -> Iter[StringView] {
             }
           }
         Segment =>
-          break for rest = last.view() {
+          break for rest = last {
             match rest {
               ['/', .. rest] as view => {
                 // Slice out the part before slash.
                 let part = last
                   .data()
-                  .view(
-                    start_offset=last.start_offset(),
-                    end_offset=view.start_offset(),
+                  .clamped_view(
+                    start=last.start_offset(),
+                    end=view.start_offset(),
                   )
                 last = skip_redundant_slashes(rest)
                 break Some(part)
@@ -203,7 +203,7 @@ pub fn split(view : StringView) -> Iter[StringView] {
 /// Normalize path by resolving `.` and `..` and eliminating redundant slashes.
 pub fn normalize(view : StringView) -> String {
   let normalized = Path::normalize(view.to_owned()).0
-  let trimmed = path_without_nonroot_trailing_slashes(normalized.view()).to_owned()
+  let trimmed = path_without_nonroot_trailing_slashes(normalized[:]).to_owned()
   if trimmed == "." {
     return ""
   }

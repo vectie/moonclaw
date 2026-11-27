@@ -3,15 +3,14 @@ import {
   "vectie/moonlib/c",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/env",
-  "moonbitlang/core/json",
-  "moonbitlang/core/string",
-  "moonbitlang/core/test",
 }
 
 import {
   "vectie/moonlib/spawn",
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/string",
+  "moonbitlang/core/test",
 } for "test"
 
 supported_targets = "native"

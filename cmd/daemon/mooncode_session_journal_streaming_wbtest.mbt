@@ -426,7 +426,7 @@ async test "cached append avoids directory reopen and failed first sync retries 
     )
     let canonical = @fs.realpath(path)
     let parent = @pathx.dirname(path)
-    defer @fs.chmod(parent, 0o700)
+    defer @async.protect_from_cancel(() => @fs.chmod(parent, 0o700))
     @fs.chmod(parent, 0o300)
     assert_true(
       mooncode_append_session_journal_once(root, session, "event", second),

@@ -13,15 +13,15 @@ import {
 // Types and methods
 pub struct CompileResult {
   messages : Array[@openai.ChatCompletionMessageParam]
-  origin_token_count : Int
-  final_token_count : Int
-  compacted_messages : Int
+  origin_token_count : Int32
+  final_token_count : Int32
+  compacted_messages : Int32
   within_budget : Bool
 }
 
 type Pruner
 pub async fn Pruner::compile_messages(Self, Array[@openai.ChatCompletionMessageParam], tools? : Array[@openai.ChatCompletionToolParam]) -> CompileResult
-pub fn Pruner::new(safe_zone_tokens~ : Int, logger~ : @pino.Logger) -> Self raise
+pub fn Pruner::new(safe_zone_tokens~ : Int32, logger~ : @pino.Logger) -> Self raise
 
 // Type aliases
 

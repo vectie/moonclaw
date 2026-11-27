@@ -1,7 +1,6 @@
 import {
   "moonbitlang/async/http",
   "moonbitlang/core/buffer",
-  "moonbitlang/core/bytes",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
   "moonbitlang/core/string",

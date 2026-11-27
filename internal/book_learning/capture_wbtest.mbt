@@ -11,7 +11,7 @@ fn fixture_binding(root : String) -> Binding {
 ///|
 async fn fixture_write(root : String, path : String, content : String) -> Unit {
   let parts = path.split("/").to_array()
-  let dir = parts[:parts.length() - 1].to_array().join("/")
+  let dir = parts[:parts.length() - 1].to_owned().join("/")
   if !@fs.exists(root + "/" + dir) {
     @fs.mkdir(root + "/" + dir, recursive=true)
   }
@@ -183,10 +183,10 @@ async test "source mutation cancellation root aliases and scan limits are explic
     }),
   )
   assert_false(completed.val)
-  let alias = root + "-alias"
-  @fs.symlink(target=root, alias)
-  assert_eq(capture(fixture_binding(alias), 0).status, "ready")
-  @fs.remove(alias)
+  let alias_path = root + "-alias"
+  @fs.symlink(target=root, alias_path)
+  assert_eq(capture(fixture_binding(alias_path), 0).status, "ready")
+  @fs.remove(alias_path)
   @fs.remove(root + "/memory/procedures/a.md")
   for index in 0..<257 {
     fixture_write(

@@ -1,4 +1,5 @@
 ///|
+#derive(ToJson, FromJson)
 pub struct WebFetchResult {
   url : String
   final_url : String
@@ -10,7 +11,7 @@ pub struct WebFetchResult {
   truncated : Bool
   source : String
   metadata : Json
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for WebFetchResult with fn output(
@@ -47,9 +48,10 @@ priv struct FetchUri {
 }
 
 ///|
+#derive(Debug)
 priv suberror WebFetchError {
   InvalidUrl(message~ : String)
-} derive(Debug)
+}
 
 ///|
 fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {

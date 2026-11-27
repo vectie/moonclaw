@@ -19,7 +19,7 @@ pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus
 
 pub async fn discover_models(home~ : String, cwd~ : String) -> Array[String]
 
-pub fn onboarding_options(primary_model? : String?, working_directory? : String?, workspace_root? : String?, gateway_port? : Int?, gateway_token? : String?, feishu_enabled? : Bool?, feishu_app_id? : String?, feishu_app_secret? : String?) -> OnboardingOptions
+pub fn onboarding_options(primary_model? : String?, working_directory? : String?, workspace_root? : String?, gateway_port? : Int32?, gateway_token? : String?, feishu_enabled? : Bool?, feishu_app_id? : String?, feishu_app_secret? : String?) -> OnboardingOptions
 
 pub fn render_auth_status(OnboardingAuthStatus) -> String
 
@@ -38,6 +38,7 @@ pub async fn start_auth_flow(String, home~ : String) -> String
 // Errors
 
 // Types and methods
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct OnboardingApplyResult {
   status : String
   config_path : String
@@ -45,8 +46,9 @@ pub struct OnboardingApplyResult {
   created : Array[String]
   preserved : Array[String]
   onboarding : OnboardingStatus
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct OnboardingAuthProviderStatus {
   provider : String
   authenticated : Bool
@@ -54,25 +56,28 @@ pub struct OnboardingAuthProviderStatus {
   detail : String?
   default_model : String?
   available_models : Array[String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct OnboardingAuthStatus {
   providers : Array[OnboardingAuthProviderStatus]
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct OnboardingOptions {
   primary_model : String?
   working_directory : String?
   workspace_root : String?
-  gateway_port : Int?
+  gateway_port : Int32?
   gateway_token : String?
   feishu_enabled : Bool?
   feishu_app_id : String?
   feishu_app_secret : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
+#derive(@debug.Debug, @json.FromJson, @json.ToJson)
 pub struct OnboardingStatus {
   home : String
   cwd : String
@@ -82,17 +87,17 @@ pub struct OnboardingStatus {
   workspace_configured_from : String
   workspace_files : Array[String]
   primary_model : String?
-  provider_count : Int
-  gateway_port : Int?
+  provider_count : Int32
+  gateway_port : Int32?
   has_gateway_token : Bool
   feishu_enabled : Bool
   feishu_ready : Bool
   available_models : Array[String]
   auth : OnboardingAuthStatus
-  plugin_count : Int
+  plugin_count : Int32
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, @debug.Debug, @json.FromJson)
+}
 
 // Type aliases
 

@@ -10,11 +10,13 @@ async fn harness_replay_qualification_expanded_fixture() -> Json {
     for repeat in 0..<10 {
       let clone = @json.parse(case.stringify())
       guard clone is Object(fields) else { fail("expected case object") }
-      fields["case_id"] = "anon-qualification-\{case_index}-\{repeat}".to_json()
+      fields["case_id"] = Json::string(
+        "anon-qualification-\{case_index}-\{repeat}",
+      )
       expanded.push(clone)
     }
   }
-  root["cases"] = expanded.to_json()
+  root["cases"] = Json::array(expanded)
   fixture
 }
 
@@ -29,8 +31,8 @@ fn harness_replay_qualification_set_variant_latency(
         Some(Object(variant)) =>
           match variant.get("phase_metrics") {
             Some(Object(phases)) => {
-              variant["latency_ms"] = latency_ms.to_json()
-              phases["total_ms"] = latency_ms.to_json()
+              variant["latency_ms"] = ToJson::to_json(latency_ms)
+              phases["total_ms"] = ToJson::to_json(latency_ms)
               true
             }
             _ => false

@@ -1,8 +1,9 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 struct PersistedSession {
   session_key : String
   entry : SessionEntry
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 fn SessionManager::store_file(self : SessionManager) -> String {

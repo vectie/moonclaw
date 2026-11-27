@@ -40,7 +40,9 @@ pub fn RunReview::to_markdown(self : RunReview) -> String raise {
     lines.push(
       "- Recorded artifact status: \{markdown_text(record.status.stringify())}",
     )
-    lines.push("- Scope: \{markdown_text(record.scope.to_json().stringify())}")
+    lines.push(
+      "- Scope: \{markdown_text(ToJson::to_json(record.scope).stringify())}",
+    )
     lines.push("- Metadata: \{markdown_text(record.metadata.stringify())}")
     lines.push("- Created timestamp: \{record.created_at}")
     if record.archived_at is Some(time) {

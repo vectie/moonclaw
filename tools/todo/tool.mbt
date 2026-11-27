@@ -1,8 +1,9 @@
 ///|
+#derive(ToJson, FromJson)
 enum TodoResult {
   Read(TodoReadResult)
   Write(TodoWriteResult)
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub impl Show for TodoResult with fn output(self : TodoResult, logger : &Logger) -> Unit {
@@ -14,9 +15,10 @@ pub impl Show for TodoResult with fn output(self : TodoResult, logger : &Logger)
 
 ///|
 /// TodoReadResult
+#derive(ToJson, FromJson)
 priv struct TodoReadResult {
   todos : ArrayView[Item]
-} derive(ToJson, FromJson)
+}
 
 ///|
 impl Show for TodoReadResult with fn output(
@@ -72,12 +74,13 @@ pub fn new_tool(list : Todo) -> @tool.Tool[TodoResult] {
 
 ///|
 /// TodoWriteResult
+#derive(ToJson, FromJson)
 priv struct TodoWriteResult {
   todos : ArrayView[Item]
   message : String
   updated_todos : ArrayView[Item]
   is_new_creation : Bool
-} derive(ToJson, FromJson)
+}
 
 ///|
 impl Show for TodoWriteResult with fn output(
@@ -131,6 +134,7 @@ impl Show for TodoWriteResult with fn output(
 }
 
 ///|
+#derive(Debug, ToJson)
 priv enum Action {
   Read
   Create
@@ -138,10 +142,11 @@ priv enum Action {
   Update
   MarkProgress
   MarkCompleted
-} derive(Debug, ToJson)
+}
 
 ///|
 /// Parsed arguments from JSON input for todo operations
+#derive(Debug, ToJson)
 struct TodoArgs {
   action : Action
   content : String?
@@ -149,13 +154,14 @@ struct TodoArgs {
   priority : Priority
   status : Status
   notes : String?
-} derive(Debug, ToJson)
+}
 
 ///|
 /// Parse error type for todo arguments
+#derive(Debug)
 suberror TodoArgsError {
   TodoArgsError(String)
-} derive(Debug)
+}
 
 ///|
 /// Parse JSON arguments into TodoArgs

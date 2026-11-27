@@ -78,7 +78,7 @@ fn write_length_delimited_field(
 ) -> Unit {
   write_varint(buffer, encode_field_key(field_number, 2))
   write_varint(buffer, bytes.length().to_uint64())
-  buffer.write_bytes(bytes)
+  buffer.write_bytesview(bytes)
 }
 
 ///|

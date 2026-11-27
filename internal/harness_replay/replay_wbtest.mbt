@@ -60,11 +60,11 @@ async test "anonymized replay fixture passes all quality-first gates" {
 async test "task quality regression blocks lower cost and latency" {
   let fixture = harness_replay_test_fixture()
   let variant = harness_replay_test_first_variant(fixture)
-  variant["task_success"] = false.to_json()
-  variant["verifier_success"] = false.to_json()
-  variant["prompt_tokens"] = (1).to_json()
-  variant["cache_read_tokens"] = (1).to_json()
-  variant["request_chars"] = (1).to_json()
+  variant["task_success"] = Json::boolean(false)
+  variant["verifier_success"] = Json::boolean(false)
+  variant["prompt_tokens"] = Json::number(1)
+  variant["cache_read_tokens"] = Json::number(1)
+  variant["request_chars"] = Json::number(1)
   let report = evaluate_harness_replay(fixture)
   assert_eq(harness_replay_bool(report, "overall_passed"), Some(false))
   assert_eq(harness_replay_string(report, "first_failed_gate"), "task_success")
@@ -80,7 +80,9 @@ async test "task quality regression blocks lower cost and latency" {
 ///|
 async test "verifier and safety gates precede efficiency" {
   let verifier_fixture = harness_replay_test_fixture()
-  harness_replay_test_first_variant(verifier_fixture)["verifier_success"] = false.to_json()
+  harness_replay_test_first_variant(verifier_fixture)["verifier_success"] = Json::boolean(
+    false,
+  )
   let verifier_report = evaluate_harness_replay(verifier_fixture)
   assert_eq(
     harness_replay_string(verifier_report, "first_failed_gate"),
@@ -88,7 +90,9 @@ async test "verifier and safety gates precede efficiency" {
   )
 
   let safety_fixture = harness_replay_test_fixture()
-  harness_replay_test_first_variant(safety_fixture)["safety_recovery_success"] = false.to_json()
+  harness_replay_test_first_variant(safety_fixture)["safety_recovery_success"] = Json::boolean(
+    false,
+  )
   let safety_report = evaluate_harness_replay(safety_fixture)
   assert_eq(
     harness_replay_string(safety_report, "first_failed_gate"),
@@ -100,9 +104,9 @@ async test "verifier and safety gates precede efficiency" {
 async test "cost cache and latency use explicit distribution policies" {
   let cost_fixture = harness_replay_test_fixture()
   let costly = harness_replay_test_first_variant(cost_fixture)
-  costly["prompt_tokens"] = (10000).to_json()
-  costly["cache_read_tokens"] = (0).to_json()
-  costly["request_chars"] = (100000).to_json()
+  costly["prompt_tokens"] = Json::number(10000)
+  costly["cache_read_tokens"] = Json::number(0)
+  costly["request_chars"] = Json::number(100000)
   let cost_report = evaluate_harness_replay(cost_fixture)
   assert_eq(
     harness_replay_string(cost_report, "first_failed_gate"),
@@ -111,11 +115,11 @@ async test "cost cache and latency use explicit distribution policies" {
 
   let latency_fixture = harness_replay_test_fixture()
   let slow = harness_replay_test_first_variant(latency_fixture)
-  slow["latency_ms"] = (1000).to_json()
+  slow["latency_ms"] = Json::number(1000)
   guard slow.get("phase_metrics") is Some(Object(phase_fields)) else {
     fail("expected phase object")
   }
-  phase_fields["total_ms"] = (1000).to_json()
+  phase_fields["total_ms"] = Json::number(1000)
   let latency_report = evaluate_harness_replay(latency_fixture)
   assert_eq(
     harness_replay_string(latency_report, "first_failed_gate"),
@@ -127,7 +131,7 @@ async test "cost cache and latency use explicit distribution policies" {
 async test "replay fixtures reject raw user content fields" {
   let fixture = harness_replay_test_fixture()
   let variant = harness_replay_test_first_variant(fixture)
-  variant["prompt"] = "private raw text".to_json()
+  variant["prompt"] = Json::string("private raw text")
   try evaluate_harness_replay(fixture) catch {
     InvalidFixture(code) => assert_eq(code, "raw-content-field-forbidden")
   } noraise {
@@ -145,7 +149,7 @@ async test "missing cohort is an explicit sample count failure" {
   let retained = cases.filter(case => {
     harness_replay_string(case, "cohort") != "failure_retry"
   })
-  root["cases"] = retained.to_json()
+  root["cases"] = Json::array(retained)
   let report = evaluate_harness_replay(fixture)
   assert_eq(harness_replay_bool(report, "overall_passed"), Some(false))
   assert_eq(harness_replay_string(report, "first_failed_gate"), "sample_count")

@@ -1,8 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/provider_connection"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub async fn import_connection(String, Json) -> Result[Json, ImportError]
+pub async fn import_connection(String, @json.Json) -> Result[@json.Json, ImportError]
 
 // Errors
 

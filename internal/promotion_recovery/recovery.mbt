@@ -1,4 +1,5 @@
 ///|
+#derive(@json.FromJson)
 priv struct MoonDeskRecoveryRequest {
   protocol_version : Int32
   instance_id : String
@@ -6,9 +7,10 @@ priv struct MoonDeskRecoveryRequest {
   retention_id : String
   pending_attempt_id : String
   request_id : String
-} derive(@json.FromJson)
+}
 
 ///|
+#derive(@json.FromJson)
 priv struct MoonFortRecoveryResponse {
   protocol_version : Int32
   retention_id : String
@@ -22,7 +24,7 @@ priv struct MoonFortRecoveryResponse {
   observed_state_digest : String
   outcome : String
   error : MoonFortPromotionError?
-} derive(@json.FromJson)
+}
 
 ///|
 fn recovery_safe_id(value : String) -> Bool {
@@ -70,7 +72,7 @@ async fn moondesk_recovery_pending(
   guard file.kind() is Regular && size >= 0L && size <= 131_072L else {
     fail("Exact pending attempt is unavailable")
   }
-  let bytes = @buffer.Buffer(size_hint=2_048)
+  let bytes = @buffer.Buffer(capacity=2_048)
   for ;; {
     guard file.read_some(max_len=(131_073 - bytes.length()).min(4_096))
       is Some(chunk) else {
@@ -79,7 +81,7 @@ async fn moondesk_recovery_pending(
     guard bytes.length() + chunk.length() <= 131_072 else {
       fail("Exact pending attempt exceeds its bound")
     }
-    bytes.write_bytes(chunk)
+    bytes.write_bytesview(chunk)
   }
   guard file.size() == size &&
     bytes.length().to_int64() == size &&

@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) struct JobNotifyTarget {
   channel_id : String
   account_id : String
@@ -7,9 +8,10 @@ pub(all) struct JobNotifyTarget {
   verbosity : NotificationVerbosity
   heartbeat_interval_ms : Int32
   warn_after_ms : Int32
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) enum JobChatAction {
   Plan(String)
   Preview(String)
@@ -29,7 +31,7 @@ pub(all) enum JobChatAction {
   Remember(String)
   Memories
   MemorySearch(String)
-} derive(Debug)
+}
 
 ///|
 fn is_plan_mode_command(command : String) -> Bool {
@@ -47,12 +49,14 @@ fn is_e2e_job_command(command : String) -> Bool {
 }
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ChildRunStatus {
   run_id : String
   status : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct JobStatusSnapshot {
   definition_id : String
   definition_title : String
@@ -71,9 +75,10 @@ pub(all) struct JobStatusSnapshot {
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
   output_lines : Array[String]
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct ActiveJobSnapshot {
   definition_id : String
   definition_title : String
@@ -83,20 +88,22 @@ pub(all) struct ActiveJobSnapshot {
   family : String
   depth : Int32
   current_step : String
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct JobNotificationRuntimeState {
   last_sent_at : Int32
   last_notified_event_count : Int32
   long_running_warned : Bool
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
+#derive(Debug, ToJson, FromJson)
 pub(all) struct JobNotificationDecision {
   messages : Array[String]
   next_state : JobNotificationRuntimeState
-} derive(Debug, ToJson, FromJson)
+}
 
 ///|
 pub fn notification_preference_id(

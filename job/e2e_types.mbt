@@ -1,11 +1,12 @@
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct E2EStarterAttachment {
   id : String
   mime_type : String
   url : String
   filename : String?
   size : Int32?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn E2EStarterAttachment::new(
@@ -19,6 +20,7 @@ pub fn E2EStarterAttachment::new(
 }
 
 ///|
+#derive(ToJson, FromJson, Debug)
 pub struct E2EJobIntake {
   request_text : String
   requested_output_format : String?
@@ -29,7 +31,7 @@ pub struct E2EJobIntake {
   message_id : String?
   thread_id : String?
   content_type : String?
-} derive(ToJson, FromJson, Debug)
+}
 
 ///|
 pub fn E2EJobIntake::new(

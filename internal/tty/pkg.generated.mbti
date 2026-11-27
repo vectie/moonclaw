@@ -1,21 +1,26 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/tty"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 #callsite(autofill(loc))
-pub fn isatty(Int, loc~ : SourceLoc) -> Bool raise
+pub fn isatty(Int32, loc~ : SourceLoc) -> Bool raise
 
-pub fn set_raw_mode(Int) -> Unit raise
+pub fn set_raw_mode(Int32) -> Unit raise
 
 pub fn window_size() -> Size raise
 
 // Errors
 
 // Types and methods
+#derive(@json.ToJson)
 pub struct Size {
-  row : Int
-  col : Int
-} derive(ToJson)
+  row : Int32
+  col : Int32
+}
 
 // Type aliases
 

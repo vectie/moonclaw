@@ -1,8 +1,9 @@
 ///|
+#derive(ToJson)
 pub(all) enum ServerEvent {
   MoonclawQueuedMessagesSynchronized(Array[Json])
   Moonclaw(@event.Event)
-} derive(ToJson)
+}
 
 ///|
 pub impl @httpx.FromEvent for ServerEvent with fn from_event(

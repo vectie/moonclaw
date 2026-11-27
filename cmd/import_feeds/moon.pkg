@@ -1,7 +1,6 @@
 import {
   "vectie/moonclaw/tools/read_feed" @feed,
   "vectie/moonlib/fsx",
-  "moonbitlang/async",
   "moonbitlang/core/env",
 }
 

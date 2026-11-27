@@ -94,10 +94,16 @@ async test "real gateway owner route serves fresh compiler UI and inspects all f
       assert_true(
         output.text().contains("ROUND55_ACTUAL_FORT_GATEWAY_COMPILED_UI_PASSED"),
       )
-      let headers = {
-        "authorization": "Bearer fixture-only-token",
-        "x-moonclaw-execution-token": "b".repeat(64),
-      }
+      let headers : @http.Headers = Map([
+        (
+          @http.CaseInsensitiveString("authorization"),
+          "Bearer fixture-only-token",
+        ),
+        (
+          @http.CaseInsensitiveString("x-moonclaw-execution-token"),
+          "b".repeat(64),
+        ),
+      ])
       let (extra_response, _) = @http.post(
         base + "/v1/execution-sandbox/promotion-recovery",
         "{\"protocol_version\":1,\"instance_id\":\"a\",\"workspace_id\":\"book\",\"retention_id\":\"r\",\"pending_attempt_id\":\"p\",\"request_id\":\"i\",\"workspace_root\":\"/CANARY-private\"}",

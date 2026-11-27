@@ -167,7 +167,7 @@ test "boot selection follows unresolved commands and service stop boundaries" {
     "source": "moonclaw-native-runtime-control",
   }
   for
-    (event, resume) in (
+    (event, should_resume) in (
       [
         (
           {
@@ -227,7 +227,7 @@ test "boot selection follows unresolved commands and service stop boundaries" {
     let payload = mooncode_runtime_service_restore_payload(
       "restore", "/book", records,
     )
-    assert_eq(payload is Some(_), resume, msg=event.stringify())
+    assert_eq(payload is Some(_), should_resume, msg=event.stringify())
     if mooncode_json_string(event, "kind", default="") ==
       "runtime.service_started" {
       assert_eq(mooncode_json_int(payload.unwrap(), "max_turns", default=0), 2)
